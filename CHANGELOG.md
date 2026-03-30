@@ -11,7 +11,14 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
-- Project-level change-tracking files and GitHub contribution templates.
+- `references/market-sizing-and-share-discipline.md`
+- `evals/finance-and-market-share-cambricon-case.md`
+
+### Changed
+- `SKILL.md` now routes market-size and market-share style work to dedicated sizing/share-discipline guidance.
+
+### Why
+- A real Cambricon report example exposed pseudo-precision around market-share estimates, weak mapping between company data and market-size claims, and insufficient numeric discipline in company/sector research.
 
 ### Process
 - Future meaningful repo changes should include:

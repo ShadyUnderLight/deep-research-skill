@@ -29,6 +29,7 @@ Turn "search and summarize" into a stricter research workflow that:
 - `claim-matrix.md`
 - `task-types.md`
 - `finance-date-discipline.md`
+- `market-sizing-and-share-discipline.md`
 
 ## Suggested next steps
 

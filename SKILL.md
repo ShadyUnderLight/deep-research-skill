@@ -110,6 +110,7 @@ For every important claim, capture:
 Read `references/source-quality.md` when source ranking is ambiguous.
 Read `references/claim-matrix.md` when the task has multiple important conclusions, conflicting evidence, or high stakes.
 Read `references/finance-date-discipline.md` when the task involves company research, financial performance, valuation, guidance, delivery volumes, or other time-sensitive numeric claims.
+Read `references/market-sizing-and-share-discipline.md` when the task involves market size, TAM/SAM/SOM, market-share estimates, competitive-position sizing, or any numeric mapping from company data to broader market claims.
 
 Stop searching when one of these is true:
 
