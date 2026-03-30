@@ -12,13 +12,17 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ### Added
 - `references/market-sizing-and-share-discipline.md`
+- `references/ranking-and-current-claims-discipline.md`
 - `evals/finance-and-market-share-cambricon-case.md`
+- `evals/ranking-and-current-claims-xiaomi-update-case.md`
 
 ### Changed
 - `SKILL.md` now routes market-size and market-share style work to dedicated sizing/share-discipline guidance.
+- `SKILL.md` now routes ranking, category-leadership, and current-position claims to dedicated ranking/current-claims discipline guidance.
 
 ### Why
 - A real Cambricon report example exposed pseudo-precision around market-share estimates, weak mapping between company data and market-size claims, and insufficient numeric discipline in company/sector research.
+- An updated Xiaomi report showed improved freshness but still over-assertive ranking/current-position claims that needed stronger time/source/category discipline.
 
 ### Process
 - Future meaningful repo changes should include:

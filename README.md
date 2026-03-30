@@ -30,6 +30,7 @@ Turn "search and summarize" into a stricter research workflow that:
 - `task-types.md`
 - `finance-date-discipline.md`
 - `market-sizing-and-share-discipline.md`
+- `ranking-and-current-claims-discipline.md`
 
 ## Suggested next steps
 
