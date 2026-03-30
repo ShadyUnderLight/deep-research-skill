@@ -109,6 +109,7 @@ For every important claim, capture:
 
 Read `references/source-quality.md` when source ranking is ambiguous.
 Read `references/claim-matrix.md` when the task has multiple important conclusions, conflicting evidence, or high stakes.
+Read `references/finance-date-discipline.md` when the task involves company research, financial performance, valuation, guidance, delivery volumes, or other time-sensitive numeric claims.
 
 Stop searching when one of these is true:
 
@@ -173,6 +174,16 @@ For fast-moving topics, search with freshness-first patterns such as:
 - `site:<official-domain> [topic]`
 
 If the current state cannot be verified, say so clearly instead of filling gaps with likely-but-stale knowledge.
+
+For fast-moving company or investment research, produce a short current snapshot before broader analysis. When relevant, verify and separate:
+
+- current product lineup
+- current strategic framing
+- latest reported financial disclosure
+- current market snapshot
+- forward-looking targets or estimates
+
+Do not merge reported facts, current market data, and forward-looking numbers into one undifferentiated narrative.
 
 ## Step 6: Run a mid-research review
 

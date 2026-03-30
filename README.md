@@ -28,6 +28,7 @@ Turn "search and summarize" into a stricter research workflow that:
 - `decision-report-template.md`
 - `claim-matrix.md`
 - `task-types.md`
+- `finance-date-discipline.md`
 
 ## Suggested next steps
 
