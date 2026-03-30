@@ -37,6 +37,16 @@ Turn "search and summarize" into a stricter research workflow that:
 3. Tighten references based on observed mistakes.
 4. Add scripts only after the protocol is stable.
 
+## Maintenance and traceability
+
+This repo should be maintained like a real project rather than a loose prompt folder.
+
+- Record meaningful changes in `CHANGELOG.md`.
+- Track likely next work in `ROADMAP.md`.
+- Use the GitHub issue templates for failures and feature requests.
+- Use the PR template for larger changes.
+- When fixing a real failure mode, add or update an eval whenever possible.
+
 ## Good evaluation targets
 
 - fast-moving products and model versions
