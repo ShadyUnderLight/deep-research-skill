@@ -31,6 +31,7 @@ Turn "search and summarize" into a stricter research workflow that:
 - `finance-date-discipline.md`
 - `market-sizing-and-share-discipline.md`
 - `ranking-and-current-claims-discipline.md`
+- `research-depth-rubric.md`
 
 ## Suggested next steps
 
