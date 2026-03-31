@@ -62,6 +62,21 @@ Example phrasing:
 - `As of the market snapshot reviewed on 2026-03-30, ...`
 - `The reported PE appears to be TTM rather than forward PE.`
 
+### Mandatory for listed companies
+
+**For any listed-company research, a current valuation snapshot is required, not optional.**
+
+At minimum, include:
+
+- approximate current stock price
+- approximate market capitalization
+- current valuation ratios (PE, PB, PS) with basis (TTM or forward) and date
+- 52-week high/low range if relevant
+
+If this data cannot be obtained cleanly, note the limitation explicitly rather than omitting it.
+
+Do not write a listed-company investment memo without current market context. Historical financials alone are insufficient for investment analysis.
+
 ## 3. Forward-looking targets or estimates
 
 Examples:
