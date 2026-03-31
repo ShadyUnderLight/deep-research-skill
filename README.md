@@ -33,6 +33,7 @@ Turn "search and summarize" into a stricter research workflow that:
 - `ranking-and-current-claims-discipline.md`
 - `research-depth-rubric.md`
 - `corporate-status-and-listing-state-discipline.md`
+- `source-traceability-and-claim-citation.md`
 
 ## Suggested next steps
 
