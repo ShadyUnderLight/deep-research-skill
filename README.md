@@ -32,6 +32,7 @@ Turn "search and summarize" into a stricter research workflow that:
 - `market-sizing-and-share-discipline.md`
 - `ranking-and-current-claims-discipline.md`
 - `research-depth-rubric.md`
+- `corporate-status-and-listing-state-discipline.md`
 
 ## Suggested next steps
 

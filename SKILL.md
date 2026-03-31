@@ -112,6 +112,7 @@ Read `references/claim-matrix.md` when the task has multiple important conclusio
 Read `references/finance-date-discipline.md` when the task involves company research, financial performance, valuation, guidance, delivery volumes, or other time-sensitive numeric claims.
 Read `references/market-sizing-and-share-discipline.md` when the task involves market size, TAM/SAM/SOM, market-share estimates, competitive-position sizing, or any numeric mapping from company data to broader market claims.
 Read `references/ranking-and-current-claims-discipline.md` when the task involves rankings, share rankings, category leadership, "No.1" claims, streak claims, current-position claims, or other time-sensitive comparative statements.
+Read `references/corporate-status-and-listing-state-discipline.md` when the task involves whether a company is private, filed, approved, registered, listed, trading, delisted, or otherwise in a changing capital-markets state.
 
 Stop searching when one of these is true:
 

@@ -14,18 +14,22 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `references/market-sizing-and-share-discipline.md`
 - `references/ranking-and-current-claims-discipline.md`
 - `references/research-depth-rubric.md`
+- `references/corporate-status-and-listing-state-discipline.md`
 - `evals/finance-and-market-share-cambricon-case.md`
 - `evals/ranking-and-current-claims-xiaomi-update-case.md`
 - `evals/depth-rubric.md`
+- `evals/moore-threads-listing-status-case.md`
 
 ### Changed
 - `SKILL.md` now routes market-size and market-share style work to dedicated sizing/share-discipline guidance.
 - `SKILL.md` now routes ranking, category-leadership, and current-position claims to dedicated ranking/current-claims discipline guidance.
+- `SKILL.md` now routes changing company capital-markets status questions to dedicated listing-state discipline guidance.
 
 ### Why
 - A real Cambricon report example exposed pseudo-precision around market-share estimates, weak mapping between company data and market-size claims, and insufficient numeric discipline in company/sector research.
 - An updated Xiaomi report showed improved freshness but still over-assertive ranking/current-position claims that needed stronger time/source/category discipline.
 - Real-case iteration showed that factual checking alone is not enough; the repo also needs a reusable way to score research depth and breadth.
+- A Moore Threads report exposed another failure mode: freezing a company's capital-markets state at IPO-filing / Pre-IPO language instead of verifying the actual current listing status.
 
 ### Process
 - Future meaningful repo changes should include:
