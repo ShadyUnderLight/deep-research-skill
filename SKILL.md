@@ -113,6 +113,7 @@ Read `references/finance-date-discipline.md` when the task involves company rese
 Read `references/market-sizing-and-share-discipline.md` when the task involves market size, TAM/SAM/SOM, market-share estimates, competitive-position sizing, or any numeric mapping from company data to broader market claims.
 Read `references/ranking-and-current-claims-discipline.md` when the task involves rankings, share rankings, category leadership, "No.1" claims, streak claims, current-position claims, or other time-sensitive comparative statements.
 Read `references/corporate-status-and-listing-state-discipline.md` when the task involves whether a company is private, filed, approved, registered, listed, trading, delisted, or otherwise in a changing capital-markets state.
+Read `references/source-traceability-and-claim-citation.md` when the task requires structured claims, investment memos, competitive analysis, or any output where readers need to audit which specific source supports which conclusion. Specifically required when the output includes CONFIRMED / LIKELY / UNCERTAIN labels.
 
 Stop searching when one of these is true:
 
