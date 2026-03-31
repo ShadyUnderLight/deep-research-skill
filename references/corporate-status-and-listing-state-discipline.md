@@ -131,6 +131,24 @@ If you conclude the company is listed, the report should usually make visible at
 - listing date or current trading context
 - what source confirms listed/trading status
 
+### Mandatory opening snapshot for listed companies
+
+**For any listed-company research, the report opening must contain a current market data block, not just a status note.**
+
+At minimum, this block must include:
+- current stock price (or most recent trading day's close) with date
+- approximate market capitalization
+- current key valuation ratios (PE, PB, PS) with TTM/forward basis and date
+- 52-week high/low range if relevant
+
+This is required even if the rest of the analysis relies on prospectus data. A listed-company report that opens with only IPO prospectus language and zero current market data is structurally incomplete.
+
+If the exchange is a recent listing (within approximately 12 months), note the post-IPO trading range and any available early-market price data.
+
+If current market data cannot be obtained, explicitly state the limitation in the opening rather than silently omitting it.
+
+**Why this matters:** An investor reading a listed-company report needs the current market context to understand whether historical financials are relevant to the present valuation. Omitting this creates a false impression that pre-IPO financials tell the full story.
+
 ## If not yet listed
 
 If the company is still in process, say what stage it is actually in.
