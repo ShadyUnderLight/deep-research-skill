@@ -30,6 +30,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `SKILL.md` now routes ranking, category-leadership, and current-position claims to dedicated ranking/current-claims discipline guidance.
 - `SKILL.md` now routes changing company capital-markets status questions to dedicated listing-state discipline guidance.
 - `SKILL.md` now routes structured claim reports and investment memo outputs to source-traceability guidance.
+- `SKILL.md` no longer contains dangling references to missing parallel-research, subagent-orchestration, and evidence-log-template files.
 
 ### Why
 - A real Cambricon report example exposed pseudo-precision around market-share estimates, weak mapping between company data and market-size claims, and insufficient numeric discipline in company/sector research.
@@ -78,6 +79,15 @@ This file is intentionally lightweight. Use concise entries that explain:
 - The project moved from a generic research workflow toward a more structured deep-research protocol with stronger freshness, uncertainty, and decision-support discipline.
 
 ## 0.1.0 - 2026-03-30
+
+### Added
+- Initial project scaffold
+- `SKILL.md`
+- `README.md`
+- `references/` directory
+- `examples/` directory
+- `evals/` directory
+3-30
 
 ### Added
 - Initial project scaffold

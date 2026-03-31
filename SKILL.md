@@ -303,9 +303,6 @@ For each track, define:
 - preferred source types
 - required outputs
 
-Read `references/parallel-research.md` when deciding whether to parallelize.
-Read `references/subagent-orchestration.md` when spawning sub-agents or merging outputs.
-Read `references/evidence-log-template.md` when you want a compact per-track ledger.
 
 ## Tool strategy
 
