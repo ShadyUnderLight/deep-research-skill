@@ -18,6 +18,7 @@ Turn "search and summarize" into a stricter research workflow that:
 
 - `SKILL.md` — main skill protocol
 - `references/` — supporting playbooks and templates
+- `checklists/` — execution-time audit checklists (run before delivery)
 - `examples/` — example tasks and failure cases
 - `evals/` — lightweight regression/evaluation prompts
 
