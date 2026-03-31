@@ -21,6 +21,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/depth-rubric.md`
 - `evals/moore-threads-listing-status-case.md`
 - `evals/source-traceability-moore-threads-case.md`
+- `evals/apple-product-and-valuation-case.md`
 
 ### Changed
 - `SKILL.md` now routes market-size and market-share style work to dedicated sizing/share-discipline guidance.
@@ -34,6 +35,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - Real-case iteration showed that factual checking alone is not enough; the repo also needs a reusable way to score research depth and breadth.
 - A Moore Threads report exposed another failure mode: freezing a company's capital-markets state at IPO-filing / Pre-IPO language instead of verifying the actual current listing status.
 - A later Moore Threads report showed the model had improved source awareness but still lacked claim-level traceability — sources appeared at the end but no inline citations existed, making conclusions unauditable.
+- An Apple report exposed two additional failure modes: (1) using stale product generations as current when iPhone 17, M5, and Apple Watch 11 have all shipped, and (2) omitting current valuation snapshot entirely for a listed-company investment memo.
 
 ### Process
 - Future meaningful repo changes should include:
