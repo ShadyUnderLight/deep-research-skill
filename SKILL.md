@@ -35,17 +35,17 @@ Never present inference as confirmed fact.
 Before searching, identify:
 
 - the main question
-- the user’s likely decision or use case
+- the user's likely decision or use case
 - the required depth
 - the time horizon if relevant
 - whether the user wants explanation, recommendation, comparison, or diligence
 
-If the user’s wording is broad, anchor on the most decision-relevant interpretation instead of drifting into general background.
+If the user's wording is broad, anchor on the most decision-relevant interpretation instead of drifting into general background.
 
 Examples:
 
-- “Research AI coding agents” may really mean market entry, competitive positioning, or vendor selection.
-- “Research this company” may really mean partnership diligence, investment risk, or product comparison.
+- "Research AI coding agents" may really mean market entry, competitive positioning, or vendor selection.
+- "Research this company" may really mean partnership diligence, investment risk, or product comparison.
 
 ## Step 2: Classify the task type
 
@@ -110,10 +110,15 @@ For every important claim, capture:
 Read `references/source-quality.md` when source ranking is ambiguous.
 Read `references/claim-matrix.md` when the task has multiple important conclusions, conflicting evidence, or high stakes.
 Read `references/finance-date-discipline.md` when the task involves company research, financial performance, valuation, guidance, delivery volumes, or other time-sensitive numeric claims.
+Read `checklists/listed-company-report.md` for listed-company research - applies the required fields gate before delivery.
+
 Read `references/market-sizing-and-share-discipline.md` when the task involves market size, TAM/SAM/SOM, market-share estimates, competitive-position sizing, or any numeric mapping from company data to broader market claims.
 Read `references/ranking-and-current-claims-discipline.md` when the task involves rankings, share rankings, category leadership, "No.1" claims, streak claims, current-position claims, or other time-sensitive comparative statements.
 Read `references/corporate-status-and-listing-state-discipline.md` when the task involves whether a company is private, filed, approved, registered, listed, trading, delisted, or otherwise in a changing capital-markets state.
 Read `references/source-traceability-and-claim-citation.md` when the task requires structured claims, investment memos, competitive analysis, or any output where readers need to audit which specific source supports which conclusion. Specifically required when the output includes CONFIRMED / LIKELY / UNCERTAIN labels.
+Run `checklists/source-traceability.md` before delivery if the output is a structured or investment-relevant memo.
+
+Read `checklists/forward-looking-claims.md` when the task involves product release timelines, pricing forecasts, forward financial estimates, or any forward-looking statements.
 
 Stop searching when one of these is true:
 
@@ -349,12 +354,8 @@ When the topic changes over time, explicitly include the time dimension:
 
 ## Final discipline
 
-Before delivering the final report, check:
+Before delivering the final report, run `checklists/final-audit.md`.
 
-- Did I answer the user’s real objective?
-- Did I rely too much on one narrative or one source chain?
-- Did I test my main conclusion against counter-evidence?
-- Did I clearly separate confirmed facts, inference, and uncertainty?
-- Did I give the user a useful bottom line rather than just a long summary?
+It checks: real objective answered, evidence quality, counter-evidence, uncertainty honesty, completeness, and recall discipline.
 
-If not, revise before answering.
+A report that fails the final audit checklist is not ready for delivery.

@@ -24,6 +24,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/apple-product-and-valuation-case.md`
 - `evals/apple-product-roadmap-and-investment-case.md`
 - `evals/industry-landscape-depth-case.md`
+- `checklists/listed-company-report.md`
+- `checklists/source-traceability.md`
+- `checklists/forward-looking-claims.md`
+- `checklists/final-audit.md`
 
 ### Changed
 - `SKILL.md` now routes market-size and market-share style work to dedicated sizing/share-discipline guidance.
@@ -41,6 +45,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - An Apple report exposed two additional failure modes: (1) using stale product generations as current when iPhone 17, M5, and Apple Watch 11 have all shipped, and (2) omitting current valuation snapshot entirely for a listed-company investment memo.
 - A later Apple product roadmap + investment analysis report showed source traceability was still missing, forward-looking claims lacked reasoning chains, marketing language was not separated from facts, and product analysis was mixed with investment advice without proper boundaries.
 - An AI industry value-chain report exposed a different depth failure mode: broad coverage and plausible synthesis, but still more like a high-quality landscape briefing than true deep research with prioritized variables, value-accrual analysis, and counter-evidence.
+- After systematic review, the skill had grown to the point where key execution rules (listed-company fields, source traceability, forward-looking claims, final audit) were buried in prose and not reliably enforced. Four execution-time checklists were added as a lightweight anti-forgetting structure: each replaces prose guidance with a concrete run-before-delivery checklist.
 
 ### Process
 - Future meaningful repo changes should include:
