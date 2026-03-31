@@ -23,6 +23,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/source-traceability-moore-threads-case.md`
 - `evals/apple-product-and-valuation-case.md`
 - `evals/apple-product-roadmap-and-investment-case.md`
+- `evals/industry-landscape-depth-case.md`
 
 ### Changed
 - `SKILL.md` now routes market-size and market-share style work to dedicated sizing/share-discipline guidance.
@@ -38,6 +39,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - A later Moore Threads report showed the model had improved source awareness but still lacked claim-level traceability — sources appeared at the end but no inline citations existed, making conclusions unauditable.
 - An Apple report exposed two additional failure modes: (1) using stale product generations as current when iPhone 17, M5, and Apple Watch 11 have all shipped, and (2) omitting current valuation snapshot entirely for a listed-company investment memo.
 - A later Apple product roadmap + investment analysis report showed source traceability was still missing, forward-looking claims lacked reasoning chains, marketing language was not separated from facts, and product analysis was mixed with investment advice without proper boundaries.
+- An AI industry value-chain report exposed a different depth failure mode: broad coverage and plausible synthesis, but still more like a high-quality landscape briefing than true deep research with prioritized variables, value-accrual analysis, and counter-evidence.
 
 ### Process
 - Future meaningful repo changes should include:
