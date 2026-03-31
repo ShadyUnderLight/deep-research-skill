@@ -10,6 +10,23 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ## Unreleased
 
+## 0.4.0 - 2026-03-31
+
+### Added
+- `references/parallel-research.md`
+
+### Changed
+- `references/parallel-research.md` now includes a **Batch parallelism (rate-limit safe)** section with a max-2-concurrent rule to prevent MiniMax API 429 errors during parallel track execution.
+
+### Why
+- During a real deep-research session, running 3-4 parallel sub-agent tracks simultaneously caused multiple concurrent `web_search` calls that exceeded MiniMax's search API concurrency limit, resulting in 429 errors and track failures.
+- The fix uses batch parallelism: at most 2 tracks run concurrently; remaining tracks wait for the current batch to finish before spawning. This keeps total research time near-optimal (~2× single-track) without hitting rate limits.
+- 4 tracks → two batches (2+2); 3 tracks → two batches (2+1); 1 track → direct run.
+
+### Process
+- Fix was identified from a real production failure during a live Minimax research session.
+- Changelog entry and branch/PR workflow followed the repo's agreed-upon maintenance discipline.
+
 ### Added
 - `references/market-sizing-and-share-discipline.md`
 - `references/ranking-and-current-claims-discipline.md`
