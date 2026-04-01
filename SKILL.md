@@ -88,6 +88,19 @@ A strong plan focuses on what would change the final conclusion, not just what i
 
 Set a quality bar before gathering sources.
 
+Before searching deeply, decide which gates must fire for this task. Do not leave this implicit.
+
+At minimum, check for these trigger patterns:
+
+- **Listed company / public equity / valuation / investment memo** -> run listed-company discipline and require a current market snapshot before delivery
+- **Current products / latest model / current lineup / pricing / release cycle / rankings / market position** -> run current-state verification before broader analysis
+- **Structured memo / investment case / comparative report / claim-labeled output** -> run source-traceability discipline
+- **Forecast / roadmap / guidance / consensus / target price / launch timing / "预计" style claims** -> run forward-looking-claims discipline
+- **Global market / full landscape / industry-wide scope** -> explicitly test scope completeness across key geographies, segments, and regulatory regimes
+- **Recommendation / go-no-go / compare options / what should we do** -> optimize for decision utility, not just depth
+
+If multiple triggers apply, route into all of them. Do not assume one checklist covers the others.
+
 For key claims, prefer:
 
 1. official or primary sources
@@ -119,6 +132,12 @@ Read `references/source-traceability-and-claim-citation.md` when the task requir
 Run `checklists/source-traceability.md` before delivery if the output is a structured or investment-relevant memo.
 
 Read `checklists/forward-looking-claims.md` when the task involves product release timelines, pricing forecasts, forward financial estimates, or any forward-looking statements.
+Read `evals/global-market-scope-completeness-case.md` as a coverage discipline check when the task claims global, full-landscape, or industry-wide scope.
+Read `evals/decision-utility-rubric.md` when the user needs a recommendation, prioritization, vendor choice, go/no-go, or other action-guiding conclusion.
+Read `references/option-selection-and-shortlist-discipline.md` when the task is mainly about choosing among several plausible options under constraints (for example destination selection, vendor shortlist, office/venue choice, multi-origin meetup/location choice, or other comparison tasks where ranking and elimination matter more than background explanation).
+Run `checklists/option-selection-final-audit.md` before delivery for shortlist, ranking, destination-selection, or other constrained-choice outputs.
+Read `references/comparative-distillation-method.md` when comparing paired reports (for example GPT vs Minimax on the same topic) to distill reusable skill improvements rather than just judge which output is better.
+Use `evals/comparative-distillation-template.md` to record each paired-report comparison so every extracted pattern ends in `NEW_RULE`, `CHECKLIST_HARDENING`, `TEMPLATE_CHANGE`, or `NO_ACTION`.
 
 Stop searching when one of these is true:
 
@@ -356,6 +375,19 @@ When the topic changes over time, explicitly include the time dimension:
 
 Before delivering the final report, run `checklists/final-audit.md`.
 
-It checks: real objective answered, evidence quality, counter-evidence, uncertainty honesty, completeness, and recall discipline.
+Then ask one more question: did the correct gates actually fire for this task?
+
+Use these final trigger checks:
+
+- if this was a listed-company or investment-style report, the output should visibly show listed-company discipline
+- if this was a current-state-sensitive task, the output should visibly show a current snapshot or freshness verification
+- if this was a structured or claim-heavy memo, the output should visibly show source traceability in the body, not only in a source appendix
+- if this included forecasts, roadmap claims, estimates, or target prices, the output should visibly show forward-looking discipline
+- if this claimed broad global or full-landscape scope, the output should visibly show scope completeness or clearly state scope limits
+- if this was meant to support a decision, the output should visibly help the reader choose, prioritize, or decide what to verify next
+
+If the report appears to know the rule but not execute it reliably, use `evals/rule-activation-and-execution-discipline.md` to diagnose whether the problem is a missing rule, missing trigger, or execution failure.
+
+It checks: real objective answered, evidence quality, counter-evidence, uncertainty honesty, completeness, recall discipline, and whether the right delivery-time gates actually became visible in the report.
 
 A report that fails the final audit checklist is not ready for delivery.

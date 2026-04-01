@@ -20,7 +20,11 @@ Turn "search and summarize" into a stricter research workflow that:
 - `references/` — supporting playbooks and templates
 - `checklists/` — execution-time audit checklists (run before delivery)
 - `examples/` — example tasks and failure cases
-- `evals/` — lightweight regression/evaluation prompts
+- `evals/` — lightweight regression/evaluation prompts, rubrics, and meta-evals
+- `references/failure-taxonomy.md` — recurring eval failure families and structural fix map
+- `references/comparative-distillation-method.md` — how to turn stronger paired reports into reusable rules and gates
+- `references/option-selection-and-shortlist-discipline.md` — general method for constrained choice, ranking, and shortlist-style research tasks
+- `checklists/option-selection-final-audit.md` — delivery gate for shortlist, ranking, and constrained-choice outputs
 
 ## Initial references included
 

@@ -10,6 +10,37 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ## Unreleased
 
+### Added
+- `references/failure-taxonomy.md`
+- `references/comparative-distillation-method.md`
+- `references/option-selection-and-shortlist-discipline.md`
+- `evals/rule-activation-and-execution-discipline.md`
+- `evals/global-market-scope-completeness-case.md`
+- `evals/decision-utility-rubric.md`
+- `evals/comparative-distillation-template.md`
+
+### Changed
+- `README.md` now points to the failure-taxonomy document so the current eval set can be interpreted as recurring failure families rather than a flat list of isolated cases.
+- `README.md` now describes `evals/` as containing case evals, rubrics, and meta-evals rather than only lightweight prompts.
+- `README.md` now points to the comparative-distillation method as the standard way to turn paired-report comparisons into reusable improvements.
+- `README.md` now points to a general option-selection and shortlist-discipline reference for constrained choice tasks.
+- `ROADMAP.md` now calls out possible formalization of eval subtypes (`case`, `rubric`, `distillation`, `meta-eval`).
+- `ROADMAP.md` now calls for 2-3 more real comparative-distillation cases before promoting candidate rules too aggressively.
+- `SKILL.md` now includes explicit trigger routing for listed-company, current-state, source-traceability, forward-looking, global-scope, decision-utility, and option-selection/shortlist cases instead of leaving those gates implicit.
+- `SKILL.md` now routes paired-report comparison work to the comparative-distillation method and template so stronger-vs-weaker report comparisons produce explicit action types.
+- `SKILL.md` final discipline now adds a visible-gate check and routes rule-execution failures to `evals/rule-activation-and-execution-discipline.md`.
+- `references/decision-report-template.md` now explicitly adapts its structure for option-selection and shortlist tasks, including ranked shortlist flow, aggregation visibility, and change-the-ranking conditions.
+- `checklists/option-selection-final-audit.md` was added and wired into both `SKILL.md` and `checklists/final-audit.md` so constrained-choice outputs now have a dedicated delivery gate.
+
+### Why
+- The eval set has grown enough that recurring patterns now matter more than single-case accumulation.
+- A taxonomy makes it easier to decide whether a new report failure needs a new rule, a stronger checklist gate, a trigger-routing fix, or only another case file.
+- Current evidence shows that several failures are no longer "missing rule" problems but "rule activation / execution" problems; documenting that distinction is now important.
+- Three next-step eval artifacts were added to turn the taxonomy into execution guidance: one for rule activation failures, one for global scope-completeness failures, and one for decision-support quality beyond generic depth.
+- Comparative distillation needed to become a repeatable method rather than an ad-hoc discussion, so the repo now includes both a method file and a working template for paired-report comparisons.
+- The weekend destination comparison case exposed a broader missing-rule area: the repo needed general guidance for constrained choice, shortlist construction, multi-origin aggregation, and choice architecture beyond travel-specific prompting.
+- The skill itself needed to consume those additions through clearer routing, otherwise the new evals would remain documentation instead of affecting execution.
+
 ## 0.4.0 - 2026-03-31
 
 ### Added

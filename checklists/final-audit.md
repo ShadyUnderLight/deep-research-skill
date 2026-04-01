@@ -38,6 +38,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] current-state verification was run for fast-moving topics
 - [ ] listing status and financial snapshot were verified for listed companies
 - [ ] source traceability was applied for structured or investment-relevant outputs
+- [ ] option-selection final audit was run for shortlist, ranking, or constrained-choice outputs
 
 ## Precision and estimate sourcing
 

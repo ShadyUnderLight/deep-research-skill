@@ -8,6 +8,9 @@ This file tracks likely next improvements and helps keep repo evolution intentio
 - Add more evals for freshness, counter-evidence, and decision-quality regressions.
 - Test the skill against more real fast-moving company/product cases.
 - Tighten current-state verification if stale facts still leak into reports.
+- Add meta-evals and trigger-routing improvements for failure families identified in `references/failure-taxonomy.md`, especially rule activation, scope completeness, and decision utility.
+- Decide whether to formalize eval subtypes (`case`, `rubric`, `distillation`, `meta-eval`) in naming or folder structure.
+- Run at least 2-3 more real comparative-distillation cases and promote only the recurring candidate rules.
 
 ### P2
 - Expand finance/investment-specific guidance for valuation, consensus, and reporting-period handling.
