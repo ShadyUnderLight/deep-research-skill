@@ -39,6 +39,24 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] listing status and financial snapshot were verified for listed companies
 - [ ] source traceability was applied for structured or investment-relevant outputs
 
+## Precision and estimate sourcing
+
+- [ ] every "预计 / 估计 / 预期" in the report has a named source attribution (who expects this?)
+- [ ] bare "预计" without source = fail; go back and add "[据公司指引/据分析师/据媒体]预计"
+- [ ] exact figures are used when source provides them; "约" only when source itself rounds
+
+## Market position and ranking claims
+
+- [ ] every market-position claim specifies scope: "中国市场" / "全球" / "按XX口径"
+- [ ] every market-position claim includes a conditional clause or explicitly states "no dependencies identified"
+- [ ] "全球最大" / "市场领导者" without scope and dependency = fail
+
+## Profit + scale signal pairing
+
+- [ ] when volume/scale growth is reported, profitability and cash flow signals are checked
+- [ ] if both positive (scale up) and negative (margin down) signals exist in the same period, they are presented together in one sentence or adjacent bullets — not separated in different sections
+- [ ] reader does not have to connect the dots themselves
+
 ## Quality bar
 
 A report that fails this checklist is not ready for delivery, regardless of length or apparent polish.
