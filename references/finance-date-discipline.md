@@ -145,6 +145,37 @@ Avoid these mistakes:
 - quoting market-share or shipment numbers without period definition
 - blending company disclosures and third-party estimates into one table without labels
 
+## Precision discipline (from GPT vs Minimax distillation)
+
+**Use exact figures when the source provides them.** Do not round figures by default.
+
+- Bad: `"约427万辆" when the source gives 4,272,145`
+- Good: `"4,272,145辆 (据公司月度产销快报年累计)"`
+- `"约" is acceptable only when the source itself provides rounded data` — not as a default style
+
+When source provides an exact number, use it. Preserve significant digits unless rounding is explicitly noted.
+
+## Forward-looking estimates must cite the source
+
+Every estimate, projection, or target figure must attribute the source of the estimate — not just the word "预计."
+
+- Bad: `"2025年海外销量预计超100万辆"`
+- Good: `"据路透社引公司业绩沟通指引，预计2025年海外销量超100万辆"`
+- `"据[机构/分析师/媒体]预计"` is required; bare "预计" without source attribution is insufficient
+
+This applies to: management guidance, analyst consensus, media-reported targets, implied projections.
+
+## Volume + profitability signal pairing
+
+When reporting volume or scale growth, always check whether profitability and cash flow signals exist — and if they do, present them together.
+
+Example pattern — the "规模扩张、盈利承压" structure:
+
+- Bad (separate): `"2025年销量约460万辆。" "2025年净利润下滑19%。"` — reader must connect the dots
+- Good (paired): `"规模仍在扩张（2025年销量约460万辆），但盈利与现金流承压（净利润下滑约19%，经营现金流同比下降约56%）"` — tension is explicit
+
+This pairing is especially important when both positive and negative signals coexist in the same period.
+
 ## Date discipline checklist
 
 For any important numeric section, ask:
