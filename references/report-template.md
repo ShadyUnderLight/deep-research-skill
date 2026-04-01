@@ -8,9 +8,22 @@ Do not force every section if the task does not need it, but keep the report dec
 
 ### 1. Executive summary
 
+**Format: use bullet points, not paragraphs.** Each bullet should contain one distinct idea. Do NOT write the executive summary as a wall of running text.
+
 - answer the real question first
-- give the bottom line in 3-6 bullets
+- give the bottom line in 4–8 short bullet points
+- each bullet: one insight, one label (Confirmed / Inference / Uncertainty)
 - separate what is confirmed, inferred, and uncertain when relevant
+- put the most important conclusion first; less important details later
+- when presenting paired signals (e.g., volume growth + margin pressure), use one bullet to pair them — do not separate into different sections
+
+**Good bullet:**
+- `[CONF]` 2025年营收638.9亿美元，净利润231.3亿美元（同日历年）
+
+**Bad bullet (wall of text, no label):**
+- 博通是全球最大的半导体和基础设施软件公司之一，2025财年营收达638.9亿美元，净利润231.3亿美元，在AI浪潮中跻身"科技七巨头"（Magnificent Seven），公司业务横跨半导体芯片设计与软件基础设施两大板块。
+
+**When writing bullets, ask:** Can a reader extract the key facts without reading every sentence?
 
 ### 2. What matters most
 
@@ -124,3 +137,14 @@ State explicitly which comparison unit you are using and why. Do not let the rea
 When reporting volume or scale growth in a financial or competitive context, always check whether profitability and cash flow signals exist. If both growth and decline signals are present in the same period, use the "规模仍在扩张、盈利承压" structure to make the tension explicit rather than burying it in separate paragraphs.
 
 This is a direct distillation pattern from GPT's BYD report, which consistently paired volume growth with margin and cash flow pressure in the same sentence.
+
+## Table formatting discipline
+
+When building tables with multi-dimensional comparisons (e.g., product category across multiple attributes):
+
+- **Each cell contains one fact.** Do not pack multiple data points into a single cell.
+- **Use `<br>` (line break) within a cell when a single attribute has multiple sub-points.** For example, a cell for "发热原理" that needs to list "燃烧烟草 (600-900°C) + 雾化器 + 口腔黏膜" should be written in markdown as one cell using `<br>`: `燃烧烟草 (600-900°C)<br>雾化器加热<br>口腔黏膜吸收`.
+- **Avoid using `|` inside cell content** — if a cell requires listing multiple items separated by pipes, use commas or `<br>` instead.
+- **Wide tables with many columns are hard to read in PDF.** Consider splitting a wide table into two separate tables grouped by theme (e.g., one table for product attributes, another for commercial metrics).
+
+When in doubt: write for the reader who will skim the table, not for the analyst who already knows the data.
