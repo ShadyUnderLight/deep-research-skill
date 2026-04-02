@@ -48,7 +48,7 @@ Turn "search and summarize" into a stricter research workflow that:
 1. Run real tasks against the skill.
 2. Save failures in `examples/` or `evals/`.
 3. Tighten references based on observed mistakes.
-4. Add scripts only after the protocol is stable.
+4. Continue refining `scripts/` only when repeated delivery artifacts or render failures justify it.
 
 ## Maintenance and traceability
 

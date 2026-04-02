@@ -288,7 +288,7 @@ If the user's request includes `pdf`, `PDF`, or `报告`, treat that as a PDF-ou
 In that case:
 
 1. write the final report to a `.md` file first
-2. convert it with `/Users/mn/.openclaw/workspace/md_to_pdf.py`
+2. convert it with `scripts/md_to_pdf.py` (resolve relative to the skill directory)
 3. deliver or attach the generated PDF when the surface supports files
 
 Do not skip the markdown file. The PDF is a rendered artifact, not the source of truth.
