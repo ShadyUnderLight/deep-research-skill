@@ -94,6 +94,7 @@ At minimum, check for these trigger patterns:
 
 - **Listed company / public equity / valuation / investment memo** -> run listed-company discipline and require a current market snapshot before delivery
 - **Current products / latest model / current lineup / pricing / release cycle / rankings / market position** -> run current-state verification before broader analysis
+- **Model/API supplier selection / vendor shortlist / provider choice / platform choice under deployment constraints** -> treat as both a current-state-sensitive task and a constrained-choice task; require a current provider snapshot before ranking or recommendation
 - **Structured memo / investment case / comparative report / claim-labeled output** -> run source-traceability discipline
 - **Forecast / roadmap / guidance / consensus / target price / launch timing / "预计" style claims** -> run forward-looking-claims discipline
 - **Global market / full landscape / industry-wide scope** -> explicitly test scope completeness across key geographies, segments, and regulatory regimes
@@ -136,6 +137,8 @@ Read `evals/global-market-scope-completeness-case.md` as a coverage discipline c
 Read `evals/decision-utility-rubric.md` when the user needs a recommendation, prioritization, vendor choice, go/no-go, or other action-guiding conclusion.
 Read `references/option-selection-and-shortlist-discipline.md` when the task is mainly about choosing among several plausible options under constraints (for example destination selection, vendor shortlist, office/venue choice, multi-origin meetup/location choice, or other comparison tasks where ranking and elimination matter more than background explanation).
 Run `checklists/option-selection-final-audit.md` before delivery for shortlist, ranking, destination-selection, or other constrained-choice outputs.
+For model/API supplier or provider-selection tasks, explicitly verify a current provider snapshot before broader comparison: current primary model/API family, current pricing unit, current support-region / mainland accessibility reality, current data-control posture, and current SLA / status disclosures when decision-relevant.
+Use `references/decision-report-template.md` with the provider-selection structure when the task is choosing a core model/API supplier under real deployment constraints.
 Read `references/comparative-distillation-method.md` when comparing paired reports (for example GPT vs Minimax on the same topic) to distill reusable skill improvements rather than just judge which output is better.
 Use `evals/comparative-distillation-template.md` to record each paired-report comparison so every extracted pattern ends in `NEW_RULE`, `CHECKLIST_HARDENING`, `TEMPLATE_CHANGE`, or `NO_ACTION`.
 
@@ -381,6 +384,7 @@ Use these final trigger checks:
 
 - if this was a listed-company or investment-style report, the output should visibly show listed-company discipline
 - if this was a current-state-sensitive task, the output should visibly show a current snapshot or freshness verification
+- if this was a model/API supplier or provider-selection task, the output should visibly show a current provider snapshot and should treat accessibility / compliance / SLA / data-control constraints as part of ranking logic when relevant
 - if this was a structured or claim-heavy memo, the output should visibly show source traceability in the body, not only in a source appendix
 - if this included forecasts, roadmap claims, estimates, or target prices, the output should visibly show forward-looking discipline
 - if this claimed broad global or full-landscape scope, the output should visibly show scope completeness or clearly state scope limits

@@ -284,6 +284,14 @@ When the task involves tool/vendor/platform choice, ask:
 - Are we optimizing for deployment speed, feature depth, reliability, TCO, lock-in, or team fit?
 - Which one dominates under the user's real constraint set?
 
+When the task involves model/API provider selection, also ask:
+
+- What is the current primary model/API family for each provider right now, not one generation ago?
+- Which facts are current-state load-bearing variables rather than background detail?
+- Do support regions, mainland accessibility, payment/signing reality, data residency, and SLA change the shortlist itself?
+- Is the report comparing providers using a current snapshot, or using stale flagship anchors?
+- Is the output becoming a vendor encyclopedia instead of a ranked provider-choice memo?
+
 ---
 
 ## Output discipline

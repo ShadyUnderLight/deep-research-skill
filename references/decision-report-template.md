@@ -40,6 +40,27 @@ For option-selection / shortlist tasks, adapt the middle of the structure like t
 8. Recommended next steps
 9. Sources
 
+For model/API supplier or provider-selection tasks, prefer this stronger structure:
+
+1. Executive summary
+2. Decision architecture
+3. What matters most
+4. Current snapshot table
+5. Ranked shortlist
+6. Why the top option wins
+7. Why the runner-up remains credible
+8. Why the other options lose
+9. Recommended deployment archetypes
+10. Risks / what changes the ranking
+11. Sources
+
+In these provider-selection cases, the report should explicitly show current-state load-bearing variables such as:
+- current primary model/API family
+- current pricing unit and pricing caveats
+- current support-region / mainland accessibility reality
+- current data-control / retention posture
+- current SLA / status / enterprise controls when decision-relevant
+
 Do not give every option equal narrative weight if the user's real need is to choose.
 
 ## Executive summary

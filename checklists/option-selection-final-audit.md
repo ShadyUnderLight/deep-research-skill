@@ -32,6 +32,13 @@ Run this checklist before delivery.
 - [ ] the report states whether it is optimizing for average outcome, fairness, worst-case burden, weighted priority user, or robustness
 - [ ] subgroup views are shown when one average would hide an important outlier or penalty
 
+## Provider / vendor current-state gate
+
+- [ ] for model, API, vendor, or platform provider tasks, the report verifies the current primary model/API family rather than anchoring on stale flagship generations
+- [ ] current pricing, pricing units, and any batch/cache/context-length pricing differences are checked before comparison
+- [ ] support regions, mainland-China accessibility, signing/payment reality, data residency, and SLA/status are treated as ranking variables when relevant, not buried as footnotes
+- [ ] if a key provider fact could not be confirmed, it is marked unknown rather than filled with likely-but-stale prior knowledge
+
 ## Shortlist structure
 
 - [ ] the shortlist or ranking appears before long option-by-option detail
