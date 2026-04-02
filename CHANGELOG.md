@@ -14,14 +14,26 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `references/failure-taxonomy.md`
 - `references/comparative-distillation-method.md`
 - `references/option-selection-and-shortlist-discipline.md`
+- `references/market-outlook-and-scenario-discipline.md`
 - `evals/rule-activation-and-execution-discipline.md`
 - `evals/global-market-scope-completeness-case.md`
 - `evals/decision-utility-rubric.md`
 - `evals/comparative-distillation-template.md`
 - `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
+- `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
 
 ### Changed
-- `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `/Users/mn/.openclaw/workspace/md_to_pdf.py` to render a PDF artifact when possible.
+- `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `scripts/md_to_pdf.py` to render a PDF artifact when possible.
+- Added `scripts/markdown_to_html.py`, `scripts/render_pdf.py`, and `scripts/md_to_pdf.py` to version the PDF rendering pipeline inside the repo instead of relying only on workspace-root helper scripts.
+- The PDF renderer styles were substantially upgraded: lighter cover design, cleaner heading hierarchy, improved table spacing/borders, better code/callout/blockquote styling, and proper markdown list rendering for `ul/ol` blocks.
+- `scripts/markdown_to_html.py` now performs pre-render text normalization for PDF safety, including control-character cleanup, unicode normalization, and partial repair of spurious CJK spacing artifacts from poor upstream text extraction.
+- `scripts/render_pdf.py` now exposes more print-oriented controls (`--landscape`, `--media`, explicit page margins, CSS page-size preference, title override) instead of acting as a minimal one-shot wrapper.
+- `scripts/md_to_pdf.py` now forwards those print controls through the one-shot pipeline so the markdown→PDF path can be tuned without patching code.
+- The PDF CSS is now split into a base layer plus a report theme layer, making later theme iteration easier without collapsing all print styling into one monolithic block.
+- `scripts/markdown_to_html.py` no longer relies primarily on a hand-rolled block parser for headings/lists/tables/quotes; it now uses the installed `python-markdown` library for core markdown→HTML conversion, then applies report-specific post-processing. This fixes the major failure mode where raw markdown syntax (`##`, `---`, `|`, `>`) leaked into generated PDFs.
+- Added a stronger pre-parse normalization and repair pass for messy LLM markdown: block-safe normalization around headings / horizontal rules / quotes / tables / lists, stronger CJK spacing repair for headings and metadata-like lines, and a markdown-table repair pass that inserts or normalizes separator rows and aligns column counts before handing content to the parser.
+- Very dense multi-column tables are now transformed into PDF-friendly card/list blocks instead of always being rendered as literal HTML tables. This trades spreadsheet fidelity for readability in report PDFs, especially for market-structure and catalyst/risk sections.
+- The print CSS now uses a more opinionated CJK-oriented font stack and stricter line-breaking / spacing defaults to reduce the “characters visually torn apart” look in Chinese-heavy report PDFs.
 - `README.md` now points to the failure-taxonomy document so the current eval set can be interpreted as recurring failure families rather than a flat list of isolated cases.
 - `README.md` now describes `evals/` as containing case evals, rubrics, and meta-evals rather than only lightweight prompts.
 - `README.md` now points to the comparative-distillation method as the standard way to turn paired-report comparisons into reusable improvements.
@@ -39,8 +51,11 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `references/decision-report-template.md` now includes a stronger provider-selection structure with decision architecture, current snapshot table, ranked shortlist, and deployment archetypes.
 - `checklists/option-selection-final-audit.md` now includes a provider/vendor current-state gate covering current model family, pricing units, accessibility, data residency, and SLA/status checks.
 - `checklists/final-audit.md` now requires a provider snapshot and ranking-level treatment of accessibility/compliance/data-residency/SLA for model/API supplier decisions.
+- `checklists/final-audit.md` now adds market-outlook gates for current market snapshot, drivers/blockers/scenarios/stakeholder implications, and explicit labeling of outlook numbers when evidence role matters.
 
 ### Why
+- A new AI coding agent market-outlook comparative case showed that market/industry-evolution tasks were still too prone to overview drift; the repo needed explicit market-outlook routing, scenario discipline, and stakeholder-action structure.
+- Repeated PDF export failures also showed a separate rendering failure family: comparison-heavy sections were degrading into tall vertical card stacks, placeholder fields like `#1 / —` could leak into the final PDF, and list/callout semantics were still bleeding into each other in the generated HTML.
 - The eval set has grown enough that recurring patterns now matter more than single-case accumulation.
 - A taxonomy makes it easier to decide whether a new report failure needs a new rule, a stronger checklist gate, a trigger-routing fix, or only another case file.
 - Current evidence shows that several failures are no longer "missing rule" problems but "rule activation / execution" problems; documenting that distinction is now important.
@@ -157,4 +172,5 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `README.md`
 - `references/` directory
 - `examples/` directory
+- `evals/` directory
 - `evals/` directory

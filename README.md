@@ -24,8 +24,10 @@ Turn "search and summarize" into a stricter research workflow that:
 - `references/failure-taxonomy.md` — recurring eval failure families and structural fix map
 - `references/comparative-distillation-method.md` — how to turn stronger paired reports into reusable rules and gates
 - `references/option-selection-and-shortlist-discipline.md` — general method for constrained choice, ranking, shortlist design, and provider-selection tasks under real constraints
+- `references/market-outlook-and-scenario-discipline.md` — routing and structure discipline for market-outlook / industry-evolution / future-12-month memo tasks
 - `checklists/option-selection-final-audit.md` — delivery gate for shortlist, ranking, constrained-choice outputs, and provider-selection current-state checks
 - `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for model/API supplier selection, current-state drift, and China-mainland deployment constraints
+- `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for market-outlook routing, scenario structure, and stakeholder-action discipline
 
 ## Initial references included
 
@@ -48,7 +50,8 @@ Turn "search and summarize" into a stricter research workflow that:
 1. Run real tasks against the skill.
 2. Save failures in `examples/` or `evals/`.
 3. Tighten references based on observed mistakes.
-4. Add scripts only after the protocol is stable.
+4. Continue refining `scripts/` only when repeated delivery artifacts or render failures justify it.
+5. Keep rendering/pipeline fixes split from research-discipline changes when they address different failure families.
 
 ## Maintenance and traceability
 

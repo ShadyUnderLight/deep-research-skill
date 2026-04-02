@@ -40,6 +40,28 @@ For option-selection / shortlist tasks, adapt the middle of the structure like t
 8. Recommended next steps
 9. Sources
 
+For market-outlook / industry-evolution / "未来12个月如何演化" tasks, prefer this stronger structure:
+
+1. Executive summary
+2. Decision architecture
+3. Current market snapshot
+4. What matters most
+5. Key drivers of change
+6. Key blockers or friction points
+7. Base case for the next 6-12 months
+8. Alternative scenarios and what shifts them
+9. Stakeholder implications (for example buyers / builders / investors / operators)
+10. What would change the conclusion
+11. Recommended next steps
+12. Sources
+
+In these market-outlook cases:
+- do not let the report remain a background industry overview
+- make the time horizon visible in section headers and claims
+- separate observed current state from scenario logic and illustrative estimates
+- if quantitative outlook numbers are used, label them as observed / inferred / scenario assumption / illustrative calculation
+- ensure the report answers who should act now, how, and what to monitor
+
 For model/API supplier or provider-selection tasks, prefer this stronger structure:
 
 1. Executive summary

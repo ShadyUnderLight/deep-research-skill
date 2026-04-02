@@ -97,6 +97,7 @@ At minimum, check for these trigger patterns:
 - **Model/API supplier selection / vendor shortlist / provider choice / platform choice under deployment constraints** -> treat as both a current-state-sensitive task and a constrained-choice task; require a current provider snapshot before ranking or recommendation
 - **Structured memo / investment case / comparative report / claim-labeled output** -> run source-traceability discipline
 - **Forecast / roadmap / guidance / consensus / target price / launch timing / "预计" style claims** -> run forward-looking-claims discipline
+- **Market outlook / industry evolution / "未来12个月如何演化" / adoption trajectory / industry memo** -> treat as both a current-state-sensitive task and a decision-memo task; require a current market snapshot, explicit drivers/blockers, scenario structure, and stakeholder action guidance
 - **Global market / full landscape / industry-wide scope** -> explicitly test scope completeness across key geographies, segments, and regulatory regimes
 - **Recommendation / go-no-go / compare options / what should we do** -> optimize for decision utility, not just depth
 
@@ -216,6 +217,16 @@ For fast-moving company or investment research, produce a short current snapshot
 
 Do not merge reported facts, current market data, and forward-looking numbers into one undifferentiated narrative.
 
+For market-outlook / industry-evolution tasks, the opening snapshot should be visibly tailored to decision use, not just recency. When relevant, verify and separate:
+
+- current market baseline and scope
+- current product / pricing / policy changes that alter the next-12-month view
+- current adoption bottlenecks or enabling infrastructure
+- explicit drivers of change vs blockers of change
+- what is observed now vs what is scenario logic for the next 6-12 months
+
+If the task asks how a market will evolve, do not let the report remain a background industry overview. Force a transition from current snapshot -> scenarios -> stakeholder implications.
+
 ## Step 6: Run a mid-research review
 
 After the first meaningful batch of evidence, pause and reassess.
@@ -253,6 +264,7 @@ Never treat the first plausible story as the final one.
 
 Use the report structure in `references/report-template.md` by default.
 Read `references/decision-report-template.md` when the user needs a recommendation, go/no-go view, comparison, or action plan.
+For market-outlook / industry-evolution tasks, prefer the decision-report structure over a generic industry overview. These tasks should visibly show: current snapshot, key drivers and blockers, scenario structure, stakeholder implications, and what would change the view.
 
 For most tasks, include:
 
@@ -288,7 +300,7 @@ If the user's request includes `pdf`, `PDF`, or `报告`, treat that as a PDF-ou
 In that case:
 
 1. write the final report to a `.md` file first
-2. convert it with `/Users/mn/.openclaw/workspace/md_to_pdf.py`
+2. convert it with `scripts/md_to_pdf.py` (resolve relative to the skill directory)
 3. deliver or attach the generated PDF when the surface supports files
 
 Do not skip the markdown file. The PDF is a rendered artifact, not the source of truth.
