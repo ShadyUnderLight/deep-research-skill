@@ -14,11 +14,13 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `references/failure-taxonomy.md`
 - `references/comparative-distillation-method.md`
 - `references/option-selection-and-shortlist-discipline.md`
+- `references/market-outlook-and-scenario-discipline.md`
 - `evals/rule-activation-and-execution-discipline.md`
 - `evals/global-market-scope-completeness-case.md`
 - `evals/decision-utility-rubric.md`
 - `evals/comparative-distillation-template.md`
 - `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
+- `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
 
 ### Changed
 - `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `scripts/md_to_pdf.py` to render a PDF artifact when possible.
@@ -49,8 +51,11 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `references/decision-report-template.md` now includes a stronger provider-selection structure with decision architecture, current snapshot table, ranked shortlist, and deployment archetypes.
 - `checklists/option-selection-final-audit.md` now includes a provider/vendor current-state gate covering current model family, pricing units, accessibility, data residency, and SLA/status checks.
 - `checklists/final-audit.md` now requires a provider snapshot and ranking-level treatment of accessibility/compliance/data-residency/SLA for model/API supplier decisions.
+- `checklists/final-audit.md` now adds market-outlook gates for current market snapshot, drivers/blockers/scenarios/stakeholder implications, and explicit labeling of outlook numbers when evidence role matters.
 
 ### Why
+- A new AI coding agent market-outlook comparative case showed that market/industry-evolution tasks were still too prone to overview drift; the repo needed explicit market-outlook routing, scenario discipline, and stakeholder-action structure.
+- Repeated PDF export failures also showed a separate rendering failure family: comparison-heavy sections were degrading into tall vertical card stacks, placeholder fields like `#1 / —` could leak into the final PDF, and list/callout semantics were still bleeding into each other in the generated HTML.
 - The eval set has grown enough that recurring patterns now matter more than single-case accumulation.
 - A taxonomy makes it easier to decide whether a new report failure needs a new rule, a stronger checklist gate, a trigger-routing fix, or only another case file.
 - Current evidence shows that several failures are no longer "missing rule" problems but "rule activation / execution" problems; documenting that distinction is now important.
@@ -167,4 +172,5 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `README.md`
 - `references/` directory
 - `examples/` directory
+- `evals/` directory
 - `evals/` directory

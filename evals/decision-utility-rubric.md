@@ -68,6 +68,7 @@ Whether the report identifies the few variables that matter most instead of trea
 
 ### 2
 - the report clearly identifies and explains the key drivers of the conclusion
+- for market-outlook tasks, the report distinguishes drivers of change from blockers or frictions
 
 ---
 
@@ -80,6 +81,7 @@ Whether the report helps compare choices, scenarios, or possible paths.
 - meaningful comparison between options
 - scenario framing where appropriate
 - explicit trade-offs, not just feature lists
+- for market-outlook tasks, a base case plus at least one credible alternative scenario when uncertainty is material
 
 ### 0
 - no real comparison or scenario usefulness
@@ -143,6 +145,7 @@ Whether the report tells the reader what to do next, verify next, or monitor nex
 - concrete next checks
 - monitoring triggers
 - sequencing or prioritization of follow-up actions
+- stakeholder-specific actions when the report is meant for operators, buyers, builders, investors, or other distinct audiences
 
 ### 0
 - no meaningful next step guidance

@@ -41,12 +41,15 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] option-selection final audit was run for shortlist, ranking, or constrained-choice outputs
 - [ ] for model/API/provider selection tasks, a current provider snapshot was verified before ranking or recommendation
 - [ ] for China-mainland deployment decisions, accessibility, compliance, data residency, and SLA were treated as part of ranking logic when relevant
+- [ ] for market-outlook / industry-evolution tasks, a current market snapshot was verified before forward-looking sections
+- [ ] for market-outlook / industry-evolution tasks, drivers, blockers, scenarios, and stakeholder implications are explicit rather than implied
 
 ## Precision and estimate sourcing
 
 - [ ] every "预计 / 估计 / 预期" in the report has a named source attribution (who expects this?)
 - [ ] bare "预计" without source = fail; go back and add "[据公司指引/据分析师/据媒体]预计"
 - [ ] exact figures are used when source provides them; "约" only when source itself rounds
+- [ ] quantitative outlook numbers are labeled as observed / inferred / scenario assumption / illustrative calculation when the distinction matters
 
 ## Market position and ranking claims
 

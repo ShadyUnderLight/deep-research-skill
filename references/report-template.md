@@ -138,6 +138,29 @@ When reporting volume or scale growth in a financial or competitive context, alw
 
 This is a direct distillation pattern from GPT's BYD report, which consistently paired volume growth with margin and cash flow pressure in the same sentence.
 
+## Market-outlook memo discipline
+
+When the user asks how a market, category, or industry will evolve over the next 6-12 months, do not default to a generic industry overview.
+
+The report should visibly answer:
+
+- what the current baseline is
+- what is changing now
+- what the key drivers and blockers are
+- what the base case is for the stated time horizon
+- what alternative scenarios exist
+- who should act now and what they should do
+- what to monitor that would change the view
+
+If quantitative outlook numbers appear in such reports, label them clearly as one of:
+
+- observed current metric
+- inferred estimate
+- scenario assumption
+- illustrative calculation
+
+Do not let readers mistake scenario math for reported market fact.
+
 ## Table formatting discipline
 
 When building tables with multi-dimensional comparisons (e.g., product category across multiple attributes):
