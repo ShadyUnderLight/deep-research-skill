@@ -20,7 +20,12 @@ Turn "search and summarize" into a stricter research workflow that:
 - `references/` — supporting playbooks and templates
 - `checklists/` — execution-time audit checklists (run before delivery)
 - `examples/` — example tasks and failure cases
-- `evals/` — lightweight regression/evaluation prompts
+- `evals/` — lightweight regression/evaluation prompts, rubrics, and meta-evals
+- `references/failure-taxonomy.md` — recurring eval failure families and structural fix map
+- `references/comparative-distillation-method.md` — how to turn stronger paired reports into reusable rules and gates
+- `references/option-selection-and-shortlist-discipline.md` — general method for constrained choice, ranking, shortlist design, and provider-selection tasks under real constraints
+- `checklists/option-selection-final-audit.md` — delivery gate for shortlist, ranking, constrained-choice outputs, and provider-selection current-state checks
+- `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for model/API supplier selection, current-state drift, and China-mainland deployment constraints
 
 ## Initial references included
 
@@ -59,6 +64,7 @@ This repo should be maintained like a real project rather than a loose prompt fo
 
 - fast-moving products and model versions
 - vendor/tool selection
+- model/API supplier selection under deployment, compliance, and mainland-access constraints
 - company diligence
 - technical feasibility
 - market hype vs reality

@@ -10,6 +10,45 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ## Unreleased
 
+### Added
+- `references/failure-taxonomy.md`
+- `references/comparative-distillation-method.md`
+- `references/option-selection-and-shortlist-discipline.md`
+- `evals/rule-activation-and-execution-discipline.md`
+- `evals/global-market-scope-completeness-case.md`
+- `evals/decision-utility-rubric.md`
+- `evals/comparative-distillation-template.md`
+- `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
+
+### Changed
+- `README.md` now points to the failure-taxonomy document so the current eval set can be interpreted as recurring failure families rather than a flat list of isolated cases.
+- `README.md` now describes `evals/` as containing case evals, rubrics, and meta-evals rather than only lightweight prompts.
+- `README.md` now points to the comparative-distillation method as the standard way to turn paired-report comparisons into reusable improvements.
+- `README.md` now points to a general option-selection and shortlist-discipline reference for constrained choice tasks.
+- `README.md` now also calls out provider-selection/current-state work as a first-class evaluation target.
+- `ROADMAP.md` now calls out possible formalization of eval subtypes (`case`, `rubric`, `distillation`, `meta-eval`).
+- `ROADMAP.md` now calls for 2-3 more real comparative-distillation cases before promoting candidate rules too aggressively.
+- `SKILL.md` now includes explicit trigger routing for listed-company, current-state, source-traceability, forward-looking, global-scope, decision-utility, and option-selection/shortlist cases instead of leaving those gates implicit.
+- `SKILL.md` now routes paired-report comparison work to the comparative-distillation method and template so stronger-vs-weaker report comparisons produce explicit action types.
+- `SKILL.md` now explicitly treats model/API supplier selection as both a current-state-sensitive task and a constrained-choice task, requiring a current provider snapshot before ranking.
+- `SKILL.md` final discipline now adds a visible-gate check and routes rule-execution failures to `evals/rule-activation-and-execution-discipline.md`.
+- `SKILL.md` final trigger checks now require provider-selection outputs to show current provider snapshot + accessibility/compliance/SLA/data-control constraints as ranking logic when relevant.
+- `references/option-selection-and-shortlist-discipline.md` now includes provider-selection heuristics for current model/API family, stale-anchor avoidance, and mainland-access / data-residency / SLA-sensitive ranking.
+- `references/decision-report-template.md` now explicitly adapts its structure for option-selection and shortlist tasks, including ranked shortlist flow, aggregation visibility, and change-the-ranking conditions.
+- `references/decision-report-template.md` now includes a stronger provider-selection structure with decision architecture, current snapshot table, ranked shortlist, and deployment archetypes.
+- `checklists/option-selection-final-audit.md` now includes a provider/vendor current-state gate covering current model family, pricing units, accessibility, data residency, and SLA/status checks.
+- `checklists/final-audit.md` now requires a provider snapshot and ranking-level treatment of accessibility/compliance/data-residency/SLA for model/API supplier decisions.
+
+### Why
+- The eval set has grown enough that recurring patterns now matter more than single-case accumulation.
+- A taxonomy makes it easier to decide whether a new report failure needs a new rule, a stronger checklist gate, a trigger-routing fix, or only another case file.
+- Current evidence shows that several failures are no longer "missing rule" problems but "rule activation / execution" problems; documenting that distinction is now important.
+- Three next-step eval artifacts were added to turn the taxonomy into execution guidance: one for rule activation failures, one for global scope-completeness failures, and one for decision-support quality beyond generic depth.
+- Comparative distillation needed to become a repeatable method rather than an ad-hoc discussion, so the repo now includes both a method file and a working template for paired-report comparisons.
+- The weekend destination comparison case exposed a broader missing-rule area: the repo needed general guidance for constrained choice, shortlist construction, multi-origin aggregation, and choice architecture beyond travel-specific prompting.
+- A new model/API supplier selection case exposed a more specific failure family inside constrained-choice work: stale current-state anchors, provider-encyclopedia drift, and failure to treat mainland accessibility / compliance / SLA as ranking variables.
+- The skill itself needed to consume those additions through clearer routing, otherwise the new evals would remain documentation instead of affecting execution.
+
 ## 0.4.0 - 2026-03-31
 
 ### Added
