@@ -279,6 +279,22 @@ Always make clear:
 - what is inferred
 - what remains unresolved
 
+## Delivery artifact rule
+
+Default delivery stays as text / markdown.
+
+If the user's request includes `pdf`, `PDF`, or `报告`, treat that as a PDF-output request in addition to the normal report delivery.
+
+In that case:
+
+1. write the final report to a `.md` file first
+2. convert it with `/Users/mn/.openclaw/workspace/md_to_pdf.py`
+3. deliver or attach the generated PDF when the surface supports files
+
+Do not skip the markdown file. The PDF is a rendered artifact, not the source of truth.
+
+If PDF rendering fails, still deliver the markdown/text report and explicitly say the PDF export failed.
+
 ## Research depth
 
 This skill defaults to deep research quality.
