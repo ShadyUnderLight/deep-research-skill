@@ -263,6 +263,18 @@ li > p {
   padding: 6pt 7pt;
 }
 
+.split-table-group {
+  page-break-inside: avoid;
+}
+
+.split-table {
+  margin: 0 0 12pt;
+}
+
+.split-table:last-child {
+  margin-bottom: 0;
+}
+
 table {
   width: 100%;
   border-collapse: separate;
@@ -613,22 +625,78 @@ def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta="
 # ─── Markdown Processing ─────────────────────────────────────────────────────
 
 def maybe_wrap_wide_tables_in_html(html):
-    """Wrap or transform dense tables after markdown conversion."""
-    def table_to_cards(headers, rows):
-        cards = ['<div class="table-card-list">']
-        for idx, row in enumerate(rows, start=1):
-            cards.append('<div class="table-card">')
-            cards.append(f'<div class="table-card-index">#{idx}</div>')
-            for h, c in zip(headers, row):
-                label = re.sub(r'<[^>]+>', '', h).strip() or '字段'
-                value = c.strip() or '—'
-                cards.append('<div class="table-card-row">')
-                cards.append(f'<span class="table-card-label">{label}</span>')
-                cards.append(f'<span class="table-card-value">{value}</span>')
-                cards.append('</div>')
-            cards.append('</div>')
-        cards.append('</div>')
-        return ''.join(cards)
+    """Sanitize dense tables and prefer compact split tables over long vertical cards."""
+
+    def plain_text(value):
+        value = re.sub(r'<br\s*/?>', ' / ', value, flags=re.I)
+        value = re.sub(r'<[^>]+>', '', value)
+        value = re.sub(r'\s+', ' ', value).strip()
+        return value
+
+    def is_placeholder(value):
+        text = plain_text(value)
+        if not text:
+            return True
+        if re.fullmatch(r'#\d+', text):
+            return True
+        if text in {'—', '-', '–', '— —', 'N/A', 'n/a', 'NA', '/', '｜'}:
+            return True
+        return False
+
+    def sanitize_table(headers, rows):
+        width = min(len(headers), min((len(r) for r in rows), default=len(headers)))
+        headers = headers[:width]
+        rows = [r[:width] for r in rows]
+        keep = []
+        for idx in range(width):
+            header_text = plain_text(headers[idx])
+            column_values = [plain_text(r[idx]) for r in rows if idx < len(r)]
+            if is_placeholder(header_text) and all(is_placeholder(v) for v in column_values):
+                continue
+            keep.append(idx)
+
+        if not keep:
+            keep = list(range(width))
+
+        headers = [headers[i] for i in keep]
+        rows = [[row[i] for i in keep] for row in rows]
+
+        cleaned_rows = []
+        for row in rows:
+            cleaned = []
+            for cell in row:
+                cell = cell.strip()
+                cleaned.append('' if is_placeholder(cell) else cell)
+            if any(plain_text(c) for c in cleaned):
+                cleaned_rows.append(cleaned)
+        return headers, cleaned_rows
+
+    def build_table(headers, rows):
+        parts = ['<table><thead><tr>']
+        for h in headers:
+            label = h.strip() or '字段'
+            parts.append(f'<th>{label}</th>')
+        parts.append('</tr></thead><tbody>')
+        for row in rows:
+            parts.append('<tr>')
+            for cell in row:
+                parts.append(f'<td>{cell.strip() or ""}</td>')
+            parts.append('</tr>')
+        parts.append('</tbody></table>')
+        return ''.join(parts)
+
+    def split_table(headers, rows, max_cols=4):
+        if len(headers) <= max_cols:
+            return [build_table(headers, rows)]
+        chunks = []
+        start = 0
+        while start < len(headers):
+            end = min(start + max_cols, len(headers))
+            sub_headers = headers[start:end]
+            sub_rows = [row[start:end] for row in rows]
+            chunks.append(build_table(sub_headers, sub_rows))
+            start = end
+        return chunks
 
     def repl(match):
         table_html = match.group(0)
@@ -642,18 +710,24 @@ def maybe_wrap_wide_tables_in_html(html):
                 body_rows.append(cells)
                 cell_texts.extend(cells)
 
+        if not headers or not body_rows:
+            return f'<div class="table-wrap">{table_html}</div>'
+
+        headers, body_rows = sanitize_table(headers, body_rows)
         dense = len(headers) >= 4
-        long_cells = any(len(re.sub(r'<[^>]+>', '', c).strip()) > 36 for c in cell_texts)
+        long_cells = any(len(plain_text(c)) > 36 for c in cell_texts)
         many_rows = len(body_rows) >= 6
-        note = '<div class="table-note">注：该表信息较密，若导出的 PDF 可读性不足，优先拆成两张主题子表而不是继续压缩列宽。</div>'
+        note = '<div class="table-note">注：该表信息较密，优先拆成主题子表，而不是退化成长卡片列表。</div>'
 
-        if headers and body_rows and ((dense and long_cells) or (dense and many_rows)):
-            cards_html = table_to_cards(headers, body_rows)
-            return f'<div class="table-wrap wide-table">{note}{cards_html}</div>'
+        if len(headers) >= 5 or (dense and long_cells) or (dense and many_rows):
+            tables = split_table(headers, body_rows, max_cols=4)
+            wrapped = ''.join(f'<div class="split-table">{t}</div>' for t in tables)
+            return f'<div class="table-wrap wide-table split-table-group">{note}{wrapped}</div>'
 
+        compact_html = build_table(headers, body_rows)
         if dense or long_cells:
-            return f'<div class="table-wrap wide-table">{note}{table_html}</div>'
-        return f'<div class="table-wrap">{table_html}</div>'
+            return f'<div class="table-wrap wide-table">{note}{compact_html}</div>'
+        return f'<div class="table-wrap">{compact_html}</div>'
 
     return re.sub(r'<table[\s\S]*?</table>', repl, html, flags=re.I)
 
@@ -661,6 +735,9 @@ def maybe_wrap_wide_tables_in_html(html):
 def style_generated_html(html):
     """Apply lightweight post-processing to markdown-generated HTML."""
     html = maybe_wrap_wide_tables_in_html(html)
+    html = re.sub(r'<li>\s*(<(?:h1|h2|h3|h4)[^>]*>.*?</(?:h1|h2|h3|h4)>)\s*</li>', r'\1', html, flags=re.S|re.I)
+    html = re.sub(r'<li>\s*(<div class="callout[^"]*">.*?</div>)\s*</li>', r'\1', html, flags=re.S|re.I)
+    html = re.sub(r'<p>\s*(?:#\d+|[—–-])\s*</p>', '', html, flags=re.I)
 
     # Tighten broken spacing inside headings generated from noisy upstream markdown.
     cjk = r'\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff'

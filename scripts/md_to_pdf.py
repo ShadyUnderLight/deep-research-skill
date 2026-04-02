@@ -49,7 +49,7 @@ def main():
     # Step 1: Markdown → HTML
     title_flag = f'--title "{args.title}"' if args.title else ''
     run(
-        f'python3 {__file__.parent}/markdown_to_html.py "{md_path}" "{html_path}" {title_flag}',
+        f'python3 {Path(__file__).parent}/markdown_to_html.py "{md_path}" "{html_path}" {title_flag}',
         f"Markdown → HTML: {html_path.name}"
     )
 
@@ -68,7 +68,7 @@ def main():
     ])
     render_flag_str = ' '.join(render_flags)
     run(
-        f'python3 {__file__.parent}/render_pdf.py "{html_path}" "{pdf_path}" {render_flag_str}',
+        f'python3 {Path(__file__).parent}/render_pdf.py "{html_path}" "{pdf_path}" {render_flag_str}',
         f"HTML → PDF: {pdf_path.name}"
     )
 
