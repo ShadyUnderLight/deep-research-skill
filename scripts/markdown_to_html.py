@@ -417,6 +417,29 @@ h3 + p strong {
 """
 
 
+def normalize_text_for_pdf(text):
+    """Clean obvious PDF-breaking artifacts before markdown parsing."""
+    if not text:
+        return text
+
+    text = unicodedata.normalize('NFKC', text)
+    text = ''.join(
+        ch for ch in text
+        if ch in ('\n', '\r', '\t') or ord(ch) >= 32
+    )
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+    text = re.sub(r'[ \t]+\n', '\n', text)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+
+    cjk = r'\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff'
+    text = re.sub(rf'([{cjk}])\s+([{cjk}])', r'\1\2', text)
+    text = re.sub(rf'([{cjk}])\s+([，。！？；：、）】》])', r'\1\2', text)
+    text = re.sub(rf'([（【《])\s+([{cjk}])', r'\1\2', text)
+    text = re.sub(r'(?m)^[\x00-\x1f\u2022\u25aa\u25cf\uf0b7]\s*', '- ', text)
+    text = re.sub(r'(?m)(?<=\S)[ \t]{2,}(?=\S)', ' ', text)
+    return text
+
+
 def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta=""):
     """Wrap processed body HTML in the full HTML document."""
     cover_block = ""
@@ -445,374 +468,56 @@ def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta="
 </html>"""
 
 
-# ─── Inline Markdown Processing ───────────────────────────────────────────────
+# ─── Markdown Processing ─────────────────────────────────────────────────────
 
-def process_inline(text):
-    """
-    Process inline markdown: bold, italic, code, links.
-    Order matters: code first (to avoid processing inside code),
-    then bold/italic, then links.
-    """
-    # Inline code: `code`
-    text = re.sub(r'`([^`\n]+)`', r'<code>\1</code>', text)
-    # Bold + italic: ***text***
-    text = re.sub(r'\*\*\*(.+?)\*\*\*', r'<strong><em>\1</em></strong>', text)
-    # Bold: **text**
-    text = re.sub(r'\*\*(.+?)\*\*', r'<strong>\1</strong>', text)
-    # Italic: *text*
-    text = re.sub(r'\*(.+?)\*', r'<em>\1</em>', text)
-    # Links: [text](url)
-    text = re.sub(r'\[([^\]]+)\]\(([^\)]+)\)', r'<a href="\2">\1</a>', text)
-    return text
+def maybe_wrap_wide_tables_in_html(html):
+    """Wrap dense tables in helper containers after markdown conversion."""
+    def repl(match):
+        table_html = match.group(0)
+        headers = re.findall(r'<th[^>]*>(.*?)</th>', table_html, flags=re.S|re.I)
+        rows = re.findall(r'<tr[^>]*>(.*?)</tr>', table_html, flags=re.S|re.I)
+        cell_texts = []
+        for row in rows[1:]:
+            cell_texts.extend(re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', row, flags=re.S|re.I))
+        dense = len(headers) >= 5
+        long_cells = any(len(re.sub(r'<[^>]+>', '', c).strip()) > 40 for c in cell_texts)
+        if dense or long_cells:
+            note = '<div class="table-note">注：该表信息较密，若导出的 PDF 可读性不足，优先拆成两张主题子表而不是继续压缩列宽。</div>'
+            return f'<div class="table-wrap wide-table">{note}{table_html}</div>'
+        return f'<div class="table-wrap">{table_html}</div>'
 
-
-def escape_html(text):
-    """Escape HTML special characters (for pre/code blocks)."""
-    return (text
-        .replace('&', '&amp;')
-        .replace('<', '&lt;')
-        .replace('>', '&gt;')
-        .replace('"', '&quot;'))
+    return re.sub(r'<table[\s\S]*?</table>', repl, html, flags=re.I)
 
 
-def normalize_text_for_pdf(text):
-    """Clean obvious PDF-breaking artifacts before markdown parsing.
+def style_generated_html(html):
+    """Apply lightweight post-processing to markdown-generated HTML."""
+    html = maybe_wrap_wide_tables_in_html(html)
 
-    Goals:
-    - remove control chars like NUL
-    - normalize odd unicode spacing/forms
-    - collapse spurious spaces between adjacent CJK chars
-    - collapse repeated internal whitespace without destroying markdown structure
-    """
-    if not text:
-        return text
+    # Turn simple blockquotes into report callouts when they look like highlights.
+    def quote_repl(match):
+        inner = match.group(1).strip()
+        plain = re.sub(r'<[^>]+>', '', inner).strip()
+        if plain.startswith('预测：') or plain.startswith('风险：'):
+            return f'<div class="callout callout-inference">{inner}</div>'
+        return f'<blockquote>{inner}</blockquote>'
 
-    text = unicodedata.normalize('NFKC', text)
-
-    # Remove control chars except tab/newline/carriage return.
-    text = ''.join(
-        ch for ch in text
-        if ch in ('\n', '\r', '\t') or ord(ch) >= 32
-    )
-
-    # Normalize line endings.
-    text = text.replace('\r\n', '\n').replace('\r', '\n')
-
-    # Remove trailing spaces and tabs at line ends.
-    text = re.sub(r'[ \t]+\n', '\n', text)
-
-    # Collapse 3+ blank lines.
-    text = re.sub(r'\n{3,}', '\n\n', text)
-
-    # Remove accidental spaces between adjacent Chinese/Japanese/Korean chars.
-    cjk = r'\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff'
-    text = re.sub(rf'([{cjk}])\s+([{cjk}])', r'\1\2', text)
-
-    # Remove accidental spaces between CJK and Chinese punctuation.
-    text = re.sub(rf'([{cjk}])\s+([，。！？；：、）】》])', r'\1\2', text)
-    text = re.sub(rf'([（【《])\s+([{cjk}])', r'\1\2', text)
-
-    # Normalize bullet-like garbage chars at line starts.
-    text = re.sub(r'(?m)^[\x00-\x1f\u2022\u25aa\u25cf\uf0b7]\s*', '- ', text)
-
-    # Collapse runs of spaces inside lines, but keep indentation at line start.
-    text = re.sub(r'(?m)(?<=\S)[ \t]{2,}(?=\S)', ' ', text)
-
-    return text
-
-
-def maybe_wrap_wide_table(html, header_cells, body_rows):
-    """Add a wrapper and note for wide / dense tables to improve PDF readability."""
-    dense = len(header_cells) >= 5
-    long_cells = any(len(cell) > 40 for row in body_rows for cell in row)
-    if dense or long_cells:
-        note = '<div class="table-note">注：该表信息较密，若导出的 PDF 可读性不足，优先拆成两张主题子表而不是继续压缩列宽。</div>'
-        return f'<div class="table-wrap wide-table">{note}{html}</div>'
-    return f'<div class="table-wrap">{html}</div>'
-
-
-# ─── Table Parsing ────────────────────────────────────────────────────────────
-
-def is_separator_line(line):
-    """Return True if line is a markdown table separator: |---|:---|:---:|"""
-    cells = line.strip().strip('|').split('|')
-    return all(
-        re.match(r'^[\-: ]+$', cell.strip()) or cell.strip() == ''
-        for cell in cells
-    )
-
-
-def split_table_row(line):
-    r"""
-    Split a markdown table row into cells, handling:
-      - Leading/trailing pipes: | cell1 | cell2 |
-      - Escaped pipes inside cells: cell \| with space
-      - Pipes inside parentheses or brackets are NOT column separators
-    Strategy: scan character by character; only treat '|' as a separator when
-    we are not inside () [] {} <> or inside a quoted string.
-    """
-    stripped = line.strip().strip('|')
-    cells = []
-    current = []
-    depth = 0  # parenthesis/bracket depth
-    in_backtick = False
-    i = 0
-
-    while i < len(stripped):
-        ch = stripped[i]
-
-        # Toggle backtick-quote state
-        if ch == '`' and not in_backtick:
-            in_backtick = True
-        elif ch == '`' and in_backtick:
-            in_backtick = False
-        elif ch == '\\' and i + 1 < len(stripped) and stripped[i+1] == '|':
-            # Escaped pipe: keep the literal | character, skip the backslash
-            current.append('|')
-            i += 2
-            continue
-
-        # Track bracket depth (only outside backticks)
-        if not in_backtick:
-            if ch in '([':
-                depth += 1
-            elif ch in ')]':
-                depth -= 1
-
-        # Separator: only split when at zero depth and not in backtick
-        if ch == '|' and depth == 0 and not in_backtick:
-            cells.append(''.join(current).strip())
-            current = []
-        else:
-            current.append(ch)
-
-        i += 1
-
-    # Last cell
-    if current:
-        cells.append(''.join(current).strip())
-
-    return [c.replace('\\|', '|') for c in cells]
-
-
-def render_table_row(cells, is_header=False):
-    """Render a list of markdown cells into an HTML <tr>."""
-    tag = 'th' if is_header else 'td'
-    html = '<tr>'
-    for cell in cells:
-        # Convert literal newlines inside cells to <br> for multi-line cells
-        cell_content = process_inline(cell.replace('\n', '<br>'))
-        html += f'<{tag}>{cell_content}</{tag}>'
-    html += '</tr>'
+    html = re.sub(r'<blockquote>\s*(.*?)\s*</blockquote>', quote_repl, html, flags=re.S|re.I)
     return html
 
 
-def parse_table(rows):
-    """
-    Parse a list of markdown table row strings (including separator row).
-    Returns HTML <table> string with inline processing applied per cell.
-    """
-    if len(rows) < 2:
-        return ''
-    header_cells = split_table_row(rows[0])
-    body_rows = []
-    html = '<table><thead>'
-    html += render_table_row(header_cells, is_header=True)
-    html += '</thead><tbody>'
-    for row in rows[2:]:
-        if row.strip() and is_separator_line(row):
-            continue
-        body_cells = split_table_row(row)
-        body_rows.append(body_cells)
-        html += render_table_row(body_cells, is_header=False)
-    html += '</tbody></table>'
-    return maybe_wrap_wide_table(html, header_cells, body_rows)
-
-
-# ─── Markdown Processing ─────────────────────────────────────────────────────
-
-def is_pagebreak(line):
-    """Return True if line is a pagebreak marker."""
-    stripped = line.strip()
-    return stripped in ('---', '***', '****', '## pagebreak ##', '<!-- pagebreak -->', '***')
-
-
-def flush_list(result, list_type, items):
-    if not items:
-        return None, []
-    tag = 'ol' if list_type == 'ol' else 'ul'
-    html = [f'<{tag}>']
-    for item in items:
-        html.append(f'<li>{process_inline(item)}</li>')
-    html.append(f'</{tag}>')
-    result.append(''.join(html))
-    return None, []
-
-
 def process_markdown(md_text):
-    """
-    Convert markdown to HTML with custom extensions for deep-research reports.
-    """
-    lines = md_text.split('\n')
-    result = []
-    i = 0
+    """Convert markdown to HTML using a real markdown parser, then post-process for report styling."""
+    import markdown
 
-    in_code_block = False
-    in_table_rows = []  # accumulate table rows until separator resolved
-    list_type = None
-    list_items = []
-
-    while i < len(lines):
-        line = lines[i]
-        stripped = line.strip()
-
-        # ── Code block ──
-        if stripped.startswith('```'):
-            if in_table_rows:
-                result.append(parse_table(in_table_rows))
-                in_table_rows = []
-            list_type, list_items = flush_list(result, list_type, list_items)
-            if not in_code_block:
-                in_code_block = True
-                result.append('<pre><code>')
-            else:
-                result.append('</code></pre>')
-            in_code_block = not in_code_block
-            i += 1
-            continue
-        if in_code_block:
-            result.append(escape_html(line))
-            i += 1
-            continue
-
-        # ── Blank line ──
-        if not stripped:
-            if in_table_rows:
-                result.append(parse_table(in_table_rows))
-                in_table_rows = []
-            list_type, list_items = flush_list(result, list_type, list_items)
-            i += 1
-            continue
-
-        # ── Page break ──
-        if is_pagebreak(stripped):
-            if in_table_rows:
-                result.append(parse_table(in_table_rows))
-                in_table_rows = []
-            list_type, list_items = flush_list(result, list_type, list_items)
-            result.append('<div class="pb"></div>')
-            i += 1
-            continue
-
-        # ── Callout block: :::callout-NAME ... ::: ──
-        if stripped.startswith(':::callout'):
-            if in_table_rows:
-                result.append(parse_table(in_table_rows))
-                in_table_rows = []
-            list_type, list_items = flush_list(result, list_type, list_items)
-            callout_type = stripped.split(':::callout')[1].strip()
-            callout_content_lines = []
-            i += 1
-            while i < len(lines) and lines[i].strip() != ':::':
-                callout_content_lines.append(lines[i])
-                i += 1
-            callout_body = process_inline('<br>'.join([l for l in callout_content_lines if l.strip()]))
-            result.append(f'<div class="callout callout-{callout_type}">{callout_body}</div>')
-            i += 1  # skip the closing :::
-            continue
-
-        # ── Table row ──
-        if '|' in stripped and stripped.startswith('|'):
-            list_type, list_items = flush_list(result, list_type, list_items)
-            in_table_rows.append(line)
-
-            if len(in_table_rows) == 1:
-                j = i + 1
-                while j < len(lines) and not lines[j].strip():
-                    j += 1
-                if j < len(lines) and is_separator_line(lines[j].strip()):
-                    in_table_rows.append(lines[j])
-                    i = j + 1
-                    continue
-                elif len(in_table_rows) == 1 and not (j < len(lines) and '|' in lines[j].strip()):
-                    result.append(line_to_html(stripped))
-                    in_table_rows = []
-                    i += 1
-                    continue
-            elif len(in_table_rows) == 2 and is_separator_line(in_table_rows[1]):
-                i += 1
-                continue
-            else:
-                i += 1
-                continue
-            i += 1
-            continue
-        else:
-            if in_table_rows:
-                result.append(parse_table(in_table_rows))
-                in_table_rows = []
-
-        # ── List items ──
-        unordered_match = re.match(r'^[-*]\s+(.+)$', stripped)
-        ordered_match = re.match(r'^\d+\.\s+(.+)$', stripped)
-        if unordered_match:
-            if list_type not in (None, 'ul'):
-                list_type, list_items = flush_list(result, list_type, list_items)
-            list_type = 'ul'
-            list_items.append(unordered_match.group(1))
-            i += 1
-            continue
-        if ordered_match:
-            if list_type not in (None, 'ol'):
-                list_type, list_items = flush_list(result, list_type, list_items)
-            list_type = 'ol'
-            list_items.append(ordered_match.group(1))
-            i += 1
-            continue
-        else:
-            list_type, list_items = flush_list(result, list_type, list_items)
-
-        # ── Regular line ──
-        result.append(line_to_html(stripped))
-        i += 1
-
-    if in_table_rows:
-        result.append(parse_table(in_table_rows))
-    list_type, list_items = flush_list(result, list_type, list_items)
-
-    return '\n'.join(result)
-
-
-def line_to_html(line):
-    """Convert a single non-special markdown line to HTML."""
-    if not line:
-        return ''
-
-    # Heading
-    if line.startswith('#### '):
-        return f'<h4>{process_inline(line[5:])}</h4>'
-    if line.startswith('### '):
-        return f'<h3>{process_inline(line[4:])}</h3>'
-    if line.startswith('## '):
-        return f'<h2>{process_inline(line[3:])}</h2>'
-    if line.startswith('# '):
-        return f'<h1>{process_inline(line[2:])}</h1>'
-
-    # HR
-    if line in ('---', '***'):
-        return '<hr>'
-
-    # Blockquote / source attribution
-    if line.startswith('>'):
-        content = line.lstrip('>').strip()
-        return f'<blockquote>{process_inline(content)}</blockquote>'
-
-    # Unordered list item
-    if line.startswith('- ') or line.startswith('* '):
-        return f'<p>{process_inline(line[2:])}</p>'
-
-    # Paragraph
-    return f'<p>{process_inline(line)}</p>'
+    extensions = [
+        'extra',
+        'tables',
+        'fenced_code',
+        'sane_lists',
+        'nl2br',
+    ]
+    html = markdown.markdown(md_text, extensions=extensions, output_format='html5')
+    return style_generated_html(html)
 
 
 # ─── Cover / Meta extraction ─────────────────────────────────────────────────

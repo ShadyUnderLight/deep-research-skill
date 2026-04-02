@@ -28,6 +28,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `scripts/render_pdf.py` now exposes more print-oriented controls (`--landscape`, `--media`, explicit page margins, CSS page-size preference, title override) instead of acting as a minimal one-shot wrapper.
 - `scripts/md_to_pdf.py` now forwards those print controls through the one-shot pipeline so the markdown→PDF path can be tuned without patching code.
 - The PDF CSS is now split into a base layer plus a report theme layer, making later theme iteration easier without collapsing all print styling into one monolithic block.
+- `scripts/markdown_to_html.py` no longer relies primarily on a hand-rolled block parser for headings/lists/tables/quotes; it now uses the installed `python-markdown` library for core markdown→HTML conversion, then applies report-specific post-processing. This fixes the major failure mode where raw markdown syntax (`##`, `---`, `|`, `>`) leaked into generated PDFs.
 - `README.md` now points to the failure-taxonomy document so the current eval set can be interpreted as recurring failure families rather than a flat list of isolated cases.
 - `README.md` now describes `evals/` as containing case evals, rubrics, and meta-evals rather than only lightweight prompts.
 - `README.md` now points to the comparative-distillation method as the standard way to turn paired-report comparisons into reusable improvements.
