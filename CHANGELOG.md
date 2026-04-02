@@ -24,6 +24,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `scripts/md_to_pdf.py` to render a PDF artifact when possible.
 - Added `scripts/markdown_to_html.py`, `scripts/render_pdf.py`, and `scripts/md_to_pdf.py` to version the PDF rendering pipeline inside the repo instead of relying only on workspace-root helper scripts.
 - The PDF renderer styles were substantially upgraded: lighter cover design, cleaner heading hierarchy, improved table spacing/borders, better code/callout/blockquote styling, and proper markdown list rendering for `ul/ol` blocks.
+- `scripts/markdown_to_html.py` now performs pre-render text normalization for PDF safety, including control-character cleanup, unicode normalization, and partial repair of spurious CJK spacing artifacts from poor upstream text extraction.
+- `scripts/render_pdf.py` now exposes more print-oriented controls (`--landscape`, `--media`, explicit page margins, CSS page-size preference, title override) instead of acting as a minimal one-shot wrapper.
+- `scripts/md_to_pdf.py` now forwards those print controls through the one-shot pipeline so the markdown→PDF path can be tuned without patching code.
+- The PDF CSS is now split into a base layer plus a report theme layer, making later theme iteration easier without collapsing all print styling into one monolithic block.
 - `README.md` now points to the failure-taxonomy document so the current eval set can be interpreted as recurring failure families rather than a flat list of isolated cases.
 - `README.md` now describes `evals/` as containing case evals, rubrics, and meta-evals rather than only lightweight prompts.
 - `README.md` now points to the comparative-distillation method as the standard way to turn paired-report comparisons into reusable improvements.

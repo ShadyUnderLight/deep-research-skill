@@ -8,11 +8,12 @@ import sys
 import re
 import os
 import argparse
+import unicodedata
 from pathlib import Path
 
 # ─── HTML Template ────────────────────────────────────────────────────────────
 
-CSS = """
+BASE_CSS = """
 @page {
   size: A4;
   margin: 1.9cm 2.1cm 2cm 2.1cm;
@@ -25,6 +26,20 @@ CSS = """
 
 * { box-sizing: border-box; }
 
+:root {
+  --color-text: #1f2937;
+  --color-title: #0f172a;
+  --color-subtitle: #475569;
+  --color-primary: #2563eb;
+  --color-primary-soft: #eff6ff;
+  --color-primary-border: #bfdbfe;
+  --color-muted: #64748b;
+  --color-line: #dbe4f0;
+  --color-table-alt: #f8fbff;
+  --color-cover-bg-top: #f8fbff;
+  --color-cover-bg-bottom: #eef4ff;
+}
+
 html {
   -webkit-print-color-adjust: exact;
   print-color-adjust: exact;
@@ -34,7 +49,7 @@ body {
   font-family: "PingFang SC", "Hiragino Sans GB", "Source Han Sans SC", "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif;
   font-size: 10.2pt;
   line-height: 1.76;
-  color: #1f2937;
+  color: var(--color-text);
   margin: 0;
   padding: 0;
   font-feature-settings: "kern" 1, "liga" 1;
@@ -51,8 +66,8 @@ body {
   flex-direction: column;
   justify-content: center;
   align-items: flex-start;
-  background: linear-gradient(180deg, #f8fbff 0%, #eef4ff 100%);
-  color: #0f172a;
+  background: linear-gradient(180deg, var(--color-table-alt) 0%, var(--color-cover-bg-bottom) 100%);
+  color: var(--color-title);
   text-align: left;
   padding: 56pt 52pt;
   border-top: 10pt solid #1d4ed8;
@@ -61,7 +76,7 @@ body {
   font-size: 8.5pt;
   letter-spacing: 1.1pt;
   text-transform: uppercase;
-  color: #2563eb;
+  color: var(--color-primary);
   margin-bottom: 18pt;
   font-weight: 700;
 }
@@ -70,14 +85,14 @@ body {
   font-weight: 800;
   line-height: 1.22;
   margin: 0 0 10pt 0;
-  color: #0f172a;
+  color: var(--color-title);
   background: none;
   padding: 0;
 }
 .cover h2 {
   font-size: 13pt;
   font-weight: 500;
-  color: #475569;
+  color: var(--color-subtitle);
   margin: 0 0 24pt;
   border: none;
   padding: 0;
@@ -85,13 +100,13 @@ body {
 .cover-line {
   width: 64pt;
   height: 3pt;
-  background: #2563eb;
+  background: var(--color-primary);
   border-radius: 999px;
   margin: 0 0 24pt;
 }
 .cover-meta {
   font-size: 9.4pt;
-  color: #64748b;
+  color: var(--color-muted);
   line-height: 1.95;
 }
 .cover-badge {
@@ -116,10 +131,10 @@ h1, h2, h3, h4 {
 h1 {
   font-size: 16pt;
   font-weight: 800;
-  color: #0f172a;
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-left: 6pt solid #2563eb;
+  color: var(--color-title);
+  background: var(--color-primary-soft);
+  border: 1px solid var(--color-primary-border);
+  border-left: 6pt solid var(--color-primary);
   border-radius: 6pt;
   padding: 10pt 13pt;
   margin: 24pt 0 12pt;
@@ -155,8 +170,8 @@ p {
   widows: 3;
 }
 
-strong { color: #0f172a; }
-a { color: #2563eb; text-decoration: none; }
+strong { color: var(--color-title); }
+a { color: var(--color-primary); text-decoration: none; }
 
 /* ── Lists ── */
 ul, ol {
@@ -174,6 +189,26 @@ li > p {
 }
 
 /* ── Tables ── */
+.table-wrap {
+  margin: 10pt 0 16pt;
+}
+
+.table-note {
+  font-size: 7.8pt;
+  color: var(--color-muted);
+  margin: 0 0 5pt;
+  line-height: 1.5;
+}
+
+.wide-table table {
+  font-size: 8.6pt;
+}
+
+.wide-table thead th,
+.wide-table tbody td {
+  padding: 6pt 7pt;
+}
+
 table {
   width: 100%;
   border-collapse: separate;
@@ -182,14 +217,14 @@ table {
   font-size: 9.1pt;
   line-height: 1.58;
   table-layout: fixed;
-  border: 1px solid #dbe4f0;
+  border: 1px solid var(--color-line);
   border-radius: 8pt;
   overflow: hidden;
 }
 
 thead tr {
   background: #e8f0ff;
-  color: #0f172a;
+  color: var(--color-title);
 }
 
 thead th {
@@ -202,7 +237,7 @@ thead th {
 }
 
 tbody tr:nth-child(even) {
-  background: #f8fbff;
+  background: var(--color-table-alt);
 }
 
 tbody td {
@@ -265,18 +300,18 @@ td:first-child {
 /* ── Sources ── */
 .source {
   font-size: 7.8pt;
-  color: #64748b;
+  color: var(--color-muted);
   margin: 4pt 0 0;
   line-height: 1.55;
 }
 .source a {
-  color: #2563eb;
+  color: var(--color-primary);
   word-break: break-all;
 }
 
 /* ── Exec Summary Box ── */
 .exec-box {
-  background: linear-gradient(180deg, #0f172a 0%, #172554 100%);
+  background: linear-gradient(180deg, var(--color-title) 0%, #172554 100%);
   color: #e2e8f8;
   border-radius: 10pt;
   padding: 16pt 18pt;
@@ -288,7 +323,7 @@ td:first-child {
 
 /* ── HR / Page Break ── */
 .pb { page-break-before: always; }
-hr { border: none; border-top: 1pt solid #dbe4f0; margin: 16pt 0; }
+hr { border: none; border-top: 1pt solid var(--color-line); margin: 16pt 0; }
 
 /* ── Code / Quote ── */
 code {
@@ -300,7 +335,7 @@ code {
 }
 
 pre {
-  background: #0f172a;
+  background: var(--color-title);
   color: #e2e8f0;
   padding: 11pt 12pt;
   border-radius: 8pt;
@@ -323,9 +358,61 @@ blockquote {
   background: #f8fafc;
   padding: 7pt 11pt;
   margin: 10pt 0;
-  color: #475569;
+  color: var(--color-subtitle);
   font-style: normal;
   border-radius: 0 6pt 6pt 0;
+}
+"""
+
+REPORT_THEME_CSS = """
+:root {
+  --color-text: #1f2937;
+  --color-title: #0f172a;
+  --color-subtitle: #475569;
+  --color-primary: #2563eb;
+  --color-primary-soft: #eff6ff;
+  --color-primary-border: #bfdbfe;
+  --color-muted: #64748b;
+  --color-line: #dbe4f0;
+  --color-table-alt: #f8fbff;
+  --color-cover-bg-top: #f8fbff;
+  --color-cover-bg-bottom: #eef4ff;
+}
+
+.cover {
+  padding: 50pt 46pt;
+}
+
+.cover-meta:empty,
+.cover h2:empty {
+  display: none;
+}
+
+.cover-badge {
+  display: none;
+}
+
+body.has-cover .report-disclaimer {
+  display: none;
+}
+
+.report-disclaimer {
+  font-size: 7.8pt;
+  color: #94a3b8;
+  margin: 0 0 10pt;
+}
+
+h1 {
+  margin-top: 20pt;
+}
+
+h1:first-of-type {
+  margin-top: 4pt;
+}
+
+h2 + p strong,
+h3 + p strong {
+  color: var(--color-title);
 }
 """
 
@@ -333,6 +420,7 @@ blockquote {
 def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta=""):
     """Wrap processed body HTML in the full HTML document."""
     cover_block = ""
+    body_class = "has-cover" if cover_title else ""
     if cover_title:
         cover_block = f"""
 <div class="cover">
@@ -341,7 +429,6 @@ def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta="
   <h2>{cover_subtitle}</h2>
   <div class="cover-line"></div>
   <div class="cover-meta">{cover_meta}</div>
-  <div class="cover-badge">STRICTLY CONFIDENTIAL · 仅供内部分析</div>
 </div>
 """
     return f"""<!DOCTYPE html>
@@ -349,9 +436,9 @@ def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta="
 <head>
 <meta charset="UTF-8">
 <title>{title}</title>
-<style>{CSS}</style>
+<style>{BASE_CSS}\n{REPORT_THEME_CSS}</style>
 </head>
-<body>
+<body class="{body_class}">
 {cover_block}
 {body_html}
 </body>
@@ -386,6 +473,62 @@ def escape_html(text):
         .replace('<', '&lt;')
         .replace('>', '&gt;')
         .replace('"', '&quot;'))
+
+
+def normalize_text_for_pdf(text):
+    """Clean obvious PDF-breaking artifacts before markdown parsing.
+
+    Goals:
+    - remove control chars like NUL
+    - normalize odd unicode spacing/forms
+    - collapse spurious spaces between adjacent CJK chars
+    - collapse repeated internal whitespace without destroying markdown structure
+    """
+    if not text:
+        return text
+
+    text = unicodedata.normalize('NFKC', text)
+
+    # Remove control chars except tab/newline/carriage return.
+    text = ''.join(
+        ch for ch in text
+        if ch in ('\n', '\r', '\t') or ord(ch) >= 32
+    )
+
+    # Normalize line endings.
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+
+    # Remove trailing spaces and tabs at line ends.
+    text = re.sub(r'[ \t]+\n', '\n', text)
+
+    # Collapse 3+ blank lines.
+    text = re.sub(r'\n{3,}', '\n\n', text)
+
+    # Remove accidental spaces between adjacent Chinese/Japanese/Korean chars.
+    cjk = r'\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff'
+    text = re.sub(rf'([{cjk}])\s+([{cjk}])', r'\1\2', text)
+
+    # Remove accidental spaces between CJK and Chinese punctuation.
+    text = re.sub(rf'([{cjk}])\s+([，。！？；：、）】》])', r'\1\2', text)
+    text = re.sub(rf'([（【《])\s+([{cjk}])', r'\1\2', text)
+
+    # Normalize bullet-like garbage chars at line starts.
+    text = re.sub(r'(?m)^[\x00-\x1f\u2022\u25aa\u25cf\uf0b7]\s*', '- ', text)
+
+    # Collapse runs of spaces inside lines, but keep indentation at line start.
+    text = re.sub(r'(?m)(?<=\S)[ \t]{2,}(?=\S)', ' ', text)
+
+    return text
+
+
+def maybe_wrap_wide_table(html, header_cells, body_rows):
+    """Add a wrapper and note for wide / dense tables to improve PDF readability."""
+    dense = len(header_cells) >= 5
+    long_cells = any(len(cell) > 40 for row in body_rows for cell in row)
+    if dense or long_cells:
+        note = '<div class="table-note">注：该表信息较密，若导出的 PDF 可读性不足，优先拆成两张主题子表而不是继续压缩列宽。</div>'
+        return f'<div class="table-wrap wide-table">{note}{html}</div>'
+    return f'<div class="table-wrap">{html}</div>'
 
 
 # ─── Table Parsing ────────────────────────────────────────────────────────────
@@ -471,18 +614,19 @@ def parse_table(rows):
     """
     if len(rows) < 2:
         return ''
-    # rows[0] = header, rows[1] = separator, rows[2:] = body
     header_cells = split_table_row(rows[0])
+    body_rows = []
     html = '<table><thead>'
     html += render_table_row(header_cells, is_header=True)
     html += '</thead><tbody>'
-    for row in rows[2:]:  # skip separator
+    for row in rows[2:]:
         if row.strip() and is_separator_line(row):
             continue
         body_cells = split_table_row(row)
+        body_rows.append(body_cells)
         html += render_table_row(body_cells, is_header=False)
     html += '</tbody></table>'
-    return html
+    return maybe_wrap_wide_table(html, header_cells, body_rows)
 
 
 # ─── Markdown Processing ─────────────────────────────────────────────────────
@@ -719,7 +863,8 @@ def convert(input_path, output_path=None, title=None):
     if not md_path.exists():
         raise FileNotFoundError(f"Input file not found: {input_path}")
 
-    md_text = md_path.read_text(encoding='utf-8')
+    md_text = md_path.read_text(encoding='utf-8', errors='replace')
+    md_text = normalize_text_for_pdf(md_text)
 
     # Extract cover info
     cover_title, cover_subtitle, cover_meta, body_text = extract_cover_meta(md_text)
