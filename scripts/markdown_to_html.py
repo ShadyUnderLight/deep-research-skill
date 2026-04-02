@@ -46,7 +46,7 @@ html {
 }
 
 body {
-  font-family: "PingFang SC", "Hiragino Sans GB", "Source Han Sans SC", "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif;
+  font-family: "PingFang SC", "Hiragino Sans GB", "STHeiti", "Heiti SC", "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif;
   font-size: 10.2pt;
   line-height: 1.76;
   color: var(--color-text);
@@ -55,7 +55,12 @@ body {
   font-feature-settings: "kern" 1, "liga" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  hyphens: auto;
+  hyphens: none;
+  letter-spacing: 0;
+  word-spacing: 0;
+  word-break: normal;
+  line-break: strict;
+  text-spacing: none;
 }
 
 /* ── Cover ── */
@@ -198,6 +203,55 @@ li > p {
   color: var(--color-muted);
   margin: 0 0 5pt;
   line-height: 1.5;
+}
+
+.table-card-list {
+  display: block;
+  margin: 8pt 0 16pt;
+}
+
+.table-card {
+  border: 1px solid var(--color-line);
+  border-radius: 8pt;
+  background: #fff;
+  margin: 0 0 10pt;
+  overflow: hidden;
+  page-break-inside: avoid;
+}
+
+.table-card-index {
+  background: #eef4ff;
+  color: #1e3a8a;
+  font-size: 8pt;
+  font-weight: 700;
+  padding: 5pt 9pt;
+  border-bottom: 1px solid #d9e5f7;
+}
+
+.table-card-row {
+  display: block;
+  padding: 7pt 9pt;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.table-card-row:last-child {
+  border-bottom: none;
+}
+
+.table-card-label {
+  display: block;
+  font-size: 7.8pt;
+  color: var(--color-muted);
+  margin-bottom: 2pt;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2pt;
+}
+
+.table-card-value {
+  display: block;
+  color: var(--color-text);
+  line-height: 1.58;
 }
 
 .wide-table table {
@@ -559,18 +613,45 @@ def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta="
 # ─── Markdown Processing ─────────────────────────────────────────────────────
 
 def maybe_wrap_wide_tables_in_html(html):
-    """Wrap dense tables in helper containers after markdown conversion."""
+    """Wrap or transform dense tables after markdown conversion."""
+    def table_to_cards(headers, rows):
+        cards = ['<div class="table-card-list">']
+        for idx, row in enumerate(rows, start=1):
+            cards.append('<div class="table-card">')
+            cards.append(f'<div class="table-card-index">#{idx}</div>')
+            for h, c in zip(headers, row):
+                label = re.sub(r'<[^>]+>', '', h).strip() or '字段'
+                value = c.strip() or '—'
+                cards.append('<div class="table-card-row">')
+                cards.append(f'<span class="table-card-label">{label}</span>')
+                cards.append(f'<span class="table-card-value">{value}</span>')
+                cards.append('</div>')
+            cards.append('</div>')
+        cards.append('</div>')
+        return ''.join(cards)
+
     def repl(match):
         table_html = match.group(0)
         headers = re.findall(r'<th[^>]*>(.*?)</th>', table_html, flags=re.S|re.I)
-        rows = re.findall(r'<tr[^>]*>(.*?)</tr>', table_html, flags=re.S|re.I)
+        row_chunks = re.findall(r'<tr[^>]*>(.*?)</tr>', table_html, flags=re.S|re.I)
+        body_rows = []
         cell_texts = []
-        for row in rows[1:]:
-            cell_texts.extend(re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', row, flags=re.S|re.I))
-        dense = len(headers) >= 5
-        long_cells = any(len(re.sub(r'<[^>]+>', '', c).strip()) > 40 for c in cell_texts)
+        for row in row_chunks[1:]:
+            cells = re.findall(r'<t[dh][^>]*>(.*?)</t[dh]>', row, flags=re.S|re.I)
+            if cells:
+                body_rows.append(cells)
+                cell_texts.extend(cells)
+
+        dense = len(headers) >= 4
+        long_cells = any(len(re.sub(r'<[^>]+>', '', c).strip()) > 36 for c in cell_texts)
+        many_rows = len(body_rows) >= 6
+        note = '<div class="table-note">注：该表信息较密，若导出的 PDF 可读性不足，优先拆成两张主题子表而不是继续压缩列宽。</div>'
+
+        if headers and body_rows and ((dense and long_cells) or (dense and many_rows)):
+            cards_html = table_to_cards(headers, body_rows)
+            return f'<div class="table-wrap wide-table">{note}{cards_html}</div>'
+
         if dense or long_cells:
-            note = '<div class="table-note">注：该表信息较密，若导出的 PDF 可读性不足，优先拆成两张主题子表而不是继续压缩列宽。</div>'
             return f'<div class="table-wrap wide-table">{note}{table_html}</div>'
         return f'<div class="table-wrap">{table_html}</div>'
 
@@ -588,6 +669,7 @@ def style_generated_html(html):
         inner = match.group(2)
         inner = re.sub(rf'([{cjk}])\s+([{cjk}])', r'\1\2', inner)
         inner = re.sub(rf'([{cjk}])\s+([，。！？；：、])', r'\1\2', inner)
+        inner = re.sub(r'\s+', ' ', inner).strip()
         return f'<{tag}>{inner}</{tag}>'
     html = re.sub(r'<(h[1-4])>(.*?)</\1>', heading_repl, html, flags=re.S|re.I)
 
