@@ -21,6 +21,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
 
 ### Changed
+- `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `/Users/mn/.openclaw/workspace/md_to_pdf.py` to render a PDF artifact when possible.
 - `README.md` now points to the failure-taxonomy document so the current eval set can be interpreted as recurring failure families rather than a flat list of isolated cases.
 - `README.md` now describes `evals/` as containing case evals, rubrics, and meta-evals rather than only lightweight prompts.
 - `README.md` now points to the comparative-distillation method as the standard way to turn paired-report comparisons into reusable improvements.
