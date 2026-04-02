@@ -432,11 +432,99 @@ def normalize_text_for_pdf(text):
     text = re.sub(r'\n{3,}', '\n\n', text)
 
     cjk = r'\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff'
+
+    # Stronger CJK spacing repair, especially for broken headings/metadata lines.
     text = re.sub(rf'([{cjk}])\s+([{cjk}])', r'\1\2', text)
     text = re.sub(rf'([{cjk}])\s+([，。！？；：、）】》])', r'\1\2', text)
     text = re.sub(rf'([（【《])\s+([{cjk}])', r'\1\2', text)
+    text = re.sub(rf'([{cjk}])\s+([A-Za-z0-9])', r'\1 \2', text)
+    text = re.sub(rf'([A-Za-z0-9])\s+([{cjk}])', r'\1 \2', text)
+
+    # Normalize bullets/odd line starts that often confuse markdown parsers.
     text = re.sub(r'(?m)^[\x00-\x1f\u2022\u25aa\u25cf\uf0b7]\s*', '- ', text)
+    text = re.sub(r'(?m)^[•●▪◦]\s*', '- ', text)
+
+    # Collapse repeated internal whitespace without touching indentation.
     text = re.sub(r'(?m)(?<=\S)[ \t]{2,}(?=\S)', ' ', text)
+
+    # Block-safe normalization: force clean boundaries around headings / hr / quotes / tables.
+    lines = text.split('\n')
+    out = []
+    in_table = False
+    pending_blank = False
+
+    def flush_blank():
+        nonlocal pending_blank
+        if pending_blank and (not out or out[-1] != ''):
+            out.append('')
+        pending_blank = False
+
+    for raw in lines:
+        line = raw.rstrip()
+        stripped = line.strip()
+
+        if not stripped:
+            pending_blank = True
+            in_table = False
+            continue
+
+        # Normalize ATX headings even if they have extra spacing after #.
+        heading_match = re.match(r'^(#{1,6})\s*(.+?)\s*$', stripped)
+        if heading_match:
+            if out and out[-1] != '':
+                out.append('')
+            out.append(f"{heading_match.group(1)} {heading_match.group(2)}")
+            out.append('')
+            pending_blank = False
+            in_table = False
+            continue
+
+        # Normalize horizontal rules.
+        if re.fullmatch(r'[-*_]{3,}', stripped.replace(' ', '')):
+            if out and out[-1] != '':
+                out.append('')
+            out.append('---')
+            out.append('')
+            pending_blank = False
+            in_table = False
+            continue
+
+        # Normalize blockquotes and keep them out of list context.
+        if stripped.startswith('>'):
+            flush_blank()
+            out.append('> ' + stripped.lstrip('> ').strip())
+            in_table = False
+            continue
+
+        # Normalize table rows / separators and force surrounding blank lines.
+        if '|' in stripped and stripped.count('|') >= 2:
+            cells = [c.strip() for c in stripped.strip('|').split('|')]
+            normalized = '| ' + ' | '.join(cells) + ' |'
+            if not in_table:
+                if out and out[-1] != '':
+                    out.append('')
+            out.append(normalized)
+            in_table = True
+            pending_blank = False
+            continue
+        elif in_table:
+            out.append('')
+            in_table = False
+
+        # Ensure lists and following paragraphs don't fuse into one mega-list.
+        if re.match(r'^[-*+]\s+.+$', stripped) or re.match(r'^\d+\.\s+.+$', stripped):
+            flush_blank()
+            out.append(stripped)
+            continue
+
+        flush_blank()
+        out.append(stripped)
+
+    if in_table and out and out[-1] != '':
+        out.append('')
+
+    text = '\n'.join(out)
+    text = re.sub(r'\n{3,}', '\n\n', text)
     return text
 
 
@@ -493,11 +581,21 @@ def style_generated_html(html):
     """Apply lightweight post-processing to markdown-generated HTML."""
     html = maybe_wrap_wide_tables_in_html(html)
 
+    # Tighten broken spacing inside headings generated from noisy upstream markdown.
+    cjk = r'\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff'
+    def heading_repl(match):
+        tag = match.group(1)
+        inner = match.group(2)
+        inner = re.sub(rf'([{cjk}])\s+([{cjk}])', r'\1\2', inner)
+        inner = re.sub(rf'([{cjk}])\s+([，。！？；：、])', r'\1\2', inner)
+        return f'<{tag}>{inner}</{tag}>'
+    html = re.sub(r'<(h[1-4])>(.*?)</\1>', heading_repl, html, flags=re.S|re.I)
+
     # Turn simple blockquotes into report callouts when they look like highlights.
     def quote_repl(match):
         inner = match.group(1).strip()
         plain = re.sub(r'<[^>]+>', '', inner).strip()
-        if plain.startswith('预测：') or plain.startswith('风险：'):
+        if plain.startswith('预测:') or plain.startswith('预测：') or plain.startswith('风险:') or plain.startswith('风险：'):
             return f'<div class="callout callout-inference">{inner}</div>'
         return f'<blockquote>{inner}</blockquote>'
 
@@ -505,9 +603,63 @@ def style_generated_html(html):
     return html
 
 
+def repair_markdown_tables(md_text):
+    """Repair common LLM-produced markdown table failures before parsing."""
+    lines = md_text.split('\n')
+    repaired = []
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        if '|' in stripped and stripped.count('|') >= 2:
+            group = [stripped]
+            j = i + 1
+            while j < len(lines):
+                nxt = lines[j].strip()
+                if nxt and '|' in nxt and nxt.count('|') >= 2:
+                    group.append(nxt)
+                    j += 1
+                    continue
+                break
+
+            if len(group) >= 2:
+                first_cells = [c.strip() for c in group[0].strip('|').split('|')]
+                second = group[1].replace(' ', '')
+                is_sep = set(second) <= {'|', '-', ':'}
+                if not is_sep:
+                    sep = '| ' + ' | '.join(['---'] * len(first_cells)) + ' |'
+                    group.insert(1, sep)
+                else:
+                    group[1] = '| ' + ' | '.join(['---'] * len(first_cells)) + ' |'
+
+                normalized_group = []
+                for row in group:
+                    cells = [c.strip() for c in row.strip('|').split('|')]
+                    if len(cells) < len(first_cells):
+                        cells.extend([''] * (len(first_cells) - len(cells)))
+                    elif len(cells) > len(first_cells):
+                        cells = cells[:len(first_cells)]
+                    normalized_group.append('| ' + ' | '.join(cells) + ' |')
+
+                if repaired and repaired[-1] != '':
+                    repaired.append('')
+                repaired.extend(normalized_group)
+                repaired.append('')
+                i = j
+                continue
+
+        repaired.append(line)
+        i += 1
+
+    return '\n'.join(repaired)
+
+
 def process_markdown(md_text):
     """Convert markdown to HTML using a real markdown parser, then post-process for report styling."""
     import markdown
+
+    md_text = repair_markdown_tables(md_text)
 
     extensions = [
         'extra',
