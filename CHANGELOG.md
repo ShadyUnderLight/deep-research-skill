@@ -11,6 +11,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `ARCHITECTURE.md`
 - `ROUTING-MATRIX.md`
 - `references/failure-taxonomy.md`
 - `references/comparative-distillation-method.md`
@@ -32,6 +33,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `scripts/markdown_to_html.py` pre-parse table repair now strips accidental list-prefix injection before headings/table rows (e.g. `- ##` / `- | ...`), normalizes malformed separator rows, and removes stray leading bullet-placeholder columns (e.g. `| - | # | ...`) before markdown parsing.
 - `scripts/markdown_to_html.py` table sanitization now more aggressively removes placeholder headers/columns and URL-heavy split-off metadata columns when they reduce comparison readability.
 - PDF table CSS now improves pagination and scan quality for source/info tables: header rows are repeated as table headers across page breaks, row splitting is reduced, and long URLs use softer wrap behavior to avoid severe character fragmentation.
+- `ARCHITECTURE.md` now describes the repo as a layered system: workflow spine, routing layer, method/discipline layer, audit layer, eval/regression layer, and delivery/rendering layer.
 - `SKILL.md` now acts more clearly as the workflow spine and orchestration layer rather than the single file that carries every mature route-specific trigger; task-family routing is now centralized in `ROUTING-MATRIX.md`.
 - `ROUTING-MATRIX.md` now defines the six most mature task families (provider selection, market entry, market outlook, first-tier positioning, constrained choice, listed-company research), their required attached disciplines, their required audits, and the visible artifact contracts that final reports must satisfy.
 - `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `scripts/md_to_pdf.py` to render a PDF artifact when possible.
@@ -101,6 +103,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - Repeated MiniMax PDF samples still showed a broken-export feeling in Chinese text texture, so the rendering layer needed another narrow CJK-spacing pass separate from research-discipline changes.
 - The skill itself needed to consume those additions through clearer routing, otherwise the new evals would remain documentation instead of affecting execution.
 - The routing surface had become too diffuse inside `SKILL.md`; a dedicated routing contract was needed so mature task families could be activated, reviewed, and audited more explicitly.
+- After the routing layer was separated, the repo also needed a lightweight architecture note so future changes can land in the right layer instead of expanding `SKILL.md` again by default.
 
 ## 0.4.0 - 2026-03-31
 
