@@ -51,6 +51,7 @@ Use real tasks and real failures.
 - when a repeated task family needs clearer activation, strengthen `ROUTING-MATRIX.md`
 - when the task shape is right but the method is weak, improve `references/`
 - when the method exists but the final output still leaks failures, harden `checklists/`
+- when the report is analytically fine but final delivery mixes target languages in load-bearing labels, treat that as a delivery-coherence failure rather than a translation nit
 - when the failure is still unclear, add or refine `evals/`
 - when the content is right but the export is broken, fix `scripts/`
 

@@ -190,6 +190,7 @@ Current responsibilities include:
 - table handling and placeholder cleanup
 - PDF rendering
 - print styling and CJK readability adjustments
+- preserving target-language coherence for load-bearing structural labels in final artifacts
 
 This layer should be treated as a delivery subsystem, not as part of core research reasoning.
 
@@ -273,3 +274,4 @@ When making future changes, prefer this order of questions:
 Place the change in the narrowest layer that fully explains the problem.
 
 Do not default to expanding `SKILL.md` unless the change truly belongs to the workflow spine.
+to the workflow spine.

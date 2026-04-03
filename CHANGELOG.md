@@ -86,6 +86,9 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `checklists/final-audit.md` now adds market-entry gates for priority-vs-alternatives, shortlist/sequencing logic, and hub-vs-beachhead separation when relevant.
 - `checklists/final-audit.md` now adds market-outlook gates for current market snapshot, drivers/blockers/scenarios/stakeholder implications, and explicit labeling of outlook numbers when evidence role matters.
 - `checklists/final-audit.md` now also requires constrained-choice reports with composite scoring to label key quantitative inputs by evidence role when that distinction affects trust in the recommendation.
+- `checklists/final-audit.md` now hardens market-entry audit gates around explicit `go` / `not now` / `pilot only` / `phased entry` resolution, visible why-this-option-wins logic, KPI/milestone triggers, and ranking-change conditions.
+- `checklists/final-audit.md` now explicitly treats mixed evidence-layer vs modeling-layer labeling as an audit issue, so reports do not stop at `confirmed / inference / unknown` when important numbers are really proxies, assumptions, or planning-model outputs.
+- `checklists/final-audit.md` now adds a target-language coherence gate: Chinese final reports should use Chinese load-bearing structural labels unless bilingual output was explicitly requested, and mixed-language evidence buckets count as a delivery failure.
 
 ### Why
 - A real MiniMax SEA memo PDF failure showed five delivery-layer issues that must be handled in rendering: comparison tables degrading in structure, source tables breaking poorly across pages, internal generator hints leaking into final output, placeholder/header residues, and poor horizontal-space usage.

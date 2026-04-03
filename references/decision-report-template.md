@@ -132,8 +132,11 @@ In these market-entry cases:
 - explicitly separate regional hub, first revenue beachhead, and later expansion market when those roles differ
 - make priority relative to alternatives visible (for example domestic market vs SEA, or SEA vs other expansion regions)
 - show the few hard gates that could turn `go` into `not now` or `pilot only`
+- show why the top option wins, why the runner-up remains credible, and what would change the ranking
+- make KPI / milestone triggers visible when they are part of the operating path
 - use one comparison unit across countries or candidate markets rather than free-form prose by country
 - if TAM / SAM / SOM, scenario models, or KPI plans are used, label observed numbers vs proxies vs assumptions vs planning-model outputs
+- if the final memo is written in Chinese, keep load-bearing labels in Chinese too rather than leaking English evidence buckets into the body
 
 Do not give every option equal narrative weight if the user's real need is to choose.
 

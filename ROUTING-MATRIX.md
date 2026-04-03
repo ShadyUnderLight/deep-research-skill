@@ -16,6 +16,7 @@ For every task:
 3. attach the required secondary disciplines
 4. make the route visible in the final artifact
 5. run the required audits before delivery
+6. ensure target-language coherence in the final artifact when the report is user-facing
 
 If multiple routes apply, choose one primary route and attach the others as secondary disciplines.
 
@@ -375,6 +376,12 @@ Before delivery, ask:
 
 1. did the correct route fire?
 2. did the required secondary disciplines attach?
+3. is the route visibly executed in the final artifact?
+
+A route only counts if the final report visibly satisfies its artifact contract.
+
+If the route is implicit in reasoning but not visible in delivery, treat that as an execution failure.
+dary disciplines attach?
 3. is the route visibly executed in the final artifact?
 
 A route only counts if the final report visibly satisfies its artifact contract.

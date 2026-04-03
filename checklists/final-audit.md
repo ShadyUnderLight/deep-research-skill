@@ -55,6 +55,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] exact figures are used when source provides them; "约" only when source itself rounds
 - [ ] quantitative outlook numbers are labeled as observed / inferred / scenario assumption / illustrative calculation when the distinction matters
 - [ ] for constrained-choice / shortlist reports that use composite scoring, important quantitative inputs are labeled as observed fact / proxy / assumption / model output when the distinction affects trust in the recommendation
+- [ ] when evidence buckets are used, the report does not stop at `confirmed / inference / unknown` if important numbers still function as proxy / assumption / planning-model output
+- [ ] heuristic timing, cost, payback, or ROI-style claims are not written as if they were directly observed facts when they are closer to assumptions or planning-model outputs
 
 ## Market position and ranking claims
 
@@ -73,6 +75,11 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 - [ ] no citation artifacts, retrieval syntax, placeholder entities, or rendering residues leak into the final report body
 - [ ] markdown / PDF delivery does not expose internal labels, raw template markers, or unfinished placeholders
+
+## Quality bar
+
+A report that fails this checklist is not ready for delivery, regardless of length or apparent polish.
+tput does not show CJK spacing degradation or broken-export text rhythm severe enough to reduce professional readability
 
 ## Quality bar
 
