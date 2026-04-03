@@ -12,6 +12,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ### Added
 - `ARCHITECTURE.md`
+- `SYSTEM-MAP.md`
 - `ROUTING-MATRIX.md`
 - `references/failure-taxonomy.md`
 - `references/comparative-distillation-method.md`
@@ -34,6 +35,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `scripts/markdown_to_html.py` table sanitization now more aggressively removes placeholder headers/columns and URL-heavy split-off metadata columns when they reduce comparison readability.
 - PDF table CSS now improves pagination and scan quality for source/info tables: header rows are repeated as table headers across page breaks, row splitting is reduced, and long URLs use softer wrap behavior to avoid severe character fragmentation.
 - `ARCHITECTURE.md` now describes the repo as a layered system: workflow spine, routing layer, method/discipline layer, audit layer, eval/regression layer, and delivery/rendering layer.
+- `SYSTEM-MAP.md` now groups the current references, checklists, and evals into practical families and explains which layer should usually change first when a failure appears.
 - `SKILL.md` now acts more clearly as the workflow spine and orchestration layer rather than the single file that carries every mature route-specific trigger; task-family routing is now centralized in `ROUTING-MATRIX.md`.
 - `ROUTING-MATRIX.md` now defines the six most mature task families (provider selection, market entry, market outlook, first-tier positioning, constrained choice, listed-company research), their required attached disciplines, their required audits, and the visible artifact contracts that final reports must satisfy.
 - `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `scripts/md_to_pdf.py` to render a PDF artifact when possible.

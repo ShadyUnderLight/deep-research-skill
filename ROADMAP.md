@@ -5,6 +5,7 @@ This file tracks likely next improvements and helps keep repo evolution intentio
 ## Current priorities
 
 ### P1
+- Use `SYSTEM-MAP.md` to tighten family-level coverage and identify where a dedicated family map, route-supporting reference, checklist hardening, or delivery note is still missing.
 - Add more evals for freshness, counter-evidence, and decision-quality regressions.
 - Test the skill against more real fast-moving company/product cases.
 - Tighten current-state verification if stale facts still leak into reports.
