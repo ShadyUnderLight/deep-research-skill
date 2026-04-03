@@ -25,6 +25,9 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md`
 
 ### Changed
+- `scripts/markdown_to_html.py` table routing now keeps comparison-heavy blocks in compact tables (including anchor-column split sub-tables) instead of leaking toward vertical card-like degradation; it also strips internal render-hint text from final HTML.
+- `scripts/markdown_to_html.py` table sanitization now more aggressively removes placeholder headers/columns and URL-heavy split-off metadata columns when they reduce comparison readability.
+- PDF table CSS now improves pagination and scan quality for source/info tables: header rows are repeated as table headers across page breaks, row splitting is reduced, and long URLs use softer wrap behavior to avoid severe character fragmentation.
 - `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `scripts/md_to_pdf.py` to render a PDF artifact when possible.
 - Added `scripts/markdown_to_html.py`, `scripts/render_pdf.py`, and `scripts/md_to_pdf.py` to version the PDF rendering pipeline inside the repo instead of relying only on workspace-root helper scripts.
 - The PDF renderer styles were substantially upgraded: lighter cover design, cleaner heading hierarchy, improved table spacing/borders, better code/callout/blockquote styling, and proper markdown list rendering for `ul/ol` blocks.
@@ -64,6 +67,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `checklists/final-audit.md` now also requires constrained-choice reports with composite scoring to label key quantitative inputs by evidence role when that distinction affects trust in the recommendation.
 
 ### Why
+- A real MiniMax SEA memo PDF failure showed five delivery-layer issues that must be handled in rendering: comparison tables degrading in structure, source tables breaking poorly across pages, internal generator hints leaking into final output, placeholder/header residues, and poor horizontal-space usage.
 - A new AI coding agent market-outlook comparative case showed that market/industry-evolution tasks were still too prone to overview drift; the repo needed explicit market-outlook routing, scenario discipline, and stakeholder-action structure.
 - Repeated PDF export failures also showed a separate rendering failure family: comparison-heavy sections were degrading into tall vertical card stacks, placeholder fields like `#1 / —` could leak into the final PDF, and list/callout semantics were still bleeding into each other in the generated HTML.
 - The eval set has grown enough that recurring patterns now matter more than single-case accumulation.
