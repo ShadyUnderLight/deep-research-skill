@@ -22,6 +22,8 @@ Run through every item before delivering the final report.
 - [ ] primary sources (official filings, company disclosures, primary documents) are distinguished from secondary (media, analyst reports)
 - [ ] inferred claims are labeled `[IN]` and not presented as confirmed facts
 - [ ] no source is given higher weight than its type warrants
+- [ ] for load-bearing tier / positioning judgments, the body text makes visible which key claims are direct-evidence-backed vs inference-heavy rather than hiding the weighting inside a bibliography or source register
+- [ ] self-tests, partner/customer marketing, roadmap reporting, and valuation signals are not allowed to silently carry the same weight as current primary evidence in the final classification
 
 ## Completeness
 

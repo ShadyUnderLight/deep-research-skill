@@ -91,6 +91,25 @@ In these provider-selection cases, the report should explicitly show current-sta
 - current data-control / retention posture
 - current SLA / status / enterprise controls when decision-relevant
 
+For first-tier / top-tier / multidimensional positioning tasks, prefer this stronger structure:
+
+1. Executive summary
+2. Scope / metric / timeframe
+3. Decision architecture for the tier judgment
+4. Dimension-by-dimension conclusions
+5. Where direct evidence is strong vs where inference carries the argument
+6. Whether an overall tier label is justified
+7. Why the strongest rival classification remains credible
+8. Open uncertainty / what could move the classification
+9. Sources
+
+In these multidimensional-positioning cases:
+- do not treat `first-tier` as a loose compliment; define what dimensions are load-bearing before judging
+- separate geography, product scope, and time basis before comparing players
+- keep dimension-level judgments visible when evidence strength differs across dimensions
+- do not let roadmap products, self-tests, valuation signals, or regional leadership silently substitute for current global product/commercial leadership
+- if an overall label is still used, show the rule that permits collapsing multiple dimensions into one classification
+
 For market-entry / regional-expansion / country-prioritization tasks, prefer this stronger structure:
 
 1. Executive summary

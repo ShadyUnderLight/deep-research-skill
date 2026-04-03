@@ -128,6 +128,43 @@ For claims that cannot be confirmed or are highly time-sensitive, include a brie
 | U03 | Next-generation desktop GPU launch timeline | Based on Tom's Hardware speculation; company has not officially confirmed | Timeline uncertainty affects near-term revenue outlook |
 ```
 
+## Mixed-evidence weighting for tier / positioning memos
+
+When a report judges whether a company belongs in the `first tier`, `top tier`, or a global lead group, traceability is not enough by itself. The reader also needs to see which parts of the judgment rest on direct evidence and which parts rest on inference.
+
+For load-bearing positioning claims, do not let these evidence types blur together:
+
+- official current specs
+- audited or filed financial disclosures
+- official current product pages
+- independent third-party market data
+- self-tested benchmark claims
+- customer anecdotes or partner marketing
+- media reports about unreleased roadmap products
+- model inference or synthesis
+
+If several of these appear in one section, the body text should make the weighting visible rather than only listing sources at the end.
+
+Good pattern:
+- `Current revenue inflection is directly supported by the annual report [S01], but the claim that this already proves global first-tier commercial traction is still an inference [I01].`
+- `Current-chip specs are directly sourced [S02], while the conclusion that performance is "about A100 level in broad deployment" relies partly on vendor or customer test material and should remain qualified [S05][I02].`
+
+Bad pattern:
+- one polished sentence that mixes audited revenue, self-tested performance, partner statements, and roadmap rumors under one confidence label
+
+## Load-bearing claim rule
+
+If a report's bottom-line judgment depends on a small number of crucial claims, each of those claims should be visibly auditable in the body.
+
+For each load-bearing claim, try to make visible:
+
+- source id
+- source type
+- whether the claim is direct or inferred
+- the main limitation if the evidence is indirect
+
+If the report uses confidence labels but hides the source type and inference role for the key judgment, it is still not adequately auditable.
+
 ## Common failure patterns
 
 ### Pattern 1: Bibliography theater

@@ -45,6 +45,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for market-entry / regional-expansion / country-prioritization tasks, regional hub vs first beachhead vs later expansion market are separated when relevant
 - [ ] for market-outlook / industry-evolution tasks, a current market snapshot was verified before forward-looking sections
 - [ ] for market-outlook / industry-evolution tasks, drivers, blockers, scenarios, and stakeholder implications are explicit rather than implied
+- [ ] for first-tier / top-tier / multidimensional positioning tasks, scope, metric, timeframe, and dimension-level conclusions are visible before any overall label
+- [ ] for first-tier / top-tier / multidimensional positioning tasks, the report does not collapse geography, current products, roadmap products, ecosystem strength, traction, and capital-markets signaling into one vague prestige tag without an explicit aggregation rule
 
 ## Precision and estimate sourcing
 
@@ -58,7 +60,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 - [ ] every market-position claim specifies scope: "中国市场" / "全球" / "按XX口径"
 - [ ] every market-position claim includes a conditional clause or explicitly states "no dependencies identified"
-- [ ] "全球最大" / "市场领导者" without scope and dependency = fail
+- [ ] if the report uses `第一梯队` / `top-tier` / similar prestige labels, it states whether the label is dimension-specific or an overall classification and why that compression is justified
+- [ ] "全球最大" / "市场领导者" / loose `第一梯队` language without scope and dependency = fail
 
 ## Profit + scale signal pairing
 
