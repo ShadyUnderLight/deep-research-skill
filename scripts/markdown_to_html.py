@@ -269,11 +269,17 @@ li > p {
 }
 
 .split-table-group {
-  page-break-inside: avoid;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9pt 10pt;
+  align-items: start;
+  page-break-inside: auto;
 }
 
 .split-table {
   margin: 0 0 12pt;
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 .split-table:last-child {
@@ -291,11 +297,16 @@ table {
   border: 1px solid var(--color-line);
   border-radius: 8pt;
   overflow: hidden;
+  page-break-inside: auto;
 }
 
 thead tr {
   background: #e8f0ff;
   color: var(--color-title);
+}
+
+thead {
+  display: table-header-group;
 }
 
 thead th {
@@ -309,6 +320,11 @@ thead th {
 
 tbody tr:nth-child(even) {
   background: var(--color-table-alt);
+}
+
+tbody tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
 }
 
 tbody td {
@@ -377,7 +393,26 @@ td:first-child {
 }
 .source a {
   color: var(--color-primary);
-  word-break: break-all;
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.url-soft {
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+.table-wrap-source {
+  page-break-inside: auto;
+}
+
+.table-wrap-source table {
+  page-break-inside: auto;
+}
+
+.table-wrap-source td:first-child {
+  color: var(--color-text);
+  font-weight: 500;
 }
 
 /* ── Exec Summary Box ── */
@@ -522,7 +557,7 @@ def normalize_text_for_pdf(text):
     text = re.sub(rf'([A-Za-z0-9])\s+([{cjk}])', r'\1 \2', text)
 
     # Normalize bullets/odd line starts that often confuse markdown parsers.
-    text = re.sub(r'(?m)^[\x00-\x1f\u2022\u25aa\u25cf\uf0b7]\s*', '- ', text)
+    text = re.sub(r'(?m)^[\x00-\x08\x0b\x0c\x0e-\x1f\u2022\u25aa\u25cf\uf0b7]\s*', '- ', text)
     text = re.sub(r'(?m)^[•●▪◦]\s*', '- ', text)
 
     # Collapse repeated internal whitespace without touching indentation.
@@ -652,23 +687,83 @@ def maybe_wrap_wide_tables_in_html(html):
         text = plain_text(value)
         if not text:
             return True
+        if text == '#':
+            return True
         if re.fullmatch(r'#\d+', text):
             return True
-        if text in {'—', '-', '–', '— —', 'N/A', 'n/a', 'NA', '/', '｜'}:
+        if text in {'—', '-', '–', '--', '——', '— —', 'N/A', 'n/a', 'NA', 'TBD', 'tbd', '/', '｜'}:
             return True
         return False
 
+    def normalize_meta_key(value):
+        text = plain_text(value).lower()
+        text = re.sub(r'[\s:：\-_]+', '', text)
+        return text
+
+    def is_urlish(value):
+        text = plain_text(value)
+        return bool(re.search(r'(https?://|www\.)', text, flags=re.I))
+
+    def is_metadata_header(value):
+        key = normalize_meta_key(value)
+        return key in {
+            '来源', '信息来源', '出处', '参考', '参考来源',
+            'source', 'sources', 'citation', 'citations',
+            'url', 'urls', 'link', 'links', '参考链接', '链接'
+        }
+
+    def soft_wrap_url_text(value):
+        value = re.sub(r'(?<=/)(?=[^/])', '<wbr>', value)
+        value = re.sub(r'([?&=#%])', r'\1<wbr>', value)
+        return value
+
+    def normalize_cell_html(cell):
+        cleaned = cell.strip()
+
+        def anchor_repl(match):
+            href = match.group(1)
+            attrs = match.group(2) or ''
+            text = match.group(3)
+            plain = plain_text(text)
+            if plain and plain == href:
+                text = soft_wrap_url_text(text)
+            return f'<a href="{href}"{attrs}>{text}</a>'
+
+        cleaned = re.sub(
+            r'<a\s+href="([^"]+)"([^>]*)>(.*?)</a>',
+            anchor_repl,
+            cleaned,
+            flags=re.S | re.I,
+        )
+
+        if is_urlish(cleaned) and '<a ' not in cleaned.lower():
+            cleaned = f'<span class="url-soft">{soft_wrap_url_text(cleaned)}</span>'
+        return cleaned
+
     def sanitize_table(headers, rows):
+        min_row_width = min((len(r) for r in rows), default=len(headers))
+        if rows and len(headers) == min_row_width + 1 and is_placeholder(headers[0]):
+            headers = headers[1:]
         width = min(len(headers), min((len(r) for r in rows), default=len(headers)))
         headers = headers[:width]
         rows = [r[:width] for r in rows]
         keep = []
+        metadata_cols = []
         for idx in range(width):
             header_text = plain_text(headers[idx])
             column_values = [plain_text(r[idx]) for r in rows if idx < len(r)]
             if is_placeholder(header_text) and all(is_placeholder(v) for v in column_values):
                 continue
+            if is_metadata_header(header_text):
+                urlish = [v for v in column_values if is_urlish(v)]
+                if len(urlish) >= max(1, int(len(column_values) * 0.6)):
+                    metadata_cols.append(idx)
             keep.append(idx)
+
+        if keep:
+            non_meta_keep = [i for i in keep if i not in metadata_cols]
+            if len(non_meta_keep) >= 2 and len(keep) >= 4:
+                keep = non_meta_keep
 
         if not keep:
             keep = list(range(width))
@@ -676,12 +771,19 @@ def maybe_wrap_wide_tables_in_html(html):
         headers = [headers[i] for i in keep]
         rows = [[row[i] for i in keep] for row in rows]
 
+        placeholder_headers = [i for i, h in enumerate(headers) if is_placeholder(h)]
+        if placeholder_headers and len(headers) > 1:
+            keep2 = [i for i in range(len(headers)) if i not in placeholder_headers]
+            headers = [headers[i] for i in keep2]
+            rows = [[row[i] for i in keep2] for row in rows]
+
         cleaned_rows = []
         for row in rows:
             cleaned = []
             for cell in row:
                 cell = cell.strip()
-                cleaned.append('' if is_placeholder(cell) else cell)
+                cell = '' if is_placeholder(cell) else normalize_cell_html(cell)
+                cleaned.append(cell)
             if any(plain_text(c) for c in cleaned):
                 cleaned_rows.append(cleaned)
         return headers, cleaned_rows
@@ -704,6 +806,17 @@ def maybe_wrap_wide_tables_in_html(html):
         if len(headers) <= max_cols:
             return [build_table(headers, rows)]
         chunks = []
+        anchor_first = not is_metadata_header(headers[0])
+        if anchor_first and max_cols >= 3:
+            chunk_size = max_cols - 1
+            start = 1
+            while start < len(headers):
+                end = min(start + chunk_size, len(headers))
+                sub_headers = [headers[0]] + headers[start:end]
+                sub_rows = [[row[0]] + row[start:end] for row in rows]
+                chunks.append(build_table(sub_headers, sub_rows))
+                start = end
+            return chunks
         start = 0
         while start < len(headers):
             end = min(start + max_cols, len(headers))
@@ -732,23 +845,32 @@ def maybe_wrap_wide_tables_in_html(html):
         dense = len(headers) >= 4
         long_cells = any(len(plain_text(c)) > 36 for c in cell_texts)
         many_rows = len(body_rows) >= 6
-        note = '<div class="table-note">注：该表信息较密，优先拆成主题子表，而不是退化成长卡片列表。</div>'
+        source_like = sum(1 for h in headers if is_metadata_header(h)) >= max(1, len(headers) // 2)
 
         if len(headers) >= 5 or (dense and long_cells) or (dense and many_rows):
             tables = split_table(headers, body_rows, max_cols=4)
             wrapped = ''.join(f'<div class="split-table">{t}</div>' for t in tables)
-            return f'<div class="table-wrap wide-table split-table-group">{note}{wrapped}</div>'
+            source_class = ' table-wrap-source' if source_like else ''
+            return f'<div class="table-wrap wide-table split-table-group{source_class}">{wrapped}</div>'
 
         compact_html = build_table(headers, body_rows)
+        source_class = ' table-wrap-source' if source_like else ''
         if dense or long_cells:
-            return f'<div class="table-wrap wide-table">{note}{compact_html}</div>'
-        return f'<div class="table-wrap">{compact_html}</div>'
+            return f'<div class="table-wrap wide-table{source_class}">{compact_html}</div>'
+        return f'<div class="table-wrap{source_class}">{compact_html}</div>'
 
     return re.sub(r'<table[\s\S]*?</table>', repl, html, flags=re.I)
 
 
 def style_generated_html(html):
     """Apply lightweight post-processing to markdown-generated HTML."""
+    # Strip internal render hints; these should never leak into final delivery output.
+    html = re.sub(
+        r'<(?:p|li|div)>\s*[^<]*(?:优先拆成主题子表|退化成长卡片列表|该表信息较密)[^<]*</(?:p|li|div)>',
+        '',
+        html,
+        flags=re.I,
+    )
     html = maybe_wrap_wide_tables_in_html(html)
     html = re.sub(r'<li>\s*(<(?:h1|h2|h3|h4)[^>]*>.*?</(?:h1|h2|h3|h4)>)\s*</li>', r'\1', html, flags=re.S|re.I)
     html = re.sub(r'<li>\s*(<div class="callout[^"]*">.*?</div>)\s*</li>', r'\1', html, flags=re.S|re.I)
