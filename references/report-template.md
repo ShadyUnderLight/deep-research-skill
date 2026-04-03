@@ -103,6 +103,16 @@ At the top of every report, include a brief legend defining evidence confidence 
 
 This makes your labeling system interpretable to the reader and enforces discipline on the model side.
 
+## Load-bearing evidence note (required for mixed-evidence positioning judgments)
+
+When the report makes a high-level classification from mixed evidence types — especially `first-tier` / `top-tier` / competitive-positioning judgments — add a short note immediately before the final classification or bottom line.
+
+Use a compact pattern like:
+
+> "证据说明：关于[技术/商业化/生态/资本市场]的判断，直接证据主要来自[官方披露/产品页/监管文件]；关于[更强结论]的部分仍依赖[第三方数据/厂商自测/媒体报道/推断]，因此该结论应视为[有条件判断/推断]，不应与已确认事实等同。"
+
+This note is not filler. It forces the report to show which part of the conclusion is directly supported and which part is inference-heavy.
+
 ## Data calibration paragraph (required when using proxy indicators)
 
 When you use proxy indicators because primary data is unavailable, add a brief note immediately below the relevant section or table:

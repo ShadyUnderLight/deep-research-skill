@@ -31,6 +31,7 @@ Turn "search and summarize" into a stricter research workflow that:
 - `evals/sea-market-entry-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for market-entry routing, country-shortlist structure, sequencing, hard gates, and delivery-artifact leakage
 - `evals/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for multi-origin meetup-city choice, aggregation visibility, shortlist construction, fairness logic, and ranking-reversal conditions
 - `evals/cambricon-first-tier-positioning-case.md` — eval for first-tier / top-tier competitive-positioning discipline, scope-metric-timeframe gating, and prevention of dimension-collapse into prestige labels
+- `evals/cambricon-evidence-weighting-and-traceability-case.md` — eval for load-bearing claim traceability, mixed-evidence weighting, and prevention of source-rich but weakly-auditable positioning memos
 
 ## Initial references included
 
