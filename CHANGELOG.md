@@ -11,6 +11,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `ROUTING-MATRIX.md`
 - `references/failure-taxonomy.md`
 - `references/comparative-distillation-method.md`
 - `references/option-selection-and-shortlist-discipline.md`
@@ -31,6 +32,8 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `scripts/markdown_to_html.py` pre-parse table repair now strips accidental list-prefix injection before headings/table rows (e.g. `- ##` / `- | ...`), normalizes malformed separator rows, and removes stray leading bullet-placeholder columns (e.g. `| - | # | ...`) before markdown parsing.
 - `scripts/markdown_to_html.py` table sanitization now more aggressively removes placeholder headers/columns and URL-heavy split-off metadata columns when they reduce comparison readability.
 - PDF table CSS now improves pagination and scan quality for source/info tables: header rows are repeated as table headers across page breaks, row splitting is reduced, and long URLs use softer wrap behavior to avoid severe character fragmentation.
+- `SKILL.md` now acts more clearly as the workflow spine and orchestration layer rather than the single file that carries every mature route-specific trigger; task-family routing is now centralized in `ROUTING-MATRIX.md`.
+- `ROUTING-MATRIX.md` now defines the six most mature task families (provider selection, market entry, market outlook, first-tier positioning, constrained choice, listed-company research), their required attached disciplines, their required audits, and the visible artifact contracts that final reports must satisfy.
 - `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `scripts/md_to_pdf.py` to render a PDF artifact when possible.
 - Added `scripts/markdown_to_html.py`, `scripts/render_pdf.py`, and `scripts/md_to_pdf.py` to version the PDF rendering pipeline inside the repo instead of relying only on workspace-root helper scripts.
 - The PDF renderer styles were substantially upgraded: lighter cover design, cleaner heading hierarchy, improved table spacing/borders, better code/callout/blockquote styling, and proper markdown list rendering for `ul/ol` blocks.
@@ -97,6 +100,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - The same Cambricon case also exposed an auditability gap: even when reports label confirmed facts, inference, and uncertainty, they may still fail to show which load-bearing claims are direct-evidence-backed versus inference-heavy, creating source-rich but weakly-auditable conclusions.
 - Repeated MiniMax PDF samples still showed a broken-export feeling in Chinese text texture, so the rendering layer needed another narrow CJK-spacing pass separate from research-discipline changes.
 - The skill itself needed to consume those additions through clearer routing, otherwise the new evals would remain documentation instead of affecting execution.
+- The routing surface had become too diffuse inside `SKILL.md`; a dedicated routing contract was needed so mature task families could be activated, reviewed, and audited more explicitly.
 
 ## 0.4.0 - 2026-03-31
 
