@@ -55,13 +55,21 @@ body {
   font-feature-settings: "kern" 1, "liga" 1;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  -webkit-text-size-adjust: 100%;
   hyphens: none;
   letter-spacing: 0;
   word-spacing: 0;
   word-break: normal;
+  overflow-wrap: normal;
   line-break: strict;
   text-spacing: none;
+  text-autospace: no-autospace;
   text-rendering: optimizeLegibility;
+}
+
+p, li, blockquote, td, th, h1, h2, h3, h4, .table-card-value, .exec-box, .callout {
+  word-break: keep-all;
+  overflow-wrap: normal;
 }
 
 /* ── Cover ── */
@@ -551,10 +559,12 @@ def normalize_text_for_pdf(text):
 
     # Stronger CJK spacing repair, especially for broken headings/metadata lines.
     text = re.sub(rf'([{cjk}])\s+([{cjk}])', r'\1\2', text)
-    text = re.sub(rf'([{cjk}])\s+([，。！？；：、）】》])', r'\1\2', text)
+    text = re.sub(rf'([{cjk}])\s+([，。！？；：、）】》％%])', r'\1\2', text)
     text = re.sub(rf'([（【《])\s+([{cjk}])', r'\1\2', text)
+    text = re.sub(rf'([{cjk}])\s+([·—…])\s*([{cjk}])', r'\1\2\3', text)
     text = re.sub(rf'([{cjk}])\s+([A-Za-z0-9])', r'\1 \2', text)
     text = re.sub(rf'([A-Za-z0-9])\s+([{cjk}])', r'\1 \2', text)
+    text = re.sub(r'(?m)^((?:[A-Z][A-Za-z\-]+\s*[:：]\s*)+)(.+)$', lambda m: re.sub(r'\s{2,}', ' ', m.group(1)).strip() + ' ' + m.group(2).strip(), text)
 
     # Normalize bullets/odd line starts that often confuse markdown parsers.
     text = re.sub(r'(?m)^[\x00-\x08\x0b\x0c\x0e-\x1f\u2022\u25aa\u25cf\uf0b7]\s*', '- ', text)
