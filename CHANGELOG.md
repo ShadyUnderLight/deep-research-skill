@@ -64,6 +64,8 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `references/source-traceability-and-claim-citation.md` now adds a mixed-evidence weighting section for tier / positioning memos so traceability does not stop at bibliography theater.
 - `checklists/source-traceability.md` now requires load-bearing positioning judgments to show direct-evidence-vs-inference weighting in the body and prevents self-tests / roadmap reporting / valuation signals from silently carrying primary-evidence weight.
 - `references/report-template.md` now adds a required load-bearing evidence note for mixed-evidence positioning judgments.
+- `scripts/markdown_to_html.py` now uses stricter CJK-friendly line-breaking defaults (`word-break: keep-all`, `overflow-wrap: normal`, `text-autospace: no-autospace`) for body text and comparison blocks to reduce the broken-export / torn-character feel in Chinese PDFs.
+- `scripts/markdown_to_html.py` text normalization now more aggressively repairs broken CJK spacing around punctuation and separators (including `%`, `·`, `—`, `…`) before markdown parsing.
 - `references/option-selection-and-shortlist-discipline.md` now includes provider-selection heuristics for current model/API family, stale-anchor avoidance, and mainland-access / data-residency / SLA-sensitive ranking.
 - `references/decision-report-template.md` now explicitly adapts its structure for option-selection and shortlist tasks, including ranked shortlist flow, aggregation visibility, and change-the-ranking conditions.
 - `references/decision-report-template.md` now includes a stronger provider-selection structure with decision architecture, current snapshot table, ranked shortlist, and deployment archetypes.
@@ -93,6 +95,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - A new multi-origin meetup-city paired case exposed a different constrained-choice execution gap: reports can know they are doing selection work yet still hide quantitative-role labeling, fairness measurement, shortlist-construction logic, and ranking-reversal conditions.
 - A new Cambricon first-tier positioning case exposed another ranking failure family: reports can define multiple dimensions and still collapse them into a polished but weakly-auditable prestige label, especially when global vs domestic scope, current vs roadmap products, and direct evidence vs inference are mixed.
 - The same Cambricon case also exposed an auditability gap: even when reports label confirmed facts, inference, and uncertainty, they may still fail to show which load-bearing claims are direct-evidence-backed versus inference-heavy, creating source-rich but weakly-auditable conclusions.
+- Repeated MiniMax PDF samples still showed a broken-export feeling in Chinese text texture, so the rendering layer needed another narrow CJK-spacing pass separate from research-discipline changes.
 - The skill itself needed to consume those additions through clearer routing, otherwise the new evals would remain documentation instead of affecting execution.
 
 ## 0.4.0 - 2026-03-31
