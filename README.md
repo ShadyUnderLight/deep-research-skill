@@ -19,6 +19,7 @@ Turn "search and summarize" into a stricter research workflow that:
 - `SKILL.md` — main workflow spine and orchestration rules
 - `ROUTING-MATRIX.md` — task-routing contract: primary routes, attached disciplines, audits, and visible artifact expectations
 - `ARCHITECTURE.md` — system-shape note explaining how workflow, routing, references, audits, evals, and scripts fit together
+- `SYSTEM-MAP.md` — family map showing how references, checklists, and evals cluster by problem area and where fixes should land first
 - `references/` — supporting playbooks and templates
 - `checklists/` — execution-time audit checklists (run before delivery)
 - `examples/` — example tasks and failure cases
