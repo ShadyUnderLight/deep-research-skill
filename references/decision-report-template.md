@@ -32,13 +32,21 @@ For option-selection / shortlist tasks, adapt the middle of the structure like t
 
 1. Executive summary
 2. What matters most
-3. Ranked shortlist or best-fit options
-4. Why the top option wins
-5. Why the next-best option remains credible
-6. Why the other options lose
-7. Risks, fallback options, and what would change the ranking
-8. Recommended next steps
-9. Sources
+3. Decision architecture
+4. Ranked shortlist or best-fit options
+5. Why the top option wins
+6. Why the next-best option remains credible
+7. Why the other options lose
+8. Risks, fallback options, and what would change the ranking
+9. Recommended next steps
+10. Sources
+
+In these option-selection / shortlist cases:
+- make the shortlist-construction logic visible rather than jumping straight to the final ranking
+- if multiple stakeholders, origins, or user groups are involved, show how fairness enters the recommendation instead of only saying that fairness matters
+- if quantitative scoring or composite comparison is used, label what is an observed fact, what is a proxy, what is an assumption, and what is a model output
+- do not let "runner-up" become just a second-place description; explain what weighting or scenario would make it first
+- express uncertainty as change-the-ranking or ranking-reversal conditions when possible, not only as generic caveats
 
 For market-outlook / industry-evolution / "未来12个月如何演化" tasks, prefer this stronger structure:
 

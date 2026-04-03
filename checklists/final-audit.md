@@ -52,6 +52,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] bare "预计" without source = fail; go back and add "[据公司指引/据分析师/据媒体]预计"
 - [ ] exact figures are used when source provides them; "约" only when source itself rounds
 - [ ] quantitative outlook numbers are labeled as observed / inferred / scenario assumption / illustrative calculation when the distinction matters
+- [ ] for constrained-choice / shortlist reports that use composite scoring, important quantitative inputs are labeled as observed fact / proxy / assumption / model output when the distinction affects trust in the recommendation
 
 ## Market position and ranking claims
 

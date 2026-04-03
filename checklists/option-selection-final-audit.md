@@ -31,6 +31,9 @@ Run this checklist before delivery.
 - [ ] the aggregation logic is visible when multiple people, teams, or regions are involved
 - [ ] the report states whether it is optimizing for average outcome, fairness, worst-case burden, weighted priority user, or robustness
 - [ ] subgroup views are shown when one average would hide an important outlier or penalty
+- [ ] if quantitative or composite scoring is used, the report distinguishes observed facts, proxies, assumptions, and model outputs rather than presenting them as one evidence layer
+- [ ] if fairness is load-bearing, the report makes clear whether unfairness is being measured by worst-off participant, dispersion/variance, hidden subgroup penalties, or another explicit rule
+- [ ] hidden operational burden layers (for example transfer burden, cross-border friction, checkpoint/visa hassle, fragile first/last-mile routing) are surfaced when they materially affect the ranking
 
 ## Provider / vendor current-state gate
 
