@@ -584,6 +584,9 @@ def normalize_text_for_pdf(text):
             in_table = False
             continue
 
+        # Undo accidental list prefixes before headings/tables (e.g. "- | ...", "- ## ...").
+        stripped = re.sub(r'^[-*+]\s+(?=(?:#{1,6}\s|\|))', '', stripped)
+
         # Normalize ATX headings even if they have extra spacing after #.
         heading_match = re.match(r'^(#{1,6})\s*(.+?)\s*$', stripped)
         if heading_match:
@@ -901,18 +904,43 @@ def style_generated_html(html):
 
 def repair_markdown_tables(md_text):
     """Repair common LLM-produced markdown table failures before parsing."""
+    def normalize_table_candidate(line):
+        line = line.strip()
+        line = line.replace('｜', '|')
+        line = re.sub(r'^[-*+]\s+(?=\|)', '', line)
+        return line
+
+    def parse_cells(row):
+        return [c.strip() for c in row.strip('|').split('|')]
+
+    def is_separator_row(row):
+        cells = parse_cells(row)
+        if not cells:
+            return False
+        for cell in cells:
+            token = re.sub(r'\s+', '', cell)
+            if not token:
+                continue
+            if not re.fullmatch(r':?-+:?', token):
+                return False
+        return True
+
+    def is_bullet_placeholder(value):
+        token = value.strip().lower()
+        return token in {'', '-', '*', '+', '•', '●', '▪', '◦'}
+
     lines = md_text.split('\n')
     repaired = []
     i = 0
     while i < len(lines):
         line = lines[i]
-        stripped = line.strip()
+        stripped = normalize_table_candidate(line)
 
         if '|' in stripped and stripped.count('|') >= 2:
             group = [stripped]
             j = i + 1
             while j < len(lines):
-                nxt = lines[j].strip()
+                nxt = normalize_table_candidate(lines[j])
                 if nxt and '|' in nxt and nxt.count('|') >= 2:
                     group.append(nxt)
                     j += 1
@@ -920,18 +948,25 @@ def repair_markdown_tables(md_text):
                 break
 
             if len(group) >= 2:
-                first_cells = [c.strip() for c in group[0].strip('|').split('|')]
-                second = group[1].replace(' ', '')
-                is_sep = set(second) <= {'|', '-', ':'}
-                if not is_sep:
-                    sep = '| ' + ' | '.join(['---'] * len(first_cells)) + ' |'
-                    group.insert(1, sep)
+                parsed_rows = [parse_cells(row) for row in group]
+
+                if len(parsed_rows[0]) >= 2 and is_bullet_placeholder(parsed_rows[0][0]):
+                    first_col_values = [row[0] if row else '' for row in parsed_rows[2:]]
+                    second_header = parsed_rows[0][1].strip().lower()
+                    if (
+                        (first_col_values and all(is_bullet_placeholder(v) for v in first_col_values))
+                        or second_header in {'#', 'no', 'no.', '序号', '编号'}
+                    ):
+                        parsed_rows = [row[1:] if len(row) > 1 else [''] for row in parsed_rows]
+
+                first_cells = parsed_rows[0]
+                if not is_separator_row(group[1]):
+                    parsed_rows.insert(1, ['---'] * len(first_cells))
                 else:
-                    group[1] = '| ' + ' | '.join(['---'] * len(first_cells)) + ' |'
+                    parsed_rows[1] = ['---'] * len(first_cells)
 
                 normalized_group = []
-                for row in group:
-                    cells = [c.strip() for c in row.strip('|').split('|')]
+                for cells in parsed_rows:
                     if len(cells) < len(first_cells):
                         cells.extend([''] * (len(first_cells) - len(cells)))
                     elif len(cells) > len(first_cells):
