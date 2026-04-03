@@ -26,6 +26,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ### Changed
 - `scripts/markdown_to_html.py` table routing now keeps comparison-heavy blocks in compact tables (including anchor-column split sub-tables) instead of leaking toward vertical card-like degradation; it also strips internal render-hint text from final HTML.
+- `scripts/markdown_to_html.py` pre-parse table repair now strips accidental list-prefix injection before headings/table rows (e.g. `- ##` / `- | ...`), normalizes malformed separator rows, and removes stray leading bullet-placeholder columns (e.g. `| - | # | ...`) before markdown parsing.
 - `scripts/markdown_to_html.py` table sanitization now more aggressively removes placeholder headers/columns and URL-heavy split-off metadata columns when they reduce comparison readability.
 - PDF table CSS now improves pagination and scan quality for source/info tables: header rows are repeated as table headers across page breaks, row splitting is reduced, and long URLs use softer wrap behavior to avoid severe character fragmentation.
 - `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `scripts/md_to_pdf.py` to render a PDF artifact when possible.
