@@ -4,80 +4,61 @@ Decision-oriented deep research skill for OpenClaw-compatible agents.
 
 ## Goal
 
-Turn "search and summarize" into a stricter research workflow that:
+Turn “search and summarize” into a stricter research workflow that:
 
 - clarifies the real objective
 - classifies the task type
 - verifies current-state facts for fast-moving topics
 - compares sources by quality and recency
 - actively searches for counter-evidence
-- organizes important conclusions as claims
 - produces decision-oriented final reports
 
-## Current structure
+## Core files
 
-- `SKILL.md` — main workflow spine and orchestration rules
-- `ROUTING-MATRIX.md` — task-routing contract: primary routes, attached disciplines, audits, and visible artifact expectations
-- `ARCHITECTURE.md` — system-shape note explaining how workflow, routing, references, audits, evals, and scripts fit together
-- `SYSTEM-MAP.md` — family map showing how references, checklists, and evals cluster by problem area and where fixes should land first
-- `references/` — supporting playbooks and templates
-- `checklists/` — execution-time audit checklists (run before delivery)
+Start here:
+
+- `SKILL.md` — shared workflow spine and orchestration rules
+- `ROUTING-MATRIX.md` — primary routes, attached disciplines, audits, and visible artifact contracts
+- `ARCHITECTURE.md` — layered system view of the repo
+- `SYSTEM-MAP.md` — family map for references, checklists, evals, and intervention paths
+
+## Supporting directories
+
+- `references/` — reusable methods, discipline files, and report templates
+- `checklists/` — delivery-time audit gates
+- `evals/` — real-case evals, rubrics, distillation artifacts, and regression checks
+- `scripts/` — delivery/rendering helpers, especially for markdown → PDF output
 - `examples/` — example tasks and failure cases
-- `evals/` — lightweight regression/evaluation prompts, rubrics, and meta-evals
-- `references/failure-taxonomy.md` — recurring eval failure families and structural fix map
-- `references/comparative-distillation-method.md` — how to turn stronger paired reports into reusable rules and gates
-- `references/option-selection-and-shortlist-discipline.md` — general method for constrained choice, ranking, shortlist design, and provider-selection tasks under real constraints
-- `references/market-outlook-and-scenario-discipline.md` — routing and structure discipline for market-outlook / industry-evolution / future-12-month memo tasks
-- `checklists/option-selection-final-audit.md` — delivery gate for shortlist, ranking, constrained-choice outputs, provider-selection current-state checks, and market-entry shortlist / sequencing gates
-- `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for model/API supplier selection, current-state drift, and China-mainland deployment constraints
-- `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for market-outlook routing, scenario structure, and stakeholder-action discipline
-- `evals/sea-market-entry-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for market-entry routing, country-shortlist structure, sequencing, hard gates, and delivery-artifact leakage
-- `evals/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for multi-origin meetup-city choice, aggregation visibility, shortlist construction, fairness logic, and ranking-reversal conditions
-- `evals/cambricon-first-tier-positioning-case.md` — eval for first-tier / top-tier competitive-positioning discipline, scope-metric-timeframe gating, and prevention of dimension-collapse into prestige labels
-- `evals/cambricon-evidence-weighting-and-traceability-case.md` — eval for load-bearing claim traceability, mixed-evidence weighting, and prevention of source-rich but weakly-auditable positioning memos
 
-## Initial references included
+## How the repo fits together
 
-- `current-state-verification.md`
-- `counter-evidence.md`
-- `decision-report-template.md`
-- `claim-matrix.md`
-- `task-types.md`
-- `finance-date-discipline.md`
-- `source-quality.md`
-- `report-template.md`
-- `market-sizing-and-share-discipline.md`
-- `ranking-and-current-claims-discipline.md`
-- `research-depth-rubric.md`
-- `corporate-status-and-listing-state-discipline.md`
-- `source-traceability-and-claim-citation.md`
+The intended flow is:
 
-## Suggested next steps
+1. `SKILL.md` defines the workflow spine
+2. `ROUTING-MATRIX.md` selects the active route and attached disciplines
+3. `references/` provides reusable methods and templates
+4. `checklists/` verify that the final artifact is actually ready
+5. `evals/` capture real failures and improvement signals
+6. `scripts/` handle delivery artifacts such as PDF
 
-1. Run real tasks against the skill.
-2. Save failures in `examples/` or `evals/`.
-3. Tighten references based on observed mistakes.
-4. Continue refining `scripts/` only when repeated delivery artifacts or render failures justify it.
-5. Keep rendering/pipeline fixes split from research-discipline changes when they address different failure families.
+If you want the full layered explanation, read `ARCHITECTURE.md`.
+If you want the family/problem-area mapping, read `SYSTEM-MAP.md`.
 
-## Maintenance and traceability
+## How to evolve the repo
 
-This repo should be maintained like a real project rather than a loose prompt folder.
+Use real tasks and real failures.
 
-- Record meaningful changes in `CHANGELOG.md`.
-- Track likely next work in `ROADMAP.md`.
-- Use the GitHub issue templates for failures and feature requests.
-- Use the PR template for larger changes.
-- When fixing a real failure mode, add or update an eval whenever possible.
+- when a repeated task family needs clearer activation, strengthen `ROUTING-MATRIX.md`
+- when the task shape is right but the method is weak, improve `references/`
+- when the method exists but the final output still leaks failures, harden `checklists/`
+- when the failure is still unclear, add or refine `evals/`
+- when the content is right but the export is broken, fix `scripts/`
 
-## Good evaluation targets
+Prefer focused changes over grab-bag edits.
 
-- fast-moving products and model versions
-- vendor/tool selection
-- model/API supplier selection under deployment, compliance, and mainland-access constraints
-- market-entry / regional-expansion / country-prioritization memos under budget, localization, and compliance constraints
-- multi-origin meetup / city-selection / venue-selection memos where fairness, aggregation logic, and shortlist discipline matter
-- first-tier / top-tier / multidimensional competitive-positioning judgments
-- company diligence
-- technical feasibility
-- market hype vs reality
+## Maintenance
+
+- record meaningful behavior changes in `CHANGELOG.md`
+- track likely next work in `ROADMAP.md`
+- when fixing a real failure mode, add or update an eval whenever possible
+- keep rendering/pipeline fixes separate from research-discipline changes when they address different failure families
