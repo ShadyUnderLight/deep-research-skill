@@ -48,7 +48,7 @@ html {
 body {
   font-family: "PingFang SC", "Hiragino Sans GB", "STHeiti", "Heiti SC", "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif;
   font-size: 10.2pt;
-  line-height: 1.76;
+  line-height: 1.82;
   color: var(--color-text);
   margin: 0;
   padding: 0;
@@ -61,6 +61,7 @@ body {
   word-break: normal;
   line-break: strict;
   text-spacing: none;
+  text-rendering: optimizeLegibility;
 }
 
 /* ── Cover ── */
@@ -170,9 +171,13 @@ h4 {
 
 /* ── Paragraphs / text rhythm ── */
 p {
-  margin: 0 0 8pt;
+  margin: 0 0 9pt;
   orphans: 3;
   widows: 3;
+}
+
+p + p {
+  margin-top: 1pt;
 }
 
 strong { color: var(--color-title); }
@@ -180,12 +185,12 @@ a { color: var(--color-primary); text-decoration: none; }
 
 /* ── Lists ── */
 ul, ol {
-  margin: 6pt 0 12pt 1.35em;
+  margin: 7pt 0 13pt 1.35em;
   padding: 0;
 }
 
 li {
-  margin: 0 0 4pt;
+  margin: 0 0 5pt;
   padding-left: 1pt;
 }
 
@@ -422,11 +427,21 @@ pre code {
 blockquote {
   border-left: 3pt solid #93c5fd;
   background: #f8fafc;
-  padding: 7pt 11pt;
-  margin: 10pt 0;
+  padding: 9pt 11pt;
+  margin: 11pt 0 13pt;
   color: var(--color-subtitle);
   font-style: normal;
   border-radius: 0 6pt 6pt 0;
+}
+
+.decision-strip {
+  display: block;
+  margin: 10pt 0 14pt;
+  padding: 10pt 12pt;
+  border-radius: 8pt;
+  border: 1px solid #dbe4f0;
+  background: #f8fbff;
+  page-break-inside: avoid;
 }
 """
 
