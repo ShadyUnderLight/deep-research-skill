@@ -18,6 +18,8 @@ This file tracks likely next improvements and helps keep repo evolution intentio
 - Add more examples of good and bad outputs.
 - Improve task-type guidance for company, vendor-selection, technical-feasibility, and market-outlook research.
 - Continue separating rendering-layer PDF fixes from research-discipline commits so layout failures can be traced independently.
+- Validate whether recent CJK text-rhythm tweaks actually reduce the "broken export / OCR-like spacing" feel in Chinese-heavy PDFs before making larger visual changes.
+- Add one more real-case pass on market-entry memo information design so recommendation, hard gates, shortlist, and phased-entry blocks become easier to scan in PDF output.
 
 ### P3
 - Consider scripts for normalizing evidence and claim records only after the protocol is stable.
