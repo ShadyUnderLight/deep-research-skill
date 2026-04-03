@@ -267,6 +267,8 @@ When the task involves multiple origins or stakeholders, ask:
 - Is that penalty acceptable?
 - Is fairness more important than absolute efficiency?
 - Would a different option win if one origin/user had double weight?
+- Is there a hidden burden layer beyond headline time/cost, such as cross-border friction, transfers, visa or checkpoint burden, schedule fragility, or awkward first/last-mile logistics?
+- Should that hidden burden be modeled as a separate penalty or risk factor instead of being silently folded into one blended average?
 
 When the task involves practical planning, ask:
 
