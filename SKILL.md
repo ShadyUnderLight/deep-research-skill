@@ -94,6 +94,7 @@ At minimum, check for these trigger patterns:
 
 - **Listed company / public equity / valuation / investment memo** -> run listed-company discipline and require a current market snapshot before delivery
 - **Current products / latest model / current lineup / pricing / release cycle / rankings / market position** -> run current-state verification before broader analysis
+- **"First-tier" / "top-tier" / global-vs-domestic positioning / multidimensional competitive standing / whether company X really belongs in the top group** -> treat as a definition-sensitive constrained-judgment task; require explicit scope, metric, timeframe, dimension-level conclusions, and an overall-label gate before using tier language
 - **Model/API supplier selection / vendor shortlist / provider choice / platform choice under deployment constraints** -> treat as both a current-state-sensitive task and a constrained-choice task; require a current provider snapshot before ranking or recommendation
 - **Structured memo / investment case / comparative report / claim-labeled output** -> run source-traceability discipline
 - **Forecast / roadmap / guidance / consensus / target price / launch timing / "预计" style claims** -> run forward-looking-claims discipline
@@ -129,7 +130,7 @@ Read `references/finance-date-discipline.md` when the task involves company rese
 Read `checklists/listed-company-report.md` for listed-company research - applies the required fields gate before delivery.
 
 Read `references/market-sizing-and-share-discipline.md` when the task involves market size, TAM/SAM/SOM, market-share estimates, competitive-position sizing, or any numeric mapping from company data to broader market claims.
-Read `references/ranking-and-current-claims-discipline.md` when the task involves rankings, share rankings, category leadership, "No.1" claims, streak claims, current-position claims, or other time-sensitive comparative statements.
+Read `references/ranking-and-current-claims-discipline.md` when the task involves rankings, share rankings, category leadership, "No.1" claims, streak claims, current-position claims, first-tier / top-tier labels, multidimensional competitive positioning, or other time-sensitive comparative statements.
 Read `references/corporate-status-and-listing-state-discipline.md` when the task involves whether a company is private, filed, approved, registered, listed, trading, delisted, or otherwise in a changing capital-markets state.
 Read `references/source-traceability-and-claim-citation.md` when the task requires structured claims, investment memos, competitive analysis, or any output where readers need to audit which specific source supports which conclusion. Specifically required when the output includes CONFIRMED / LIKELY / UNCERTAIN labels.
 Run `checklists/source-traceability.md` before delivery if the output is a structured or investment-relevant memo.
@@ -418,6 +419,7 @@ Use these final trigger checks:
 - if this was a model/API supplier or provider-selection task, the output should visibly show a current provider snapshot and should treat accessibility / compliance / SLA / data-control constraints as part of ranking logic when relevant
 - if this was a market-entry / regional-expansion / country-prioritization task, the output should visibly show priority vs alternatives, a country shortlist, a distinction between regional hub vs first beachhead vs later expansion market when relevant, hard gates, and sequencing logic rather than a generic market overview
 - if this was a structured or claim-heavy memo, the output should visibly show source traceability in the body, not only in a source appendix
+- if this was a first-tier / top-tier / multidimensional positioning judgment, the output should visibly show scope, metric, timeframe, dimension-level conclusions, and the rule for when an overall label is allowed instead of collapsing everything into one vague tier tag
 - if this included forecasts, roadmap claims, estimates, or target prices, the output should visibly show forward-looking discipline
 - if this claimed broad global or full-landscape scope, the output should visibly show scope completeness or clearly state scope limits
 - if this was meant to support a decision, the output should visibly help the reader choose, prioritize, or decide what to verify next

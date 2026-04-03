@@ -23,6 +23,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
 - `evals/sea-market-entry-gpt-vs-minimax-comparative-distillation.md`
 - `evals/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md`
+- `evals/cambricon-first-tier-positioning-case.md`
 
 ### Changed
 - `scripts/markdown_to_html.py` table routing now keeps comparison-heavy blocks in compact tables (including anchor-column split sub-tables) instead of leaking toward vertical card-like degradation; it also strips internal render-hint text from final HTML.
@@ -54,6 +55,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `SKILL.md` final discipline now adds a visible-gate check and routes rule-execution failures to `evals/rule-activation-and-execution-discipline.md`.
 - `SKILL.md` final trigger checks now require provider-selection outputs to show current provider snapshot + accessibility/compliance/SLA/data-control constraints as ranking logic when relevant.
 - `SKILL.md` final trigger checks now also require market-entry outputs to show priority-vs-alternatives, country shortlist, hub vs beachhead vs later-expansion distinctions when relevant, hard gates, and sequencing logic.
+- `SKILL.md` now explicitly routes first-tier / top-tier / multidimensional competitive-positioning tasks as definition-sensitive constrained judgments rather than loose ranking language.
+- `references/ranking-and-current-claims-discipline.md` now adds multi-dimensional tiering discipline, dimension-collapse warnings, an overall-label gate, and stronger weighting guidance for direct evidence vs inference.
+- `references/decision-report-template.md` now includes a stronger structure for first-tier / top-tier / multidimensional positioning memos.
+- `checklists/final-audit.md` now adds first-tier / top-tier delivery gates so reports must show scope / metric / timeframe / dimension-level conclusions before any overall prestige label.
 - `references/option-selection-and-shortlist-discipline.md` now includes provider-selection heuristics for current model/API family, stale-anchor avoidance, and mainland-access / data-residency / SLA-sensitive ranking.
 - `references/decision-report-template.md` now explicitly adapts its structure for option-selection and shortlist tasks, including ranked shortlist flow, aggregation visibility, and change-the-ranking conditions.
 - `references/decision-report-template.md` now includes a stronger provider-selection structure with decision architecture, current snapshot table, ranked shortlist, and deployment archetypes.
@@ -81,6 +86,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - A new SEA market-entry paired case exposed another constrained-choice failure family: expansion memos can still drift into regional overviews unless the skill forces priority-vs-alternatives, country-shortlist logic, sequencing, and hard gates.
 - The GPT side of that SEA case also exposed a delivery-layer failure: citation / retrieval artifacts can leak into an otherwise strong memo, so final-delivery cleanliness must be treated as a hard gate rather than a cosmetic issue.
 - A new multi-origin meetup-city paired case exposed a different constrained-choice execution gap: reports can know they are doing selection work yet still hide quantitative-role labeling, fairness measurement, shortlist-construction logic, and ranking-reversal conditions.
+- A new Cambricon first-tier positioning case exposed another ranking failure family: reports can define multiple dimensions and still collapse them into a polished but weakly-auditable prestige label, especially when global vs domestic scope, current vs roadmap products, and direct evidence vs inference are mixed.
 - The skill itself needed to consume those additions through clearer routing, otherwise the new evals would remain documentation instead of affecting execution.
 
 ## 0.4.0 - 2026-03-31

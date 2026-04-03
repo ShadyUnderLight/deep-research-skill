@@ -74,6 +74,67 @@ Examples:
 
 If the evidence is weaker, soften the wording.
 
+## Multi-dimensional tiering discipline
+
+Claims like `global first tier`, `top-tier player`, or `belongs in the first group` are more fragile than ordinary ranking claims because they usually compress several dimensions into one prestige label.
+
+Before using tier language, make clear:
+
+- the exact scope (for example global cloud-training accelerators vs China domestic AI accelerators)
+- the timeframe (current in-production state vs roadmap / next generation)
+- the metric family (technical capability, product adoption / commercial traction, ecosystem strength, capital-markets or financing position)
+- whether the conclusion is dimension-specific or an overall composite judgment
+- what rule allows an overall label instead of separate dimension-level judgments
+
+If the report cannot make those points visible, do not use strong tier language.
+
+## Dimension-collapse warning
+
+Do not let reports do this move:
+
+- define multiple dimensions carefully
+- gather uneven evidence across them
+- then collapse them into one polished `first-tier` / `second-tier` label without stating the aggregation rule
+
+That produces confidence theater rather than auditable judgment.
+
+If one dimension is strong and another is weak, say so explicitly. A company may be:
+
+- first-tier in one geography but not globally
+- strong in technical capability but not yet first-tier in commercial traction
+- financially important or highly valued without being first-tier in product adoption
+
+These are different claims and should not be blended casually.
+
+## Overall-label gate
+
+Before assigning an overall tier label, ask:
+
+- Are the dimensions explicit?
+- Are the key dimensions comparable enough to combine?
+- Is the evidence quality reasonably balanced across dimensions?
+- Is the aggregation rule visible?
+- Would a skeptical reader understand why the company is in `tier 1` rather than `tier 2`?
+
+If the answer is no, keep the output at the dimension level and avoid a single overall tier label.
+
+## Direct evidence vs inference weighting
+
+Tier judgments often rely on mixed evidence types.
+
+Be especially careful when reports combine:
+
+- official current specs
+- company-reported financials
+- third-party market data
+- vendor self-tests or customer anecdotes
+- media reports about roadmap products
+- analyst or author inference
+
+Do not give these equal weight just because they appear in the same table.
+
+If a top-tier conclusion depends heavily on inferred performance ranges, media-reported positioning, or roadmap assumptions, downgrade certainty and keep the label conditional.
+
 ## Good phrasing patterns
 
 Prefer wording like:
