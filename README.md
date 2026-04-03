@@ -25,9 +25,10 @@ Turn "search and summarize" into a stricter research workflow that:
 - `references/comparative-distillation-method.md` — how to turn stronger paired reports into reusable rules and gates
 - `references/option-selection-and-shortlist-discipline.md` — general method for constrained choice, ranking, shortlist design, and provider-selection tasks under real constraints
 - `references/market-outlook-and-scenario-discipline.md` — routing and structure discipline for market-outlook / industry-evolution / future-12-month memo tasks
-- `checklists/option-selection-final-audit.md` — delivery gate for shortlist, ranking, constrained-choice outputs, and provider-selection current-state checks
+- `checklists/option-selection-final-audit.md` — delivery gate for shortlist, ranking, constrained-choice outputs, provider-selection current-state checks, and market-entry shortlist / sequencing gates
 - `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for model/API supplier selection, current-state drift, and China-mainland deployment constraints
 - `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for market-outlook routing, scenario structure, and stakeholder-action discipline
+- `evals/sea-market-entry-gpt-vs-minimax-comparative-distillation.md` — worked comparative-distillation case for market-entry routing, country-shortlist structure, sequencing, hard gates, and delivery-artifact leakage
 
 ## Initial references included
 
@@ -68,6 +69,7 @@ This repo should be maintained like a real project rather than a loose prompt fo
 - fast-moving products and model versions
 - vendor/tool selection
 - model/API supplier selection under deployment, compliance, and mainland-access constraints
+- market-entry / regional-expansion / country-prioritization memos under budget, localization, and compliance constraints
 - company diligence
 - technical feasibility
 - market hype vs reality

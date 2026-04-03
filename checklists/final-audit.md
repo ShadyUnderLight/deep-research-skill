@@ -41,6 +41,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] option-selection final audit was run for shortlist, ranking, or constrained-choice outputs
 - [ ] for model/API/provider selection tasks, a current provider snapshot was verified before ranking or recommendation
 - [ ] for China-mainland deployment decisions, accessibility, compliance, data residency, and SLA were treated as part of ranking logic when relevant
+- [ ] for market-entry / regional-expansion / country-prioritization tasks, priority relative to alternatives, country shortlist, hard gates, and sequencing logic are explicit rather than implied
+- [ ] for market-entry / regional-expansion / country-prioritization tasks, regional hub vs first beachhead vs later expansion market are separated when relevant
 - [ ] for market-outlook / industry-evolution tasks, a current market snapshot was verified before forward-looking sections
 - [ ] for market-outlook / industry-evolution tasks, drivers, blockers, scenarios, and stakeholder implications are explicit rather than implied
 
@@ -62,6 +64,11 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] when volume/scale growth is reported, profitability and cash flow signals are checked
 - [ ] if both positive (scale up) and negative (margin down) signals exist in the same period, they are presented together in one sentence or adjacent bullets — not separated in different sections
 - [ ] reader does not have to connect the dots themselves
+
+## Delivery cleanliness
+
+- [ ] no citation artifacts, retrieval syntax, placeholder entities, or rendering residues leak into the final report body
+- [ ] markdown / PDF delivery does not expose internal labels, raw template markers, or unfinished placeholders
 
 ## Quality bar
 

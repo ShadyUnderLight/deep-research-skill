@@ -292,6 +292,15 @@ When the task involves model/API provider selection, also ask:
 - Is the report comparing providers using a current snapshot, or using stale flagship anchors?
 - Is the output becoming a vendor encyclopedia instead of a ranked provider-choice memo?
 
+When the task involves market entry / regional expansion / country prioritization, also ask:
+
+- Is the real choice whether to enter now, delay, pilot, or sequence entry over phases?
+- What is the realistic alternative to this market or region, and is the report comparing against it explicitly?
+- Are regional hub, first revenue beachhead, and later expansion market being confused into one vague "priority market" label?
+- Is one visible comparison unit being used across candidate countries, or has the report drifted into free-form country notes?
+- Which hard gates would actually block entry: budget, data/deployment architecture, compliance readiness, channel readiness, language / localization readiness, or something else?
+- Does the report show why the top entry sequence wins and what would reverse that sequence?
+
 ---
 
 ## Output discipline

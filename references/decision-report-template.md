@@ -83,6 +83,31 @@ In these provider-selection cases, the report should explicitly show current-sta
 - current data-control / retention posture
 - current SLA / status / enterprise controls when decision-relevant
 
+For market-entry / regional-expansion / country-prioritization tasks, prefer this stronger structure:
+
+1. Executive summary
+2. What is the real decision?
+3. Recommendation
+4. Why now / why not now
+5. Hard gates
+6. Country shortlist with unified comparison unit
+7. Recommended sequencing
+8. Recommended entry archetypes
+9. Why the top option wins
+10. Why the runner-up remains credible
+11. Why the other options lose
+12. Risks / what changes the decision
+13. 0-12 month milestones or KPIs
+14. Sources
+
+In these market-entry cases:
+- do not let the report become a regional market overview with a recommendation attached at the end
+- explicitly separate regional hub, first revenue beachhead, and later expansion market when those roles differ
+- make priority relative to alternatives visible (for example domestic market vs SEA, or SEA vs other expansion regions)
+- show the few hard gates that could turn `go` into `not now` or `pilot only`
+- use one comparison unit across countries or candidate markets rather than free-form prose by country
+- if TAM / SAM / SOM, scenario models, or KPI plans are used, label observed numbers vs proxies vs assumptions vs planning-model outputs
+
 Do not give every option equal narrative weight if the user's real need is to choose.
 
 ## Executive summary
