@@ -100,6 +100,7 @@ At minimum, check for these trigger patterns:
 - **Market outlook / industry evolution / "未来12个月如何演化" / adoption trajectory / industry memo** -> treat as both a current-state-sensitive task and a decision-memo task; require a current market snapshot, explicit drivers/blockers, scenario structure, and stakeholder action guidance
 - **Global market / full landscape / industry-wide scope** -> explicitly test scope completeness across key geographies, segments, and regulatory regimes
 - **Recommendation / go-no-go / compare options / what should we do** -> optimize for decision utility, not just depth
+- **Market entry / regional expansion / "should we prioritize market X" / country-entry sequencing under limited budget** -> treat as both a constrained-choice task and a decision-memo task; require explicit priority vs alternatives, country shortlist, sequencing, hard gates, and entry-mode logic rather than a market overview
 
 If multiple triggers apply, route into all of them. Do not assume one checklist covers the others.
 
@@ -139,7 +140,9 @@ Read `evals/decision-utility-rubric.md` when the user needs a recommendation, pr
 Read `references/option-selection-and-shortlist-discipline.md` when the task is mainly about choosing among several plausible options under constraints (for example destination selection, vendor shortlist, office/venue choice, multi-origin meetup/location choice, or other comparison tasks where ranking and elimination matter more than background explanation).
 Run `checklists/option-selection-final-audit.md` before delivery for shortlist, ranking, destination-selection, or other constrained-choice outputs.
 For model/API supplier or provider-selection tasks, explicitly verify a current provider snapshot before broader comparison: current primary model/API family, current pricing unit, current support-region / mainland accessibility reality, current data-control posture, and current SLA / status disclosures when decision-relevant.
+For market-entry / regional-expansion / country-prioritization tasks, explicitly verify the decision architecture before broader analysis: what the real choice is, what the priority is relative to alternatives, whether the question is about a regional hub vs first revenue beachhead vs later expansion market, what hard gates exist, and what sequencing logic would make the recommendation operational.
 Use `references/decision-report-template.md` with the provider-selection structure when the task is choosing a core model/API supplier under real deployment constraints.
+Use `references/decision-report-template.md` with the market-entry structure when the task is deciding whether to prioritize a country or region under real budget, compliance, and localization constraints.
 Read `references/comparative-distillation-method.md` when comparing paired reports (for example GPT vs Minimax on the same topic) to distill reusable skill improvements rather than just judge which output is better.
 Use `evals/comparative-distillation-template.md` to record each paired-report comparison so every extracted pattern ends in `NEW_RULE`, `CHECKLIST_HARDENING`, `TEMPLATE_CHANGE`, or `NO_ACTION`.
 
@@ -413,6 +416,7 @@ Use these final trigger checks:
 - if this was a listed-company or investment-style report, the output should visibly show listed-company discipline
 - if this was a current-state-sensitive task, the output should visibly show a current snapshot or freshness verification
 - if this was a model/API supplier or provider-selection task, the output should visibly show a current provider snapshot and should treat accessibility / compliance / SLA / data-control constraints as part of ranking logic when relevant
+- if this was a market-entry / regional-expansion / country-prioritization task, the output should visibly show priority vs alternatives, a country shortlist, a distinction between regional hub vs first beachhead vs later expansion market when relevant, hard gates, and sequencing logic rather than a generic market overview
 - if this was a structured or claim-heavy memo, the output should visibly show source traceability in the body, not only in a source appendix
 - if this included forecasts, roadmap claims, estimates, or target prices, the output should visibly show forward-looking discipline
 - if this claimed broad global or full-landscape scope, the output should visibly show scope completeness or clearly state scope limits

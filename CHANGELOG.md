@@ -21,6 +21,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/comparative-distillation-template.md`
 - `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
 - `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
+- `evals/sea-market-entry-gpt-vs-minimax-comparative-distillation.md`
 
 ### Changed
 - `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `scripts/md_to_pdf.py` to render a PDF artifact when possible.
@@ -44,13 +45,18 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `SKILL.md` now includes explicit trigger routing for listed-company, current-state, source-traceability, forward-looking, global-scope, decision-utility, and option-selection/shortlist cases instead of leaving those gates implicit.
 - `SKILL.md` now routes paired-report comparison work to the comparative-distillation method and template so stronger-vs-weaker report comparisons produce explicit action types.
 - `SKILL.md` now explicitly treats model/API supplier selection as both a current-state-sensitive task and a constrained-choice task, requiring a current provider snapshot before ranking.
+- `SKILL.md` now explicitly routes market-entry / regional-expansion / country-prioritization tasks as constrained-choice + decision-memo work, requiring priority-vs-alternatives, country shortlist, sequencing, and hard-gate logic rather than a market overview.
 - `SKILL.md` final discipline now adds a visible-gate check and routes rule-execution failures to `evals/rule-activation-and-execution-discipline.md`.
 - `SKILL.md` final trigger checks now require provider-selection outputs to show current provider snapshot + accessibility/compliance/SLA/data-control constraints as ranking logic when relevant.
+- `SKILL.md` final trigger checks now also require market-entry outputs to show priority-vs-alternatives, country shortlist, hub vs beachhead vs later-expansion distinctions when relevant, hard gates, and sequencing logic.
 - `references/option-selection-and-shortlist-discipline.md` now includes provider-selection heuristics for current model/API family, stale-anchor avoidance, and mainland-access / data-residency / SLA-sensitive ranking.
 - `references/decision-report-template.md` now explicitly adapts its structure for option-selection and shortlist tasks, including ranked shortlist flow, aggregation visibility, and change-the-ranking conditions.
 - `references/decision-report-template.md` now includes a stronger provider-selection structure with decision architecture, current snapshot table, ranked shortlist, and deployment archetypes.
+- `references/decision-report-template.md` now includes a dedicated market-entry structure with recommendation, why-now/why-not-now, hard gates, country shortlist, sequencing, entry archetypes, and 0-12 month milestones/KPIs.
 - `checklists/option-selection-final-audit.md` now includes a provider/vendor current-state gate covering current model family, pricing units, accessibility, data residency, and SLA/status checks.
+- `checklists/option-selection-final-audit.md` now includes a market-entry / regional-expansion gate for explicit go/not-now/phased-entry calls, country comparison units, hard gates, and sequencing-change conditions.
 - `checklists/final-audit.md` now requires a provider snapshot and ranking-level treatment of accessibility/compliance/data-residency/SLA for model/API supplier decisions.
+- `checklists/final-audit.md` now adds market-entry gates for priority-vs-alternatives, shortlist/sequencing logic, and hub-vs-beachhead separation when relevant.
 - `checklists/final-audit.md` now adds market-outlook gates for current market snapshot, drivers/blockers/scenarios/stakeholder implications, and explicit labeling of outlook numbers when evidence role matters.
 
 ### Why
@@ -63,6 +69,8 @@ This file is intentionally lightweight. Use concise entries that explain:
 - Comparative distillation needed to become a repeatable method rather than an ad-hoc discussion, so the repo now includes both a method file and a working template for paired-report comparisons.
 - The weekend destination comparison case exposed a broader missing-rule area: the repo needed general guidance for constrained choice, shortlist construction, multi-origin aggregation, and choice architecture beyond travel-specific prompting.
 - A new model/API supplier selection case exposed a more specific failure family inside constrained-choice work: stale current-state anchors, provider-encyclopedia drift, and failure to treat mainland accessibility / compliance / SLA as ranking variables.
+- A new SEA market-entry paired case exposed another constrained-choice failure family: expansion memos can still drift into regional overviews unless the skill forces priority-vs-alternatives, country-shortlist logic, sequencing, and hard gates.
+- The GPT side of that SEA case also exposed a delivery-layer failure: citation / retrieval artifacts can leak into an otherwise strong memo, so final-delivery cleanliness must be treated as a hard gate rather than a cosmetic issue.
 - The skill itself needed to consume those additions through clearer routing, otherwise the new evals would remain documentation instead of affecting execution.
 
 ## 0.4.0 - 2026-03-31

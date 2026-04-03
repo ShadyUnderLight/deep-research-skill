@@ -39,6 +39,15 @@ Run this checklist before delivery.
 - [ ] support regions, mainland-China accessibility, signing/payment reality, data residency, and SLA/status are treated as ranking variables when relevant, not buried as footnotes
 - [ ] if a key provider fact could not be confirmed, it is marked unknown rather than filled with likely-but-stale prior knowledge
 
+## Market-entry / regional-expansion gate
+
+- [ ] for market-entry, country-prioritization, or regional-expansion tasks, the report states whether the recommendation is `go`, `not now`, `pilot only`, or phased entry
+- [ ] the report makes priority relative to realistic alternatives visible rather than assuming the target market should be first by default
+- [ ] the report distinguishes regional hub, first revenue beachhead, and later expansion market when those roles differ
+- [ ] countries/markets are compared using one visible comparison unit rather than free-form country notes
+- [ ] hard gates (budget, product architecture, compliance readiness, channel readiness, localization burden, or similar) are explicit
+- [ ] the report names what would change the entry sequencing or turn `go` into `not now`
+
 ## Shortlist structure
 
 - [ ] the shortlist or ranking appears before long option-by-option detail
