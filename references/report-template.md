@@ -92,13 +92,27 @@ A good report should let the reader quickly answer:
 
 ## Required evidence-tier legend
 
-At the top of every report, include a brief legend defining evidence confidence levels. Use this format:
+At the top of every report, include a brief legend defining evidence confidence levels.
+
+If the final report is written in Chinese, keep the legend in Chinese too. Do not mix a Chinese body with accidental English evidence buckets unless bilingual output was explicitly requested.
+
+Preferred Chinese format:
 
 ```
 证据分级：
-[CONF] = 来自监管披露/年报/官方发布
-[LIKELY] = 来自权威机构或媒体（可能为二手）
-[UNCERTAIN] = 行业认知缺乏统一口径或无法验证
+[已确认事实] = 来自监管披露 / 年报 / 官方发布
+[推断] = 来自权威机构或媒体，或基于多项证据的合理归纳
+[未知事项] = 行业缺乏统一口径，或公开信息暂时无法验证
+```
+
+If the report also needs number-role labeling, add a second compact legend such as:
+
+```
+数字角色：
+[观察值] = 公开披露或原始材料直接给出的数值
+[代理指标] = 因主指标缺失而使用的替代观察量
+[假设] = 用于推演的前提条件，并非已观测事实
+[规划模型输出] = 基于假设或代理指标计算出的结果
 ```
 
 This makes your labeling system interpretable to the reader and enforces discipline on the model side.
@@ -210,5 +224,8 @@ When building tables with multi-dimensional comparisons (e.g., product category 
 - **Use `<br>` (line break) within a cell when a single attribute has multiple sub-points.** For example, a cell for "发热原理" that needs to list "燃烧烟草 (600-900°C) + 雾化器 + 口腔黏膜" should be written in markdown as one cell using `<br>`: `燃烧烟草 (600-900°C)<br>雾化器加热<br>口腔黏膜吸收`.
 - **Avoid using `|` inside cell content** — if a cell requires listing multiple items separated by pipes, use commas or `<br>` instead.
 - **Wide tables with many columns are hard to read in PDF.** Consider splitting a wide table into two separate tables grouped by theme (e.g., one table for product attributes, another for commercial metrics).
+
+When in doubt: write for the reader who will skim the table, not for the analyst who already knows the data.
+ct attributes, another for commercial metrics).
 
 When in doubt: write for the reader who will skim the table, not for the analyst who already knows the data.

@@ -62,6 +62,7 @@ Apply these when the route requires them:
 - forward-looking claims discipline
 - quantitative role labeling
 - delivery cleanliness
+- target-language coherence for final delivery when the report is user-facing
 
 Do not assume these are implied. If the route needs them, make them visible in the final output.
 
@@ -258,6 +259,13 @@ A strong final answer should:
 - answer the actual question, not just summarize the topic
 - show how the conclusion was formed
 - separate fact from inference
+- surface counter-evidence
+- state confidence clearly
+- explain what is still missing
+- help the user decide what to do next
+
+If confidence is limited, say exactly why.
+
 - surface counter-evidence
 - state confidence clearly
 - explain what is still missing

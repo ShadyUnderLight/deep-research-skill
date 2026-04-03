@@ -295,7 +295,8 @@ Preserves the report’s intended structure and readability when converted into 
 ### First place to change
 - scripts/rendering layer if the report logic is sound but the export is broken
 - final-audit gates if known delivery failures are not being caught before export
-- templates only when the information design itself is unsuitable, not merely the renderer
+- templates when the information design or target-language labeling contract is unclear
+- routing/workflow layer when target-language coherence should have been a visible delivery discipline but did not activate
 
 ---
 
