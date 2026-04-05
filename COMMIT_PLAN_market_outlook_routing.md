@@ -11,8 +11,8 @@ Prefer a focused commit containing only these files:
 - `CHANGELOG.md`
 - `ROADMAP.md`
 - `checklists/final-audit.md`
-- `evals/templates/decision-utility-rubric.md`
-- `evals/comparative-distillation/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
+- `evals/decision-utility-rubric.md`
+- `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
 - `references/decision-report-template.md`
 - `references/report-template.md`
 - `references/market-outlook-and-scenario-discipline.md`
@@ -28,8 +28,8 @@ git add \
   CHANGELOG.md \
   ROADMAP.md \
   checklists/final-audit.md \
-  evals/templates/decision-utility-rubric.md \
-  evals/comparative-distillation/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md \
+  evals/decision-utility-rubric.md \
+  evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md \
   references/decision-report-template.md \
   references/report-template.md \
   references/market-outlook-and-scenario-discipline.md \

@@ -56,11 +56,11 @@ This change turns that failure into explicit routing, template, checklist, and e
     - current market snapshot
     - explicit drivers/blockers/scenarios/stakeholder implications
     - labeling outlook numbers as observed / inferred / scenario assumption / illustrative calculation
-- `evals/templates/decision-utility-rubric.md`
+- `evals/decision-utility-rubric.md`
   - now checks drivers-vs-blockers separation, market scenario usefulness, and stakeholder-specific next actions more explicitly
 
 ### Eval artifacts / traceability
-- `evals/comparative-distillation/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
+- `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
   - adds a worked comparative-distillation case for market-outlook routing and scenario discipline
 - `README.md`
   - now exposes market-outlook routing as a first-class capability
