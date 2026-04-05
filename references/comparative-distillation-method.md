@@ -286,9 +286,9 @@ Adding new rules but not deciding when they should trigger.
 Comparative distillation should connect to the repo's broader quality system:
 
 - `references/failure-taxonomy.md` — classify the gap into a failure family
-- `evals/rule-activation-and-execution-discipline.md` — decide if the problem is missing rule, missing trigger, or execution failure
-- `evals/decision-utility-rubric.md` — use when the stronger report is better mainly because it is more decision-useful
-- `evals/global-market-scope-completeness-case.md` — use when the gap is really about global coverage geometry
+- `evals/meta/rule-activation-and-execution-discipline.md` — decide if the problem is missing rule, missing trigger, or execution failure
+- `evals/templates/decision-utility-rubric.md` — use when the stronger report is better mainly because it is more decision-useful
+- `evals/cases/global-market-scope-completeness-case.md` — use when the gap is really about global coverage geometry
 - `checklists/*.md` — use when the pattern should become a hard delivery gate
 - `references/report-template.md` — use when the pattern is structural or readability-related
 

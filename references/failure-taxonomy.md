@@ -46,12 +46,12 @@ This is one of the highest-severity failure families because it directly breaks 
 - reported financials, market snapshot, and estimates blended into one narrative
 
 ### Existing evals in this family
-- `evals/freshness-xiaomi-case.md`
-- `evals/apple-product-and-valuation-case.md`
-- `evals/moore-threads-listing-status-case.md`
-- `evals/ranking-and-current-claims-xiaomi-update-case.md`
-- `evals/finance-and-market-share-cambricon-case.md` (partial overlap)
-- `evals/minimax-company-report-case.md` (partial overlap)
+- `evals/cases/freshness-xiaomi-case.md`
+- `evals/cases/apple-product-and-valuation-case.md`
+- `evals/cases/moore-threads-listing-status-case.md`
+- `evals/cases/ranking-and-current-claims-xiaomi-update-case.md`
+- `evals/cases/finance-and-market-share-cambricon-case.md` (partial overlap)
+- `evals/cases/minimax-company-report-case.md` (partial overlap)
 
 ### Existing rule/checklist coverage
 - `references/current-state-verification.md`
@@ -89,10 +89,10 @@ Once research becomes decision-relevant, bibliography-only sourcing is not enoug
 - current-state claim supported only by stale secondary reporting
 
 ### Existing evals in this family
-- `evals/source-traceability-moore-threads-case.md`
-- `evals/apple-product-roadmap-and-investment-case.md`
-- `evals/minimax-company-report-case.md`
-- `evals/byd-gpt-vs-minimax-comparative-distillation.md` (distillation signal)
+- `evals/cases/source-traceability-moore-threads-case.md`
+- `evals/cases/apple-product-roadmap-and-investment-case.md`
+- `evals/cases/minimax-company-report-case.md`
+- `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md` (distillation signal)
 
 ### Existing rule/checklist coverage
 - `references/source-traceability-and-claim-citation.md`
@@ -130,10 +130,10 @@ Forward-looking claims are easy to write and easy to overstate. They create fals
 - uncertain forward statement not visibly labeled as uncertain
 
 ### Existing evals in this family
-- `evals/apple-product-roadmap-and-investment-case.md`
-- `evals/byd-report-format-discipline-case.md`
-- `evals/hnb-industry-report-table-design-case.md`
-- `evals/byd-gpt-vs-minimax-comparative-distillation.md` (distillation signal)
+- `evals/cases/apple-product-roadmap-and-investment-case.md`
+- `evals/cases/byd-report-format-discipline-case.md`
+- `evals/cases/hnb-industry-report-table-design-case.md`
+- `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md` (distillation signal)
 
 ### Existing rule/checklist coverage
 - `checklists/forward-looking-claims.md`
@@ -168,9 +168,9 @@ This family does not always create factual errors, but it reduces report usabili
 - report has headings and formatting, but not effective reading flow
 
 ### Existing evals in this family
-- `evals/byd-report-format-discipline-case.md`
-- `evals/hnb-industry-report-table-design-case.md`
-- `evals/minimax-company-report-case.md` (partial overlap due to structural incompleteness)
+- `evals/cases/byd-report-format-discipline-case.md`
+- `evals/cases/hnb-industry-report-table-design-case.md`
+- `evals/cases/minimax-company-report-case.md` (partial overlap due to structural incompleteness)
 
 ### Existing rule/checklist coverage
 - `references/report-template.md`
@@ -204,9 +204,9 @@ This is the most subtle failure family. It produces reports that feel good on fi
 - report answers "what exists" better than "what matters most"
 
 ### Existing evals in this family
-- `evals/industry-landscape-depth-case.md`
-- `evals/depth-rubric.md`
-- `evals/hnb-industry-report-table-design-case.md` (partial overlap)
+- `evals/cases/industry-landscape-depth-case.md`
+- `evals/templates/depth-rubric.md`
+- `evals/cases/hnb-industry-report-table-design-case.md` (partial overlap)
 
 ### Existing rule/checklist coverage
 - `references/research-depth-rubric.md`
@@ -241,8 +241,8 @@ A scope miss can distort the final conclusion even when individual facts are cor
 - value-chain report that names all layers but skips the highest-friction or highest-value segment
 
 ### Existing evals in this family
-- `evals/hnb-industry-report-table-design-case.md`
-- `evals/industry-landscape-depth-case.md` (partial overlap)
+- `evals/cases/hnb-industry-report-table-design-case.md`
+- `evals/cases/industry-landscape-depth-case.md` (partial overlap)
 
 ### Existing rule/checklist coverage
 - partially covered by `references/current-state-verification.md`
@@ -273,9 +273,9 @@ This is different from a missing-rule problem.
 - bullet discipline known, but exec summary still collapses into dense walls
 
 ### Existing eval signals
-- `evals/minimax-company-report-case.md`
-- `evals/byd-report-format-discipline-case.md`
-- `evals/apple-product-roadmap-and-investment-case.md`
+- `evals/cases/minimax-company-report-case.md`
+- `evals/cases/byd-report-format-discipline-case.md`
+- `evals/cases/apple-product-roadmap-and-investment-case.md`
 
 ### Structural implication
 The next phase of repo evolution should focus more on:
