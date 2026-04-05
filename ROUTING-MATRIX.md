@@ -93,7 +93,7 @@ Use when the task is mainly about:
 ### Attach
 - current-state verification
 - source traceability
-- quantitative role labeling when TAM/SAM/SOM, proxies, or scoring matter
+- quantitative role labeling when market size, payback, cost assumptions, sequencing thresholds, or scenario-style numbers materially affect the recommendation
 
 ### Audit
 - `checklists/option-selection-final-audit.md`
@@ -192,6 +192,7 @@ Use when the task is mainly about:
 - current-state verification
 - source traceability
 - evidence-weight separation
+- quantitative role labeling when numbers materially affect the positioning judgment
 
 ### Audit
 - `checklists/source-traceability.md`
@@ -376,12 +377,6 @@ Before delivery, ask:
 
 1. did the correct route fire?
 2. did the required secondary disciplines attach?
-3. is the route visibly executed in the final artifact?
-
-A route only counts if the final report visibly satisfies its artifact contract.
-
-If the route is implicit in reasoning but not visible in delivery, treat that as an execution failure.
-dary disciplines attach?
 3. is the route visibly executed in the final artifact?
 
 A route only counts if the final report visibly satisfies its artifact contract.

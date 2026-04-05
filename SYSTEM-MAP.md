@@ -170,6 +170,55 @@ Makes load-bearing claims auditable and separates primary evidence from inferenc
 
 ---
 
+## Family D2 — Quantitative role clarity
+
+### Purpose
+Prevents proxies, assumptions, and model outputs from masquerading as observed facts.
+
+### Primary files
+- `references/quantitative-role-labeling.md`
+- `checklists/quantitative-role-audit.md`
+- `references/decision-report-template.md`
+- `checklists/final-audit.md`
+
+### Typical failure signs
+- precise-looking but unlabeled numbers
+- model outputs written as facts
+- composite scoring with invisible epistemic roles
+- recommendation logic quietly resting on assumptions or proxies
+
+### First place to change
+- route attachment when numeric burden is not activating the discipline
+- shared discipline docs when role definitions are unclear
+- templates when reports do not surface number roles visibly
+- audit layer when the distinction exists in theory but not in delivery
+
+---
+
+## Family D3 — Process artifacts and audit binding
+
+### Purpose
+Makes route, evidence, uncertainty, and counter-evidence handling more recoverable than final prose alone.
+
+### Primary files
+- `references/research-pack-contract.md`
+- `schemas/research-pack.md`
+- `checklists/final-audit.md`
+- `examples/research-pack-example.md`
+
+### Typical failure signs
+- final report sounds rigorous but cannot be reconstructed
+- route is only implicit
+- uncertainty is rhetorical rather than structural
+- audit depends entirely on prose interpretation
+
+### First place to change
+- process-artifact contract when the internal structure is too thin
+- final-audit expectations when the structure exists but is not being checked
+- examples when the contract exists but still feels too abstract to use
+
+---
+
 ## Family E — Forward-looking and estimate discipline
 
 ### Purpose

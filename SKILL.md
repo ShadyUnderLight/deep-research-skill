@@ -27,6 +27,8 @@ Never present inference as confirmed fact.
 4. define evidence standards and stop conditions
 5. collect and compare sources
 6. run a mid-research review
+   - read `references/mid-research-review.md` once the first meaningful evidence batch is in hand
+   - the review must visibly confirm, narrow, redirect, or stop the research path
 7. search for counter-evidence
 8. synthesize into a decision-oriented report
 
@@ -259,13 +261,6 @@ A strong final answer should:
 - answer the actual question, not just summarize the topic
 - show how the conclusion was formed
 - separate fact from inference
-- surface counter-evidence
-- state confidence clearly
-- explain what is still missing
-- help the user decide what to do next
-
-If confidence is limited, say exactly why.
-
 - surface counter-evidence
 - state confidence clearly
 - explain what is still missing

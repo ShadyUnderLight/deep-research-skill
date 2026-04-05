@@ -17,6 +17,10 @@ In those cases, the report is not just a recommendation memo — it must show th
 
 ## Recommended structure
 
+### Load-bearing numbers and their role
+
+If recommendation, ranking, sequencing, or valuation materially depends on numbers, show which are observed metrics, proxies, assumptions, or model outputs.
+
 1. Executive summary
 2. What matters most
 3. Bottom-line judgment or recommendation
