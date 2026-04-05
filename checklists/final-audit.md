@@ -28,6 +28,15 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] confidence levels match evidence quality
 - [ ] the report does not claim more certainty than the evidence supports
 
+## Process-artifact sufficiency
+
+- [ ] there is enough process structure to explain how the final answer was formed
+- [ ] the selected route is recoverable from the process artifact rather than only the final prose
+- [ ] load-bearing claims are traceable through at least a minimal claim and source structure
+- [ ] meaningful uncertainties are recorded rather than only implied
+- [ ] where the task warrants it, counter-evidence handling is recoverable from the process artifact
+- [ ] required audits are named and statused rather than merely assumed
+
 ## Completeness
 
 - [ ] the report does not leave a strong impression while having weak substance
@@ -79,8 +88,5 @@ This is the last gate before the report goes to the user. If any item fails, rev
 ## Quality bar
 
 A report that fails this checklist is not ready for delivery, regardless of length or apparent polish.
-tput does not show CJK spacing degradation or broken-export text rhythm severe enough to reduce professional readability
 
-## Quality bar
-
-A report that fails this checklist is not ready for delivery, regardless of length or apparent polish.
+CJK spacing degradation or broken-export text rhythm should not be severe enough to reduce professional readability.

@@ -11,6 +11,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `references/research-pack-contract.md`
+- `schemas/research-pack.md`
+- `examples/research-pack-example.md`
+- `scripts/validate_research_pack.py`
 - `ARCHITECTURE.md`
 - `SYSTEM-MAP.md`
 - `ROUTING-MATRIX.md`
@@ -30,6 +34,9 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cambricon-evidence-weighting-and-traceability-case.md`
 
 ### Changed
+- Introduced a minimal Research Pack contract as lightweight process-artifact support for auditability.
+- Clarified that final delivery alone is not always sufficient for route-heavy or high-burden tasks.
+- Added a compact bridge between workflow discipline and future execution-layer binding.
 - `scripts/markdown_to_html.py` table routing now keeps comparison-heavy blocks in compact tables (including anchor-column split sub-tables) instead of leaking toward vertical card-like degradation; it also strips internal render-hint text from final HTML.
 - `scripts/markdown_to_html.py` pre-parse table repair now strips accidental list-prefix injection before headings/table rows (e.g. `- ##` / `- | ...`), normalizes malformed separator rows, and removes stray leading bullet-placeholder columns (e.g. `| - | # | ...`) before markdown parsing.
 - `scripts/markdown_to_html.py` table sanitization now more aggressively removes placeholder headers/columns and URL-heavy split-off metadata columns when they reduce comparison readability.
