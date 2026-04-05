@@ -28,6 +28,10 @@ These layers are intentionally separate.
 - the eval layer captures real failures, regressions, and distillation artifacts
 - the delivery layer turns reports into user-facing artifacts such as PDF
 
+Minimal process artifacts can serve as a bridge between workflow discipline and final-audit enforcement without requiring a full execution framework.
+
+They help make route, evidence, uncertainty, and counter-evidence handling more recoverable than final prose alone.
+
 ---
 
 ## Layer 1: workflow spine

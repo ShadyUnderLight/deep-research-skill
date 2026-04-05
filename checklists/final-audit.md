@@ -37,6 +37,15 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] if alternatives remain credible, the report explains why they did not win now
 - [ ] there is visible evidence that the research was narrowed, redirected, or stopped intentionally rather than merely exhausted
 
+## Process-artifact sufficiency
+
+- [ ] there is enough process structure to explain how the final answer was formed
+- [ ] the selected route is recoverable from the process artifact rather than only the final prose
+- [ ] load-bearing claims are traceable through at least a minimal claim and source structure
+- [ ] meaningful uncertainties are recorded rather than only implied
+- [ ] where the task warrants it, counter-evidence handling is recoverable from the process artifact
+- [ ] required audits are named and statused rather than merely assumed
+
 ## Completeness
 
 - [ ] the report does not leave a strong impression while having weak substance
