@@ -168,6 +168,31 @@ Makes load-bearing claims auditable and separates primary evidence from inferenc
 
 ---
 
+## Family D2 — Quantitative role clarity
+
+### Purpose
+Prevents proxies, assumptions, and model outputs from masquerading as observed facts.
+
+### Primary files
+- `references/quantitative-role-labeling.md`
+- `checklists/quantitative-role-audit.md`
+- `references/decision-report-template.md`
+- `checklists/final-audit.md`
+
+### Typical failure signs
+- precise-looking but unlabeled numbers
+- model outputs written as facts
+- composite scoring with invisible epistemic roles
+- recommendation logic quietly resting on assumptions or proxies
+
+### First place to change
+- route attachment when numeric burden is not activating the discipline
+- shared discipline docs when role definitions are unclear
+- templates when reports do not surface number roles visibly
+- audit layer when the distinction exists in theory but not in delivery
+
+---
+
 ## Family E — Forward-looking and estimate discipline
 
 ### Purpose

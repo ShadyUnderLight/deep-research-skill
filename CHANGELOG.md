@@ -11,6 +11,8 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `references/quantitative-role-labeling.md`
+- `checklists/quantitative-role-audit.md`
 - `ARCHITECTURE.md`
 - `SYSTEM-MAP.md`
 - `ROUTING-MATRIX.md`
@@ -30,6 +32,9 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cambricon-evidence-weighting-and-traceability-case.md`
 
 ### Changed
+- Separated quantitative role labeling into an explicit shared discipline for load-bearing numbers.
+- Added route-level attachment guidance where numeric claims materially shape recommendation, ranking, timing, valuation, or confidence.
+- Hardened report templates so modeled, assumed, and proxied numbers are less likely to read as confirmed facts.
 - `scripts/markdown_to_html.py` table routing now keeps comparison-heavy blocks in compact tables (including anchor-column split sub-tables) instead of leaking toward vertical card-like degradation; it also strips internal render-hint text from final HTML.
 - `scripts/markdown_to_html.py` pre-parse table repair now strips accidental list-prefix injection before headings/table rows (e.g. `- ##` / `- | ...`), normalizes malformed separator rows, and removes stray leading bullet-placeholder columns (e.g. `| - | # | ...`) before markdown parsing.
 - `scripts/markdown_to_html.py` table sanitization now more aggressively removes placeholder headers/columns and URL-heavy split-off metadata columns when they reduce comparison readability.
@@ -209,14 +214,4 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `README.md`
 - `references/` directory
 - `examples/` directory
-- `evals/` directory
-3-30
-
-### Added
-- Initial project scaffold
-- `SKILL.md`
-- `README.md`
-- `references/` directory
-- `examples/` directory
-- `evals/` directory
 - `evals/` directory
