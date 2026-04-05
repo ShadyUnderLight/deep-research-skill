@@ -324,8 +324,8 @@ If the report cannot answer these cleanly, it is probably still doing descriptio
 When a new selection-case failure appears:
 
 - use `references/failure-taxonomy.md` to classify the failure family
-- use `evals/decision-utility-rubric.md` if the report feels informative but not decisional
-- use `evals/rule-activation-and-execution-discipline.md` if the report knows the structure but fails to execute it
+- use `evals/templates/decision-utility-rubric.md` if the report feels informative but not decisional
+- use `evals/meta/rule-activation-and-execution-discipline.md` if the report knows the structure but fails to execute it
 - use `references/report-template.md` for presentation/layout fixes
 - use this file for the core logic of comparison, shortlist construction, and selection methodology
 

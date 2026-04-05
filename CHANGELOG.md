@@ -11,6 +11,14 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `references/mid-research-review.md`
+- `checklists/mid-research-review-audit.md`
+- `references/quantitative-role-labeling.md`
+- `checklists/quantitative-role-audit.md`
+- `references/research-pack-contract.md`
+- `schemas/research-pack.md`
+- `examples/research-pack-example.md`
+- `scripts/validate_research_pack.py`
 - `ARCHITECTURE.md`
 - `SYSTEM-MAP.md`
 - `ROUTING-MATRIX.md`
@@ -18,18 +26,30 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `references/comparative-distillation-method.md`
 - `references/option-selection-and-shortlist-discipline.md`
 - `references/market-outlook-and-scenario-discipline.md`
-- `evals/rule-activation-and-execution-discipline.md`
-- `evals/global-market-scope-completeness-case.md`
-- `evals/decision-utility-rubric.md`
-- `evals/comparative-distillation-template.md`
-- `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
-- `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
-- `evals/sea-market-entry-gpt-vs-minimax-comparative-distillation.md`
-- `evals/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md`
-- `evals/cambricon-first-tier-positioning-case.md`
-- `evals/cambricon-evidence-weighting-and-traceability-case.md`
+- `evals/meta/rule-activation-and-execution-discipline.md`
+- `evals/cases/global-market-scope-completeness-case.md`
+- `evals/templates/decision-utility-rubric.md`
+- `evals/templates/comparative-distillation-template.md`
+- `evals/comparative-distillation/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/sea-market-entry-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md`
+- `evals/cases/cambricon-first-tier-positioning-case.md`
+- `evals/cases/cambricon-evidence-weighting-and-traceability-case.md`
 
 ### Changed
+- Added explicit mid-research review discipline so early evidence batches must visibly narrow, redirect, continue, or stop the search path.
+- Strengthened counter-evidence discipline by tying it to load-bearing conclusions rather than generic end-of-report risk language.
+- Hardened final-audit expectations around weakening logic and intentional stopping behavior.
+- Separated quantitative role labeling into an explicit shared discipline for load-bearing numbers.
+- Added route-level attachment guidance where numeric claims materially shape recommendation, ranking, timing, valuation, or confidence.
+- Hardened report templates so modeled, assumed, and proxied numbers are less likely to read as confirmed facts.
+- Introduced a minimal Research Pack contract as lightweight process-artifact support for auditability.
+- Clarified that final delivery alone is not always sufficient for route-heavy or high-burden tasks.
+- Added a compact bridge between workflow discipline and future execution-layer binding.
+- Organized `evals/` by subtype for easier navigation and maintenance.
+- Added compact examples showing expected execution shape for major memo families.
+- Clarified that examples are execution references rather than report archives.
 - Added explicit route preflight discipline so route selection becomes an auditable entry-layer step rather than an implicit judgment.
 - Strengthened routing language so final artifacts must visibly execute the selected route rather than merely name it.
 - Clarified route-execution failure signs and route-activation intervention order.
@@ -64,7 +84,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `SKILL.md` now routes paired-report comparison work to the comparative-distillation method and template so stronger-vs-weaker report comparisons produce explicit action types.
 - `SKILL.md` now explicitly treats model/API supplier selection as both a current-state-sensitive task and a constrained-choice task, requiring a current provider snapshot before ranking.
 - `SKILL.md` now explicitly routes market-entry / regional-expansion / country-prioritization tasks as constrained-choice + decision-memo work, requiring priority-vs-alternatives, country shortlist, sequencing, and hard-gate logic rather than a market overview.
-- `SKILL.md` final discipline now adds a visible-gate check and routes rule-execution failures to `evals/rule-activation-and-execution-discipline.md`.
+- `SKILL.md` final discipline now adds a visible-gate check and routes rule-execution failures to `evals/meta/rule-activation-and-execution-discipline.md`.
 - `SKILL.md` final trigger checks now require provider-selection outputs to show current provider snapshot + accessibility/compliance/SLA/data-control constraints as ranking logic when relevant.
 - `SKILL.md` final trigger checks now also require market-entry outputs to show priority-vs-alternatives, country shortlist, hub vs beachhead vs later-expansion distinctions when relevant, hard gates, and sequencing logic.
 - `SKILL.md` now explicitly routes first-tier / top-tier / multidimensional competitive-positioning tasks as definition-sensitive constrained judgments rather than loose ranking language.
@@ -137,14 +157,14 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `references/research-depth-rubric.md`
 - `references/corporate-status-and-listing-state-discipline.md`
 - `references/source-traceability-and-claim-citation.md`
-- `evals/finance-and-market-share-cambricon-case.md`
-- `evals/ranking-and-current-claims-xiaomi-update-case.md`
-- `evals/depth-rubric.md`
-- `evals/moore-threads-listing-status-case.md`
-- `evals/source-traceability-moore-threads-case.md`
-- `evals/apple-product-and-valuation-case.md`
-- `evals/apple-product-roadmap-and-investment-case.md`
-- `evals/industry-landscape-depth-case.md`
+- `evals/cases/finance-and-market-share-cambricon-case.md`
+- `evals/cases/ranking-and-current-claims-xiaomi-update-case.md`
+- `evals/templates/depth-rubric.md`
+- `evals/cases/moore-threads-listing-status-case.md`
+- `evals/cases/source-traceability-moore-threads-case.md`
+- `evals/cases/apple-product-and-valuation-case.md`
+- `evals/cases/apple-product-roadmap-and-investment-case.md`
+- `evals/cases/industry-landscape-depth-case.md`
 - `checklists/listed-company-report.md`
 - `checklists/source-traceability.md`
 - `checklists/forward-looking-claims.md`
@@ -178,7 +198,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ### Added
 - `references/finance-date-discipline.md`
-- `evals/freshness-xiaomi-case.md`
+- `evals/cases/freshness-xiaomi-case.md`
 
 ### Changed
 - `SKILL.md` now routes company/investment-style work to finance/date-discipline guidance.
@@ -196,7 +216,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `references/claim-matrix.md`
 - `references/task-types.md`
 - `examples/freshness-failure-cases.md`
-- `evals/current-state-checks.md`
+- `evals/meta/current-state-checks.md`
 
 ### Changed
 - `SKILL.md` was upgraded to a deep-only protocol with explicit current-state verification and decision-oriented synthesis.
@@ -212,14 +232,4 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `README.md`
 - `references/` directory
 - `examples/` directory
-- `evals/` directory
-3-30
-
-### Added
-- Initial project scaffold
-- `SKILL.md`
-- `README.md`
-- `references/` directory
-- `examples/` directory
-- `evals/` directory
 - `evals/` directory

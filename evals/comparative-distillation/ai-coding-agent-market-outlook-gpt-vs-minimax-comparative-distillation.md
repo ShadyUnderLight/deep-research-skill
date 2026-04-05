@@ -224,7 +224,7 @@ Without those, the report remains informative but under-converted into action.
 | 1 | Require a current market snapshot before forward-looking sections | current-state / time-layer discipline | CHECKLIST_HARDENING | `checklists/final-audit.md` |
 | 2 | Label outlook numbers as observed / inferred / scenario / illustrative | numerical + forward-looking discipline | NEW_RULE | `references/report-template.md` + decision templates |
 | 3 | Add a dedicated market-outlook decision structure | decision utility / forward-looking discipline | TEMPLATE_CHANGE | `references/decision-report-template.md` |
-| 4 | Force market-outlook reports to include stakeholder implications and monitoring signals | decision utility | CHECKLIST_HARDENING | `checklists/final-audit.md` + `evals/decision-utility-rubric.md` |
+| 4 | Force market-outlook reports to include stakeholder implications and monitoring signals | decision utility | CHECKLIST_HARDENING | `checklists/final-audit.md` + `evals/templates/decision-utility-rubric.md` |
 | 5 | Use typed memo blocks for scenario-heavy and comparison-heavy sections | output structure / information density | TEMPLATE_CHANGE | `references/report-template.md` |
 
 ---

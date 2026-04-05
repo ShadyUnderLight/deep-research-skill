@@ -2,6 +2,8 @@
 
 This file maps the current `references/`, `checklists/`, and `evals/` into practical families.
 
+Evals are organized by subtype so maintainers can distinguish single-case lessons, comparative distillation, meta-discipline notes, and reusable templates more easily.
+
 It exists to answer four maintenance questions quickly:
 
 1. which files belong to the same problem area?
@@ -74,7 +76,7 @@ Makes mature task families explicit so the right discipline set and delivery con
 
 ### Primary files
 - `ROUTING-MATRIX.md`
-- `evals/rule-activation-and-execution-discipline.md`
+- `evals/meta/rule-activation-and-execution-discipline.md`
 
 ### Supported mature routes
 - provider / vendor selection
@@ -113,12 +115,12 @@ Protects fast-moving research from stale facts, frozen time layers, and blurred 
 - `checklists/final-audit.md`
 
 ### Representative evals
-- `evals/freshness-xiaomi-case.md`
-- `evals/apple-product-and-valuation-case.md`
-- `evals/moore-threads-listing-status-case.md`
-- `evals/ranking-and-current-claims-xiaomi-update-case.md`
-- `evals/finance-and-market-share-cambricon-case.md`
-- `evals/minimax-company-report-case.md`
+- `evals/cases/freshness-xiaomi-case.md`
+- `evals/cases/apple-product-and-valuation-case.md`
+- `evals/cases/moore-threads-listing-status-case.md`
+- `evals/cases/ranking-and-current-claims-xiaomi-update-case.md`
+- `evals/cases/finance-and-market-share-cambricon-case.md`
+- `evals/cases/minimax-company-report-case.md`
 
 ### Typical failure signs
 - stale product or model generation presented as current
@@ -149,11 +151,11 @@ Makes load-bearing claims auditable and separates primary evidence from inferenc
 - `checklists/final-audit.md`
 
 ### Representative evals
-- `evals/source-traceability-moore-threads-case.md`
-- `evals/apple-product-roadmap-and-investment-case.md`
-- `evals/minimax-company-report-case.md`
-- `evals/cambricon-evidence-weighting-and-traceability-case.md`
-- `evals/byd-gpt-vs-minimax-comparative-distillation.md`
+- `evals/cases/source-traceability-moore-threads-case.md`
+- `evals/cases/apple-product-roadmap-and-investment-case.md`
+- `evals/cases/minimax-company-report-case.md`
+- `evals/cases/cambricon-evidence-weighting-and-traceability-case.md`
+- `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md`
 
 ### Typical failure signs
 - bibliography exists but claims are not auditable
@@ -168,6 +170,55 @@ Makes load-bearing claims auditable and separates primary evidence from inferenc
 
 ---
 
+## Family D2 — Quantitative role clarity
+
+### Purpose
+Prevents proxies, assumptions, and model outputs from masquerading as observed facts.
+
+### Primary files
+- `references/quantitative-role-labeling.md`
+- `checklists/quantitative-role-audit.md`
+- `references/decision-report-template.md`
+- `checklists/final-audit.md`
+
+### Typical failure signs
+- precise-looking but unlabeled numbers
+- model outputs written as facts
+- composite scoring with invisible epistemic roles
+- recommendation logic quietly resting on assumptions or proxies
+
+### First place to change
+- route attachment when numeric burden is not activating the discipline
+- shared discipline docs when role definitions are unclear
+- templates when reports do not surface number roles visibly
+- audit layer when the distinction exists in theory but not in delivery
+
+---
+
+## Family D3 — Process artifacts and audit binding
+
+### Purpose
+Makes route, evidence, uncertainty, and counter-evidence handling more recoverable than final prose alone.
+
+### Primary files
+- `references/research-pack-contract.md`
+- `schemas/research-pack.md`
+- `checklists/final-audit.md`
+- `examples/research-pack-example.md`
+
+### Typical failure signs
+- final report sounds rigorous but cannot be reconstructed
+- route is only implicit
+- uncertainty is rhetorical rather than structural
+- audit depends entirely on prose interpretation
+
+### First place to change
+- process-artifact contract when the internal structure is too thin
+- final-audit expectations when the structure exists but is not being checked
+- examples when the contract exists but still feels too abstract to use
+
+---
+
 ## Family E — Forward-looking and estimate discipline
 
 ### Purpose
@@ -179,10 +230,10 @@ Controls forecasts, roadmap statements, target dates, and estimate-heavy claims 
 - `checklists/final-audit.md`
 
 ### Representative evals
-- `evals/apple-product-roadmap-and-investment-case.md`
-- `evals/byd-report-format-discipline-case.md`
-- `evals/hnb-industry-report-table-design-case.md`
-- `evals/byd-gpt-vs-minimax-comparative-distillation.md`
+- `evals/cases/apple-product-roadmap-and-investment-case.md`
+- `evals/cases/byd-report-format-discipline-case.md`
+- `evals/cases/hnb-industry-report-table-design-case.md`
+- `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md`
 
 ### Typical failure signs
 - `预计` / `expected` / `likely` without source role
@@ -213,12 +264,12 @@ Supports tasks where the output must help choose among options rather than merel
 - `checklists/final-audit.md`
 
 ### Representative evals
-- `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
-- `evals/sea-market-entry-gpt-vs-minimax-comparative-distillation.md`
-- `evals/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md`
-- `evals/cambricon-first-tier-positioning-case.md`
-- `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
-- `evals/decision-utility-rubric.md`
+- `evals/comparative-distillation/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/sea-market-entry-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md`
+- `evals/cases/cambricon-first-tier-positioning-case.md`
+- `evals/comparative-distillation/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
+- `evals/templates/decision-utility-rubric.md`
 
 ### Typical failure signs
 - provider selection becomes vendor encyclopedia
@@ -247,10 +298,10 @@ Protects against reports that sound smart but still fail as deep, load-bearing d
 
 ### Primary checklists/evals
 - `checklists/final-audit.md`
-- `evals/depth-rubric.md`
-- `evals/decision-utility-rubric.md`
-- `evals/global-market-scope-completeness-case.md`
-- `evals/industry-landscape-depth-case.md`
+- `evals/templates/depth-rubric.md`
+- `evals/templates/decision-utility-rubric.md`
+- `evals/cases/global-market-scope-completeness-case.md`
+- `evals/cases/industry-landscape-depth-case.md`
 
 ### Typical failure signs
 - broad coverage but weak prioritization
@@ -281,9 +332,9 @@ Preserves the report’s intended structure and readability when converted into 
 - `references/failure-taxonomy.md`
 
 ### Representative evals
-- `evals/minimax-sea-memo-pdf-layout-case.md`
-- `evals/hnb-industry-report-table-design-case.md`
-- `evals/byd-report-format-discipline-case.md`
+- `evals/cases/minimax-sea-memo-pdf-layout-case.md`
+- `evals/cases/hnb-industry-report-table-design-case.md`
+- `evals/cases/byd-report-format-discipline-case.md`
 
 ### Typical failure signs
 - citation artifacts leak into final body
@@ -307,16 +358,16 @@ Turns paired-report comparisons into repeatable repo improvements instead of one
 
 ### Primary files
 - `references/comparative-distillation-method.md`
-- `evals/comparative-distillation-template.md`
+- `evals/templates/comparative-distillation-template.md`
 - `references/failure-taxonomy.md`
 
 ### Representative evals
-- `evals/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
-- `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
-- `evals/sea-market-entry-gpt-vs-minimax-comparative-distillation.md`
-- `evals/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md`
-- `evals/byd-gpt-vs-minimax-comparative-distillation.md`
-- `evals/weekend-seaside-destination-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/sea-market-entry-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/weekend-seaside-destination-gpt-vs-minimax-comparative-distillation.md`
 
 ### Typical questions this family answers
 - is the gap a new rule or only an execution miss?

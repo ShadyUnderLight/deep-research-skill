@@ -28,6 +28,24 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] confidence levels match evidence quality
 - [ ] the report does not claim more certainty than the evidence supports
 
+## Counter-evidence and review integrity
+
+- [ ] the report's load-bearing conclusions are visibly pressure-tested rather than only supported
+- [ ] there is visible counter-evidence handling for the main recommendation, ranking, or prioritization
+- [ ] the report shows what weakens the conclusion, not just what supports it
+- [ ] where uncertainty remains, it changes confidence, timing, ranking, or action in a visible way
+- [ ] if alternatives remain credible, the report explains why they did not win now
+- [ ] there is visible evidence that the research was narrowed, redirected, or stopped intentionally rather than merely exhausted
+
+## Process-artifact sufficiency
+
+- [ ] there is enough process structure to explain how the final answer was formed
+- [ ] the selected route is recoverable from the process artifact rather than only the final prose
+- [ ] load-bearing claims are traceable through at least a minimal claim and source structure
+- [ ] meaningful uncertainties are recorded rather than only implied
+- [ ] where the task warrants it, counter-evidence handling is recoverable from the process artifact
+- [ ] required audits are named and statused rather than merely assumed
+
 ## Route execution integrity
 
 - [ ] the selected primary route is inferable from the final artifact without relying on internal notes
@@ -88,8 +106,5 @@ This is the last gate before the report goes to the user. If any item fails, rev
 ## Quality bar
 
 A report that fails this checklist is not ready for delivery, regardless of length or apparent polish.
-tput does not show CJK spacing degradation or broken-export text rhythm severe enough to reduce professional readability
 
-## Quality bar
-
-A report that fails this checklist is not ready for delivery, regardless of length or apparent polish.
+CJK spacing degradation or broken-export text rhythm should not be severe enough to reduce professional readability.

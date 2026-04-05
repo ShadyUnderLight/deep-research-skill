@@ -51,6 +51,7 @@ Organize by task type. Examples:
 
 ### 6. Uncertainty and missing evidence
 
+- if confidence depends on assumptions or modeled numbers, make that dependency visible instead of letting the numbers read like confirmed facts
 - say what could not be verified
 - say what would most improve confidence
 

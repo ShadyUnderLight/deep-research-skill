@@ -27,6 +27,8 @@ Never present inference as confirmed fact.
 4. define evidence standards and stop conditions
 5. collect and compare sources
 6. run a mid-research review
+   - read `references/mid-research-review.md` once the first meaningful evidence batch is in hand
+   - the review must visibly confirm, narrow, redirect, or stop the research path
 7. search for counter-evidence
 8. synthesize into a decision-oriented report
 
@@ -111,7 +113,7 @@ Read `references/source-quality.md` when source ranking is ambiguous.
 Read `references/claim-matrix.md` when the task has multiple important conclusions, conflicting evidence, or high stakes.
 Read `references/task-types.md` when the task needs a domain-specific question set.
 Read `references/comparative-distillation-method.md` when comparing paired reports to turn stronger-vs-weaker outputs into reusable changes.
-Use `evals/comparative-distillation-template.md` to record paired-report comparisons so extracted patterns land as `NEW_RULE`, `CHECKLIST_HARDENING`, `TEMPLATE_CHANGE`, or `NO_ACTION`.
+Use `evals/templates/comparative-distillation-template.md` to record paired-report comparisons so extracted patterns land as `NEW_RULE`, `CHECKLIST_HARDENING`, `TEMPLATE_CHANGE`, or `NO_ACTION`.
 
 Stop searching when one of these is true:
 
@@ -254,7 +256,7 @@ If the failure seems to be:
 - missing trigger
 - or execution drift
 
-use `evals/rule-activation-and-execution-discipline.md`.
+use `evals/meta/rule-activation-and-execution-discipline.md`.
 
 ## Output quality bar
 
@@ -263,13 +265,6 @@ A strong final answer should:
 - answer the actual question, not just summarize the topic
 - show how the conclusion was formed
 - separate fact from inference
-- surface counter-evidence
-- state confidence clearly
-- explain what is still missing
-- help the user decide what to do next
-
-If confidence is limited, say exactly why.
-
 - surface counter-evidence
 - state confidence clearly
 - explain what is still missing
