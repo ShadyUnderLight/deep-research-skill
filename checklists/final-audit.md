@@ -28,6 +28,15 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] confidence levels match evidence quality
 - [ ] the report does not claim more certainty than the evidence supports
 
+## Route execution integrity
+
+- [ ] the selected primary route is inferable from the final artifact without relying on internal notes
+- [ ] the report visibly satisfies that route's artifact contract
+- [ ] if a close alternative route existed, the chosen route's logic is visible rather than merely asserted
+- [ ] the required secondary disciplines for the selected route are visibly executed
+- [ ] the report does not collapse back into generic overview mode despite route selection
+- [ ] if the route implies recommendation, ranking, gating, or sequencing burden, the report actually carries that burden
+
 ## Completeness
 
 - [ ] the report does not leave a strong impression while having weak substance

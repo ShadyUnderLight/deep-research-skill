@@ -7,6 +7,19 @@ This file exists to reduce two failure modes:
 1. the right rule exists but does not activate
 2. the report seems informed by the rule but does not visibly execute it
 
+## Route preflight
+
+Before deep collection, explicitly decide:
+
+- primary route
+- closest alternative route
+- why the chosen route wins
+- required secondary disciplines
+- required audits
+- visible artifact contract
+
+Do not proceed as if generic research were automatically sufficient when a specialized route would materially change structure, evidence burden, or audit burden.
+
 ## Global rule
 
 For every task:
@@ -38,6 +51,12 @@ Use when the task is mainly about:
 - vendor shortlist
 - platform choice
 - provider comparison under deployment constraints
+
+**Choose this route when:** the task is to select among providers and justify why one wins under explicit constraints.
+
+**Do not use this route when:** the task is mainly to describe the market or explain industry direction without a real selection burden.
+
+**Often confused with:** market outlook / industry evolution.
 
 ### Read
 - `references/option-selection-and-shortlist-discipline.md`
@@ -85,6 +104,12 @@ Use when the task is mainly about:
 - regional expansion under constrained budget
 - go / no-go / pilot-only expansion decisions
 
+**Choose this route when:** the task is really about whether to enter, where to enter first, when to enter, or how to sequence entry.
+
+**Do not use this route when:** the task is mainly a generic market overview or a simple option comparison without real entry logic.
+
+**Often confused with:** constrained choice / shortlist.
+
 ### Read
 - `references/option-selection-and-shortlist-discipline.md`
 - `references/decision-report-template.md`
@@ -93,7 +118,7 @@ Use when the task is mainly about:
 ### Attach
 - current-state verification
 - source traceability
-- quantitative role labeling when TAM/SAM/SOM, proxies, or scoring matter
+- quantitative role labeling when market size, payback, cost assumptions, sequencing thresholds, or scenario-style numbers materially affect the recommendation
 
 ### Audit
 - `checklists/option-selection-final-audit.md`
@@ -135,6 +160,12 @@ Use when the task is mainly about:
 - industry evolution
 - scenario memo
 
+**Choose this route when:** the task is to explain direction, evolution, trajectory, or structural change rather than pick a winner now.
+
+**Do not use this route when:** the task has a real recommendation, shortlist, or selection burden.
+
+**Often confused with:** provider selection or constrained choice.
+
 ### Read
 - `references/market-outlook-and-scenario-discipline.md`
 - `references/decision-report-template.md`
@@ -144,7 +175,7 @@ Use when the task is mainly about:
 - current-state verification
 - forward-looking claims discipline
 - source traceability
-- quantitative role labeling when forecasts or scenario math appear
+- quantitative role labeling when projected growth, adoption paths, timing claims, or scenario ranges materially shape the conclusion
 
 ### Audit
 - `checklists/forward-looking-claims.md`
@@ -183,6 +214,12 @@ Use when the task is mainly about:
 - multidimensional competitive positioning
 - prestige-label justification
 
+**Choose this route when:** the real question is whether an entity reasonably belongs in a top group and the answer depends on dimension-level judgment before any overall label.
+
+**Do not use this route when:** the task is mainly investment-style company analysis, valuation reasoning, or broad company profiling.
+
+**Often confused with:** listed-company / investment-style research.
+
 ### Read
 - `references/ranking-and-current-claims-discipline.md`
 - `references/source-traceability-and-claim-citation.md`
@@ -192,6 +229,7 @@ Use when the task is mainly about:
 - current-state verification
 - source traceability
 - evidence-weight separation
+- quantitative role labeling when numbers materially affect the positioning judgment
 
 ### Audit
 - `checklists/source-traceability.md`
@@ -226,12 +264,18 @@ Use when the task is mainly about:
 - destination / venue / city / office / vendor choice
 - practical decision memo under constraints
 
+**Choose this route when:** the task is to choose among defined options using a visible comparison unit, shortlist logic, and ranking-change conditions.
+
+**Do not use this route when:** the real task is market-entry gating, expansion sequencing, or broad market scanning.
+
+**Often confused with:** market entry / regional expansion.
+
 ### Read
 - `references/option-selection-and-shortlist-discipline.md`
 - `references/decision-report-template.md`
 
 ### Attach
-- quantitative role labeling when scores, proxies, or modeled comparisons appear
+- quantitative role labeling when scoring, weighting, burden proxies, cost comparisons, or scenario comparisons materially affect ranking or recommendation
 
 ### Audit
 - `checklists/option-selection-final-audit.md`
@@ -267,6 +311,12 @@ Use when the task is mainly about:
 - valuation / market cap / growth / guidance
 - investment memo style judgments
 - equity-style diligence
+
+**Choose this route when:** the task carries listed-company, valuation, public-market, or investment-style judgment burden.
+
+**Do not use this route when:** the real question is a definition-sensitive positioning judgment rather than an investment-style memo.
+
+**Often confused with:** first-tier / competitive positioning.
 
 ### Read
 - `references/finance-date-discipline.md`
@@ -376,12 +426,6 @@ Before delivery, ask:
 
 1. did the correct route fire?
 2. did the required secondary disciplines attach?
-3. is the route visibly executed in the final artifact?
-
-A route only counts if the final report visibly satisfies its artifact contract.
-
-If the route is implicit in reasoning but not visible in delivery, treat that as an execution failure.
-dary disciplines attach?
 3. is the route visibly executed in the final artifact?
 
 A route only counts if the final report visibly satisfies its artifact contract.

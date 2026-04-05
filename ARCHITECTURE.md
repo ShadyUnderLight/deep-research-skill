@@ -85,6 +85,10 @@ As a rule:
 - `SKILL.md` should call into the routing layer
 - route-specific execution details should prefer `ROUTING-MATRIX.md` over further growth inside `SKILL.md`
 
+Route activation is the entry-layer control point between workflow spine and route-specific discipline.
+
+If route selection remains implicit, downstream discipline attachment becomes unstable and final-artifact auditing loses force.
+
 ---
 
 ## Layer 3: method / discipline layer

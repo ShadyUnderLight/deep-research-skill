@@ -30,6 +30,9 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cambricon-evidence-weighting-and-traceability-case.md`
 
 ### Changed
+- Added explicit route preflight discipline so route selection becomes an auditable entry-layer step rather than an implicit judgment.
+- Strengthened routing language so final artifacts must visibly execute the selected route rather than merely name it.
+- Clarified route-execution failure signs and route-activation intervention order.
 - `scripts/markdown_to_html.py` table routing now keeps comparison-heavy blocks in compact tables (including anchor-column split sub-tables) instead of leaking toward vertical card-like degradation; it also strips internal render-hint text from final HTML.
 - `scripts/markdown_to_html.py` pre-parse table repair now strips accidental list-prefix injection before headings/table rows (e.g. `- ##` / `- | ...`), normalizes malformed separator rows, and removes stray leading bullet-placeholder columns (e.g. `| - | # | ...`) before markdown parsing.
 - `scripts/markdown_to_html.py` table sanitization now more aggressively removes placeholder headers/columns and URL-heavy split-off metadata columns when they reduce comparison readability.

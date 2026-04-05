@@ -132,6 +132,26 @@ When you apply this eval, summarize the result as:
 
 ---
 
+## Route activation failures
+
+Common route-activation failures include:
+
+- a specialized route should have been chosen, but the work stayed generic
+- a route was selected too late, after the report shape had already drifted
+- multiple routes were named, but none actually determined structure or audit burden
+- the route was named, but its artifact contract was not visible in the final report
+- required secondary disciplines were named but not operationalized
+
+When route execution fails, check in this order:
+
+1. Was a primary route selected explicitly?
+2. Was it the route that most strongly determined structure and audit burden?
+3. Were required secondary disciplines attached?
+4. Was the artifact contract visibly executed?
+5. Only then decide whether the route definition itself needs revision.
+
+Do not respond to route misses by endlessly adding more trigger language to `SKILL.md` if the real problem is preflight invisibility or execution drift.
+
 ## Why this eval exists
 
 As the repo matures, more failures are no longer caused by missing knowledge. They are caused by weak routing and unstable execution.
