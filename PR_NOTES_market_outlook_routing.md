@@ -56,11 +56,11 @@ This change turns that failure into explicit routing, template, checklist, and e
     - current market snapshot
     - explicit drivers/blockers/scenarios/stakeholder implications
     - labeling outlook numbers as observed / inferred / scenario assumption / illustrative calculation
-- `evals/decision-utility-rubric.md`
+- `evals/templates/decision-utility-rubric.md`
   - now checks drivers-vs-blockers separation, market scenario usefulness, and stakeholder-specific next actions more explicitly
 
 ### Eval artifacts / traceability
-- `evals/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
+- `evals/comparative-distillation/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
   - adds a worked comparative-distillation case for market-outlook routing and scenario discipline
 - `README.md`
   - now exposes market-outlook routing as a first-class capability
@@ -94,3 +94,4 @@ feat: strengthen market-outlook routing and scenario discipline
 3. Are the new checklist gates concrete and auditable?
 4. Does the comparative-distillation case justify the rule promotion level?
 5. Should market-outlook tasks get a dedicated standalone checklist later, or is the current audit integration enough for now?
+nough for now?
