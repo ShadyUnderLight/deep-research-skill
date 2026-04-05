@@ -47,13 +47,17 @@ Read `ROUTING-MATRIX.md` to select:
 - required audits
 - visible output structure
 
+Before deep collection, explicitly select one primary route.
+
 Use one primary route plus only the smallest necessary supporting set.
 
-If multiple routes apply, choose the route that most strongly determines:
+If multiple routes apply, compare the closest two and choose the one that most strongly determines:
 
 - report structure
 - evidence burden
 - audit burden
+
+Do not default to generic research just because multiple routes sound partially relevant.
 
 ## Core shared disciplines
 
