@@ -11,6 +11,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `references/mid-research-review.md`
+- `checklists/mid-research-review-audit.md`
+- `references/quantitative-role-labeling.md`
+- `checklists/quantitative-role-audit.md`
 - `references/research-pack-contract.md`
 - `schemas/research-pack.md`
 - `examples/research-pack-example.md`
@@ -34,6 +38,12 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cambricon-evidence-weighting-and-traceability-case.md`
 
 ### Changed
+- Added explicit mid-research review discipline so early evidence batches must visibly narrow, redirect, continue, or stop the search path.
+- Strengthened counter-evidence discipline by tying it to load-bearing conclusions rather than generic end-of-report risk language.
+- Hardened final-audit expectations around weakening logic and intentional stopping behavior.
+- Separated quantitative role labeling into an explicit shared discipline for load-bearing numbers.
+- Added route-level attachment guidance where numeric claims materially shape recommendation, ranking, timing, valuation, or confidence.
+- Hardened report templates so modeled, assumed, and proxied numbers are less likely to read as confirmed facts.
 - Introduced a minimal Research Pack contract as lightweight process-artifact support for auditability.
 - Clarified that final delivery alone is not always sufficient for route-heavy or high-burden tasks.
 - Added a compact bridge between workflow discipline and future execution-layer binding.
@@ -216,14 +226,4 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `README.md`
 - `references/` directory
 - `examples/` directory
-- `evals/` directory
-3-30
-
-### Added
-- Initial project scaffold
-- `SKILL.md`
-- `README.md`
-- `references/` directory
-- `examples/` directory
-- `evals/` directory
 - `evals/` directory

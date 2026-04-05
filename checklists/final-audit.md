@@ -28,6 +28,15 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] confidence levels match evidence quality
 - [ ] the report does not claim more certainty than the evidence supports
 
+## Counter-evidence and review integrity
+
+- [ ] the report's load-bearing conclusions are visibly pressure-tested rather than only supported
+- [ ] there is visible counter-evidence handling for the main recommendation, ranking, or prioritization
+- [ ] the report shows what weakens the conclusion, not just what supports it
+- [ ] where uncertainty remains, it changes confidence, timing, ranking, or action in a visible way
+- [ ] if alternatives remain credible, the report explains why they did not win now
+- [ ] there is visible evidence that the research was narrowed, redirected, or stopped intentionally rather than merely exhausted
+
 ## Process-artifact sufficiency
 
 - [ ] there is enough process structure to explain how the final answer was formed
