@@ -175,7 +175,7 @@ Use when the task is mainly about:
 - current-state verification
 - forward-looking claims discipline
 - source traceability
-- quantitative role labeling when projected growth, adoption paths, timing claims, or scenario ranges materially shape the conclusion
+- quantitative role labeling when forecasts or scenario math appear
 
 ### Audit
 - `checklists/forward-looking-claims.md`
