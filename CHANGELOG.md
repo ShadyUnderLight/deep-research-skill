@@ -11,6 +11,8 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `references/mid-research-review.md`
+- `checklists/mid-research-review-audit.md`
 - `ARCHITECTURE.md`
 - `SYSTEM-MAP.md`
 - `ROUTING-MATRIX.md`
@@ -30,6 +32,9 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cambricon-evidence-weighting-and-traceability-case.md`
 
 ### Changed
+- Added explicit mid-research review discipline so early evidence batches must visibly narrow, redirect, continue, or stop the search path.
+- Strengthened counter-evidence discipline by tying it to load-bearing conclusions rather than generic end-of-report risk language.
+- Hardened final-audit expectations around weakening logic and intentional stopping behavior.
 - `scripts/markdown_to_html.py` table routing now keeps comparison-heavy blocks in compact tables (including anchor-column split sub-tables) instead of leaking toward vertical card-like degradation; it also strips internal render-hint text from final HTML.
 - `scripts/markdown_to_html.py` pre-parse table repair now strips accidental list-prefix injection before headings/table rows (e.g. `- ##` / `- | ...`), normalizes malformed separator rows, and removes stray leading bullet-placeholder columns (e.g. `| - | # | ...`) before markdown parsing.
 - `scripts/markdown_to_html.py` table sanitization now more aggressively removes placeholder headers/columns and URL-heavy split-off metadata columns when they reduce comparison readability.
