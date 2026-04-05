@@ -11,6 +11,8 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `references/mid-research-review.md`
+- `checklists/mid-research-review-audit.md`
 - `references/quantitative-role-labeling.md`
 - `checklists/quantitative-role-audit.md`
 - `ARCHITECTURE.md`
@@ -32,6 +34,9 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cambricon-evidence-weighting-and-traceability-case.md`
 
 ### Changed
+- Added explicit mid-research review discipline so early evidence batches must visibly narrow, redirect, continue, or stop the search path.
+- Strengthened counter-evidence discipline by tying it to load-bearing conclusions rather than generic end-of-report risk language.
+- Hardened final-audit expectations around weakening logic and intentional stopping behavior.
 - Separated quantitative role labeling into an explicit shared discipline for load-bearing numbers.
 - Added route-level attachment guidance where numeric claims materially shape recommendation, ranking, timing, valuation, or confidence.
 - Hardened report templates so modeled, assumed, and proxied numbers are less likely to read as confirmed facts.

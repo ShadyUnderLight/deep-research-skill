@@ -26,6 +26,21 @@ Always run a counter-evidence pass when the research involves:
 - practical regulatory interpretation
 - predictions or recommendations
 
+## Load-bearing conclusions
+
+Counter-evidence discipline should focus first on load-bearing conclusions rather than every sentence.
+
+Typical load-bearing conclusions include:
+
+- the main answer in the executive summary
+- the recommendation
+- the priority ranking
+- go / not now / pilot only / phased-entry judgments
+- why the top option wins
+- any overall label that compresses multiple dimensions into one judgment
+
+If a conclusion materially determines the user's decision or interpretation, it is probably load-bearing.
+
 ## Common counter-evidence angles
 
 Check for:
