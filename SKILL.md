@@ -109,7 +109,7 @@ Read `references/source-quality.md` when source ranking is ambiguous.
 Read `references/claim-matrix.md` when the task has multiple important conclusions, conflicting evidence, or high stakes.
 Read `references/task-types.md` when the task needs a domain-specific question set.
 Read `references/comparative-distillation-method.md` when comparing paired reports to turn stronger-vs-weaker outputs into reusable changes.
-Use `evals/comparative-distillation-template.md` to record paired-report comparisons so extracted patterns land as `NEW_RULE`, `CHECKLIST_HARDENING`, `TEMPLATE_CHANGE`, or `NO_ACTION`.
+Use `evals/templates/comparative-distillation-template.md` to record paired-report comparisons so extracted patterns land as `NEW_RULE`, `CHECKLIST_HARDENING`, `TEMPLATE_CHANGE`, or `NO_ACTION`.
 
 Stop searching when one of these is true:
 
@@ -252,7 +252,7 @@ If the failure seems to be:
 - missing trigger
 - or execution drift
 
-use `evals/rule-activation-and-execution-discipline.md`.
+use `evals/meta/rule-activation-and-execution-discipline.md`.
 
 ## Output quality bar
 

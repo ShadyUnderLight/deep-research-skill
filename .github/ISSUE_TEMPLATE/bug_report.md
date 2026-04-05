@@ -32,7 +32,7 @@ Optional hypothesis.
 Examples:
 - `SKILL.md`
 - `references/current-state-verification.md`
-- `evals/freshness-xiaomi-case.md`
+- `evals/cases/freshness-xiaomi-case.md`
 
 ## Eval follow-up
 

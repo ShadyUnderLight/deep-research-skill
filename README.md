@@ -26,9 +26,9 @@ Start here:
 
 - `references/` — reusable methods, discipline files, and report templates
 - `checklists/` — delivery-time audit gates
-- `evals/` — real-case evals, rubrics, distillation artifacts, and regression checks
+- `evals/` — organized by subtype for regression, comparative distillation, and meta-discipline tracking
 - `scripts/` — delivery/rendering helpers, especially for markdown → PDF output
-- `examples/` — example tasks and failure cases
+- `examples/` — compact references for expected execution shape across representative memo types
 
 ## How the repo fits together
 
