@@ -114,6 +114,34 @@ In these multidimensional-positioning cases:
 - do not let roadmap products, self-tests, valuation signals, or regional leadership silently substitute for current global product/commercial leadership
 - if an overall label is still used, show the rule that permits collapsing multiple dimensions into one classification
 
+For equipment-selection / procurement / home-server-planning tasks, prefer this stronger structure:
+
+1. Executive summary
+2. What is the real purchase or build decision?
+3. Dominant constraints
+4. Top recommendation
+5. Credible runner-up and why it did not win
+6. Rejected routes and why
+7. Minimum viable configuration
+8. Recommended configuration
+9. Budget assumptions and what is included or excluded
+10. Hardware ↔ system fit
+11. Long-run operating costs and friction
+12. Upgrade path or when to split workloads
+13. What would change the recommendation
+14. Sources
+
+In these equipment-selection / procurement cases:
+- do not let the report become a route overview with a recommendation attached at the end
+- make the dominant constraint visible, such as budget, quiet operation, storage density, data safety, media capability, low maintenance, or virtualization flexibility
+- show why the top route wins, why the runner-up remains credible, and why rejected routes lose under the stated constraints
+- separate minimum viable configuration from recommended configuration when budget or complexity materially changes the answer
+- make budget assumptions explicit, especially drives, UPS, networking upgrades, accessories, and whether long-run power or maintenance costs are included
+- bind hardware route to system choice rather than listing operating systems as a detached appendix
+- treat power, noise, maintenance burden, backup overhead, and expansion friction as ranking variables when the task is household or always-on planning
+- if power, cost, payback, storage growth, or scoring numbers are used, label observed values vs estimates vs assumptions vs planning-model outputs
+- if the report is in Chinese, keep load-bearing labels in Chinese and ensure PDF readability is not degraded by broken export spacing
+
 For market-entry / regional-expansion / country-prioritization tasks, prefer this stronger structure:
 
 1. Executive summary

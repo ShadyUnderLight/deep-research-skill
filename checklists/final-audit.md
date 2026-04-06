@@ -68,6 +68,12 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] option-selection final audit was run for shortlist, ranking, or constrained-choice outputs
 - [ ] for model/API/provider selection tasks, a current provider snapshot was verified before ranking or recommendation
 - [ ] for China-mainland deployment decisions, accessibility, compliance, data residency, and SLA were treated as part of ranking logic when relevant
+- [ ] for equipment-selection / procurement / home-server-planning tasks, the report is visibly a procurement memo rather than a broad route overview
+- [ ] for equipment-selection / procurement / home-server-planning tasks, top recommendation, credible runner-up, and rejected routes are explicit rather than implied
+- [ ] for equipment-selection / procurement / home-server-planning tasks, budget assumptions are explicit, especially drives, UPS, networking upgrades, accessories, and what is excluded
+- [ ] for equipment-selection / procurement / home-server-planning tasks, minimum viable configuration vs recommended configuration are separated when that distinction materially affects the answer
+- [ ] for equipment-selection / procurement / home-server-planning tasks, hardware route and system choice are visibly bound into one stack recommendation rather than treated as detached sections
+- [ ] for equipment-selection / procurement / home-server-planning tasks, power, noise, maintenance burden, backup overhead, and expansion friction are treated as ranking variables when relevant
 - [ ] for market-entry / regional-expansion / country-prioritization tasks, priority relative to alternatives, country shortlist, hard gates, and sequencing logic are explicit rather than implied
 - [ ] for market-entry / regional-expansion / country-prioritization tasks, regional hub vs first beachhead vs later expansion market are separated when relevant
 - [ ] for market-outlook / industry-evolution tasks, a current market snapshot was verified before forward-looking sections
