@@ -302,6 +302,61 @@ Fail if the report:
 
 ---
 
+## Route: Equipment Selection / Procurement / Home-server Planning
+
+### Trigger
+Use when the task is mainly about:
+
+- what hardware or device to buy or build
+- home server / NAS / homelab planning
+- budgeted configuration recommendation
+- hardware + software stack recommendation under household or operator constraints
+- route choice such as NAS vs mini PC vs self-build vs used workstation
+
+**Choose this route when:** the user needs a purchase-ready or build-ready recommendation under visible budget, maintenance, noise, power, storage, networking, or expansion constraints.
+
+**Do not use this route when:** the task is mainly to explain hardware categories, compare benchmarks abstractly, or teach general technical concepts without a real procurement burden.
+
+**Often confused with:** constrained choice / shortlist, market outlook / industry evolution.
+
+### Read
+- `references/decision-report-template.md`
+- `references/option-selection-and-shortlist-discipline.md`
+- `references/source-traceability-and-claim-citation.md`
+
+### Attach
+- current-state verification when current market pricing, current platforms, or current device availability materially affect the answer
+- quantitative role labeling when budgets, power estimates, operating costs, or scoring materially affect the recommendation
+- source traceability when specific hardware, pricing, system constraints, or long-run suitability claims carry the conclusion
+
+### Audit
+- `checklists/option-selection-final-audit.md`
+- `checklists/final-audit.md`
+
+### Visible artifact contract
+The final report should visibly show:
+
+- the real purchase or build decision
+- dominant household or operator constraints
+- top recommendation
+- credible runner-up
+- rejected routes and why
+- minimum viable configuration vs recommended configuration when relevant
+- budget assumptions, including what is included or excluded
+- hardware ↔ system fit
+- long-run operating tradeoffs such as power, noise, maintenance, backup, or expansion friction when relevant
+- what would change the recommendation
+
+### Hard fail
+Fail if the report:
+
+- becomes a broad hardware overview instead of a procurement memo
+- names budget bands without clarifying major inclusion / exclusion assumptions
+- discusses hardware and systems separately without binding them into a stack recommendation
+- treats household operating costs and maintenance friction as side notes instead of ranking variables
+
+---
+
 ## Route: Listed Company / Investment-style Research
 
 ### Trigger
