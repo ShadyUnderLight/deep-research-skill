@@ -80,3 +80,38 @@ Downgrade confidence when:
 - the source supports only a broader adjacent claim
 - the source uses promotional or marketing wording without direct evidence
 - the report wants to use a strong claim that the best source supports only weakly
+
+## Evidence-tier inflation guard
+
+Do not upgrade a claim to confirmed fact merely because it appears specific, technical, or official-adjacent.
+
+Treat these source types with care:
+- keynote remarks
+- earnings-call commentary
+- company blog posts
+- press-release framing
+- media paraphrases of company statements
+- secondary analyst estimates
+
+Distinguish clearly among:
+- audited or regulatory disclosure
+- official company statement
+- management commentary
+- secondary estimate
+- media-mediated interpretation
+
+For high-risk claim types such as:
+- market share
+- customer adoption or deployment
+- performance leadership
+- cumulative sales
+- product wins
+- roadmap-linked commercial expectations
+
+do not present the claim as confirmed fact unless the underlying evidence is strong enough for that grade.
+
+If source hardness, metric scope, or verification completeness remains unclear:
+- downgrade to inference
+- or label the claim as management-stated rather than confirmed fact
+
+Evidence labels should reflect source hardness and verification completeness, not just how plausible or specific the sentence sounds.
