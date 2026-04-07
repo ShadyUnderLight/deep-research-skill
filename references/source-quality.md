@@ -115,3 +115,44 @@ If source hardness, metric scope, or verification completeness remains unclear:
 - or label the claim as management-stated rather than confirmed fact
 
 Evidence labels should reflect source hardness and verification completeness, not just how plausible or specific the sentence sounds.
+
+## Issuer-sourced competitive and positioning claims
+
+Treat issuer-sourced claims with extra caution, especially when they involve:
+- market share
+- ranking
+- uniqueness
+- leadership
+- strategic importance
+- cost advantage
+- execution superiority
+- `first` / `only` / `largest` type statements
+
+Do not treat these as fully confirmed industry facts merely because they appear in:
+- company websites
+- prospectuses
+- investor materials
+- official press releases
+- company-linked media coverage
+
+Separate such claims into three layers:
+
+1. **Confirmed issuer statement**
+   The company or filing explicitly makes the claim.
+
+2. **Independent support or partial support**
+   Third-party reporting, public data, or cross-source comparison supports some part of the claim.
+
+3. **Open scope or comparability uncertainty**
+   Market definition, denominator, sample boundary, time window, or peer set still limits conclusion strength.
+
+When in doubt, downgrade the certainty of the competitive conclusion rather than inflate the certainty of the evidence.
+
+If a competitive claim depends on a number, make the number's role explicit:
+- official reported figure
+- management target
+- internal estimate
+- reconstructed inference
+- third-party estimate
+
+Do not let precise quantitative wording create false evidentiary precision.

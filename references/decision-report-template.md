@@ -116,24 +116,47 @@ In these multidimensional-positioning cases:
 
 ## Company / equity-style decision reports
 
-When the task is primarily about evaluating a company, competitive position, or investment-style thesis, do not default to a background-first company overview.
+When the task is primarily about evaluating a company, competitive position, or investment-style thesis, do not default to a background-first company overview. Start with a judgment summary rather than a company-history or product-catalog opening.
 
 Prefer this front structure:
 
 1. Core thesis
-2. What matters most now
-3. Main evidence supporting the thesis
-4. Main evidence weakening the thesis
-5. Key unknowns and why they matter
-6. What to watch next
-7. Only then: business background, segment detail, products, roadmap, customers, and competitors
+2. Strongest confirmed support
+3. Key unresolved variable
+4. What would change the conclusion
+5. What matters most now
+6. Main evidence supporting the thesis
+7. Main evidence weakening the thesis
+8. Key unknowns and why they matter
+9. What to watch next
+10. Only then: business background, segment detail, products, roadmap, customers, and competitors
 
-Background, segment description, roadmap detail, and customer examples should appear only insofar as they sharpen the current thesis, not as default report ballast.
+Background, segment description, roadmap detail, and customer examples should appear only insofar as they sharpen the current thesis, not as default report ballast. Reduce background to the minimum necessary context required to interpret the judgment.
+
+Do not default to:
+- founding-history-first structure
+- mission / vision exposition
+- long product catalogs before the thesis is clear
 
 Under "What matters most now", prefer to surface:
 - which business line or driver most shapes the current view
 - which 2-4 disclosures or metrics matter most next
 - which facts would most strengthen or weaken the thesis
+
+Write competition as threat-window analysis rather than a peer directory. Prefer to show:
+- short-term threat
+- medium-term threat
+- route or technology gap
+- narrative competitor vs real execution pressure
+
+Bull, base, and bear cases should distinguish clearly among:
+- confirmed support
+- likely inference
+- open uncertainty
+
+Do not treat uncertainty disclosure as sufficient. Open uncertainty should constrain the strength, scope, timing, or confidence of the final judgment.
+
+Do not confuse a structurally complete company overview with a completed judgment memo.
 
 For equipment-selection / procurement / home-server-planning tasks, prefer this stronger structure:
 
