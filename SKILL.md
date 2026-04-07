@@ -133,7 +133,7 @@ When a research task needs live web search:
 2. use `web_fetch` only after a candidate URL is identified
 3. use `browser` only when the page is dynamic or `web_fetch` fails on a confirmed-live URL
 
-Current implementation: call the MiniMax web-search script provided by the `minimax-web-search` skill.
+Current primary implementation: call the MiniMax web-search script provided by the `minimax-web-search` skill.
 
 ```bash
 python3 /Users/mn/.openclaw/skills/minimax-web-search/scripts/web_search.py "<search query>"
@@ -146,12 +146,23 @@ If MiniMax MCP web search is unavailable, do not silently fall back to Brave API
 Use this degraded fallback policy instead:
 1. first distinguish temporary rate-limit / quota issues from broader provider unavailability
 2. if live search is still unavailable, declare the search provider degraded in the evidence log
-3. use Bing via `browser` as an explicit discovery-only fallback, preferably with `en-US` parameters when practical
-4. expect region bias / localized ranking in the current environment; do not describe this as a guaranteed international or neutral search path
-5. treat Bing result pages as candidate-source discovery only, not as evidence for memo claims
-6. re-verify any load-bearing claim via `web_fetch` or `browser` on the source page itself, prioritizing official / primary sources
-7. if Bing is also blocked or unusable, declare the live-search step blocked and note which freshness checks or claims could not be verified live
-8. continue with offline materials only if the remaining uncertainty is made explicit
+3. use `agent-reach` Exa search as the first explicit degraded fallback for discovery and comparison-angle finding
+4. current fallback implementation for that path:
+
+```bash
+mcporter call 'exa.web_search_exa(query: "<search query>", numResults: 5)'
+```
+
+5. prefer the Exa fallback when the query is primarily about English-language material, technical documentation, developer tooling, code context, company pages, or broad web discovery
+6. Exa is not automatically better for every case; if the task is dominated by Chinese-language news flow, localized platform chatter, or a search intent that clearly needs browser-side localization, note that and move on rather than forcing Exa first
+7. treat Exa result pages as candidate-source discovery only, not as evidence for memo claims
+8. re-verify any load-bearing claim via `web_fetch` or `browser` on the source page itself, prioritizing official / primary sources
+9. if Exa is unavailable, unusable, or evidently low-yield for the query class, use Bing via `browser` as the second explicit discovery-only fallback, preferably with `en-US` parameters when practical
+10. expect region bias / localized ranking in the current environment; do not describe Bing as a guaranteed international or neutral search path
+11. treat Bing result pages as candidate-source discovery only, not as evidence for memo claims
+12. in the evidence log, record which provider path was attempted, why the fallback was triggered, and whether the fallback was used because of provider failure, quota/rate-limit pressure, or query-fit judgment
+13. if Bing is also blocked or unusable, declare the live-search step blocked and note which freshness checks or claims could not be verified live
+14. continue with offline materials only if the remaining uncertainty is made explicit
 
 Other tools:
 - `web_fetch`: extract readable page content after search identifies a candidate source
