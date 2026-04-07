@@ -91,6 +91,19 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] when evidence buckets are used, the report does not stop at `confirmed / inference / unknown` if important numbers still function as proxy / assumption / planning-model output
 - [ ] heuristic timing, cost, payback, or ROI-style claims are not written as if they were directly observed facts when they are closer to assumptions or planning-model outputs
 
+## Metric-scope audit
+
+- [ ] for each load-bearing numeric claim, the report makes visible when relevant: time period, segment boundary, geographic scope, and unit vs revenue vs mix vs run-rate distinction
+- [ ] for each load-bearing numeric claim, the report makes clear whether the number comes from a filing fact, management commentary, or an estimate
+- [ ] market-share, cumulative-sales, segment-growth, customer-scale, and product-performance claims do not imply more precision or universality than the source supports
+- [ ] if metric scope is incomplete or ambiguous, the claim is rewritten or downgraded with visible caveats
+
+## Unknown-to-conclusion linkage
+
+- [ ] for each major unknown or unresolved current-state gap, the report explains whether it limits directional judgment, quantitative precision, valuation confidence, ranking confidence, or recommendation strength
+- [ ] caveats do not remain cosmetic; if a load-bearing unknown remains unresolved, the final conclusion narrows accordingly
+- [ ] the report distinguishes clearly between a directional judgment that is still justified, a precise quantitative judgment that is not justified, and a valuation-grade or timing-grade judgment that is not justified
+
 ## Market position and ranking claims
 
 - [ ] every market-position claim specifies scope: "中国市场" / "全球" / "按XX口径"
