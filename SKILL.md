@@ -141,10 +141,17 @@ python3 /Users/mn/.openclaw/skills/minimax-web-search/scripts/web_search.py "<se
 
 Treat this as the working implementation, not as permission to silently substitute other default search providers.
 
-If MiniMax MCP web search is unavailable, do not silently fall back to Brave API. Instead:
-1. declare the live-search step blocked in the evidence log
-2. note which claims or freshness checks could not be verified live
-3. continue with offline materials only if the remaining uncertainty is made explicit
+If MiniMax MCP web search is unavailable, do not silently fall back to Brave API.
+
+Use this degraded fallback policy instead:
+1. first distinguish temporary rate-limit / quota issues from broader provider unavailability
+2. if live search is still unavailable, declare the search provider degraded in the evidence log
+3. use Bing via `browser` as an explicit discovery-only fallback, preferably with `en-US` parameters when practical
+4. expect region bias / localized ranking in the current environment; do not describe this as a guaranteed international or neutral search path
+5. treat Bing result pages as candidate-source discovery only, not as evidence for memo claims
+6. re-verify any load-bearing claim via `web_fetch` or `browser` on the source page itself, prioritizing official / primary sources
+7. if Bing is also blocked or unusable, declare the live-search step blocked and note which freshness checks or claims could not be verified live
+8. continue with offline materials only if the remaining uncertainty is made explicit
 
 Other tools:
 - `web_fetch`: extract readable page content after search identifies a candidate source
