@@ -125,11 +125,30 @@ Do not keep searching just to make the report longer.
 
 ## Tool strategy
 
-Use tools deliberately.
+**Default search provider: MiniMax MCP. Do not use the built-in Brave `web_search` as the default discovery path for this skill.**
 
-- `web_search`: discover candidate sources and comparison angles
-- `web_fetch`: extract readable page content
-- `browser`: handle dynamic pages or failed fetches
+When a research task needs live web search:
+
+1. use MiniMax MCP for discovery and comparison-angle finding
+2. use `web_fetch` only after a candidate URL is identified
+3. use `browser` only when the page is dynamic or `web_fetch` fails on a confirmed-live URL
+
+Current implementation: call the MiniMax web-search script provided by the `minimax-web-search` skill.
+
+```bash
+python3 /Users/mn/.openclaw/skills/minimax-web-search/scripts/web_search.py "<search query>"
+```
+
+Treat this as the working implementation, not as permission to silently substitute other default search providers.
+
+If MiniMax MCP web search is unavailable, do not silently fall back to Brave API. Instead:
+1. declare the live-search step blocked in the evidence log
+2. note which claims or freshness checks could not be verified live
+3. continue with offline materials only if the remaining uncertainty is made explicit
+
+Other tools:
+- `web_fetch`: extract readable page content after search identifies a candidate source
+- `browser`: handle dynamic pages or failed fetches for confirmed-live URLs
 - `sessions_spawn`: split clearly separable tracks only
 - final synthesis: always perform one parent-level reconciliation pass
 
