@@ -114,6 +114,27 @@ In these multidimensional-positioning cases:
 - do not let roadmap products, self-tests, valuation signals, or regional leadership silently substitute for current global product/commercial leadership
 - if an overall label is still used, show the rule that permits collapsing multiple dimensions into one classification
 
+## Company / equity-style decision reports
+
+When the task is primarily about evaluating a company, competitive position, or investment-style thesis, do not default to a background-first company overview.
+
+Prefer this front structure:
+
+1. Core thesis
+2. What matters most now
+3. Main evidence supporting the thesis
+4. Main evidence weakening the thesis
+5. Key unknowns and why they matter
+6. What to watch next
+7. Only then: business background, segment detail, products, roadmap, customers, and competitors
+
+Background, segment description, roadmap detail, and customer examples should appear only insofar as they sharpen the current thesis, not as default report ballast.
+
+Under "What matters most now", prefer to surface:
+- which business line or driver most shapes the current view
+- which 2-4 disclosures or metrics matter most next
+- which facts would most strengthen or weaken the thesis
+
 For equipment-selection / procurement / home-server-planning tasks, prefer this stronger structure:
 
 1. Executive summary
