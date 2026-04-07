@@ -55,6 +55,23 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] the report does not collapse back into generic overview mode despite route selection
 - [ ] if the route implies recommendation, ranking, gating, or sequencing burden, the report actually carries that burden
 
+## Company-report judgment audit
+
+- [ ] the report reads like a judgment memo rather than only a strong descriptive overview
+- [ ] the main conclusion is visible in the opening section rather than buried after background exposition
+- [ ] if the first 30-40% of background were removed, the core judgment would still remain clear
+- [ ] issuer- or company-sourced claims are not upgraded into confirmed industry facts too easily
+- [ ] `leading` / `unique` / market-share / industry-position / strategic-importance claims are independently supported or visibly downgraded
+- [ ] the report distinguishes clearly among: company states X / filing states X / third-party evidence supports X / scope remains only partially confirmed
+- [ ] for each load-bearing number, time window, sample boundary, denominator, and comparison basis are explicit when relevant
+- [ ] each important metric is visibly identified as realized performance / management target / third-party estimate / analyst inference / media-reported figure when the distinction matters
+- [ ] open uncertainties do not remain cosmetic; they visibly narrow confidence, timing confidence, ranking strength, scenario weighting, or recommendation strength
+- [ ] if a key technical, commercial, regulatory, or execution milestone is unresolved, the final judgment is correspondingly narrowed
+- [ ] the competition section identifies who actually pressures the thesis, and on what timeline, rather than mostly listing peers and products
+- [ ] the distinction between narrative competitors and execution competitors is clear when relevant
+- [ ] the final PDF reads as a polished deliverable rather than a text export
+- [ ] hierarchy, spacing, tables, and visual anchors support judgment rather than merely displaying information blocks
+
 ## Completeness
 
 - [ ] the report does not leave a strong impression while having weak substance
