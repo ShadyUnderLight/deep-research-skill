@@ -79,6 +79,7 @@ Before delivery, check separately for:
 - table overflow or unreadable density
 - bullet walls or compressed paragraphs that reduce scanability
 - markdown that looks acceptable but degrades badly in PDF
+- leftover source placeholders such as `[SOURCE]`, `[CITATION NEEDED]`, or unresolved insert markers
 
 A report can be analytically strong and still fail delivery. If the delivered artifact feels like a draft export, stitched note bundle, or parser byproduct, it is not ready.
 

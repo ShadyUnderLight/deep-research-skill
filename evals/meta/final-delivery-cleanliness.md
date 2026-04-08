@@ -35,6 +35,8 @@ Examples:
 - raw citation placeholders
 - template markers
 - retrieval syntax or parser debris
+- source placeholders like `[SOURCE]` / `[CITATION NEEDED]`
+- unresolved insert markers intended for drafting rather than delivery
 
 ### Failure Mode 2: Export degradation
 

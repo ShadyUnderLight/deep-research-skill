@@ -26,6 +26,9 @@ ARTIFACT_RED_FLAGS = [
     r"\{citation\}",
     r"\{\{[^\n{}]{1,80}\}\}",
     r"<PLACEHOLDER>",
+    r"\[SOURCE\]",
+    r"\[CITATION NEEDED\]",
+    r"\[INSERT [^\]\n]{1,80}\]",
 ]
 
 
