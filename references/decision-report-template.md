@@ -369,4 +369,12 @@ When important unknowns remain, prefer visible downgrade patterns such as:
 - `good enough for a low-regret pilot, not strong enough for a full commitment`
 - `evidence supports shortlist inclusion, not decisive superiority`
 
+A useful downgrade ladder is:
+
+- full-strength recommendation -> conditional recommendation
+- conditional recommendation -> low-regret pilot / scoped next step
+- stable winner -> provisional lead / close call
+- precise forecast or valuation claim -> directional view only
+- broad conclusion -> narrowed conclusion for the verified segment / geography / time window
+
 If the report uses a strong final recommendation anyway, it should explain why the recommended action is still low-regret under uncertainty rather than acting as if the uncertainty were already resolved.
