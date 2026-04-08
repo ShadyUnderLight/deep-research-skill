@@ -15,6 +15,20 @@ The report should answer:
 When the task is a constrained choice among several plausible options, also read `references/option-selection-and-shortlist-discipline.md`.
 In those cases, the report is not just a recommendation memo — it must show the choice architecture clearly enough that the reader can see why option A beats option B under the stated constraints.
 
+## Route execution rule
+
+Before drafting full prose, convert the selected route into a section-level execution contract.
+
+At minimum, decide:
+
+- what the opening section must prove
+- which 3-5 sections are mandatory for this route
+- which generic background sections should be minimized or moved later
+- what visible feature would let a reviewer infer the route from the final report alone
+- what hard-fail pattern would show that the report drifted back into overview mode
+
+If this step is skipped, the report will often sound informed while still defaulting to a generic overview shape.
+
 ## Recommended structure
 
 ### Load-bearing numbers and their role
@@ -215,6 +229,21 @@ In these market-entry cases:
 - if the final memo is written in Chinese, keep load-bearing labels in Chinese too rather than leaking English evidence buckets into the body
 
 Do not give every option equal narrative weight if the user's real need is to choose.
+
+## Opening-shape discipline
+
+For any route with recommendation, ranking, gating, sequencing, or judgment burden:
+
+- the opening 20-30% should already carry the main decision logic
+- background should be delayed until after the reader can see the current judgment
+- if a long market/company/product overview can be inserted before the main conclusion without making the report feel wrong, the route is probably under-executed
+- if the report's opening could fit equally well on three different route types, it is probably still too generic
+
+A useful self-check:
+
+- remove the first background-heavy section
+- if the report becomes clearer rather than weaker, that section should not have led
+- if the route disappears once headers are removed, the route was never visible enough in the artifact
 
 ## Executive summary
 
