@@ -27,6 +27,16 @@ At minimum, decide:
 - what visible feature would let a reviewer infer the route from the final report alone
 - what hard-fail pattern would show that the report drifted back into overview mode
 
+A minimal working contract can be written in seven short lines:
+
+- primary route:
+- closest alternative:
+- opening must prove:
+- mandatory sections:
+- move later / minimize:
+- visible route proof:
+- hard-fail drift signs:
+
 If this step is skipped, the report will often sound informed while still defaulting to a generic overview shape.
 
 ## Recommended structure
