@@ -58,6 +58,9 @@ Run this checklist before delivery.
 - [ ] the runner-up or best alternative is named clearly
 - [ ] eliminated or weak-fit options are identified when useful
 - [ ] the reader can see why one option wins and why the others lose
+- [ ] the winning option is not just described positively; the report identifies the few load-bearing reasons it beats the runner-up under the stated constraints
+- [ ] the runner-up is not just second by narration; the report states what weighting, scenario, or constraint shift would make it first
+- [ ] eliminated options are rejected for specific decision reasons rather than fading out through lower narrative attention
 
 ## Evidence layers
 
@@ -72,6 +75,9 @@ Run this checklist before delivery.
 - [ ] fallback options are given when the leading option is fragile
 - [ ] the report states what would change the ranking or recommendation
 - [ ] uncertainty is tied to the decision, not left as generic caveats
+- [ ] if the recommendation depends on one dominant assumption, that dependency is visible near the recommendation rather than buried later
+- [ ] if the route involves procurement, deployment, or physical movement, the report surfaces hidden friction in the same decision layer as price / performance / convenience rather than treating it as appendix detail
+- [ ] if the route involves multiple stakeholders or geographies, the report shows who is penalized by the winning option and why that penalty is still acceptable or not
 
 ## Decision usefulness
 
