@@ -71,6 +71,8 @@ When sources conflict:
 
 For important claims, be able to explain in one sentence why that source was chosen over others.
 
+Source discipline does not end at evidence labeling. If the best available evidence remains partial, indirect, stale, or scope-limited, the final conclusion should narrow with it. Weak evidence should not merely produce softer source notes while the headline judgment stays equally strong.
+
 ## Red flags
 
 Downgrade confidence when:
@@ -113,8 +115,17 @@ do not present the claim as confirmed fact unless the underlying evidence is str
 If source hardness, metric scope, or verification completeness remains unclear:
 - downgrade to inference
 - or label the claim as management-stated rather than confirmed fact
+- and narrow the conclusion that depends on that claim if it remains load-bearing
 
 Evidence labels should reflect source hardness and verification completeness, not just how plausible or specific the sentence sounds.
+
+If a claim stays unresolved in a load-bearing way, do not stop at relabeling the evidence. Also downgrade one or more of the following in the final memo:
+- scope of the conclusion
+- precision of the conclusion
+- confidence of the conclusion
+- strength of the recommendation
+- stability of the ranking
+- timing confidence behind the action
 
 ## Issuer-sourced competitive and positioning claims
 
