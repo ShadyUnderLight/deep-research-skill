@@ -349,6 +349,20 @@ A strong selection report should not only say what wins now; it should also say 
 
 Give concrete, low-regret next actions tied to the decision context.
 
+## Final-delivery discipline
+
+For decision-oriented reports, final delivery should preserve decision readability.
+
+That means:
+
+- recommendation blocks should remain visually easy to find
+- hard gates, ranking logic, and change-the-conclusion conditions should not be buried by export formatting
+- tables should not become the dominant reading burden if bullets or compact blocks would scan better
+- process labels should not leak into the final artifact unless they are intentionally reader-facing
+- PDF output should be checked for hierarchy, spacing, and section visibility rather than treated as an automatic byproduct of markdown
+
+If the final artifact still looks like an analyst worksheet rather than a decision memo, treat that as a delivery failure.
+
 ## Confidence scale
 
 Use a simple label when useful:
