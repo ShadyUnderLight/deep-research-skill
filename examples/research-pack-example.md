@@ -29,6 +29,16 @@ Constrained choice / shortlist
 ## Stop condition
 Stop when the top choice, runner-up logic, and ranking-change conditions are supported well enough for a practical recommendation.
 
+## Degraded-search log
+- Search objective: current transport and logistics sources for candidate meetup cities
+- Primary provider attempted: MiniMax web search
+- Fallback trigger: low-yield results for practical source discovery
+- Fallback provider used: Exa
+- Why this fallback fits better: broader discovery of current web sources for schedules and logistics pages
+- Candidate-source quality: mixed
+- Claims still needing primary-page verification: exact transport timing, current venue constraints
+- Live-search status: partially recovered
+
 ## Source register
 - Source: transport schedule / route information
   - Supports: travel feasibility and burden comparison

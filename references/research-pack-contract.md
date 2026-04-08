@@ -40,6 +40,7 @@ A minimal Research Pack should include:
 Use the following when relevant:
 
 - current-state snapshot
+- degraded-search log
 - counter-evidence log
 
 ## Field intent
@@ -73,6 +74,9 @@ What remains unresolved and why it matters.
 
 ### Current-state snapshot
 What must be verified as current when the task is time-sensitive.
+
+### Degraded-search log
+If fallback discovery was needed, record which provider path was attempted, why fallback was triggered, what fallback path was used, and what remained unverified.
 
 ### Counter-evidence log
 What could weaken, delay, qualify, or overturn the answer.
@@ -122,6 +126,7 @@ A compact Research Pack may use this shape:
 - Core subquestions
 - Stop condition
 - Current-state snapshot
+- Degraded-search log
 - Source register
 - Claim register
 - Uncertainty register

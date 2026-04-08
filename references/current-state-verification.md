@@ -87,6 +87,14 @@ If the current state cannot be verified clearly:
 - avoid filling the gap with likely-but-stale knowledge
 - separate historical context from verified current state
 
+If live search degraded during current-state verification, distinguish clearly between:
+
+- current state likely exists but search-provider access degraded
+- current state is still ambiguous even after fallback discovery
+- current state may require primary-page/browser verification rather than more search-result pages
+
+Do not treat search-provider weakness and underlying fact ambiguity as the same problem.
+
 ## Output expectation
 
 For fast-moving topics, make the current-state check visible in the final answer when useful.
