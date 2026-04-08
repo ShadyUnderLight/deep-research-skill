@@ -127,6 +127,14 @@ Fail if the report:
 
 ## Route: Market Entry / Regional Expansion
 
+### Micro-audit focus
+For this route, be especially strict about:
+
+- explicit go / not now / pilot only / phased-entry language
+- whether hub / beachhead / later expansion roles are separated when relevant
+- whether sequencing depends on named hard gates rather than generic optimism
+- whether the recommendation appears before country-by-country narrative expands
+
 ### Trigger
 Use when the task is mainly about:
 
@@ -288,6 +296,14 @@ Fail if the report:
 
 ## Route: Constrained Choice / Shortlist / Option Selection
 
+### Micro-audit focus
+For this route, be especially strict about:
+
+- whether the winning option beats the runner-up for a few explicit load-bearing reasons rather than diffuse overall narration
+- whether the runner-up remains credible in a named scenario instead of serving as a ceremonial second place
+- whether rejected options are rejected for actual decision reasons rather than lower narrative attention
+- whether hidden operational burdens sit in the ranking logic rather than in cleanup caveats
+
 ### Trigger
 Use when the task is mainly about:
 
@@ -335,6 +351,14 @@ Fail if the report:
 ---
 
 ## Route: Equipment Selection / Procurement / Home-server Planning
+
+### Micro-audit focus
+For this route, be especially strict about:
+
+- whether the recommendation binds hardware route and system choice into one stack decision
+- whether minimum viable vs recommended configuration is separated when it changes the answer materially
+- whether household operating burdens like noise, power, maintenance, backup, and expansion friction are treated as ranking variables rather than side notes
+- whether rejected routes lose for explicit operator constraints rather than broad category descriptions
 
 ### Trigger
 Use when the task is mainly about:
@@ -390,6 +414,15 @@ Fail if the report:
 ---
 
 ## Route: Listed Company / Investment-style Research
+
+### Micro-audit focus
+For this route, be especially strict about:
+
+- whether the opening states the current thesis before long background expansion
+- whether the case is driven by a few current load-bearing variables rather than broad company description
+- whether support, weakening evidence, and unresolved variables are separated clearly
+- whether competition is written as actual thesis pressure rather than peer-directory filler
+- whether valuation, growth, strategic narrative, and market position are kept analytically distinct
 
 ### Trigger
 Use when the task is mainly about:
