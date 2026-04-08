@@ -34,6 +34,7 @@ Examples:
 - selection memo without real winner-vs-runner-up logic
 - company memo without current thesis pressure structure
 - procurement memo without explicit operator-constraint tradeoffs
+- shortlist memo that gives near-equal narrative weight to winner, runner-up, and rejected paths
 
 ### Failure Mode 2: Generic audit pass, family-specific leak
 

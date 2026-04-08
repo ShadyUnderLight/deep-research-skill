@@ -85,6 +85,7 @@ Run this checklist before delivery.
 - [ ] the recommendation is sharp enough to act on
 - [ ] the reader can tell who or what is penalized by the recommended choice
 - [ ] the next step is clear
+- [ ] narrative weight is not distributed so evenly that the winning option, runner-up, and rejected options all feel equally plausible by reading time alone
 
 ## Quality bar
 

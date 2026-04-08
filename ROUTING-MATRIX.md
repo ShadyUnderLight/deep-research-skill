@@ -303,6 +303,7 @@ For this route, be especially strict about:
 - whether the runner-up remains credible in a named scenario instead of serving as a ceremonial second place
 - whether rejected options are rejected for actual decision reasons rather than lower narrative attention
 - whether hidden operational burdens sit in the ranking logic rather than in cleanup caveats
+- whether narrative weight is allocated in proportion to the final decision rather than making all plausible options feel equally alive
 
 ### Trigger
 Use when the task is mainly about:
