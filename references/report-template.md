@@ -6,6 +6,50 @@ Do not force every section if the task does not need it, but keep the report dec
 
 ## Default structure
 
+## Front-page discipline
+
+The front page should help the reader grasp the report's main judgment quickly.
+
+For user-facing reports, the front page should usually prioritize:
+- title
+- report date / coverage period
+- one-sentence bottom line or thesis
+- 3-5 executive bullets
+- key risks
+- key unknowns
+
+Do not default to using the front page as the main location for:
+- full evidence-label explanations
+- full numeric-role explanations
+- long methodology notes
+
+Method transparency should remain visible, but detailed label explanations and process notes should usually move to a later methods note, page-2 opening block, or appendix.
+
+## Scanability and paragraph discipline
+
+Final reports should support scan reading, not only sequential reading.
+
+Prefer:
+- shorter paragraphs
+- one main judgment per paragraph
+- bullets for risks, unknowns, limits, and counter-evidence
+- visible subheadings or callouts for key takeaways
+
+Avoid long stretches of dense prose when a list, takeaway block, or short sub-section would improve readability.
+
+## Table discipline
+
+Use tables when they help the reader compare, prioritize, or interpret evidence.
+Tables should not appear as unsupported data dumps.
+
+By default, a useful table should include:
+- a clear title
+- visible units and time scope
+- consistent number formatting
+- a short interpretation below the table explaining what the table shows and why it matters
+
+## Default structure
+
 ### 1. Executive summary
 
 **Format: use bullet points, not paragraphs.** Each bullet should contain one distinct idea. Do NOT write the executive summary as a wall of running text.

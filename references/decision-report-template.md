@@ -39,6 +39,69 @@ A minimal working contract can be written in seven short lines:
 
 If this step is skipped, the report will often sound informed while still defaulting to a generic overview shape.
 
+## Judgment-first front page
+
+For decision-oriented or investment-style reports, the front page should act as a judgment entry point rather than a methodology-heavy opening.
+
+The front page should usually contain:
+- report title
+- date / coverage period
+- one-sentence judgment or thesis
+- 3-5 executive bullets
+- key risks
+- key unknowns
+- optional: what to watch next
+
+Do not let label explanations, route metadata, or process notes dominate the front page if they reduce judgment visibility.
+
+## Section takeaway block
+
+Each major section should make its decision value visually visible, not only verbally present.
+
+For major business, market, or option-analysis sections, include a compact takeaway block such as:
+- Section judgment
+- Main driver
+- Main risk
+- Key unknown
+- optional: What would change this view
+
+This block helps the final PDF remain scannable and prevents judgment from disappearing into background prose.
+
+## Judgment before background
+
+For decision-oriented sections, do not spend multiple paragraphs on background before making the section's main judgment visible.
+
+Prefer this order:
+1. section judgment
+2. why it matters
+3. supporting evidence
+4. limits, risks, or unknowns
+
+If the section opens with background, the judgment should still become visible early rather than appearing only at the end.
+
+## Decision-table discipline
+
+In decision reports, tables should support the reader's judgment, not merely display information.
+
+For comparison tables, segment tables, driver tables, or risk tables:
+- make the title interpretive, not generic
+- keep units and time scope explicit
+- keep number formatting consistent
+- follow the table with 1-2 sentences explaining what matters most in the table
+
+Do not end an important subsection with an un-interpreted table.
+
+## Methods note placement
+
+Evidence labels, confidence notes, and numeric-role explanations remain useful, but they should not automatically dominate the front page.
+
+Keep them visible, but default to:
+- a compact methods note
+- a page-2 opening block
+- or an appendix-style explanation
+
+Use the front page primarily for judgment clarity and orientation.
+
 ## Recommended structure
 
 ### Load-bearing numbers and their role
