@@ -164,6 +164,42 @@ mcporter call 'exa.web_search_exa(query: "<search query>", numResults: 5)'
 13. if Bing is also blocked or unusable, declare the live-search step blocked and note which freshness checks or claims could not be verified live
 14. continue with offline materials only if the remaining uncertainty is made explicit
 
+## Degraded-search execution discipline
+
+When fallback search is needed, do not switch providers mechanically.
+
+Before changing provider path, make an explicit judgment about the cause:
+
+- provider failure or temporary outage
+- quota / rate-limit pressure
+- query-fit mismatch
+- low-yield results despite provider availability
+- browser-side localization need
+
+Prefer this execution logic:
+
+- use Exa first when the task is discovery-heavy and likely benefits from English-language web coverage, technical docs, company pages, or broad web recall
+- do not force Exa first when the task is dominated by Chinese-language news flow, localized search intent, or browser-local ranking behavior
+- move to Bing only when Exa is unavailable, clearly low-yield for the query class, or mismatched to the search intent
+- stop degraded-search escalation when the next provider is unlikely to add decision-relevant value rather than escalating just because another provider exists
+
+If fallback search keeps returning noisy or repetitive candidate sources, say so and tighten the live-search objective instead of continuing provider churn.
+
+## Degraded-search evidence log
+
+When degraded fallback is used, keep a compact internal log in this shape:
+
+- search objective:
+- primary provider attempted:
+- fallback trigger: provider failure / quota / query-fit / low-yield / localization need
+- fallback provider used:
+- why this fallback fits better:
+- candidate-source quality: strong / mixed / weak
+- claims still needing primary-page verification:
+- live-search status: recovered / partially recovered / blocked
+
+This log does not need to appear verbatim in the final memo, but its effects should be recoverable in the Research Pack, uncertainty register, or source notes.
+
 Other tools:
 - `web_fetch`: extract readable page content after search identifies a candidate source
 - `browser`: handle dynamic pages or failed fetches for confirmed-live URLs
