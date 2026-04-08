@@ -17,8 +17,13 @@ Before deep collection, explicitly decide:
 - required secondary disciplines
 - required audits
 - visible artifact contract
+- opening-section contract
+- non-negotiable sections the final artifact must contain
+- route-specific hard-fail conditions to guard against during synthesis
 
 Do not proceed as if generic research were automatically sufficient when a specialized route would materially change structure, evidence burden, or audit burden.
+
+If the route changes the answer shape, do not wait until late-stage writing to apply it. The route should determine the report skeleton before broad evidence accumulation turns into generic prose.
 
 ## Global rule
 
@@ -27,9 +32,10 @@ For every task:
 1. identify the real decision, judgment, or diligence goal
 2. choose one primary route
 3. attach the required secondary disciplines
-4. make the route visible in the final artifact
-5. run the required audits before delivery
-6. ensure target-language coherence in the final artifact when the report is user-facing
+4. translate the route into a visible section-level execution contract before drafting
+5. make the route visible in the final artifact
+6. run the required audits before delivery
+7. ensure target-language coherence in the final artifact when the report is user-facing
 
 If multiple routes apply, choose one primary route and attach the others as secondary disciplines.
 
@@ -39,6 +45,22 @@ Use the smallest complete set:
 - up to 2–3 secondary disciplines
 
 Do not activate everything. Activate the smallest set that produces a decision-useful, auditable, current, and clean final artifact.
+
+## Route execution contract
+
+Before synthesis, convert the selected route into a compact execution contract.
+
+That contract should make these items explicit:
+
+- what the opening 20-30% of the report must do
+- which sections are mandatory because the route would fail without them
+- which tempting generic sections should be minimized or cut
+- which visible artifact would prove that the route fired correctly
+- which route-specific hard-fail patterns must be checked before delivery
+
+A route is not fully selected until this contract exists in operational form.
+
+If the report can still be drafted as a generic overview with a recommendation paragraph appended near the end, the route has not yet been operationalized strongly enough.
 
 ---
 
@@ -481,8 +503,12 @@ Before delivery, ask:
 
 1. did the correct route fire?
 2. did the required secondary disciplines attach?
-3. is the route visibly executed in the final artifact?
+3. was the route converted into a section-level execution contract early enough to shape the report?
+4. is the route visibly executed in the opening, middle, and bottom line of the final artifact?
+5. would a reviewer infer the chosen route from the delivered report itself, without hidden notes?
 
 A route only counts if the final report visibly satisfies its artifact contract.
 
 If the route is implicit in reasoning but not visible in delivery, treat that as an execution failure.
+
+If the opening section could be swapped with a generic industry or company overview without materially changing the report, treat that as strong evidence that route execution drift still occurred.

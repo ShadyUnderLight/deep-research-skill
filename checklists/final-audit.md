@@ -45,6 +45,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] meaningful uncertainties are recorded rather than only implied
 - [ ] where the task warrants it, counter-evidence handling is recoverable from the process artifact
 - [ ] required audits are named and statused rather than merely assumed
+- [ ] if the task used a specialized route, there is visible evidence that the route was turned into an execution contract before full drafting
 
 ## Route execution integrity
 
@@ -54,6 +55,11 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] the required secondary disciplines for the selected route are visibly executed
 - [ ] the report does not collapse back into generic overview mode despite route selection
 - [ ] if the route implies recommendation, ranking, gating, or sequencing burden, the report actually carries that burden
+- [ ] the opening 20-30% of the report already reflects the chosen route rather than reading like a reusable generic overview
+- [ ] the route is visible not only in headers, but also in section order and burden allocation
+- [ ] there is a visible bridge from route -> mandatory sections -> bottom-line conclusion
+- [ ] if a route-specific section were removed, the report would materially lose decision logic rather than only lose formatting variety
+- [ ] generic background, company history, market history, or option blurbs do not occupy the strongest early-report positions unless the route truly requires them
 
 ## Company-report judgment audit
 

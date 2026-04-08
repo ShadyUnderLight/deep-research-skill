@@ -106,7 +106,9 @@ When using this eval, ask:
 - What visible artifact would prove that it was triggered?
 - Did the final report contain that artifact?
 - If partially, where did compliance break: header, summary, body, sources, or bottom line?
-- Is the right fix a new rule, a stronger trigger, or a stronger final-audit gate?
+- Was there evidence that the route was converted into a section-level execution contract before drafting?
+- Did the opening 20-30% of the report already reveal the chosen route, or could it have belonged to a generic overview?
+- Is the right fix a new rule, a stronger trigger, a stronger execution contract, or a stronger final-audit gate?
 
 ---
 
@@ -115,11 +117,12 @@ When using this eval, ask:
 When you apply this eval, summarize the result as:
 
 - **Expected gate(s):**
+- **Expected execution contract:**
 - **Visible signs of activation:**
 - **Where execution held:**
 - **Where execution leaked:**
 - **Diagnosis:** missing rule / missing trigger / execution failure
-- **Best next fix:** reference update / checklist update / SKILL routing update / final-audit update / new eval only
+- **Best next fix:** reference update / checklist update / SKILL routing update / execution-contract hardening / final-audit update / new eval only
 
 ---
 
