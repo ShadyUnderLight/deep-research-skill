@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import re
 import sys
 from pathlib import Path
 
@@ -17,6 +18,16 @@ REQUIRED_HEADINGS = [
     "## Final audit status",
 ]
 
+ARTIFACT_RED_FLAGS = [
+    r"\bTBD\b",
+    r"\bTODO\b",
+    r"\bXXX\b",
+    r"\[\[placeholder\]\]",
+    r"\{citation\}",
+    r"\{\{[^\n{}]{1,80}\}\}",
+    r"<PLACEHOLDER>",
+]
+
 
 def main() -> int:
     if len(sys.argv) != 2:
@@ -32,6 +43,19 @@ def main() -> int:
         for heading in missing:
             print(f"- {heading}")
         return 2
+
+    artifact_hits = []
+    for pattern in ARTIFACT_RED_FLAGS:
+        matches = re.findall(pattern, text)
+        if matches:
+            artifact_hits.append((pattern, matches[:3]))
+
+    if artifact_hits:
+        print("Artifact red flags detected:")
+        for pattern, matches in artifact_hits:
+            preview = ", ".join(repr(m) for m in matches)
+            print(f"- pattern {pattern}: {preview}")
+        return 3
 
     print("Research Pack structure looks valid.")
     return 0

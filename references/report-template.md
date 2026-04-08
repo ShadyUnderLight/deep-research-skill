@@ -66,6 +66,22 @@ Organize by task type. Examples:
 - list the most important sources
 - when applicable, use a structured source register rather than a loose bibliography
 
+## Final-delivery rule
+
+Treat the final artifact as its own subsystem, not as a passive export of good reasoning.
+
+Before delivery, check separately for:
+
+- placeholder residue
+- citation / retrieval syntax leakage
+- accidental internal scaffolding visible to the reader
+- broken heading hierarchy
+- table overflow or unreadable density
+- bullet walls or compressed paragraphs that reduce scanability
+- markdown that looks acceptable but degrades badly in PDF
+
+A report can be analytically strong and still fail delivery. If the delivered artifact feels like a draft export, stitched note bundle, or parser byproduct, it is not ready.
+
 ## Compression rule
 
 If the user wants a shorter answer, shorten:

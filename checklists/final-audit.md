@@ -149,6 +149,12 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 - [ ] no citation artifacts, retrieval syntax, placeholder entities, or rendering residues leak into the final report body
 - [ ] markdown / PDF delivery does not expose internal labels, raw template markers, or unfinished placeholders
+- [ ] the delivered markdown reads like an intentional report, not a tool dump, export residue, or stitched note bundle
+- [ ] the final artifact has been checked specifically for leftover placeholders such as `TBD`, `TODO`, `XXX`, `[[placeholder]]`, `{citation}`, or unresolved bracket markers
+- [ ] source notes, evidence labels, and section labels visible to the user are intentional reader-facing devices rather than leaked process scaffolding
+- [ ] tables, bullets, spacing, and heading hierarchy improve scanability rather than making the report feel like a raw export
+- [ ] if PDF is delivered, the PDF was reviewed as a deliverable in its own right rather than assumed correct because markdown looked clean
+- [ ] if markdown looked acceptable but PDF degraded structure, spacing, or readability, that is treated as a delivery failure rather than a minor rendering quirk
 
 ## Quality bar
 
