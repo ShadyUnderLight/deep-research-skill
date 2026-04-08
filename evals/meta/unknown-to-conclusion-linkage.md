@@ -88,6 +88,7 @@ When using this eval, ask:
 - Which unknowns are actually load-bearing?
 - What part of the conclusion should those unknowns constrain?
 - Did the report downgrade that specific part?
+- Did the report downgrade the right layer: recommendation strength, ranking stability, timing confidence, precision, or scope?
 - Is the memo still claiming a stable winner where only a conditional lead is justified?
 - Is the memo still claiming commitment-grade action where only low-regret action is justified?
 - Did the report name what would reverse, weaken, or delay the conclusion?
