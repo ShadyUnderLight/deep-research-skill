@@ -123,9 +123,14 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 ## Unknown-to-conclusion linkage
 
-- [ ] for each major unknown or unresolved current-state gap, the report explains whether it limits directional judgment, quantitative precision, valuation confidence, ranking confidence, or recommendation strength
+- [ ] for each major unknown or unresolved current-state gap, the report explains whether it limits directional judgment, quantitative precision, valuation confidence, ranking confidence, timing confidence, or recommendation strength
 - [ ] caveats do not remain cosmetic; if a load-bearing unknown remains unresolved, the final conclusion narrows accordingly
 - [ ] the report distinguishes clearly between a directional judgment that is still justified, a precise quantitative judgment that is not justified, and a valuation-grade or timing-grade judgment that is not justified
+- [ ] when the evidence supports direction but not precision, the report explicitly downgrades from precise claim -> directional claim instead of keeping precise language with caveats attached
+- [ ] when the evidence supports a shortlist but not a stable winner, the report downgrades to conditional lead / provisional ranking / close-call framing rather than overstating separation
+- [ ] when an unresolved variable could realistically flip the recommendation, the report names the reversal condition rather than burying it in generic risk language
+- [ ] if unknowns are concentrated in one load-bearing segment, geography, customer type, or time horizon, the report narrows scope rather than leaving the conclusion artificially broad
+- [ ] if the report still gives a strong recommendation under unresolved load-bearing unknowns, it makes explicit why low-regret action is still justified despite those gaps
 
 ## Market position and ranking claims
 

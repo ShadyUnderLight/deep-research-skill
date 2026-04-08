@@ -320,10 +320,21 @@ State:
 - confidence limits
 - most important missing evidence
 - what public sources do not clearly show
+- what level of conclusion remains justified despite the gaps
+- what level of conclusion is no longer justified because of the gaps
+
+Do not let this section become a caveat parking lot. Unknowns should visibly constrain the conclusion's scope, precision, timing confidence, ranking strength, or action intensity.
 
 ## What would change the conclusion
 
 Spell out what future evidence would materially change the judgment.
+
+Be explicit about the downgrade boundary:
+
+- what remains strong enough to conclude now
+- what is only conditionally supportable
+- what should not be concluded yet
+- what specific unknown, if resolved differently, would reverse the ranking, weaken the recommendation, or delay action
 
 For option-selection tasks, include concrete change conditions such as:
 
@@ -347,3 +358,15 @@ Use a simple label when useful:
 - Low
 
 Do not use high confidence casually on fast-moving topics.
+
+## Confidence downgrade patterns
+
+When important unknowns remain, prefer visible downgrade patterns such as:
+
+- `directionally positive, but precision remains low`
+- `current leader, but only by a narrow and reversible margin`
+- `promising, but not yet decision-grade for a strong go decision`
+- `good enough for a low-regret pilot, not strong enough for a full commitment`
+- `evidence supports shortlist inclusion, not decisive superiority`
+
+If the report uses a strong final recommendation anyway, it should explain why the recommended action is still low-regret under uncertainty rather than acting as if the uncertainty were already resolved.
