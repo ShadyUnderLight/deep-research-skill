@@ -33,6 +33,7 @@ The workflow changes provider because a ladder exists, not because the switch wa
 Examples:
 - Exa -> Bing -> more Bing-like browsing without explaining why the search intent changed
 - switching provider after weak results without identifying whether the problem was query-fit, low-yield, or provider failure
+- escalating providers when the better next move would have been to tighten the objective or query shape first
 
 ### Failure Mode 2: Query-fit misfire
 

@@ -180,6 +180,7 @@ Prefer this execution logic:
 
 - use Exa first when the task is discovery-heavy and likely benefits from English-language web coverage, technical docs, company pages, or broad web recall
 - do not force Exa first when the task is dominated by Chinese-language news flow, localized search intent, or browser-local ranking behavior
+- before escalating again, tighten the search objective or query shape if the current path is returning noisy but not obviously irrelevant material
 - move to Bing only when Exa is unavailable, clearly low-yield for the query class, or mismatched to the search intent
 - stop degraded-search escalation when the next provider is unlikely to add decision-relevant value rather than escalating just because another provider exists
 

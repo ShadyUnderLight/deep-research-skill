@@ -76,7 +76,7 @@ What remains unresolved and why it matters.
 What must be verified as current when the task is time-sensitive.
 
 ### Degraded-search log
-If fallback discovery was needed, record which provider path was attempted, why fallback was triggered, what fallback path was used, and what remained unverified.
+If fallback discovery was needed, record which provider path was attempted, why fallback was triggered, whether the search objective or query shape was tightened before escalating, what fallback path was used, and what remained unverified.
 
 ### Counter-evidence log
 What could weaken, delay, qualify, or overturn the answer.
