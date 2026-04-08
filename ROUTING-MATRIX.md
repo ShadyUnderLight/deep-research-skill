@@ -58,6 +58,16 @@ That contract should make these items explicit:
 - which visible artifact would prove that the route fired correctly
 - which route-specific hard-fail patterns must be checked before delivery
 
+Use a compact format like:
+
+- primary route:
+- closest alternative route:
+- opening must do:
+- mandatory sections:
+- minimize / move later:
+- visible proof the route fired:
+- hard-fail signs to watch:
+
 A route is not fully selected until this contract exists in operational form.
 
 If the report can still be drafted as a generic overview with a recommendation paragraph appended near the end, the route has not yet been operationalized strongly enough.
