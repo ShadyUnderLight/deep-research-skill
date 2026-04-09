@@ -487,6 +487,41 @@ blockquote {
   page-break-inside: avoid;
 }
 
+.front-page-note {
+  margin: 8pt 0 14pt;
+  padding: 9pt 11pt;
+  border-left: 3pt solid #93c5fd;
+  background: #f8fbff;
+  color: var(--color-subtitle);
+  border-radius: 0 6pt 6pt 0;
+  font-size: 8.8pt;
+  line-height: 1.6;
+}
+
+.takeaway-block {
+  margin: 10pt 0 14pt;
+  padding: 10pt 12pt;
+  border-radius: 8pt;
+  border: 1px solid #cfe0ff;
+  border-left: 4pt solid var(--color-primary);
+  background: linear-gradient(180deg, #f8fbff 0%, #f1f7ff 100%);
+  page-break-inside: avoid;
+}
+
+.takeaway-block strong {
+  color: #1e3a8a;
+}
+
+.interpretation-note {
+  margin: -6pt 0 14pt;
+  padding: 7pt 10pt;
+  border-radius: 6pt;
+  background: #f8fafc;
+  color: var(--color-subtitle);
+  font-size: 8.6pt;
+  line-height: 1.58;
+}
+
 .front-page-summary {
   display: block;
   margin: 8pt 0 16pt;

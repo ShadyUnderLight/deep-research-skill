@@ -182,6 +182,43 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] punctuation, brackets, dashes, dates, and percentages are stylistically aligned
 - [ ] there are no visible formatting artifacts that reduce final-delivery credibility
 
+## Front-page readability
+
+- [ ] the front page mainly helps the reader grasp the report's judgment rather than the process behind it
+- [ ] the thesis, key risks, and key unknowns can be identified quickly from the opening page
+- [ ] methodology detail has not displaced judgment visibility on the front page
+- [ ] the front page feels like a report opening rather than a process note
+
+## Judgment visibility in layout
+
+- [ ] key judgments are visually visible rather than only embedded in prose
+- [ ] major sections include a visible takeaway, judgment, or summary block when the route carries decision burden
+- [ ] risks, unknowns, and reversal conditions are easy to locate
+- [ ] the layout helps the reader scan the report's decision structure
+
+## Visual hierarchy and scanability
+
+- [ ] major headings and subheadings are clearly distinguished
+- [ ] judgment blocks, risks, evidence notes, and unknowns are visually differentiated from body text
+- [ ] there are no long stretches of dense text that should clearly be broken up
+- [ ] the report can be skimmed without losing the main logic
+
+## Table usefulness
+
+- [ ] each table has a clear title
+- [ ] units and scope are visible when relevant
+- [ ] tables support judgment rather than merely display data
+- [ ] important tables are followed by a short interpretation
+- [ ] the reader can tell why each important table matters
+
+## Mixed-script and target-language cleanliness
+
+- [ ] Chinese text spacing is visually normal
+- [ ] mixed Chinese-English text is readable and stylistically consistent
+- [ ] names, product terms, and other proper nouns are spelled consistently
+- [ ] punctuation, brackets, dashes, dates, and percentages are stylistically aligned
+- [ ] there are no visible formatting artifacts that reduce final-delivery credibility
+
 ## Delivery cleanliness
 
 - [ ] no citation artifacts, retrieval syntax, placeholder entities, or rendering residues leak into the final report body
