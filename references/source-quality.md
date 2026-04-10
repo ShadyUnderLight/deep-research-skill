@@ -127,6 +127,25 @@ If a claim stays unresolved in a load-bearing way, do not stop at relabeling the
 - stability of the ranking
 - timing confidence behind the action
 
+## Load-bearing claims in listed-company monopoly / moat research
+
+For claims about monopoly status, licensing exclusivity, permanent protection, sole-provider status, or extreme market-share dominance:
+
+- prefer primary evidence first
+- treat reposts, social discussion, retail-investor commentary, and news aggregation as discovery only
+- do not label such claims as confirmed fact unless supported by company filings, regulator documents, or other primary institutional material
+- broker research may support interpretation, but should not alone carry `sole` / `only` / `permanent` / `>90%` wording
+
+If source strength does not justify wording strength, downgrade the wording.
+
+When the wording contains `唯一` / `only` / `sole` / `exclusive` / `永久` / `permanent` / `不可替代` / `irreplaceable` / `无竞争对手` / `>90%`, check explicitly:
+- exact claim wording
+- source class
+- year and market scope
+- whether the source supports the exact strength or only a weaker adjacent claim
+
+If that check fails, downgrade the conclusion rather than merely softening the source note.
+
 ## Issuer-sourced competitive and positioning claims
 
 Treat issuer-sourced claims with extra caution, especially when they involve:

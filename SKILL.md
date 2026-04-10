@@ -112,6 +112,7 @@ For every important claim, capture:
 Read `references/source-quality.md` when source ranking is ambiguous.
 Read `references/claim-matrix.md` when the task has multiple important conclusions, conflicting evidence, or high stakes.
 Read `references/task-types.md` when the task needs a domain-specific question set.
+Read `references/moat-monopoly-screening.md` when the task screens or ranks listed companies using monopoly, irreplaceability, scarcity, strongest moat, or only-listed-proxy language.
 Read `references/comparative-distillation-method.md` when comparing paired reports to turn stronger-vs-weaker outputs into reusable changes.
 Use `evals/templates/comparative-distillation-template.md` to record paired-report comparisons so extracted patterns land as `NEW_RULE`, `CHECKLIST_HARDENING`, `TEMPLATE_CHANGE`, or `NO_ACTION`.
 

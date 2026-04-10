@@ -50,6 +50,16 @@ Run through every item before delivering the final report.
 - [ ] valuation, growth, market position, and strategic narrative are not blended into one undifferentiated bullish or bearish mood
 - [ ] if the view is positive but not valuation-grade, timing-grade, or precision-grade, the downgrade boundary is explicit
 
+## Monopoly / moat / scarcity discipline
+
+- [ ] monopoly, oligopoly, strong moat, market leadership, and listed-market proxy scarcity are clearly separated when defensibility is central to the task
+- [ ] A-share-only listed uniqueness is not used as shorthand for industry exclusivity
+- [ ] `唯一` / `only` / `sole` / `永久` / `permanent` / `不可替代` / `irreplaceable` / `无竞争对手` / `>90%` style wording appears only when the source support matches that exact strength
+- [ ] if source support is weaker than wording strength, the wording is visibly downgraded
+- [ ] load-bearing market-share, ranking, or exclusivity claims include time window, scope, and denominator when relevant
+- [ ] issuer-sourced or media-mediated positioning claims are not upgraded into confirmed industry facts too easily
+- [ ] if the report screens for scarce or monopolistic companies, category boundaries are visible in the final ranking rather than hidden in caveats
+
 ## Flags
 
 If any item above is unchecked or uncertain, note the limitation explicitly in the report before delivery.

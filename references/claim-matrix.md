@@ -68,6 +68,16 @@ A good claim should be:
 - scoped
 - evidence-linked
 
+For listed-company monopoly / moat / scarcity screening tasks, also capture:
+
+- exact claim wording
+- source class
+- year / scope / market definition
+- whether wording downgrade is needed
+- the strongest wording allowed in final delivery
+
+Do not let ranking backbone claims depend on vague market-share figures, undefined time windows, or secondary-only `unique` / `absolute` / `irreplaceable` language.
+
 ## Contradiction handling
 
 When support and counter-evidence conflict, compare:
