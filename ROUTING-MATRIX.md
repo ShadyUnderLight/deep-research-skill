@@ -424,6 +424,7 @@ For this route, be especially strict about:
 - whether support, weakening evidence, and unresolved variables are separated clearly
 - whether competition is written as actual thesis pressure rather than peer-directory filler
 - whether valuation, growth, strategic narrative, and market position are kept analytically distinct
+- whether moat / monopoly / listed-proxy scarcity claims are explicitly separated when defensibility is central to the task
 
 ### Trigger
 Use when the task is mainly about:
@@ -443,6 +444,7 @@ Use when the task is mainly about:
 - `references/finance-date-discipline.md`
 - `references/market-sizing-and-share-discipline.md` when share/size claims matter
 - `references/source-traceability-and-claim-citation.md`
+- `references/moat-monopoly-screening.md` when the task involves monopoly, irreplaceability, strongest moat, scarce listed assets, or only-listed-proxy judgments
 
 ### Attach
 - current-state verification
@@ -463,6 +465,12 @@ The final report should visibly show:
 - separation of reported facts vs estimates
 - risks and counter-evidence
 - uncertainty around forward views
+- when moat / monopoly / scarcity is central, a visible distinction among:
+  - legal or regulatory exclusivity
+  - resource or infrastructure control
+  - strong moat but still contestable position
+  - listed-market proxy scarcity only
+- where wording was downgraded because the strongest claim could not be fully verified
 
 ### Hard fail
 Fail if the report:
@@ -471,6 +479,9 @@ Fail if the report:
 - uses undated financial numbers
 - makes market-position claims without scope
 - lets valuation narrative substitute for business evidence
+- treats A-share uniqueness as supply-side monopoly or industry exclusivity
+- uses `唯一` / `only` / `永久` / `permanent` / `不可替代` / `irreplaceable` / `>90%` / `无竞争对手` style wording without evidence strong enough for that exact claim strength
+- mixes monopoly, moat, market leadership, and listed-proxy scarcity into one undifferentiated scale
 
 ---
 

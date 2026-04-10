@@ -20,6 +20,7 @@ A report can pass generic final-audit checks and still miss the subtle route-spe
 - market-entry report recommends expansion but leaves hub / beachhead / sequencing roles blurry
 - procurement memo discusses hardware and systems separately instead of as one stack decision
 - listed-company report has good facts but still reads like a company overview with market data attached
+- listed-company scarcity or monopoly report mixes moat, monopoly, and A-share-only proxy uniqueness into one scale
 - competition section lists peers rather than identifying who actually pressures the thesis and on what timeline
 
 ---

@@ -78,6 +78,16 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] the final PDF reads as a polished deliverable rather than a text export
 - [ ] hierarchy, spacing, tables, and visual anchors support judgment rather than merely displaying information blocks
 
+## Monopoly / moat / listed-proxy boundary audit
+
+- [ ] monopoly, oligopoly, strong moat, market leadership, and listed-proxy scarcity are clearly separated when defensibility language is load-bearing
+- [ ] any `唯一` / `only` / `sole` / `永久` / `permanent` / `不可替代` / `irreplaceable` / `无竞争对手` / `>90%` claim is supported by evidence strong enough for that exact wording strength
+- [ ] if exact-strength support is missing, the wording is visibly downgraded rather than left in place with cosmetic caveats
+- [ ] A-share uniqueness is not used as shorthand for industry exclusivity or supply-side monopoly
+- [ ] secondary, aggregator, social, or retail-investor sources are not doing load-bearing work for monopoly-style final claims
+- [ ] if the report screens or ranks companies by scarcity / monopoly / irreplaceability, the final ranking shows category boundaries rather than one undifferentiated defensibility scale
+- [ ] a skeptical reader would not be able to point to multiple obvious overclaims in the final text
+
 ## Completeness
 
 - [ ] the report does not leave a strong impression while having weak substance
