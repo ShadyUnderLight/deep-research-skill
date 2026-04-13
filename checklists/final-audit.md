@@ -155,6 +155,43 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] if both positive (scale up) and negative (margin down) signals exist in the same period, they are presented together in one sentence or adjacent bullets — not separated in different sections
 - [ ] reader does not have to connect the dots themselves
 
+## Front-page readability
+
+- [ ] the front page mainly helps the reader grasp the report's judgment rather than the process behind it
+- [ ] the thesis, key risks, and key unknowns are easy to identify within 10-15 seconds of scanning
+- [ ] methodology detail does not displace judgment visibility on the front page
+- [ ] the front page feels like a report opening rather than a process note or metadata dump
+
+## Judgment visibility in layout
+
+- [ ] key judgments are visually visible rather than only embedded in prose
+- [ ] major sections include a visible takeaway, judgment, or summary block when the route carries recommendation or decision burden
+- [ ] risks, unknowns, and reversal conditions are easy to locate
+- [ ] the layout helps the reader scan the report's decision structure without reading every paragraph in order
+
+## Visual hierarchy and scanability
+
+- [ ] major headings and subheadings are clearly distinguished
+- [ ] judgment blocks, risks, evidence notes, and unknowns are visually differentiated from body text
+- [ ] long stretches of dense text are broken up when scanability would otherwise suffer
+- [ ] the report can be skimmed without losing the main logic
+
+## Table usefulness
+
+- [ ] each table has a clear title or immediate interpretive context
+- [ ] units, scope, and time basis are visible when relevant
+- [ ] tables support a judgment rather than merely display data
+- [ ] important tables are followed by a short interpretation of what matters most
+- [ ] the reader can tell why a given table matters to the conclusion
+
+## Mixed-script and target-language cleanliness
+
+- [ ] Chinese text spacing is visually normal and not obviously stretched by export
+- [ ] mixed Chinese-English text remains readable and stylistically consistent
+- [ ] names, product terms, and other proper nouns are spelled consistently
+- [ ] punctuation, brackets, dashes, dates, and percentages are stylistically aligned
+- [ ] there are no visible formatting artifacts that reduce final-delivery credibility
+
 ## Delivery cleanliness
 
 - [ ] no citation artifacts, retrieval syntax, placeholder entities, or rendering residues leak into the final report body
@@ -163,6 +200,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] the final artifact has been checked specifically for leftover placeholders such as `TBD`, `TODO`, `XXX`, `[[placeholder]]`, `{citation}`, or unresolved bracket markers
 - [ ] source notes, evidence labels, and section labels visible to the user are intentional reader-facing devices rather than leaked process scaffolding
 - [ ] tables, bullets, spacing, and heading hierarchy improve scanability rather than making the report feel like a raw export
+- [ ] presentation credibility leaks such as spelling mistakes, inconsistent naming, awkward table rhythm, orphaned headings, or obvious spacing artifacts are treated as delivery failures rather than cosmetic nits
 - [ ] if PDF is delivered, the PDF was reviewed as a deliverable in its own right rather than assumed correct because markdown looked clean
 - [ ] if markdown looked acceptable but PDF degraded structure, spacing, or readability, that is treated as a delivery failure rather than a minor rendering quirk
 
