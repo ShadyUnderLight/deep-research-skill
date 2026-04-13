@@ -137,7 +137,7 @@ When a research task needs live web search:
 Current primary implementation: call the MiniMax web-search script provided by the `minimax-web-search` skill.
 
 ```bash
-python3 /Users/mn/.openclaw/skills/minimax-web-search/scripts/web_search.py "<search query>"
+python3 <openclaw-skill-root>/minimax-web-search/scripts/web_search.py "<search query>"
 ```
 
 Treat this as the working implementation, not as permission to silently substitute other default search providers.
