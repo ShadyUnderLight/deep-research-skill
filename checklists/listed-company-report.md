@@ -16,9 +16,12 @@ Run through every item before delivering the final report.
 ## Reporting discipline
 
 - [ ] latest full-year financial figures are sourced from annual report, earnings release, or filed disclosure
+- [ ] latest quarterly / interim figures are sourced from the newest reported period reasonably available at the report date
+- [ ] if the memo date is materially later than the supposedly "latest" figures used, freshness was re-checked before synthesis
 - [ ] financial figures are labeled by type: audited annual / interim / earnings release / analyst consensus / inferred
 - [ ] historical reported facts are separated from current market snapshot
 - [ ] forward-looking targets or estimates are clearly labeled as such, not presented as confirmed facts
+- [ ] older but still useful numbers are visibly labeled as historical background / older snapshot rather than treated as current-state anchors
 
 ## Current product lineup
 
@@ -39,6 +42,7 @@ Run through every item before delivering the final report.
 - [ ] gross margin or net margin where relevant
 - [ ] operating cash flow direction noted
 - [ ] segment breakdown if multi-segment business
+- [ ] the report makes visible which numbers belong to the latest reported annual period, which belong to the latest reported quarter/interim period, and which belong only to older historical context
 
 ## Judgment-shape micro-audit
 
