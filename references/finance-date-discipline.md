@@ -77,6 +77,30 @@ If this data cannot be obtained cleanly, note the limitation explicitly rather t
 
 Do not write a listed-company investment memo without current market context. Historical financials alone are insufficient for investment analysis.
 
+### Freshness hard gate for listed-company work
+
+Before broad analysis, explicitly lock three time layers:
+
+1. latest full-year reported period
+2. latest quarterly / interim reported period
+3. latest current market snapshot date
+
+If the report date is materially later than the period being presented as "latest," stop and re-check whether a newer filing, earnings release, or market snapshot should already exist.
+
+Common failure pattern:
+- the report is dated well after a newer quarter should already be available
+- an older annual or quarterly snapshot is easier to retrieve
+- that older snapshot quietly becomes the opening anchor for the whole memo
+
+Treat that as a freshness failure, not as a minor lag.
+
+When older numbers remain useful, label them as one of:
+- historical background
+- prior-cycle comparison
+- older market snapshot
+
+Do not let them stand in for current-state anchors.
+
 ## 3. Forward-looking targets or estimates
 
 Examples:

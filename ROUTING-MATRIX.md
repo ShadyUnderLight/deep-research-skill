@@ -451,6 +451,14 @@ Use when the task is mainly about:
 - forward-looking claims discipline when forecasts appear
 - source traceability
 
+For this route, current-state verification must explicitly lock:
+
+- latest full-year reported period
+- latest quarterly / interim reported period
+- latest current market snapshot date
+- latest management / leadership state when decision-relevant
+- whether the opening thesis is anchored on those latest periods rather than on stale-but-plausible background material
+
 ### Audit
 - `checklists/listed-company-report.md`
 - `checklists/source-traceability.md`

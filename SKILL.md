@@ -225,6 +225,20 @@ Typical triggers include:
 
 If current state cannot be verified, say so clearly instead of filling gaps with likely-but-stale knowledge.
 
+For listed-company or investment-style research, treat current-state verification as a hard gate rather than a general reminder.
+
+Before broad company analysis, explicitly confirm:
+
+- latest full-year reported period
+- latest quarterly / interim reported period
+- latest current market snapshot date
+- latest management / leadership state when decision-relevant
+- whether the opening section is anchored on those latest periods rather than on an older but easier-to-find snapshot
+
+If the report date is materially later than the supposedly "latest" figures used in the memo, stop and re-check freshness before continuing.
+
+Do not let an older but well-structured company snapshot become the de facto current baseline just because it is easier to retrieve.
+
 Route-specific current-state requirements are defined in `ROUTING-MATRIX.md`.
 
 ## Mid-research review
