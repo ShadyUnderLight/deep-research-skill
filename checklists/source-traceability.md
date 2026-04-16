@@ -30,6 +30,7 @@ Run through every item before delivering the final report.
 - [ ] no key claim is left without a traceable source
 - [ ] the report reads as auditable — a reader can follow any claim back to a specific source entry
 - [ ] the register does not contain sources that are not actually cited
+- [ ] if a reviewer highlighted the 3-5 sentences doing the most thesis work, each of those sentences would still be defendable without additional hidden notes
 
 ## Flags
 
