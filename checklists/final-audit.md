@@ -67,6 +67,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 - [ ] the report reads like a judgment memo rather than only a strong descriptive overview
 - [ ] the main conclusion is visible in the opening section rather than buried after background exposition
+- [ ] the opening makes visible not only the thesis, but also the strongest weakening evidence and the key unresolved variable
 - [ ] if the first 30-40% of background were removed, the core judgment would still remain clear
 - [ ] issuer- or company-sourced claims are not upgraded into confirmed industry facts too easily
 - [ ] `leading` / `unique` / market-share / industry-position / strategic-importance claims are independently supported or visibly downgraded

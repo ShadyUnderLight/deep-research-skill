@@ -51,7 +51,9 @@ Run through every item before delivering the final report.
 - [ ] the report identifies the few disclosures or variables that most determine the current view, rather than spreading importance evenly across many company facts
 - [ ] the 3-5 claims doing the most thesis work are auditable in the body text rather than only indirectly recoverable from a source list
 - [ ] the report distinguishes what currently supports the thesis, what currently weakens it, and what remains unresolved
+- [ ] support / weakening / unresolved are visible in the opening 20-30% of the report, not only scattered later across sections
 - [ ] if one unresolved variable dominates the case, it is named as such rather than diluted inside a general risk list
+- [ ] the unresolved variable visibly narrows confidence, timing precision, valuation precision, or recommendation strength rather than remaining a decorative caveat
 - [ ] competition is written as actual thesis pressure or threat-window analysis rather than mostly a peer directory
 - [ ] valuation, growth, market position, and strategic narrative are not blended into one undifferentiated bullish or bearish mood
 - [ ] if the view is positive but not valuation-grade, timing-grade, or precision-grade, the downgrade boundary is explicit

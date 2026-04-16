@@ -243,6 +243,14 @@ Under "What matters most now", prefer to surface:
 - which business line or driver most shapes the current view
 - which 2-4 disclosures or metrics matter most next
 - which facts would most strengthen or weaken the thesis
+- which unresolved variable most limits precision, timing confidence, or valuation confidence
+
+For listed-company and other judgment-heavy memos, treat this as a structural triad, not a stylistic preference:
+- what currently supports the thesis
+- what currently weakens the thesis
+- what remains unresolved and therefore narrows the conclusion
+
+If one of these three is missing, the report usually drifts back into polished-overview mode.
 
 Write competition as threat-window analysis rather than a peer directory. Prefer to show:
 - short-term threat
