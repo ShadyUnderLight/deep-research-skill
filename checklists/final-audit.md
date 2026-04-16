@@ -15,6 +15,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] no major claim rests on a single weak source
 - [ ] evidence hierarchy is visible: confirmed facts, well-supported inferences, and weak claims are not mixed
 - [ ] key numbers are sourced and dated
+- [ ] load-bearing claims are traceable in the body text, not only recoverable from a source appendix or bibliography
+- [ ] strong-sounding comparative or forecast claims have explicit scope and source role, or were visibly downgraded
 
 ## Counter-evidence
 
@@ -65,12 +67,14 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 - [ ] the report reads like a judgment memo rather than only a strong descriptive overview
 - [ ] the main conclusion is visible in the opening section rather than buried after background exposition
+- [ ] the opening makes visible not only the thesis, but also the strongest weakening evidence and the key unresolved variable
 - [ ] if the first 30-40% of background were removed, the core judgment would still remain clear
 - [ ] issuer- or company-sourced claims are not upgraded into confirmed industry facts too easily
 - [ ] `leading` / `unique` / market-share / industry-position / strategic-importance claims are independently supported or visibly downgraded
 - [ ] the report distinguishes clearly among: company states X / filing states X / third-party evidence supports X / scope remains only partially confirmed
 - [ ] for each load-bearing number, time window, sample boundary, denominator, and comparison basis are explicit when relevant
 - [ ] each important metric is visibly identified as realized performance / management target / third-party estimate / analyst inference / media-reported figure when the distinction matters
+- [ ] for asset injection, financing, restructuring, M&A, or similar corporate actions, the report separates confirmed transaction facts from likely implications and from open uncertainty
 - [ ] open uncertainties do not remain cosmetic; they visibly narrow confidence, timing confidence, ranking strength, scenario weighting, or recommendation strength
 - [ ] if a key technical, commercial, regulatory, or execution milestone is unresolved, the final judgment is correspondingly narrowed
 - [ ] the competition section identifies who actually pressures the thesis, and on what timeline, rather than mostly listing peers and products

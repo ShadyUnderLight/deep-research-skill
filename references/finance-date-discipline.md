@@ -94,6 +94,27 @@ Common failure pattern:
 
 Treat that as a freshness failure, not as a minor lag.
 
+### Fail-fast rule: stale anchor invalidates the memo
+
+For listed-company / investment-style work, a stale or mis-timed research anchor is not a cosmetic flaw.
+It invalidates the memo until corrected.
+
+If any of the following occurs:
+- the report date is materially later than the allegedly latest quarter or interim period
+- the research-anchor block names a period that does not plausibly match the filing calendar
+- the agent cannot explain why no newer reported layer should reasonably exist
+
+then do not continue writing through the inconsistency.
+
+Required action:
+1. stop synthesis
+2. re-check the latest quarter / interim layer
+3. either fix the anchor or explicitly state that the latest period could not be verified
+4. if the latest period cannot be verified, downgrade the memo visibly rather than pretending the anchor is stable
+
+A polished memo shape does not rescue a stale anchor.
+In fact, the better the memo looks, the more dangerous a stale anchor becomes because readers are more likely to trust it.
+
 When older numbers remain useful, label them as one of:
 - historical background
 - prior-cycle comparison
@@ -168,6 +189,40 @@ Avoid these mistakes:
 - using live valuation ratios without snapshot date
 - quoting market-share or shipment numbers without period definition
 - blending company disclosures and third-party estimates into one table without labels
+- compressing a confirmed corporate action directly into an operating or valuation conclusion without separating what is fact vs implication vs open uncertainty
+
+## Corporate-action compression guard
+
+For listed-company work, treat these as a separate reasoning layer rather than ordinary company facts:
+
+- asset injection
+- M&A
+- financing completion
+- restructuring
+- capacity expansion approval or registration
+- major strategic partnership with claimed earnings impact
+
+When these events matter to the thesis, split them explicitly into three layers:
+
+1. confirmed transaction or event facts
+2. likely operating / financial implications
+3. open uncertainty about timing, realization, integration quality, or scenario dependence
+
+Do not compress these three layers into one smooth sentence such as:
+- `配套融资完成，打开中期成长空间`
+- `资产注入落地，将显著增厚利润`
+- `重组完成后成长确定性提升`
+
+Better pattern:
+- `已确认事实：公司已完成某项融资 / 注入 / 重组。`
+- `可能影响：若按当前披露口径顺利并表或协同兑现，可能带来产能、储量、收入结构或成本结构变化。`
+- `未知事项：兑现节奏、协同质量、盈利质量、资本开支压力、整合摩擦仍待后续披露验证。`
+
+This guard matters because corporate actions often create a false sense of precision:
+- the transaction fact is real
+- but the economic consequence remains only partially known
+
+If the consequence is still conditional, write it as conditional. Do not let transaction finality masquerade as thesis finality.
 
 ## Precision discipline (from GPT vs Minimax distillation)
 

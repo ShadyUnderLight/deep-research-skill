@@ -165,6 +165,41 @@ For each load-bearing claim, try to make visible:
 
 If the report uses confidence labels but hides the source type and inference role for the key judgment, it is still not adequately auditable.
 
+### Thesis-bearing claim guard
+
+Treat a claim as thesis-bearing when weakening or removing it would materially change:
+- the bottom line
+- the main ranking or recommendation
+- the confidence level
+- the valuation / timing / upside-downside framing
+- the reader's view of the core thesis
+
+Typical thesis-bearing claims in listed-company work include:
+- cost advantage vs peers
+- current market-position or ranking claims
+- dividend superiority or valuation-support claims
+- event-to-thesis claims such as asset injection -> growth, financing -> rerating, restructuring -> margin improvement
+- commodity-price or market-cycle assumptions that materially support the thesis
+- claims that a certain business segment is the key driver of the current view
+
+For these claims, bibliography-level traceability is not enough.
+
+The body text should make visible, at minimum:
+- what the claim is
+- which source or evidence bucket supports it
+- whether it is directly stated or inferred
+- what key limitation or dependency still applies if the evidence is indirect
+
+Bad pattern:
+- a polished sentence makes a strong comparative or forward-looking claim
+- the reader sees confidence labels or a source list
+- but cannot tell which exact source does the real work for that sentence
+
+Good pattern:
+- `长协占比较高这一事实可由年报经营披露支持 [S03]；但“煤价敏感度仅为行业平均三分之一”仍属于基于同业比较和经营结构的推断 [I02]。`
+
+If a thesis-bearing claim cannot be made auditable in the body without awkwardness, that is usually a sign the claim should be narrowed, split, or downgraded.
+
 ## Common failure patterns
 
 ### Pattern 1: Bibliography theater
@@ -243,6 +278,8 @@ Slow down and add more traceability when:
 - a source is listed but never actually cited in the body
 - the report has a long sources list but no inline citations
 - a current-state claim is sourced to an old filing with no indication of supersession
+- the report's most thesis-bearing sentence would become hard to defend if a reviewer asked `which exact source supports this line?`
+- a strong comparative claim is visible in the body, but only a generic section bibliography exists beneath it
 
 ## Final discipline
 

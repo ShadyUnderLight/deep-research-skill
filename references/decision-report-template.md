@@ -208,15 +208,29 @@ When the task is primarily about evaluating a company, competitive position, or 
 Prefer this front structure:
 
 1. Core thesis
-2. Strongest confirmed support
-3. Key unresolved variable
-4. What would change the conclusion
-5. What matters most now
-6. Main evidence supporting the thesis
-7. Main evidence weakening the thesis
-8. Key unknowns and why they matter
-9. What to watch next
-10. Only then: business background, segment detail, products, roadmap, customers, and competitors
+2. Research anchors (latest full-year / latest quarter-interim / latest market snapshot / latest management state when relevant)
+3. Strongest confirmed support
+4. Key unresolved variable
+5. What would change the conclusion
+6. What matters most now
+7. Main evidence supporting the thesis
+8. Main evidence weakening the thesis
+9. Key unknowns and why they matter
+10. What to watch next
+11. Only then: business background, segment detail, products, roadmap, customers, and competitors
+
+For asset injection, restructuring, major financing, or M&A-heavy cases, force a three-way split:
+- confirmed transaction facts
+- likely operating or financial implications
+- open uncertainty about timing, realization, synergy quality, or dependency on external variables such as commodity prices, approvals, customer uptake, or integration pace
+
+Do not compress these into one bullish or bearish sentence.
+Do not let a real transaction fact silently upgrade a still-conditional thesis into a high-confidence conclusion.
+
+A useful mini-pattern is:
+- `已发生什么`
+- `这可能意味着什么`
+- `仍然不知道什么`
 
 Background, segment description, roadmap detail, and customer examples should appear only insofar as they sharpen the current thesis, not as default report ballast. Reduce background to the minimum necessary context required to interpret the judgment.
 
@@ -229,6 +243,14 @@ Under "What matters most now", prefer to surface:
 - which business line or driver most shapes the current view
 - which 2-4 disclosures or metrics matter most next
 - which facts would most strengthen or weaken the thesis
+- which unresolved variable most limits precision, timing confidence, or valuation confidence
+
+For listed-company and other judgment-heavy memos, treat this as a structural triad, not a stylistic preference:
+- what currently supports the thesis
+- what currently weakens the thesis
+- what remains unresolved and therefore narrows the conclusion
+
+If one of these three is missing, the report usually drifts back into polished-overview mode.
 
 Write competition as threat-window analysis rather than a peer directory. Prefer to show:
 - short-term threat

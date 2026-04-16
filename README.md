@@ -203,6 +203,8 @@
 - `ARCHITECTURE.md`：架构说明
 - `SYSTEM-MAP.md`：系统地图
 - `evals/README.md`：评估资产入口
+- `examples/listed-company-judgment-memo-example.md`：通用上市公司 judgment memo 正样本
+- `examples/china-shenhua-reference-grade-rewrite-skeleton.md`：中国神华案例化 reference-grade skeleton
 - `scripts/render_pdf.py` / `scripts/md_to_pdf.py`：交付层脚本
 
 ---

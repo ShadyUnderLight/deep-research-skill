@@ -152,9 +152,14 @@ A good report should let the reader quickly answer:
 
 ## Required evidence-tier legend
 
-At the top of every report, include a brief legend defining evidence confidence levels.
+Include a brief legend defining evidence confidence levels near the top of every report.
 
 If the final report is written in Chinese, keep the legend in Chinese too. Do not mix a Chinese body with accidental English evidence buckets unless bilingual output was explicitly requested.
+
+Placement rule:
+- keep the legend compact
+- do not let it displace the one-sentence thesis, executive bullets, key risks, or key unknowns from the reader's first screen / first page scan
+- if space is tight, place the legend immediately after the executive summary block or at the start of the next page rather than above the thesis
 
 Preferred Chinese format:
 
