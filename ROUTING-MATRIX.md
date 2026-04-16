@@ -467,10 +467,18 @@ For this route, current-state verification must explicitly lock:
 ### Visible artifact contract
 The final report should visibly show:
 
+- a judgment-first opening rather than a background-first company overview
+- a compact research-anchor block that locks:
+  - latest full-year reported period
+  - latest quarterly / interim reported period
+  - latest current market snapshot date
+  - latest management / leadership state when decision-relevant
 - current business snapshot
 - current financial or market snapshot
 - clearly dated key numbers
 - separation of reported facts vs estimates
+- visible support / weakening evidence / unresolved-variable split for the current thesis
+- claim-level traceability for load-bearing claims in the body, not only a bibliography at the end
 - risks and counter-evidence
 - uncertainty around forward views
 - when moat / monopoly / scarcity is central, a visible distinction among:

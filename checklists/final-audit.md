@@ -15,6 +15,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] no major claim rests on a single weak source
 - [ ] evidence hierarchy is visible: confirmed facts, well-supported inferences, and weak claims are not mixed
 - [ ] key numbers are sourced and dated
+- [ ] load-bearing claims are traceable in the body text, not only recoverable from a source appendix or bibliography
+- [ ] strong-sounding comparative or forecast claims have explicit scope and source role, or were visibly downgraded
 
 ## Counter-evidence
 
