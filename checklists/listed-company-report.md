@@ -54,7 +54,7 @@ Run through every item before delivering the final report.
 - [ ] competition is written as actual thesis pressure or threat-window analysis rather than mostly a peer directory
 - [ ] valuation, growth, market position, and strategic narrative are not blended into one undifferentiated bullish or bearish mood
 - [ ] if the view is positive but not valuation-grade, timing-grade, or precision-grade, the downgrade boundary is explicit
-- [ ] asset injection, restructuring, one-off financing, or major corporate actions are split into: confirmed transaction facts / likely operating impact / open uncertainty about realization
+- [ ] asset injection, restructuring, one-off financing, M&A, or other major corporate actions are split into: confirmed transaction facts / likely operating impact / open uncertainty about realization, timing, synergy quality, or dependency on external variables
 
 ## Monopoly / moat / scarcity discipline
 

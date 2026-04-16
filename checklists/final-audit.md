@@ -73,6 +73,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] the report distinguishes clearly among: company states X / filing states X / third-party evidence supports X / scope remains only partially confirmed
 - [ ] for each load-bearing number, time window, sample boundary, denominator, and comparison basis are explicit when relevant
 - [ ] each important metric is visibly identified as realized performance / management target / third-party estimate / analyst inference / media-reported figure when the distinction matters
+- [ ] for asset injection, financing, restructuring, M&A, or similar corporate actions, the report separates confirmed transaction facts from likely implications and from open uncertainty
 - [ ] open uncertainties do not remain cosmetic; they visibly narrow confidence, timing confidence, ranking strength, scenario weighting, or recommendation strength
 - [ ] if a key technical, commercial, regulatory, or execution milestone is unresolved, the final judgment is correspondingly narrowed
 - [ ] the competition section identifies who actually pressures the thesis, and on what timeline, rather than mostly listing peers and products

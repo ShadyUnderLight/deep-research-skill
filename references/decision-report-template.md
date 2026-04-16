@@ -222,9 +222,15 @@ Prefer this front structure:
 For asset injection, restructuring, major financing, or M&A-heavy cases, force a three-way split:
 - confirmed transaction facts
 - likely operating or financial implications
-- open uncertainty about timing, realization, or synergy quality
+- open uncertainty about timing, realization, synergy quality, or dependency on external variables such as commodity prices, approvals, customer uptake, or integration pace
 
 Do not compress these into one bullish or bearish sentence.
+Do not let a real transaction fact silently upgrade a still-conditional thesis into a high-confidence conclusion.
+
+A useful mini-pattern is:
+- `已发生什么`
+- `这可能意味着什么`
+- `仍然不知道什么`
 
 Background, segment description, roadmap detail, and customer examples should appear only insofar as they sharpen the current thesis, not as default report ballast. Reduce background to the minimum necessary context required to interpret the judgment.
 
