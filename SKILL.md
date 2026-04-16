@@ -280,6 +280,10 @@ Use `references/decision-report-template.md` when the task needs:
 - comparison
 - action guidance
 
+For listed-company / investment-style work, also use:
+- `examples/listed-company-judgment-memo-example.md` as the default positive memo shape
+- `examples/china-shenhua-reference-grade-rewrite-skeleton.md` when a more concrete Chinese listed-company reference skeleton would help keep the opening judgment-first
+
 The report should not just summarize the topic. It should help the user decide, judge, or verify what matters next.
 
 For most tasks, include:

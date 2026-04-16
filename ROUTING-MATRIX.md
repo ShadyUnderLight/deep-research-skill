@@ -445,6 +445,8 @@ Use when the task is mainly about:
 - `references/market-sizing-and-share-discipline.md` when share/size claims matter
 - `references/source-traceability-and-claim-citation.md`
 - `references/moat-monopoly-screening.md` when the task involves monopoly, irreplaceability, strongest moat, scarce listed assets, or only-listed-proxy judgments
+- `examples/listed-company-judgment-memo-example.md` when the report risks drifting into a company overview instead of a judgment memo
+- `examples/china-shenhua-reference-grade-rewrite-skeleton.md` when a concrete Chinese listed-company reference shape would help keep the memo judgment-first
 
 ### Attach
 - current-state verification
