@@ -18,6 +18,7 @@ Run through every item before delivering the final report.
 - [ ] latest full-year financial figures are sourced from annual report, earnings release, or filed disclosure
 - [ ] latest quarterly / interim figures are sourced from the newest reported period reasonably available at the report date
 - [ ] if the memo date is materially later than the supposedly "latest" figures used, freshness was re-checked before synthesis
+- [ ] if the research-anchor block originally contained a stale or mis-timed quarter / interim period, synthesis was stopped and the anchor was corrected or explicitly downgraded before delivery
 - [ ] financial figures are labeled by type: audited annual / interim / earnings release / analyst consensus / inferred
 - [ ] historical reported facts are separated from current market snapshot
 - [ ] forward-looking targets or estimates are clearly labeled as such, not presented as confirmed facts

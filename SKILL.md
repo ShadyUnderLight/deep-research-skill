@@ -237,7 +237,14 @@ Before broad company analysis, explicitly confirm:
 
 If the report date is materially later than the supposedly "latest" figures used in the memo, stop and re-check freshness before continuing.
 
+Fail-fast rule for listed-company work:
+- if the research-anchor block contains a quarterly / interim period that is materially inconsistent with the report date or likely filing calendar
+- or if the agent cannot defend why that period is still the newest reasonably available layer
+- do not continue synthesis as if the anchor were acceptable
+- stop, re-check, and either fix the anchor or state explicitly that the latest quarter could not be verified
+
 Do not let an older but well-structured company snapshot become the de facto current baseline just because it is easier to retrieve.
+Do not let a polished research-anchor block create false trust when one of its time layers is stale or mis-timed.
 
 Route-specific current-state requirements are defined in `ROUTING-MATRIX.md`.
 

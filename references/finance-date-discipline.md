@@ -94,6 +94,27 @@ Common failure pattern:
 
 Treat that as a freshness failure, not as a minor lag.
 
+### Fail-fast rule: stale anchor invalidates the memo
+
+For listed-company / investment-style work, a stale or mis-timed research anchor is not a cosmetic flaw.
+It invalidates the memo until corrected.
+
+If any of the following occurs:
+- the report date is materially later than the allegedly latest quarter or interim period
+- the research-anchor block names a period that does not plausibly match the filing calendar
+- the agent cannot explain why no newer reported layer should reasonably exist
+
+then do not continue writing through the inconsistency.
+
+Required action:
+1. stop synthesis
+2. re-check the latest quarter / interim layer
+3. either fix the anchor or explicitly state that the latest period could not be verified
+4. if the latest period cannot be verified, downgrade the memo visibly rather than pretending the anchor is stable
+
+A polished memo shape does not rescue a stale anchor.
+In fact, the better the memo looks, the more dangerous a stale anchor becomes because readers are more likely to trust it.
+
 When older numbers remain useful, label them as one of:
 - historical background
 - prior-cycle comparison
