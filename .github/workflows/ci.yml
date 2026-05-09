@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  pull_request:
+    paths:
+      - 'scripts/**'
+      - 'examples/**'
+      - 'requirements.txt'
+      - '.github/workflows/ci.yml'
+
+jobs:
+  quick:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python3 -m py_compile scripts/*.py
+      - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md
+
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - run: python -m playwright install chromium --with-deps
+      - run: |
+          input_dir="/tmp/smoke test path"
+          mkdir -p "$input_dir"
+          printf '# Smoke Test\n\nTest paragraph.\n' > "$input_dir/input.md"
+          python3 scripts/md_to_pdf.py "$input_dir/input.md" "$input_dir/output.pdf" \
+            --title "CI Smoke Test"
+      - run: |
+          python3 -c "import sys,pathlib; d=pathlib.Path('/tmp/smoke test path/output.pdf').read_bytes(); assert len(d)>0 and d[:4]==b'%PDF'; print('PDF OK: '+str(len(d))+' bytes')"
