@@ -86,6 +86,15 @@
 
 ---
 
+## Setup
+
+```bash
+pip install -r requirements.txt
+python -m playwright install chromium
+```
+
+---
+
 ## 仓库结构
 
 ```text
