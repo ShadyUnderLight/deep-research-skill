@@ -11,9 +11,9 @@ import os
 from pathlib import Path
 
 
-def run(cmd, description):
+def run(args_list, description):
     print(f"\n▶ {description}")
-    result = subprocess.run(cmd, shell=True, capture_output=False)
+    result = subprocess.run(args_list, shell=False, capture_output=False)
     if result.returncode != 0:
         print(f"❌ Failed: {description}")
         sys.exit(result.returncode)
@@ -45,32 +45,28 @@ def main():
         pdf_path = md_path.with_suffix('.pdf')
 
     html_path = md_path.with_suffix('.html')
+    scripts_dir = Path(__file__).parent.resolve()
 
     # Step 1: Markdown → HTML
-    title_flag = f'--title "{args.title}"' if args.title else ''
-    run(
-        f'python3 {Path(__file__).parent}/markdown_to_html.py "{md_path}" "{html_path}" {title_flag}',
-        f"Markdown → HTML: {html_path.name}"
-    )
+    cmd = [sys.executable, str(scripts_dir / 'markdown_to_html.py'), str(md_path), str(html_path)]
+    if args.title:
+        cmd += ['--title', args.title]
+    run(cmd, f"Markdown → HTML: {html_path.name}")
 
     # Step 2: HTML → PDF
-    render_flags = []
+    cmd = [sys.executable, str(scripts_dir / 'render_pdf.py'), str(html_path), str(pdf_path)]
     if args.title:
-        render_flags.append(f'--title "{args.title}"')
+        cmd += ['--title', args.title]
     if args.landscape:
-        render_flags.append('--landscape')
-    render_flags.extend([
-        f'--media {args.media}',
-        f'--margin-top {args.margin_top}',
-        f'--margin-right {args.margin_right}',
-        f'--margin-bottom {args.margin_bottom}',
-        f'--margin-left {args.margin_left}',
-    ])
-    render_flag_str = ' '.join(render_flags)
-    run(
-        f'python3 {Path(__file__).parent}/render_pdf.py "{html_path}" "{pdf_path}" {render_flag_str}',
-        f"HTML → PDF: {pdf_path.name}"
-    )
+        cmd.append('--landscape')
+    cmd += [
+        '--media', args.media,
+        '--margin-top', args.margin_top,
+        '--margin-right', args.margin_right,
+        '--margin-bottom', args.margin_bottom,
+        '--margin-left', args.margin_left,
+    ]
+    run(cmd, f"HTML → PDF: {pdf_path.name}")
 
     print(f"\n✅ Complete: {pdf_path}")
 
