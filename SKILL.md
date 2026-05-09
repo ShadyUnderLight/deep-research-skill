@@ -25,12 +25,13 @@ Never present inference as confirmed fact.
 2. classify the task
 3. produce a compact research plan
 4. define evidence standards and stop conditions
-5. collect and compare sources
-6. run a mid-research review
+5. if live search, source fetching, browser access, or parallel agents may be needed, run tooling preflight to confirm what is available; if a needed capability is missing, note it and adjust the search strategy before starting collection
+6. collect and compare sources
+7. run a mid-research review
    - read `references/mid-research-review.md` once the first meaningful evidence batch is in hand
    - the review must visibly confirm, narrow, redirect, or stop the research path
-7. search for counter-evidence
-8. synthesize into a decision-oriented report
+8. search for counter-evidence
+9. synthesize into a decision-oriented report
 
 ## Routing rule
 
@@ -140,7 +141,7 @@ If degraded search is needed, use this fallback policy:
 1. first distinguish temporary rate-limit / quota issues from broader provider unavailability
 2. if live search is still unavailable, declare the search provider degraded in the evidence log
 3. if `agent-reach` Exa search is available in the current environment, use it as the first explicit degraded fallback for discovery and comparison-angle finding
-4. current fallback implementation for that path:
+4. current fallback implementation for that path (example for one environment; adjust the command to match your environment):
 
 ```bash
 mcporter call 'exa.web_search_exa(query: "<search query>", numResults: 5)'
@@ -163,6 +164,7 @@ When fallback search is needed, do not switch providers mechanically.
 
 Before changing provider path, make an explicit judgment about the cause:
 
+- tool unavailable in the current environment
 - provider failure or temporary outage
 - quota / rate-limit pressure
 - query-fit mismatch
@@ -185,7 +187,7 @@ When degraded fallback is used, keep a compact internal log in this shape:
 
 - search objective:
 - primary provider attempted:
-- fallback trigger: provider failure / quota / query-fit / low-yield / localization need
+- fallback trigger: tool unavailable / provider failure / quota / query-fit / low-yield / localization need
 - fallback provider used:
 - why this fallback fits better:
 - candidate-source quality: strong / mixed / weak
