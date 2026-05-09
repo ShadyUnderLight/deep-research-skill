@@ -126,28 +126,20 @@ Do not keep searching just to make the report longer.
 
 ## Tool strategy
 
-**Default search provider: MiniMax MCP. Do not use the built-in Brave `web_search` as the default discovery path for this skill.**
+**Do not assume a specific default search provider. Before live search, inspect what search / fetch / browser capabilities are available in the current environment: use formal tooling preflight if it exists, otherwise make the selected provider path explicit in the research plan or evidence log.**
 
 When a research task needs live web search:
 
-1. use MiniMax MCP for discovery and comparison-angle finding
+1. select one provider path based on expected query fit and use it for discovery and comparison-angle finding
 2. use `web_fetch` only after a candidate URL is identified
 3. use `browser` only when the page is dynamic or `web_fetch` fails on a confirmed-live URL
 
-Current primary implementation: call the MiniMax web-search script provided by the `minimax-web-search` skill.
+If the selected provider path is unavailable, do not silently fall back to another provider without explicit justification. Only add another provider when degradation, low yield, or query-fit mismatch is explicitly identified.
 
-```bash
-python3 <openclaw-skill-root>/minimax-web-search/scripts/web_search.py "<search query>"
-```
-
-Treat this as the working implementation, not as permission to silently substitute other default search providers.
-
-If MiniMax MCP web search is unavailable, do not silently fall back to Brave API.
-
-Use this degraded fallback policy instead:
+If degraded search is needed, use this fallback policy:
 1. first distinguish temporary rate-limit / quota issues from broader provider unavailability
 2. if live search is still unavailable, declare the search provider degraded in the evidence log
-3. use `agent-reach` Exa search as the first explicit degraded fallback for discovery and comparison-angle finding
+3. if `agent-reach` Exa search is available in the current environment, use it as the first explicit degraded fallback for discovery and comparison-angle finding
 4. current fallback implementation for that path:
 
 ```bash
