@@ -7,8 +7,23 @@ Usage:
 import argparse
 import subprocess
 import sys
-import os
 from pathlib import Path
+
+_REQUIREMENTS_FILE = str(Path(__file__).resolve().parent.parent / 'requirements.txt')
+
+
+def _check_playwright_chromium():
+    try:
+        from playwright.sync_api import sync_playwright
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            browser.close()
+        return True
+    except Exception as e:
+        if 'Executable doesn\'t exist' in str(e):
+            return False
+        print(f"Error: Playwright Chromium found but failed to launch: {e}", file=sys.stderr)
+        sys.exit(1)
 
 
 def run(args_list, description):
@@ -18,6 +33,25 @@ def run(args_list, description):
         print(f"❌ Failed: {description}")
         sys.exit(result.returncode)
     print(f"✅ {description}")
+
+
+def _check_runtime_deps():
+    missing = []
+    for mod in ('markdown', 'nh3', 'playwright'):
+        try:
+            __import__(mod)
+        except ImportError:
+            missing.append(mod)
+
+    if missing:
+        print("Error: missing required Python packages: " + ", ".join(missing), file=sys.stderr)
+        print(f"Run: {sys.executable} -m pip install -r {_REQUIREMENTS_FILE}", file=sys.stderr)
+        sys.exit(1)
+
+    if not _check_playwright_chromium():
+        print("Error: Playwright Chromium browser is not installed", file=sys.stderr)
+        print(f"Run: {sys.executable} -m playwright install chromium", file=sys.stderr)
+        sys.exit(1)
 
 
 def main():
@@ -38,6 +72,8 @@ def main():
     if not md_path.exists():
         print(f"File not found: {md_path}")
         sys.exit(1)
+
+    _check_runtime_deps()
 
     # Determine output PDF path
     if args.output:

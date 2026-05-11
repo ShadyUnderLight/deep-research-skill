@@ -20,6 +20,7 @@ jobs:
       - run: python3 -m py_compile scripts/*.py
       - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md
       - run: python3 scripts/test_validator_regression.py
+      - run: python3 scripts/test_md_to_pdf_preflight.py
 
   smoke:
     runs-on: ubuntu-latest
@@ -96,6 +97,20 @@ jobs:
           echo 'Img stripping check OK'
           rm -rf "$temp"
       - run: python3 scripts/test_remote_block.py
+      - run: |
+          temp=$(mktemp -d)
+          printf '# Test\n\nHello.\n' > "$temp/in.md"
+          set +e
+          PLAYWRIGHT_BROWSERS_PATH="$temp/no-browsers" \
+            python3 scripts/md_to_pdf.py "$temp/in.md" "$temp/out.pdf" \
+            --title "Preflight" > "$temp/out" 2> "$temp/err"
+          rc=$?
+          set -e
+          cat "$temp/err"
+          if [ $rc -ne 1 ]; then echo "FAIL: expected exit 1, got $rc"; exit 1; fi
+          grep -qi 'chromium' "$temp/err" || { echo 'FAIL: chromium not in stderr'; exit 1; }
+          echo 'Chromium preflight check OK'
+          rm -rf "$temp"
       - run: |
           input_dir="/tmp/smoke test path"
           mkdir -p "$input_dir"
