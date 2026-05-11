@@ -44,9 +44,12 @@
 
 典型覆盖包括：
 
-- shortlist / option selection
+- provider / vendor selection
 - market entry / regional expansion
 - market outlook / industry evolution
+- first-tier / competitive positioning
+- equipment selection / procurement / home-server planning
+- constrained choice / shortlist
 - listed-company / moat / monopoly-style judgment
 - uncertainty-sensitive、forward-looking、comparative research
 

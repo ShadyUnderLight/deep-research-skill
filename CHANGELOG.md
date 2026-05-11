@@ -10,6 +10,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ## Unreleased
 
+### Changed
+- `equipment selection / procurement / home-server planning` promoted to first-class route (routing priority #5), with provider-vs-equipment conflict rules and route-conflict examples
+- route lists in `ARCHITECTURE.md`, `SYSTEM-MAP.md`, and `README.md` updated from six to seven mature routes
+
 ### Added
 - `references/mid-research-review.md`
 - `checklists/mid-research-review-audit.md`

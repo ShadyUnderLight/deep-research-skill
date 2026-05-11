@@ -86,9 +86,9 @@ Use when the task is mainly about:
 
 **Choose this route when:** the task is to select among providers and justify why one wins under explicit constraints.
 
-**Do not use this route when:** the task is mainly to describe the market or explain industry direction without a real selection burden.
+**Do not use this route when:** the task is mainly to describe the market or explain industry direction without a real selection burden. For physical hardware / device procurement, purchase recommendation, build, or configuration choices (NAS, home server, build-ready stack, office equipment purchasing), use the Equipment Selection / Procurement route instead.
 
-**Often confused with:** market outlook / industry evolution.
+**Often confused with:** market outlook / industry evolution, equipment selection / procurement / home-server planning.
 
 ### Read
 - `references/option-selection-and-shortlist-discipline.md`
@@ -317,7 +317,7 @@ Use when the task is mainly about:
 
 **Do not use this route when:** the real task is market-entry gating, expansion sequencing, or broad market scanning.
 
-**Often confused with:** market entry / regional expansion.
+**Often confused with:** market entry / regional expansion, equipment selection / procurement.
 
 ### Read
 - `references/option-selection-and-shortlist-discipline.md`
@@ -375,6 +375,11 @@ Use when the task is mainly about:
 **Do not use this route when:** the task is mainly to explain hardware categories, compare benchmarks abstractly, or teach general technical concepts without a real procurement burden.
 
 **Often confused with:** constrained choice / shortlist, market outlook / industry evolution.
+
+**Route-conflict examples:**
+- NAS vs mini PC vs self-build vs used workstation — this is an equipment selection task even though multiple "vendors" are involved; do not default to provider / vendor selection
+- hardware vendor shortlist with build-ready stack recommendation — if the output must include budget, configuration, and operating burden, use equipment selection rather than provider selection
+- home-server budget planning — even when framed as a cost comparison, the real decision is a procurement memo, not a market outlook or provider comparison
 
 ### Read
 - `references/decision-report-template.md`
@@ -564,8 +569,9 @@ If multiple primary-looking routes apply, use this order:
 2. market entry / regional expansion
 3. provider / vendor selection
 4. first-tier / competitive positioning
-5. market outlook / industry evolution
-6. constrained choice / shortlist
+5. equipment selection / procurement / home-server planning
+6. market outlook / industry evolution
+7. constrained choice / shortlist
 
 Choose the route that most strongly determines report structure and audit burden.
 

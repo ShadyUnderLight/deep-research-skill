@@ -81,6 +81,7 @@ The current first-class routes are:
 - market entry / regional expansion
 - market outlook / industry evolution
 - first-tier / competitive positioning
+- equipment selection / procurement / home-server planning
 - constrained choice / shortlist
 - listed-company / investment-style research
 
