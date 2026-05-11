@@ -80,6 +80,9 @@ Mark pass, partial, or fail with a short reason.
 ## Core subquestions
 ...
 
+## Stop condition
+...
+
 ## Source register
 - Source:
 - Supports:
