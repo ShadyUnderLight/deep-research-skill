@@ -11,6 +11,8 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Changed
+- `SKILL.md`: narrowed PDF delivery trigger — replaced bare keyword matching with an explicit file-delivery intent model: added delivery-phrase list ("生成 PDF", "导出 PDF", "报告文件", "可下载报告", "给我报告文件", "作为附件给我" etc.) and a negation/discussion guardrail (不要 PDF, no PDF, 解释 PDF 渲染失败, etc.). Bare `报告` no longer triggers PDF pipeline.
+- `evals/cases/pdf-delivery-trigger-regression-case.md`: added acceptance matrix to prevent trigger-boundary drift.
 - `equipment selection / procurement / home-server planning` promoted to first-class route (routing priority #5), with provider-vs-equipment conflict rules and route-conflict examples
 - route lists in `ARCHITECTURE.md`, `SYSTEM-MAP.md`, and `README.md` updated from six to seven mature routes
 - `scripts/markdown_to_html.py`: hardened metadata HTML escaping and security model — `html.escape()` applied to all frontmatter-derived fields; `cover_meta` lines are escaped individually before joining with `<br>`
