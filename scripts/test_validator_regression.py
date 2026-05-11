@@ -79,8 +79,7 @@ def test_codeblock_heading(d: str) -> None:
     )
     path = write(os.path.join(d, "codeblock.md"), text)
     rc = run_validator(path)
-    assert rc != 0, "code-block heading should be rejected"
-    assert rc != 3, "code-block heading should be missing-heading (2), not artifact (3)"
+    assert rc == 2, f"code-block heading: expected exit 2 (missing heading), got {rc}"
 
 
 def test_empty_section(d: str) -> None:
@@ -91,7 +90,7 @@ def test_empty_section(d: str) -> None:
     )
     path = write(os.path.join(d, "empty.md"), text)
     rc = run_validator(path)
-    assert rc != 0 and rc != 3, "empty section should be rejected"
+    assert rc == 2, f"empty section: expected exit 2, got {rc}"
 
 
 def test_h3_instead_of_h2(d: str) -> None:
@@ -102,7 +101,7 @@ def test_h3_instead_of_h2(d: str) -> None:
     )
     path = write(os.path.join(d, "h3.md"), text)
     rc = run_validator(path)
-    assert rc != 0 and rc != 3, "H3 should not match H2"
+    assert rc == 2, f"H3 instead of H2: expected exit 2, got {rc}"
 
 
 def test_blockquote_heading(d: str) -> None:
@@ -113,7 +112,7 @@ def test_blockquote_heading(d: str) -> None:
     )
     path = write(os.path.join(d, "bq.md"), text)
     rc = run_validator(path)
-    assert rc != 0 and rc != 3, "blockquote heading should not match"
+    assert rc == 2, f"blockquote heading: expected exit 2, got {rc}"
 
 
 def test_indented_fence(d: str) -> None:
@@ -124,7 +123,7 @@ def test_indented_fence(d: str) -> None:
     )
     path = write(os.path.join(d, "ifence.md"), text)
     rc = run_validator(path)
-    assert rc != 0 and rc != 3, "heading in indented fence should not match"
+    assert rc == 2, f"indented fence heading: expected exit 2, got {rc}"
 
 
 def test_subheading_only_body(d: str) -> None:
@@ -135,7 +134,7 @@ def test_subheading_only_body(d: str) -> None:
     )
     path = write(os.path.join(d, "subonly.md"), text)
     rc = run_validator(path)
-    assert rc != 0 and rc != 3, "sub-heading-only body should be detected as empty"
+    assert rc == 2, f"sub-heading-only body: expected exit 2, got {rc}"
 
 
 def test_partial_heading_match(d: str) -> None:
@@ -146,7 +145,7 @@ def test_partial_heading_match(d: str) -> None:
     )
     path = write(os.path.join(d, "partial.md"), text)
     rc = run_validator(path)
-    assert rc != 0 and rc != 3, "partial heading match should not count"
+    assert rc == 2, f"partial heading match: expected exit 2, got {rc}"
 
 
 def main() -> int:

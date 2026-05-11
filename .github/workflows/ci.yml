@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/**'
+      - 'schemas/**'
       - 'examples/**'
       - 'requirements.txt'
       - '.github/workflows/ci.yml'
