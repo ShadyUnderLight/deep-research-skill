@@ -11,6 +11,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Changed
+- `SKILL.md`: narrowed PDF delivery trigger — removed bare `报告` from keyword list; added explicit delivery-intent phrases ("生成 PDF", "导出 PDF", "PDF 报告", "保存为 PDF", "给我 PDF 文件") and a guardrail against triggering on generic report terminology only. Prevents unnecessary PDF pipeline execution when the user merely says "写一份报告" or similar.
 - `equipment selection / procurement / home-server planning` promoted to first-class route (routing priority #5), with provider-vs-equipment conflict rules and route-conflict examples
 - route lists in `ARCHITECTURE.md`, `SYSTEM-MAP.md`, and `README.md` updated from six to seven mature routes
 - `scripts/markdown_to_html.py`: hardened metadata HTML escaping and security model — `html.escape()` applied to all frontmatter-derived fields; `cover_meta` lines are escaped individually before joining with `<br>`
