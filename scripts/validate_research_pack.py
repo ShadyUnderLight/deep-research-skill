@@ -19,6 +19,8 @@ REQUIRED_HEADINGS = [
     "## Final audit status",
 ]
 
+REQUIRED_SET = set(REQUIRED_HEADINGS)
+
 ARTIFACT_RED_FLAGS = [
     r"\bTBD\b",
     r"\bTODO\b",
@@ -32,48 +34,80 @@ ARTIFACT_RED_FLAGS = [
     r"\[INSERT [^\]\n]{1,80}\]",
 ]
 
-FENCED_BLOCK_RE = re.compile(r"^(`{3,}|~{3,})(.*?)\1.*?$", re.MULTILINE | re.DOTALL)
-HEADING_RE = re.compile(r"^##\s+\S", re.MULTILINE)
+H2_RE = re.compile(r"^## (.+)$", re.MULTILINE)
+ALL_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$", re.MULTILINE)
+INLINE_FENCE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})")
 
 
 def strip_fenced_code_blocks(text: str) -> str:
-    """Remove fenced code blocks so headings inside them don't pollute checks."""
-    return FENCED_BLOCK_RE.sub("", text)
+    lines = text.split("\n")
+    out = []
+    in_fence = False
+    fence_char = None
+    fence_len = 0
 
-
-def check_empty(cleaned: str, required_headings: list[str]) -> list[str]:
-    """Return required headings whose section body is empty (no non-whitespace content).
-
-    A section body is everything between the heading and the next heading or EOF.
-    """
-    lines = cleaned.split("\n")
-    heading_set = set(required_headings)
-    empty = []
-    current = None
-    current_start = None
-
-    # First pass: find all required heading positions
-    positions: list[tuple[str, int]] = []
-    for i, line in enumerate(lines):
+    for line in lines:
         stripped = line.rstrip()
-        if stripped in heading_set:
-            positions.append((stripped, i))
+        if not in_fence:
+            m = INLINE_FENCE_RE.match(stripped)
+            if m:
+                fence_char = m.group(1)[0]
+                fence_len = len(m.group(1))
+                in_fence = True
+                continue
+            out.append(line)
+        else:
+            closing_re = re.compile(
+                r"^[ ]{0,3}"
+                + re.escape(fence_char)
+                + "{"
+                + str(fence_len)
+                + r",}\s*$"
+            )
+            if closing_re.match(stripped):
+                in_fence = False
+                continue
 
-    if not positions:
-        return []
+    return "\n".join(out)
 
-    for idx, (heading, line_num) in enumerate(positions):
-        next_line = positions[idx + 1][1] if idx + 1 < len(positions) else len(lines)
+
+def find_missing_headings(cleaned: str) -> list[str]:
+    found = set()
+    for m in H2_RE.finditer(cleaned):
+        title = m.group(1).rstrip()
+        full = f"## {title}"
+        if full in REQUIRED_SET:
+            found.add(full)
+    return [h for h in REQUIRED_HEADINGS if h not in found]
+
+
+def find_empty_sections(cleaned: str) -> list[str]:
+    lines = cleaned.split("\n")
+    heading_positions: list[tuple[str, int]] = []
+    for i, line in enumerate(lines):
+        m = re.match(r"^(#{1,6})\s+(.+)$", line.rstrip())
+        if m:
+            heading_positions.append((line.rstrip(), i))
+
+    empty = []
+    for idx, (heading_text, line_num) in enumerate(heading_positions):
+        if heading_text not in REQUIRED_SET:
+            continue
+        next_line = (
+            heading_positions[idx + 1][1]
+            if idx + 1 < len(heading_positions)
+            else len(lines)
+        )
         body = lines[line_num + 1 : next_line]
-        body_text = "\n".join(body).strip()
+        body_no_heading = [l for l in body if not re.match(r"^#{1,6}\s", l)]
+        body_text = "\n".join(body_no_heading).strip()
         if not body_text:
-            empty.append(heading)
+            empty.append(heading_text)
 
     return empty
 
 
 def check_artifacts(text: str) -> list[tuple]:
-    """Scan for placeholder / artifact red flags in the full text."""
     hits = []
     for pattern in ARTIFACT_RED_FLAGS:
         matches = re.findall(pattern, text)
@@ -91,15 +125,14 @@ def main() -> int:
     text = path.read_text(encoding="utf-8")
     cleaned = strip_fenced_code_blocks(text)
 
-    missing = [h for h in REQUIRED_HEADINGS if h not in cleaned]
-
+    missing = find_missing_headings(cleaned)
     if missing:
         print("Missing required headings:")
         for heading in missing:
             print(f"- {heading}")
         return 2
 
-    empty = check_empty(cleaned, REQUIRED_HEADINGS)
+    empty = find_empty_sections(cleaned)
     if empty:
         print("Empty required sections (no content after heading):")
         for heading in empty:
@@ -107,7 +140,6 @@ def main() -> int:
         return 2
 
     artifact_hits = check_artifacts(text)
-
     if artifact_hits:
         print("Artifact red flags detected:")
         for pattern, matches in artifact_hits:

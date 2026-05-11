@@ -23,22 +23,92 @@ jobs:
           fail() { echo "FAIL: $1"; exit 1; }
           tmp=$(mktemp -d)
 
-          # missing required heading
-          printf '# Pack\n\n## Objective\nok\n' > "$tmp/missing.md"
-          python3 scripts/validate_research_pack.py "$tmp/missing.md" && fail "missing heading not rejected"
+          # Generate all test fixtures via Python for clean isolation
+          python3 -c "
+import re
 
-          # heading only in fenced code block
-          printf '# Pack\n\n```\n## Stop condition\n```\n\n## Objective\nok\n' > "$tmp/codeblock.md"
+VALID = '''## Objective
+ok
+
+## Decision context
+ok
+
+## Primary route
+ok
+
+## Secondary disciplines
+ok
+
+## Core subquestions
+ok
+
+## Stop condition
+ok
+
+## Source register
+ok
+
+## Claim register
+ok
+
+## Uncertainty register
+ok
+
+## Artifact contract
+ok
+
+## Required audits
+ok
+
+## Final audit status
+ok
+'''
+
+import os, sys
+d = sys.argv[1]
+
+# 1. valid baseline
+open(os.path.join(d, 'valid.md'), 'w').write(VALID)
+
+# 2. heading only in fenced code block
+text = re.sub(r'^## Stop condition\nok', '```\n## Stop condition\n```', VALID, flags=re.MULTILINE)
+open(os.path.join(d, 'codeblock.md'), 'w').write(text)
+
+# 3. empty section
+text = re.sub(r'^## Stop condition\nok', '## Stop condition\n', VALID, flags=re.MULTILINE)
+open(os.path.join(d, 'empty.md'), 'w').write(text)
+
+# 4. H3 instead of H2
+text = re.sub(r'^## Stop condition$', '### Stop condition', VALID, flags=re.MULTILINE)
+open(os.path.join(d, 'h3.md'), 'w').write(text)
+
+# 5. blockquote heading
+text = re.sub(r'^## Stop condition$', '> ## Stop condition', VALID, flags=re.MULTILINE)
+open(os.path.join(d, 'bq.md'), 'w').write(text)
+
+# 6. indented fence (3-space indent)
+text = re.sub(r'^## Stop condition\nok', '   ```\n   ## Stop condition\n   hidden\n   ```', VALID, flags=re.MULTILINE)
+open(os.path.join(d, 'indented-fence.md'), 'w').write(text)
+
+# 7. sub-heading-only body (no real content)
+text = re.sub(r'^## Stop condition\nok', '## Stop condition\n### Placeholder subsection', VALID, flags=re.MULTILINE)
+open(os.path.join(d, 'sub-only.md'), 'w').write(text)
+
+# 8. partial heading match
+text = re.sub(r'^## Stop condition$', '## Stop condition details', VALID, flags=re.MULTILINE)
+open(os.path.join(d, 'partial.md'), 'w').write(text)
+" "$tmp"
+
+          # Run tests
+          python3 scripts/validate_research_pack.py "$tmp/valid.md" || fail "valid baseline rejected"
+
           python3 scripts/validate_research_pack.py "$tmp/codeblock.md" && fail "code-block heading not rejected"
-
-          # empty section
-          printf '# Pack\n\n## Objective\nok\n\n## Stop condition\n\n## Source register\nok\n' > "$tmp/empty.md"
           python3 scripts/validate_research_pack.py "$tmp/empty.md" && fail "empty section not rejected"
-
-          # goodbye sample — should pass
-          pass_body() { printf '# Pack\n\n## Objective\nok\n\n## Decision context\nok\n\n## Primary route\nok\n\n## Secondary disciplines\nok\n\n## Core subquestions\nok\n\n## Stop condition\nok\n\n## Source register\nok\n\n## Claim register\nok\n\n## Uncertainty register\nok\n\n## Artifact contract\nok\n\n## Required audits\nok\n\n## Final audit status\nok\n'; }
-          pass_body > "$tmp/pass.md"
-          python3 scripts/validate_research_pack.py "$tmp/pass.md" || fail "valid pack rejected"
+          python3 scripts/validate_research_pack.py "$tmp/h3.md" && fail "H3 heading not rejected"
+          python3 scripts/validate_research_pack.py "$tmp/bq.md" && fail "blockquote heading not rejected"
+          python3 scripts/validate_research_pack.py "$tmp/indented-fence.md" && fail "indented-fence heading not rejected"
+          python3 scripts/validate_research_pack.py "$tmp/sub-only.md" && fail "sub-heading-only body not rejected"
+          python3 scripts/validate_research_pack.py "$tmp/partial.md" && fail "partial heading match not rejected"
 
           rm -rf "$tmp"
           echo "Validator regression checks OK"
