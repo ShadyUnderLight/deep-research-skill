@@ -34,34 +34,39 @@ async def html_to_pdf(html_path, pdf_path=None, format="A4",
 
     async with async_playwright() as p:
         browser = await p.chromium.launch()
-        page = await browser.new_page()
+        try:
+            page = await browser.new_page()
 
-        if block_remote:
-            await page.route("**/*", lambda route: route.abort() if route.request.url.startswith(("http://", "https://")) else route.continue_())
+            if block_remote:
+                await page.route("**/*", lambda route: route.abort() if route.request.url.startswith(("http://", "https://")) else route.continue_())
 
-        file_url = f"file://{html_path}"
-        await page.goto(file_url, wait_until="networkidle")
-        await page.emulate_media(media=media)
+            file_url = html_path.as_uri()
+            await page.goto(file_url, wait_until="networkidle")
+            await page.emulate_media(media=media)
 
-        pdf_kwargs = {
-            "path": str(pdf_path),
-            "format": format,
-            "margin": {
-                "top": margin_top,
-                "bottom": margin_bottom,
-                "left": margin_left,
-                "right": margin_right,
-            },
-            "print_background": print_background,
-            "landscape": landscape,
-            "prefer_css_page_size": prefer_css_page_size,
-            "tagged": True,
-        }
-        if title:
-            await page.evaluate("(t) => { document.title = t; }", title)
+            pdf_kwargs = {
+                "path": str(pdf_path),
+                "format": format,
+                "margin": {
+                    "top": margin_top,
+                    "bottom": margin_bottom,
+                    "left": margin_left,
+                    "right": margin_right,
+                },
+                "print_background": print_background,
+                "landscape": landscape,
+                "prefer_css_page_size": prefer_css_page_size,
+                "tagged": True,
+            }
+            if title:
+                await page.evaluate("(t) => { document.title = t; }", title)
 
-        await page.pdf(**pdf_kwargs)
-        await browser.close()
+            await page.pdf(**pdf_kwargs)
+        finally:
+            try:
+                await browser.close()
+            except Exception:
+                pass  # swallow close errors to avoid masking the original exception
 
     size = os.path.getsize(pdf_path)
     print(f"PDF generated: {pdf_path}")
