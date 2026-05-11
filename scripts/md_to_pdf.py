@@ -31,6 +31,7 @@ def main():
     parser.add_argument('--margin-right', default='2.5cm')
     parser.add_argument('--margin-bottom', default='2cm')
     parser.add_argument('--margin-left', default='2.5cm')
+    parser.add_argument('--allow-remote', action='store_true', help='Allow HTTP/HTTPS resources during PDF rendering (default: blocked)')
     args = parser.parse_args()
 
     md_path = Path(args.input).resolve()
@@ -66,6 +67,11 @@ def main():
         '--margin-bottom', args.margin_bottom,
         '--margin-left', args.margin_left,
     ]
+    if not args.allow_remote:
+        # render_pdf.py blocks remote by default; explicitly pass --allow-remote to unblock
+        pass
+    else:
+        cmd.append('--allow-remote')
     run(cmd, f"HTML → PDF: {pdf_path.name}")
 
     print(f"\n✅ Complete: {pdf_path}")

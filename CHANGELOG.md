@@ -14,6 +14,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `equipment selection / procurement / home-server planning` promoted to first-class route (routing priority #5), with provider-vs-equipment conflict rules and route-conflict examples
 - route lists in `ARCHITECTURE.md`, `SYSTEM-MAP.md`, and `README.md` updated from six to seven mature routes
 - `scripts/markdown_to_html.py`: hardened metadata HTML escaping and security model — `html.escape()` applied to all frontmatter-derived fields; `cover_meta` lines are escaped individually before joining with `<br>`
+- `scripts/markdown_to_html.py`: added `nh3`-based body HTML sanitization — strips `<script>`, `<iframe>`, event handlers, `javascript:` URLs, inline `style` attributes, and `<img src>`; only safe tags and attributes (`class`, `id`, `href`, `colspan`, etc.) are allowed
+- `scripts/render_pdf.py`: added `--allow-remote` flag (remote resources blocked by default); route glob fixed to cover all http/https URLs
+- `scripts/md_to_pdf.py`: added `--allow-remote` passthrough (remote resources blocked by default)
+- `requirements.txt`: added `nh3>=0.2`
 
 ### Added
 - `references/mid-research-review.md`

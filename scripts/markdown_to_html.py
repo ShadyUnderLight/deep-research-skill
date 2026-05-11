@@ -4,10 +4,13 @@ Universal Markdown → Styled HTML converter for Deep Research reports.
 
 Security model: this script is designed for processing agent-authored
 Deep Research reports. It escapes frontmatter-derived metadata fields
-(title, cover_title, cover_subtitle, cover_meta) to prevent HTML injection.
-Body HTML is produced by Python-Markdown with the 'extra' extension,
-which preserves raw HTML in the markdown source. Do not pass untrusted
-content to this script without sanitizing first.
+(title, cover_title, cover_subtitle, cover_meta) and sanitizes body
+HTML via nh3 to strip dangerous tags, event handlers, and javascript:
+URLs. Only safe tags (p, div, table, a, code, pre, etc.) and
+attributes (class, id, href, colspan, etc.) are allowed.
+Inline style attributes, img tags, script, iframe, and event
+handlers are removed. Remote HTTP/HTTPS resources are blocked by
+default during PDF rendering (controlled via --allow-remote).
 
 Usage:
     python3 markdown_to_html.py <input.md> [output.html] [--title "Report Title"]
@@ -1214,6 +1217,22 @@ def repair_markdown_tables(md_text):
     return '\n'.join(repaired)
 
 
+def sanitize_html(html_text):
+    """Strip dangerous tags and attributes from HTML body output."""
+    import nh3
+    return nh3.clean(html_text, tags={
+        'p', 'br', 'hr', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+        'ul', 'ol', 'li', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+        'a', 'strong', 'em', 'b', 'i', 'u', 's', 'code', 'pre', 'blockquote',
+        'div', 'span', 'dl', 'dt', 'dd', 'abbr', 'cite', 'wbr',
+    }, attributes={
+        'a': {'href', 'title'},
+        '*': {'class', 'id'},
+        'td': {'colspan', 'rowspan'},
+        'th': {'colspan', 'rowspan'},
+    }, url_schemes={'http', 'https', 'mailto'})
+
+
 def process_markdown(md_text):
     """Convert markdown to HTML using a real markdown parser, then post-process for report styling."""
     import markdown
@@ -1228,7 +1247,8 @@ def process_markdown(md_text):
         'nl2br',
     ]
     html = markdown.markdown(md_text, extensions=extensions, output_format='html5')
-    return style_generated_html(html)
+    html = style_generated_html(html)
+    return sanitize_html(html)
 
 
 # ─── Cover / Meta extraction ─────────────────────────────────────────────────
