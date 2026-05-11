@@ -305,7 +305,7 @@ Default delivery stays as text or markdown.
 Produce a PDF artifact when the user's request shows explicit file-delivery intent:
 
 - contains `pdf` or `PDF` in a generative/delivery context (e.g. "生成 PDF", "导出 PDF", "PDF 报告", "保存为 PDF", "给我 PDF 文件", "PDF 版本", "PDF 格式")
-- includes file-oriented phrases like "报告文件", "可下载报告", "正式报告文件", "给我报告文件", "附件", "交付一个文件"
+- includes file-oriented phrases like "报告文件", "可下载报告", "正式报告文件", "给我报告文件", "交付一个文件", "作为附件给我", "以附件形式交付", "输出为附件", "交付成附件"
 - the overall request clearly asks for a deliverable file rather than just report content
 
 Do not trigger PDF generation when:

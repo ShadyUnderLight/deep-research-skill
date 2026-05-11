@@ -27,7 +27,9 @@ Each row is a user request fragment. The agent should decide whether to produce 
 | 可下载报告 | Yes | downloadable file intent |
 | 正式报告文件 | Yes | formal file deliverable |
 | 交付一个文件 | Yes | explicit file deliverable |
-| 附件是报告 | Yes | attachment = file deliverable |
+| 请以附件形式交付报告 | Yes | output-oriented attachment delivery |
+| 附件是报告 | No | describes input attachment, not output request |
+| 附件是报告，帮我总结 | No | input attachment + content request, not file delivery |
 | 不要生成 PDF，只要 markdown | No | negation of PDF |
 | 解释一下 PDF 渲染为什么失败 | No | meta-discussion, not a request |
 | 比较 PDF 和 Markdown 的优缺点 | No | comparison/discussion, not delivery |
