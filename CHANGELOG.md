@@ -13,6 +13,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 ### Changed
 - `equipment selection / procurement / home-server planning` promoted to first-class route (routing priority #5), with provider-vs-equipment conflict rules and route-conflict examples
 - route lists in `ARCHITECTURE.md`, `SYSTEM-MAP.md`, and `README.md` updated from six to seven mature routes
+- `scripts/markdown_to_html.py`: hardened metadata HTML escaping and security model — `html.escape()` applied to all frontmatter-derived fields; `cover_meta` lines are escaped individually before joining with `<br>`
 
 ### Added
 - `references/mid-research-review.md`
