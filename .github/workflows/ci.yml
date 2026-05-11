@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/**'
+      - 'schemas/**'
       - 'examples/**'
       - 'requirements.txt'
       - '.github/workflows/ci.yml'
@@ -18,6 +19,7 @@ jobs:
           python-version: "3.12"
       - run: python3 -m py_compile scripts/*.py
       - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md
+      - run: python3 scripts/test_validator_regression.py
 
   smoke:
     runs-on: ubuntu-latest
