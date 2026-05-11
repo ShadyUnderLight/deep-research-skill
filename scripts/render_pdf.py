@@ -16,7 +16,8 @@ async def html_to_pdf(html_path, pdf_path=None, format="A4",
                        print_background=True, landscape=False,
                        prefer_css_page_size=True,
                        media="print",
-                       title=None):
+                       title=None,
+                       block_remote=True):
     """
     Render HTML file to PDF via Playwright Chromium.
     """
@@ -34,6 +35,9 @@ async def html_to_pdf(html_path, pdf_path=None, format="A4",
     async with async_playwright() as p:
         browser = await p.chromium.launch()
         page = await browser.new_page()
+
+        if block_remote:
+            await page.route("**/*", lambda route: route.abort() if route.request.url.startswith(("http://", "https://")) else route.continue_())
 
         file_url = f"file://{html_path}"
         await page.goto(file_url, wait_until="networkidle")
@@ -79,6 +83,7 @@ if __name__ == '__main__':
     parser.add_argument('--media', choices=['print', 'screen'], default='print', help='Emulated media type')
     parser.add_argument('--no-bg', action='store_true', help='Disable background graphics')
     parser.add_argument('--no-prefer-css-page-size', action='store_true', help='Ignore CSS @page size when rendering')
+    parser.add_argument('--allow-remote', action='store_true', help='Allow HTTP/HTTPS resource requests during PDF rendering (default: blocked)')
     args = parser.parse_args()
 
     asyncio.run(html_to_pdf(
@@ -94,4 +99,5 @@ if __name__ == '__main__':
         media=args.media,
         print_background=not args.no_bg,
         title=args.title,
+        block_remote=not args.allow_remote,
     ))

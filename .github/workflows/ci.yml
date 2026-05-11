@@ -46,6 +46,55 @@ jobs:
           echo 'HTML escaping regression check OK'
           rm -rf "$temp"
       - run: |
+          temp=$(mktemp -d)
+          cat > "$temp/in.md" << 'INEOF'
+          # Test
+
+          Safe text.
+
+          <script>alert(1)</script>
+          <iframe src="https://evil.com"></iframe>
+          <img src="x" onerror="alert(1)">
+          <a href="javascript:alert(1)">bad</a>
+          INEOF
+          python3 scripts/markdown_to_html.py "$temp/in.md" "$temp/out.html"
+          ! grep -qi '<script\|<iframe\|onerror=' "$temp/out.html" || { echo 'FAIL: body HTML not sanitized (script/iframe/onerror)'; exit 1; }
+          ! grep -qi 'javascript:' "$temp/out.html" || { echo 'FAIL: javascript: URL not sanitized'; exit 1; }
+          ! grep -qi 'style=' "$temp/out.html" || { echo 'FAIL: inline style not removed'; exit 1; }
+          ! grep -qi '<img' "$temp/out.html" || { echo 'FAIL: img tag not stripped'; exit 1; }
+          grep -q 'Safe text' "$temp/out.html" || { echo 'FAIL: safe content lost'; exit 1; }
+          echo 'HTML sanitization check OK'
+          rm -rf "$temp"
+      - run: |
+          temp=$(mktemp -d)
+          cat > "$temp/in.md" << 'INEOF'
+          # CSS/Style
+
+          <span style="background:url(javascript:alert(1))">css-url</span>
+          <div style="position:fixed;top:0">fixed</div>
+          <span style="color:red">safe style</span>
+          INEOF
+          python3 scripts/markdown_to_html.py "$temp/in.md" "$temp/out.html"
+          ! grep -q 'style=' "$temp/out.html" || { echo 'FAIL: style attr not stripped'; exit 1; }
+          grep -q 'css-url' "$temp/out.html" || { echo 'FAIL: text content lost when style stripped'; exit 1; }
+          grep -q 'fixed' "$temp/out.html" || { echo 'FAIL: text content lost when style stripped'; exit 1; }
+          grep -q 'safe style' "$temp/out.html" || { echo 'FAIL: text content lost when style stripped'; exit 1; }
+          echo 'CSS style stripping check OK'
+          rm -rf "$temp"
+      - run: |
+          temp=$(mktemp -d)
+          cat > "$temp/in.md" << 'INEOF'
+          # Img src
+
+          <img src="https://evil.com/track.png" alt="tracker">
+          <img src="local.png" alt="local">
+          INEOF
+          python3 scripts/markdown_to_html.py "$temp/in.md" "$temp/out.html"
+          ! grep -qi '<img' "$temp/out.html" || { echo 'FAIL: img tag not stripped'; exit 1; }
+          echo 'Img stripping check OK'
+          rm -rf "$temp"
+      - run: python3 scripts/test_remote_block.py
+      - run: |
           input_dir="/tmp/smoke test path"
           mkdir -p "$input_dir"
           printf '# Smoke Test\n\nTest paragraph.\n' > "$input_dir/input.md"
