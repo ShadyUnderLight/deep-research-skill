@@ -18,6 +18,30 @@ jobs:
           python-version: "3.12"
       - run: python3 -m py_compile scripts/*.py
       - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md
+      - name: Validate bad-sample rejection
+        run: |
+          fail() { echo "FAIL: $1"; exit 1; }
+          tmp=$(mktemp -d)
+
+          # missing required heading
+          printf '# Pack\n\n## Objective\nok\n' > "$tmp/missing.md"
+          python3 scripts/validate_research_pack.py "$tmp/missing.md" && fail "missing heading not rejected"
+
+          # heading only in fenced code block
+          printf '# Pack\n\n```\n## Stop condition\n```\n\n## Objective\nok\n' > "$tmp/codeblock.md"
+          python3 scripts/validate_research_pack.py "$tmp/codeblock.md" && fail "code-block heading not rejected"
+
+          # empty section
+          printf '# Pack\n\n## Objective\nok\n\n## Stop condition\n\n## Source register\nok\n' > "$tmp/empty.md"
+          python3 scripts/validate_research_pack.py "$tmp/empty.md" && fail "empty section not rejected"
+
+          # goodbye sample — should pass
+          pass_body() { printf '# Pack\n\n## Objective\nok\n\n## Decision context\nok\n\n## Primary route\nok\n\n## Secondary disciplines\nok\n\n## Core subquestions\nok\n\n## Stop condition\nok\n\n## Source register\nok\n\n## Claim register\nok\n\n## Uncertainty register\nok\n\n## Artifact contract\nok\n\n## Required audits\nok\n\n## Final audit status\nok\n'; }
+          pass_body > "$tmp/pass.md"
+          python3 scripts/validate_research_pack.py "$tmp/pass.md" || fail "valid pack rejected"
+
+          rm -rf "$tmp"
+          echo "Validator regression checks OK"
 
   smoke:
     runs-on: ubuntu-latest
