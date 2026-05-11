@@ -117,5 +117,26 @@ jobs:
           printf '# Smoke Test\n\nTest paragraph.\n' > "$input_dir/input.md"
           python3 scripts/md_to_pdf.py "$input_dir/input.md" "$input_dir/output.pdf" \
             --title "CI Smoke Test"
-      - run: |
           python3 -c "import sys,pathlib; d=pathlib.Path('/tmp/smoke test path/output.pdf').read_bytes(); assert len(d)>0 and d[:4]==b'%PDF'; print('PDF OK: '+str(len(d))+' bytes')"
+          rm -rf "$input_dir"
+      - run: |
+          temp=$(mktemp -d)
+          dir="$temp/hash path #frag/query ?q/中文 路径"
+          mkdir -p "$dir"
+          md_file="$dir/in#frag?query 中文.md"
+          html_file="$dir/in#frag?query 中文.html"
+          pdf_file="$dir/out#frag?query 中文.pdf"
+          printf '# Special Char Test\n\nTest paragraph.\n' > "$md_file"
+
+          # Full pipeline (md_to_pdf.py)
+          python3 scripts/md_to_pdf.py "$md_file" "$pdf_file" --title "Special Char Test"
+          python3 -c "import sys,pathlib; d=pathlib.Path('$pdf_file').read_bytes(); assert len(d)>0 and d[:4]==b'%PDF'; print('Pipeline OK: '+str(len(d))+' bytes')"
+
+          # Direct renderer (render_pdf.py) — generate HTML first
+          python3 scripts/markdown_to_html.py "$md_file" "$html_file"
+          direct_pdf="$dir/renderer_direct.pdf"
+          python3 scripts/render_pdf.py "$html_file" "$direct_pdf"
+          python3 -c "import sys,pathlib; d=pathlib.Path('$direct_pdf').read_bytes(); assert len(d)>0 and d[:4]==b'%PDF'; print('Renderer direct OK: '+str(len(d))+' bytes')"
+
+          echo 'Special character path smoke OK'
+          rm -rf "$temp"
