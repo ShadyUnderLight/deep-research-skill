@@ -1,9 +1,18 @@
 #!/usr/bin/env python3
 """
 Universal Markdown → Styled HTML converter for Deep Research reports.
+
+Security model: this script is designed for processing agent-authored
+Deep Research reports. It escapes frontmatter-derived metadata fields
+(title, cover_title, cover_subtitle, cover_meta) to prevent HTML injection.
+Body HTML is produced by Python-Markdown with the 'extra' extension,
+which preserves raw HTML in the markdown source. Do not pass untrusted
+content to this script without sanitizing first.
+
 Usage:
     python3 markdown_to_html.py <input.md> [output.html] [--title "Report Title"]
 """
+import html
 import sys
 import re
 import os
@@ -765,8 +774,16 @@ def normalize_text_for_pdf(text):
     return text
 
 
-def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta=""):
+def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta="", meta_lines=None):
     """Wrap processed body HTML in the full HTML document."""
+    title = html.escape(title)
+    cover_title = html.escape(cover_title)
+    cover_subtitle = html.escape(cover_subtitle)
+    if meta_lines is not None:
+        cover_meta = '<br>'.join(html.escape(line) for line in meta_lines)
+    elif cover_meta:
+        parts = re.split(r'<br\s*/?>', cover_meta, flags=re.I)
+        cover_meta = '<br>'.join(html.escape(part) for part in parts)
     cover_block = ""
     body_class = "has-cover" if cover_title else ""
     if cover_title:
@@ -1219,7 +1236,8 @@ def process_markdown(md_text):
 def extract_cover_meta(md_text):
     """
     Try to extract cover fields from markdown frontmatter or first few lines.
-    Returns (cover_title, cover_subtitle, cover_meta, cleaned_body)
+    Returns (cover_title, cover_subtitle, meta_lines, cleaned_body)
+    where meta_lines is a list of raw metadata strings (unjoined, unescaped).
     """
     lines = md_text.split('\n')
 
@@ -1239,8 +1257,6 @@ def extract_cover_meta(md_text):
         elif line.startswith('type:') or lower.startswith('research type:'):
             meta_lines.append(f"研究类型：{line.split(':', 1)[1].strip()}")
 
-    cover_meta = '<br>'.join(meta_lines) if meta_lines else ''
-
     # Strip frontmatter (--- ... ---)
     body_lines = lines
     if lines and lines[0].strip() == '---':
@@ -1252,7 +1268,7 @@ def extract_cover_meta(md_text):
         if end is not None:
             body_lines = lines[end+1:]
 
-    return title, subtitle, cover_meta, '\n'.join(body_lines)
+    return title, subtitle, meta_lines, '\n'.join(body_lines)
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
@@ -1266,7 +1282,7 @@ def convert(input_path, output_path=None, title=None):
     md_text = normalize_text_for_pdf(md_text)
 
     # Extract cover info
-    cover_title, cover_subtitle, cover_meta, body_text = extract_cover_meta(md_text)
+    cover_title, cover_subtitle, meta_lines, body_text = extract_cover_meta(md_text)
 
     # Use provided title or fall back
     report_title = title or cover_title or md_path.stem
@@ -1280,7 +1296,7 @@ def convert(input_path, output_path=None, title=None):
         body_html=body_html,
         cover_title=cover_title,
         cover_subtitle=cover_subtitle,
-        cover_meta=cover_meta,
+        meta_lines=meta_lines,
     )
 
     # Output
