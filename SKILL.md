@@ -302,9 +302,16 @@ For most tasks, include:
 
 Default delivery stays as text or markdown.
 
-If the user's request includes `pdf` or `PDF`, or uses explicit delivery-intent phrases like "生成 PDF", "导出 PDF", "PDF 报告", "保存为 PDF", "给我 PDF 文件", also produce a PDF artifact:
+Produce a PDF artifact when the user's request shows explicit file-delivery intent:
 
-Do not trigger PDF generation solely because the user said "报告", "研究报告", "分析报告", or similar generic report terminology that only indicates output format (text/markdown) rather than file format.
+- contains `pdf` or `PDF` in a generative/delivery context (e.g. "生成 PDF", "导出 PDF", "PDF 报告", "保存为 PDF", "给我 PDF 文件", "PDF 版本", "PDF 格式")
+- includes file-oriented phrases like "报告文件", "可下载报告", "正式报告文件", "给我报告文件", "附件", "交付一个文件"
+- the overall request clearly asks for a deliverable file rather than just report content
+
+Do not trigger PDF generation when:
+
+- the user mentions `pdf` / `PDF` only to negate or discuss it: "不要 PDF", "不用 PDF", "无需 PDF", "no PDF", "not PDF", "为什么 PDF 渲染失败", "比较 PDF 和 Markdown", or similar meta-discussion
+- the request only uses generic report terminology ("报告", "研究报告", "分析报告", "写成报告格式") that indicates output shape (text/markdown) rather than file format
 
 1. write the final report to a `.md` file first
 2. convert it with `scripts/md_to_pdf.py`
