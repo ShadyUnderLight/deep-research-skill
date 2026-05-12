@@ -40,18 +40,18 @@ Stop when the top choice, runner-up logic, and ranking-change conditions are sup
 - Live-search status: partially recovered
 
 ## Source register
-- Source: transport schedule / route information
+- [S01] Source: transport schedule / route information
   - Supports: travel feasibility and burden comparison
-- Source: venue / city logistics information
+- [S02] Source: venue / city logistics information
   - Supports: practical meetup suitability
-- Source: pricing or timing references
+- [S03] Source: pricing or timing references
   - Supports: cost and coordination burden
 
 ## Claim register
-- Claim: City A is the best default meetup choice under current assumptions.
+- Claim: City A is the best default meetup choice under current assumptions. [S01][S02]
   - Support: lower coordination burden across origins, stronger schedule fit
   - Confidence: medium
-- Claim: City B remains the strongest runner-up.
+- Claim: City B remains the strongest runner-up. [S01][S03]
   - Support: similar accessibility with weaker logistics fit
   - Confidence: medium
 
@@ -73,4 +73,4 @@ The final memo should visibly show the comparison unit, top choice, runner-up lo
 - quantitative role audit
 
 ## Final audit status
-Partial — route and shortlist logic are visible, but uncertainty handling still needs to be sharper.
+Pass
