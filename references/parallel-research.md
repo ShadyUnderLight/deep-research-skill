@@ -104,7 +104,7 @@ If you have 1 track: run it normally, no parallelism needed.
 
 **Why 2:** Running 2 concurrent tracks is a conservative operational default that avoids rate-limit pressure in most environments. If the API clearly tolerates more in practice, you can adjust up—but default to safe.
 
-**Spawning within a batch:** Use `sessions_spawn` for all tracks in the current batch simultaneously. The batch wait is handled by collecting their results before the next spawn call.
+**Spawning within a batch:** Use your environment's parallel-agent spawn capability for all tracks in the current batch simultaneously. The batch wait is handled by collecting their results before the next spawn call.
 
 **Jitter (optional):** If you observe borderline rate-limit behavior, add a small random delay (0.5–1s) between spawning tracks within the same batch.
 
