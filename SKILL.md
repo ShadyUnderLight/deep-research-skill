@@ -132,31 +132,35 @@ Do not keep searching just to make the report longer.
 When a research task needs live web search:
 
 1. select one provider path based on expected query fit and use it for discovery and comparison-angle finding
-2. use `web_fetch` only after a candidate URL is identified
-3. use `browser` only when the page is dynamic or `web_fetch` fails on a confirmed-live URL
+2. use readable content-fetch capability only after a candidate URL is identified (e.g. `web_fetch`, MCP fetch, HTTP fetch when it captures final page content/status and usable source text)
+3. use dynamic-browser capability only when the page requires JS rendering or fetch alone fails (e.g. `browser`, Playwright, headless Chrome)
 
 If the selected provider path is unavailable, do not silently fall back to another provider without explicit justification. Only add another provider when degradation, low yield, or query-fit mismatch is explicitly identified.
 
 If degraded search is needed, use this fallback policy:
+
 1. first distinguish temporary rate-limit / quota issues from broader provider unavailability
 2. if live search is still unavailable, declare the search provider degraded in the evidence log
 3. if `agent-reach` Exa search is available in the current environment, use it as the first explicit degraded fallback for discovery and comparison-angle finding
-4. current fallback implementation for that path (example for one environment; adjust the command to match your environment):
 
-```bash
-mcporter call 'exa.web_search_exa(query: "<search query>", numResults: 5)'
-```
+4. fallback invocation varies by environment; use your environment's tool calling convention
 
 5. prefer the Exa fallback when the query is primarily about English-language material, technical documentation, developer tooling, code context, company pages, or broad web discovery
 6. Exa is not automatically better for every case; if the task is dominated by Chinese-language news flow, localized platform chatter, or a search intent that clearly needs browser-side localization, note that and move on rather than forcing Exa first
 7. treat Exa result pages as candidate-source discovery only, not as evidence for memo claims
-8. re-verify any load-bearing claim via `web_fetch` or `browser` on the source page itself, prioritizing official / primary sources
-9. if Exa is unavailable, unusable, or evidently low-yield for the query class, use Bing via `browser` as the second explicit discovery-only fallback, preferably with `en-US` parameters when practical
+8. re-verify any load-bearing claim via content-fetch or dynamic-browser capability on the source page itself, prioritizing official / primary sources
+9. if Exa is unavailable, unusable, or evidently low-yield for the query class, use Bing via dynamic-browser capability as the second explicit discovery-only fallback, preferably with `en-US` parameters when practical
 10. expect region bias / localized ranking in the current environment; do not describe Bing as a guaranteed international or neutral search path
 11. treat Bing result pages as candidate-source discovery only, not as evidence for memo claims
 12. in the evidence log, record which provider path was attempted, why the fallback was triggered, and whether the fallback was used because of provider failure, quota/rate-limit pressure, or query-fit judgment
 13. if Bing is also blocked or unusable, declare the live-search step blocked and note which freshness checks or claims could not be verified live
 14. continue with offline materials only if the remaining uncertainty is made explicit
+
+Environment-specific example (one environment only; adjust tool calling convention to match your environment):
+
+```bash
+mcporter call 'exa.web_search_exa(query: "<search query>", numResults: 5)'
+```
 
 ## Degraded-search execution discipline
 
@@ -196,11 +200,18 @@ When degraded fallback is used, keep a compact internal log in this shape:
 
 This log does not need to appear verbatim in the final memo, but its effects should be recoverable in the Research Pack, uncertainty register, or source notes.
 
-Other tools:
-- `web_fetch`: extract readable page content after search identifies a candidate source
-- `browser`: handle dynamic pages or failed fetches for confirmed-live URLs
-- `sessions_spawn`: split clearly separable tracks only
-- final synthesis: always perform one parent-level reconciliation pass
+## Common tool capability mapping
+
+Different environments expose different tool names for the same capabilities. Map your environment's available tools to the capabilities expected below:
+
+| Capability | Typical tool names | Notes |
+|---|---|---|
+| Discovery search | `web_search`, `web_search_exa`, search API | |
+| Readable content fetch | `web_fetch`, MCP fetch, HTTP fetch when it captures final page content/status | Must return usable source text, not raw HTML/redirect page |
+| Dynamic browser | `browser`, Playwright, headless Chrome | |
+| Parallel agent spawn | `spawn_agent`, `sessions_spawn`, agent/session spawn API | Generic parallel tool-call wrappers do not count — must create independent sub-agent/session per track |
+
+Final synthesis: always perform one parent-level reconciliation pass.
 
 Avoid unnecessary browsing loops, repetitive searches, or unstructured parallel runs.
 
