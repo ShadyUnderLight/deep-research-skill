@@ -16,7 +16,7 @@ Run this checklist before delivery when no mature specialized route applies, or 
 
 - [ ] the task type is visible in the process artifact or opening section
 - [ ] the chosen route matches the task type, not a generic alternative that would produce a weaker artifact
-- [ ] if no specialized route applies, that decision is explicit rather than implicit
+- [ ] if no mature specialized route applies, that decision is explicit rather than implicit
 
 ## Research planning
 
@@ -54,7 +54,7 @@ Run this checklist before delivery when no mature specialized route applies, or 
 
 - [ ] the required audits for the selected route were run and pass
 - [ ] the report satisfies the visible artifact contract of its primary route
-- [ ] if no specialized route was triggered, the report still follows the shared workflow spine and does not drift into generic overview mode
+- [ ] if no mature specialized route was triggered, the report still follows the shared workflow spine and does not drift into generic overview mode
 
 ## Quality bar
 

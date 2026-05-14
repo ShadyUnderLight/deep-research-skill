@@ -58,7 +58,7 @@ The pipeline should not be treated as a black box. If the markdown is clean but 
 
 - `checklists/final-audit.md` — the delivery-cleanliness audit section is the delivery-time gate for known failures
 - `scripts/markdown_to_html.py` — the conversion entry point; supports `--title` for the document title; cover metadata is inferred from frontmatter-like `title` / `subtitle` / `date` / `type` fields in the markdown input
-- `scripts/render_pdf.py` — the PDF renderer; supports `--landscape`, `--media`, `--page-margin`, and `--title` for print control
+- `scripts/render_pdf.py` — the PDF renderer; supports `--landscape`, `--media`, `--margin-top`, `--margin-right`, `--margin-bottom`, `--margin-left`, and `--title` for print control
 - `scripts/md_to_pdf.py` — the one-shot pipeline; forwards all print controls
 - `references/failure-taxonomy.md` — documents recurring delivery failure families
 
