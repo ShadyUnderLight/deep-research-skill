@@ -48,7 +48,7 @@ Read `ROUTING-MATRIX.md` to select:
 - required audits
 - visible output structure
 
-Before deep collection, explicitly select one primary route.
+Before deep collection, explicitly select one primary route. If no mature specialized route applies, treat the task as a shared-workflow task and use `checklists/workflow-spine-audit.md` for the final gate.
 
 Use one primary route plus only the smallest necessary supporting set.
 
@@ -360,10 +360,12 @@ Read `references/parallel-research.md` when the task clearly benefits from multi
 Before delivery:
 
 1. run the route-specific audits required by `ROUTING-MATRIX.md`
-2. run `checklists/final-audit.md`
-3. confirm that the selected route is visibly executed in the final artifact
+2. run `checklists/route-activation-audit.md` when a specialized route was selected
+3. run `checklists/workflow-spine-audit.md` when no mature specialized route applies, or when output shows generic drift despite route selection
+4. run `checklists/final-audit.md`
+5. confirm that the selected route is visibly executed in the final artifact
 
-A report that sounds informed but does not visibly satisfy the selected route’s artifact contract is not ready.
+A report that sounds informed but does not visibly satisfy the selected route's artifact contract is not ready.
 
 If the failure seems to be:
 - missing rule
@@ -371,6 +373,8 @@ If the failure seems to be:
 - or execution drift
 
 use `evals/meta/rule-activation-and-execution-discipline.md`.
+
+If no mature specialized route applies, treat the task as a shared-workflow task and run the workflow-spine audit instead.
 
 ## Output quality bar
 

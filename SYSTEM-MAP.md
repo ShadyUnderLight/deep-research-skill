@@ -48,6 +48,11 @@ Defines the shared research process that applies before any route-specific speci
 - `references/source-quality.md`
 - `references/claim-matrix.md`
 - `references/parallel-research.md`
+- `references/mid-research-review.md`
+
+### Primary checklists
+- `checklists/mid-research-review-audit.md`
+- `checklists/workflow-spine-audit.md`
 
 ### Typical questions this family answers
 - what is the real objective?
@@ -76,7 +81,11 @@ Makes mature task families explicit so the right discipline set and delivery con
 
 ### Primary files
 - `ROUTING-MATRIX.md`
+- `references/route-activation-and-preflight.md`
 - `evals/meta/rule-activation-and-execution-discipline.md`
+
+### Primary checklists
+- `checklists/route-activation-audit.md`
 
 ### Supported mature routes
 - provider / vendor selection
@@ -225,9 +234,12 @@ Makes route, evidence, uncertainty, and counter-evidence handling more recoverab
 ### Purpose
 Controls forecasts, roadmap statements, target dates, and estimate-heavy claims so they do not create false certainty.
 
-### Primary references/checklists
-- `checklists/forward-looking-claims.md`
+### Primary references
+- `references/forward-looking-discipline.md`
 - `references/finance-date-discipline.md`
+
+### Primary checklists
+- `checklists/forward-looking-claims.md`
 - `checklists/final-audit.md`
 
 ### Representative evals
@@ -327,10 +339,13 @@ Preserves the report’s intended structure and readability when converted into 
 - `scripts/render_pdf.py`
 - `scripts/md_to_pdf.py`
 
-### Primary references/checklists
-- `checklists/final-audit.md`
+### Primary references
+- `references/delivery-operator-note.md`
 - `references/report-template.md`
 - `references/failure-taxonomy.md`
+
+### Primary checklists
+- `checklists/final-audit.md`
 
 ### Representative evals
 - `evals/cases/minimax-sea-memo-pdf-layout-case.md`
@@ -439,11 +454,10 @@ Change first:
 
 ## Current thin spots
 
-The current system is much clearer than before, but still relatively thin in a few places:
+The current system is much clearer than before, but still has thin spots to watch:
 
 - formal grouping of eval subtypes is still implicit rather than encoded in folder structure
 - some families still rely more on representative eval clusters than on explicit map files
-- the delivery subsystem is documented architecturally, but not yet documented with its own dedicated operator-facing note
 - not every route family yet has a clearly separated supporting reference vs checklist vs eval cluster
 
 These are natural next-step candidates, but they do not need to be solved in the same PR as this map.

@@ -142,6 +142,10 @@ Current audit files include:
 - `checklists/forward-looking-claims.md`
 - `checklists/listed-company-report.md`
 - `checklists/option-selection-final-audit.md`
+- `checklists/mid-research-review-audit.md`
+- `checklists/workflow-spine-audit.md`
+- `checklists/route-activation-audit.md`
+- `checklists/quantitative-role-audit.md`
 
 This layer should answer:
 
@@ -200,6 +204,8 @@ Current responsibilities include:
 - PDF rendering
 - print styling and CJK readability adjustments
 - preserving target-language coherence for load-bearing structural labels in final artifacts
+
+This layer has a dedicated operator-facing note: `references/delivery-operator-note.md` documents the pipeline, known failure patterns, and pre-delivery checks.
 
 This layer should be treated as a delivery subsystem, not as part of core research reasoning.
 
