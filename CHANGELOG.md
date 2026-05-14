@@ -10,7 +10,14 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ## Unreleased
 
+### Added
+- `checklists/workflow-spine-audit.md`: Family A checklist — audits whether the SKILL.md shared workflow spine was actually executed rather than assumed.
+- `checklists/route-activation-audit.md`: Family B checklist — audits whether route activation was explicit and whether the route actually shaped the output.
+- `references/forward-looking-discipline.md`: Family E reference — dedicated discipline for forecasts, estimates, roadmap statements, announced-vs-rumored separation, and forward-looking assumption chains.
+- `references/delivery-operator-note.md`: Family H reference — operator-facing note on the rendering pipeline, known failure patterns, CJK concerns, and pre-delivery checks.
+
 ### Changed
+- `SYSTEM-MAP.md`: filled family-level coverage across all nine families: added missing file references (`mid-research-review.md`, `route-activation-and-preflight.md`), added newly created checklists, split combined Primary references/checklists sections into separate subsections for clarity, and updated Current thin spots to reflect resolved items.
 - `SKILL.md`: narrowed PDF delivery trigger — replaced bare keyword matching with an explicit file-delivery intent model: added delivery-phrase list ("生成 PDF", "导出 PDF", "报告文件", "可下载报告", "给我报告文件", "作为附件给我" etc.) and a negation/discussion guardrail (不要 PDF, no PDF, 解释 PDF 渲染失败, etc.). Bare `报告` no longer triggers PDF pipeline.
 - `evals/cases/pdf-delivery-trigger-regression-case.md`: added acceptance matrix to prevent trigger-boundary drift.
 - `scripts/validate_research_pack.py`: added `## Stop condition` to required headings list; fenced code blocks are stripped via line-by-line state machine (handles up-to-3-space indent, proper closing); heading detection uses exact H2 parsing (rejects `###`, `> ##`, `## extra text`); empty section detection uses any heading as section boundary and excludes sub-heading lines from body content.
