@@ -50,14 +50,14 @@ Without running the full pipeline:
 
 1. Render HTML only: `python3 scripts/markdown_to_html.py input.md > output.html`
 2. Check the HTML for structural issues: open it in a browser, verify headings, tables, and spacing
-3. If PDF quality is critical, render a single-page test: `python3 scripts/md_to_pdf.py input.md --output test.pdf` and review the output
+3. If PDF quality is critical, render a PDF smoke test: `python3 scripts/md_to_pdf.py input.md test.pdf` and review the output
 
 The pipeline should not be treated as a black box. If the markdown is clean but the PDF is broken, the bug is likely in the rendering layer and should be fixed there rather than by restructuring the research content.
 
 ## Relationship to other files
 
 - `checklists/final-audit.md` — the delivery-cleanliness audit section is the delivery-time gate for known failures
-- `scripts/markdown_to_html.py` — the conversion entry point; supports `document-title` and `cover-meta` options for front-page control
+- `scripts/markdown_to_html.py` — the conversion entry point; supports `--title` for the document title; cover metadata is inferred from frontmatter-like `title` / `subtitle` / `date` / `type` fields in the markdown input
 - `scripts/render_pdf.py` — the PDF renderer; supports `--landscape`, `--media`, `--page-margin`, and `--title` for print control
 - `scripts/md_to_pdf.py` — the one-shot pipeline; forwards all print controls
 - `references/failure-taxonomy.md` — documents recurring delivery failure families

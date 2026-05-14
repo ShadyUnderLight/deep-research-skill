@@ -208,6 +208,7 @@ Use when the task is mainly about:
 
 ### Read
 - `references/market-outlook-and-scenario-discipline.md`
+- `references/forward-looking-discipline.md`
 - `references/decision-report-template.md`
 - `references/source-traceability-and-claim-citation.md`
 
@@ -447,6 +448,7 @@ Use when the task is mainly about:
 
 ### Read
 - `references/finance-date-discipline.md`
+- `references/forward-looking-discipline.md` when forward-looking claims appear
 - `references/market-sizing-and-share-discipline.md` when share/size claims matter
 - `references/source-traceability-and-claim-citation.md`
 - `references/moat-monopoly-screening.md` when the task involves monopoly, irreplaceability, strongest moat, scarce listed assets, or only-listed-proxy judgments
@@ -532,6 +534,9 @@ Fail if:
 ### Forward-looking claims discipline
 Attach when the task includes forecasts, roadmap claims, target dates, expected pricing, or expected market evolution.
 
+Read:
+- `references/forward-looking-discipline.md`
+
 Visible sign:
 - forward-looking claims are labeled by source role and uncertainty
 
@@ -579,7 +584,12 @@ Choose the route that most strongly determines report structure and audit burden
 
 ## Final check
 
-Before delivery, ask:
+Before delivery:
+
+- run `checklists/route-activation-audit.md` when a specialized route was selected
+- run `checklists/workflow-spine-audit.md` when no mature specialized route applies, or when output shows generic drift despite route selection
+
+Then ask:
 
 1. did the correct route fire?
 2. did the required secondary disciplines attach?

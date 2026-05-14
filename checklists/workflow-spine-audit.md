@@ -4,7 +4,7 @@ Use this checklist when the research output feels generic, directionless, or lac
 
 It audits whether the shared workflow spine defined in `SKILL.md` was actually executed rather than assumed.
 
-Run this checklist before delivery when the task is not route-specialized, or when a route-specialized report still reads like unplanned prose.
+Run this checklist before delivery when no mature specialized route applies, or when a route-specialized report still reads like unplanned prose.
 
 ## Objective clarity
 
