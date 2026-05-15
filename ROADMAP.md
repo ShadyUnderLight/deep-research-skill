@@ -9,7 +9,7 @@ This file tracks likely next improvements and helps keep repo evolution intentio
 - Add more evals for freshness, counter-evidence, and decision-quality regressions.
 - Test the skill against more real fast-moving company/product cases.
 - Tighten current-state verification if stale facts still leak into reports.
-- Treat **listed-company stale-anchor selection** as a distinct failure family rather than only a generic freshness issue: test whether older-but-plausible annual / quarterly / market snapshots are still silently becoming the memo baseline, and decide whether this needs a dedicated meta-eval or failure-taxonomy entry.
+- Continue testing whether the stale-anchor hard gate (added to `checklists/listed-company-report.md`) reliably triggers during real listed-company synthesis, and harden route activation if the gate keeps being skipped.
 - Add meta-evals and trigger-routing improvements for failure families identified in `references/failure-taxonomy.md`, especially rule activation, scope completeness, decision utility, and market-outlook routing.
 - Decide whether to formalize eval subtypes (`case`, `rubric`, `distillation`, `meta-eval`) in naming or folder structure.
 - Run at least 2-3 more real comparative-distillation cases and promote only the recurring candidate rules.
