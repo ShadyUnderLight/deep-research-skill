@@ -44,6 +44,7 @@ This is one of the highest-severity failure families because it directly breaks 
 - ranking or market-position claim written in present tense without time basis
 - valuation snapshot missing in listed-company research
 - reported financials, market snapshot, and estimates blended into one narrative
+- listed-company stale-anchor selection: older-but-plausible annual / quarterly / market snapshots silently become the memo baseline
 
 ### Existing evals in this family
 - `evals/cases/freshness-xiaomi-case.md`
@@ -52,6 +53,8 @@ This is one of the highest-severity failure families because it directly breaks 
 - `evals/cases/ranking-and-current-claims-xiaomi-update-case.md`
 - `evals/cases/finance-and-market-share-cambricon-case.md` (partial overlap)
 - `evals/cases/minimax-company-report-case.md` (partial overlap)
+- `evals/cases/intel-current-state-freshness-case.md`
+- `evals/cases/cnooc-judgment-shape-improved-but-freshness-still-leaked-case.md`
 
 ### Existing rule/checklist coverage
 - `references/current-state-verification.md`
@@ -63,10 +66,21 @@ This is one of the highest-severity failure families because it directly breaks 
 ### What this family suggests structurally
 The repo already has rules for this family. The remaining problem is often not missing guidance but **failure to trigger the correct gate**.
 
+### Stale-anchor sub-family (listed-company)
+
+This sub-family captures a recurring failure mode within Family A that has become distinct enough to warrant explicit treatment:
+
+- older-but-plausible annual / quarterly / market snapshots silently become the memo's opening baseline
+- the rest of the memo is factually reasonable but structurally anchored on stale time layers
+- the failure is particularly dangerous when the memo shape is otherwise good — a polished artifact makes stale anchors harder to spot
+
+See `evals/meta/listed-company-judgment-memo-execution-family.md` (diagnosis type A — anchor-governance failure) for the execution-family framing route.
+
 ### Priority improvement direction
 - strengthen trigger routing for listed-company, current-position, ranking, and fast-moving product tasks
 - make required current-snapshot fields more visible in delivery-time audit
 - add meta-evals for whether the right checklist was actually activated
+- treat stale-anchor selection as a hard-fail condition in listed-company checklists, not only as a freshness reminder
 
 ---
 

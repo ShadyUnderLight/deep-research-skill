@@ -253,6 +253,8 @@ When using this meta-eval, classify the failure primarily as one of:
 ### A. Anchor-governance failure
 The report did not let current reporting layers govern the memo shape.
 
+Common trigger: the report date is materially later than the allegedly latest reporting period in the research-anchor block; older but easier-to-retrieve snapshots silently become the opening baseline. This is the classic stale-anchor pattern documented in `evals/cases/intel-current-state-freshness-case.md` and `evals/cases/cnooc-judgment-shape-improved-but-freshness-still-leaked-case.md`.
+
 ### B. Judgment-shape failure
 The report still reads like a profile or overview rather than a memo.
 

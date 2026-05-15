@@ -131,6 +131,8 @@ Protects fast-moving research from stale facts, frozen time layers, and blurred 
 - `evals/cases/ranking-and-current-claims-xiaomi-update-case.md`
 - `evals/cases/finance-and-market-share-cambricon-case.md`
 - `evals/cases/minimax-company-report-case.md`
+- `evals/cases/intel-current-state-freshness-case.md`
+- `evals/cases/cnooc-judgment-shape-improved-but-freshness-still-leaked-case.md`
 
 ### Typical failure signs
 - stale product or model generation presented as current

@@ -24,6 +24,10 @@ Run through every item before delivering the final report.
 - [ ] forward-looking targets or estimates are clearly labeled as such, not presented as confirmed facts
 - [ ] older but still useful numbers are visibly labeled as historical background / older snapshot rather than treated as current-state anchors
 
+## Stale-anchor hard-fail gate
+
+- [ ] stale-anchor hard gate: a stale or mis-timed quarterly / interim period in the research-anchor block invalidates the memo unless explicitly corrected before delivery — per SKILL.md fail-fast rule
+
 ## Current product lineup
 
 - [ ] current flagship product generation verified (not stale)
