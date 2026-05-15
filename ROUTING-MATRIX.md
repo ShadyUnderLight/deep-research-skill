@@ -502,7 +502,7 @@ Fail if the report:
 
 - mixes reported metrics and forward estimates without clear labels
 - uses undated financial numbers
-- names a stale or mis-timed quarterly / interim period in the research-anchor block and still proceeds as if the memo were current
+- names a stale or mis-timed research-anchor layer — latest full-year, quarterly / interim, or current market snapshot — and still proceeds as if the memo were current
 - makes market-position claims without scope
 - lets valuation narrative substitute for business evidence
 - treats A-share uniqueness as supply-side monopoly or industry exclusivity
