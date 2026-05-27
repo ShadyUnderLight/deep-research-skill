@@ -11,6 +11,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `checklists/final-audit.md`: added delivery-time gate for market-outlook forward-looking claims — source role + time basis for all claims; assumption chain + failure condition for derived/modeled/load-bearing forecasts (validated against 3 real cases, see `report/validation-analysis.md`).
 - `checklists/workflow-spine-audit.md`: Family A checklist — audits whether the SKILL.md shared workflow spine was actually executed rather than assumed.
 - `checklists/route-activation-audit.md`: Family B checklist — audits whether route activation was explicit and whether the route actually shaped the output.
 - `references/forward-looking-discipline.md`: Family E reference — dedicated discipline for forecasts, estimates, roadmap statements, announced-vs-rumored separation, and forward-looking assumption chains.
