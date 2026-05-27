@@ -57,6 +57,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] the required secondary disciplines for the selected route are visibly executed
 - [ ] the report does not collapse back into generic overview mode despite route selection
 - [ ] if the route implies recommendation, ranking, gating, or sequencing burden, the report actually carries that burden
+- [ ] if scope completeness was required, the report's coverage boundaries are explicit; load-bearing geographies or segments are present; omissions are named rather than silent
 - [ ] the opening 20-30% of the report already reflects the chosen route rather than reading like a reusable generic overview
 - [ ] the route is visible not only in headers, but also in section order and burden allocation
 - [ ] there is a visible bridge from route -> mandatory sections -> bottom-line conclusion
@@ -102,6 +103,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] current-state verification was run for fast-moving topics
 - [ ] listing status and financial snapshot were verified for listed companies
 - [ ] source traceability was applied for structured or investment-relevant outputs
+- [ ] scope completeness was checked when the report claims global, comprehensive, or industry-wide scope
+- [ ] decision utility was checked when the report carries a recommendation, choice, judgment, or investment-style decision burden
 - [ ] option-selection final audit was run for shortlist, ranking, or constrained-choice outputs
 - [ ] for model/API/provider selection tasks, a current provider snapshot was verified before ranking or recommendation
 - [ ] for China-mainland deployment decisions, accessibility, compliance, data residency, and SLA were treated as part of ranking logic when relevant

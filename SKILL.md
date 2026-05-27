@@ -68,6 +68,8 @@ Apply these when the route requires them:
 - source traceability
 - forward-looking claims discipline
 - quantitative role labeling
+- scope completeness
+- decision utility
 - delivery cleanliness
 - target-language coherence for final delivery when the report is user-facing
 

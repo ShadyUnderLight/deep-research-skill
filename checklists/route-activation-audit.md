@@ -31,6 +31,8 @@ It audits whether route activation was explicit and whether the route actually s
 - [ ] if source traceability was required, load-bearing claims are auditable in the body
 - [ ] if forward-looking claims discipline was required, forecasts and estimates have visible source role and time basis
 - [ ] if quantitative role labeling was required, important numbers are labeled as observed fact / proxy / assumption / model output
+- [ ] if scope completeness was required, the report states its actual coverage boundaries and covers load-bearing geographies, segments, or regulatory regimes proportionally to their importance
+- [ ] if decision utility was required, the decision frame is explicit and drives report structure, with a clear route-appropriate bottom line
 
 ## Route execution integrity
 
