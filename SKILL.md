@@ -295,6 +295,11 @@ Use `references/decision-report-template.md` when the task needs:
 For listed-company / investment-style work, also use:
 - `examples/listed-company-judgment-memo-example.md` as the default positive memo shape
 - `examples/china-shenhua-reference-grade-rewrite-skeleton.md` when a more concrete Chinese listed-company reference skeleton would help keep the opening judgment-first
+- `references/valuation-methodology.md` when making valuation judgments or using target prices
+- `references/analyst-consensus-handling.md` when consensus data, target prices, or analyst ratings appear
+- `references/reporting-period-handling.md` when using reported financials, TTM/NTM, or comparing multiple periods
+
+These three references are complementary to `references/finance-date-discipline.md` — they cover methodology, data handling, and period definitions rather than time-layer labeling.
 
 The report should not just summarize the topic. It should help the user decide, judge, or verify what matters next.
 

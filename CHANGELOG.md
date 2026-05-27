@@ -15,6 +15,11 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `checklists/route-activation-audit.md`: Family B checklist — audits whether route activation was explicit and whether the route actually shaped the output.
 - `references/forward-looking-discipline.md`: Family E reference — dedicated discipline for forecasts, estimates, roadmap statements, announced-vs-rumored separation, and forward-looking assumption chains.
 - `references/delivery-operator-note.md`: Family H reference — operator-facing note on the rendering pipeline, known failure patterns, CJK concerns, and pre-delivery checks.
+- `references/valuation-methodology.md`: P2 reference — valuation methodology selection, metric choice logic, precision downgrade rules for cyclical/loss-making/high-growth companies, target price discipline.
+- `references/analyst-consensus-handling.md`: P2 reference — consensus data handling: source/date/coverage metadata, estimate vs target price vs rating distinction, stale consensus detection.
+- `references/reporting-period-handling.md`: P2 reference — reporting-period definitions: FY vs CY, TTM/LTM/NTM, preliminary/unaudited/restated, post-period events.
+- `evals/cases/consensus-and-forward-pe-misuse-case.md`: eval testing consensus target price as fair value, forward PE as reported fact, and stale consensus after earnings.
+- `evals/cases/reporting-period-and-ttm-confusion-case.md`: eval testing TTM vs fiscal year confusion, preliminary vs audited, and restated figures.
 
 ### Changed
 - `SYSTEM-MAP.md`: filled family-level coverage across all nine families: added missing file references (`mid-research-review.md`, `route-activation-and-preflight.md`), added newly created checklists, split combined Primary references/checklists sections into separate subsections for clarity, and updated Current thin spots to reflect resolved items.
@@ -31,130 +36,17 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `scripts/render_pdf.py`: added `--allow-remote` flag (remote resources blocked by default); route glob fixed to cover all http/https URLs
 - `scripts/md_to_pdf.py`: added `--allow-remote` passthrough (remote resources blocked by default)
 - `requirements.txt`: added `nh3>=0.2`
-
-### Added
-- `references/mid-research-review.md`
-- `checklists/mid-research-review-audit.md`
-- `references/quantitative-role-labeling.md`
-- `checklists/quantitative-role-audit.md`
-- `references/research-pack-contract.md`
-- `schemas/research-pack.md`
-- `examples/research-pack-example.md`
-- `scripts/validate_research_pack.py`
-- `ARCHITECTURE.md`
-- `SYSTEM-MAP.md`
-- `ROUTING-MATRIX.md`
-- `references/failure-taxonomy.md`
-- `references/comparative-distillation-method.md`
-- `references/option-selection-and-shortlist-discipline.md`
-- `references/market-outlook-and-scenario-discipline.md`
-- `evals/meta/rule-activation-and-execution-discipline.md`
-- `evals/cases/global-market-scope-completeness-case.md`
-- `evals/templates/decision-utility-rubric.md`
-- `evals/templates/comparative-distillation-template.md`
-- `evals/comparative-distillation/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md`
-- `evals/comparative-distillation/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
-- `evals/comparative-distillation/sea-market-entry-gpt-vs-minimax-comparative-distillation.md`
-- `evals/comparative-distillation/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md`
-- `evals/cases/cambricon-first-tier-positioning-case.md`
-- `evals/cases/cambricon-evidence-weighting-and-traceability-case.md`
-
-### Changed
-- Added explicit mid-research review discipline so early evidence batches must visibly narrow, redirect, continue, or stop the search path.
-- Strengthened counter-evidence discipline by tying it to load-bearing conclusions rather than generic end-of-report risk language.
-- Hardened final-audit expectations around weakening logic and intentional stopping behavior.
-- Separated quantitative role labeling into an explicit shared discipline for load-bearing numbers.
-- Added route-level attachment guidance where numeric claims materially shape recommendation, ranking, timing, valuation, or confidence.
-- Hardened report templates so modeled, assumed, and proxied numbers are less likely to read as confirmed facts.
-- Introduced a minimal Research Pack contract as lightweight process-artifact support for auditability.
-- Clarified that final delivery alone is not always sufficient for route-heavy or high-burden tasks.
-- Added a compact bridge between workflow discipline and future execution-layer binding.
-- Organized `evals/` by subtype for easier navigation and maintenance.
-- Added compact examples showing expected execution shape for major memo families.
-- Clarified that examples are execution references rather than report archives.
-- Added explicit route preflight discipline so route selection becomes an auditable entry-layer step rather than an implicit judgment.
-- Strengthened routing language so final artifacts must visibly execute the selected route rather than merely name it.
-- Clarified route-execution failure signs and route-activation intervention order.
-- `scripts/markdown_to_html.py` table routing now keeps comparison-heavy blocks in compact tables (including anchor-column split sub-tables) instead of leaking toward vertical card-like degradation; it also strips internal render-hint text from final HTML.
-- `scripts/markdown_to_html.py` pre-parse table repair now strips accidental list-prefix injection before headings/table rows (e.g. `- ##` / `- | ...`), normalizes malformed separator rows, and removes stray leading bullet-placeholder columns (e.g. `| - | # | ...`) before markdown parsing.
-- `scripts/markdown_to_html.py` table sanitization now more aggressively removes placeholder headers/columns and URL-heavy split-off metadata columns when they reduce comparison readability.
-- PDF table CSS now improves pagination and scan quality for source/info tables: header rows are repeated as table headers across page breaks, row splitting is reduced, and long URLs use softer wrap behavior to avoid severe character fragmentation.
-- `ARCHITECTURE.md` now describes the repo as a layered system: workflow spine, routing layer, method/discipline layer, audit layer, eval/regression layer, and delivery/rendering layer.
-- `SYSTEM-MAP.md` now groups the current references, checklists, and evals into practical families and explains which layer should usually change first when a failure appears.
-- `README.md` now acts more clearly as a lightweight navigation page: core entry files, supporting directories, how the repo fits together, and how changes should land, rather than a long mixed catalog of representative assets.
-- `SKILL.md` now acts more clearly as the workflow spine and orchestration layer rather than the single file that carries every mature route-specific trigger; task-family routing is now centralized in `ROUTING-MATRIX.md`.
-- `ROUTING-MATRIX.md` now defines the six most mature task families (provider selection, market entry, market outlook, first-tier positioning, constrained choice, listed-company research), their required attached disciplines, their required audits, and the visible artifact contracts that final reports must satisfy.
-- `SKILL.md` now adds a delivery-artifact rule: if the user's request includes `pdf`, `PDF`, or `报告`, the workflow should still produce the normal markdown report but also write a `.md` file and run `scripts/md_to_pdf.py` to render a PDF artifact when possible.
-- Added `scripts/markdown_to_html.py`, `scripts/render_pdf.py`, and `scripts/md_to_pdf.py` to version the PDF rendering pipeline inside the repo instead of relying only on workspace-root helper scripts.
-- The PDF renderer styles were substantially upgraded: lighter cover design, cleaner heading hierarchy, improved table spacing/borders, better code/callout/blockquote styling, and proper markdown list rendering for `ul/ol` blocks.
-- `scripts/markdown_to_html.py` now performs pre-render text normalization for PDF safety, including control-character cleanup, unicode normalization, and partial repair of spurious CJK spacing artifacts from poor upstream text extraction.
-- `scripts/render_pdf.py` now exposes more print-oriented controls (`--landscape`, `--media`, explicit page margins, CSS page-size preference, title override) instead of acting as a minimal one-shot wrapper.
-- `scripts/md_to_pdf.py` now forwards those print controls through the one-shot pipeline so the markdown→PDF path can be tuned without patching code.
-- The PDF CSS is now split into a base layer plus a report theme layer, making later theme iteration easier without collapsing all print styling into one monolithic block.
-- `scripts/markdown_to_html.py` no longer relies primarily on a hand-rolled block parser for headings/lists/tables/quotes; it now uses the installed `python-markdown` library for core markdown→HTML conversion, then applies report-specific post-processing. This fixes the major failure mode where raw markdown syntax (`##`, `---`, `|`, `>`) leaked into generated PDFs.
-- Added a stronger pre-parse normalization and repair pass for messy LLM markdown: block-safe normalization around headings / horizontal rules / quotes / tables / lists, stronger CJK spacing repair for headings and metadata-like lines, and a markdown-table repair pass that inserts or normalizes separator rows and aligns column counts before handing content to the parser.
-- Very dense multi-column tables are now transformed into PDF-friendly card/list blocks instead of always being rendered as literal HTML tables. This trades spreadsheet fidelity for readability in report PDFs, especially for market-structure and catalyst/risk sections.
-- The print CSS now uses a more opinionated CJK-oriented font stack and stricter line-breaking / spacing defaults to reduce the “characters visually torn apart” look in Chinese-heavy report PDFs.
-- `README.md` now points to the failure-taxonomy document so the current eval set can be interpreted as recurring failure families rather than a flat list of isolated cases.
-- `README.md` now describes `evals/` as containing case evals, rubrics, and meta-evals rather than only lightweight prompts.
-- `README.md` now points to the comparative-distillation method as the standard way to turn paired-report comparisons into reusable improvements.
-- `README.md` now points to a general option-selection and shortlist-discipline reference for constrained choice tasks.
-- `README.md` now also calls out provider-selection/current-state work as a first-class evaluation target.
-- `ROADMAP.md` now calls out possible formalization of eval subtypes (`case`, `rubric`, `distillation`, `meta-eval`).
-- `ROADMAP.md` now calls for 2-3 more real comparative-distillation cases before promoting candidate rules too aggressively.
-- `SKILL.md` now includes explicit trigger routing for listed-company, current-state, source-traceability, forward-looking, global-scope, decision-utility, and option-selection/shortlist cases instead of leaving those gates implicit.
-- `SKILL.md` now routes paired-report comparison work to the comparative-distillation method and template so stronger-vs-weaker report comparisons produce explicit action types.
-- `SKILL.md` now explicitly treats model/API supplier selection as both a current-state-sensitive task and a constrained-choice task, requiring a current provider snapshot before ranking.
-- `SKILL.md` now explicitly routes market-entry / regional-expansion / country-prioritization tasks as constrained-choice + decision-memo work, requiring priority-vs-alternatives, country shortlist, sequencing, and hard-gate logic rather than a market overview.
-- `SKILL.md` final discipline now adds a visible-gate check and routes rule-execution failures to `evals/meta/rule-activation-and-execution-discipline.md`.
-- `SKILL.md` final trigger checks now require provider-selection outputs to show current provider snapshot + accessibility/compliance/SLA/data-control constraints as ranking logic when relevant.
-- `SKILL.md` final trigger checks now also require market-entry outputs to show priority-vs-alternatives, country shortlist, hub vs beachhead vs later-expansion distinctions when relevant, hard gates, and sequencing logic.
-- `SKILL.md` now explicitly routes first-tier / top-tier / multidimensional competitive-positioning tasks as definition-sensitive constrained judgments rather than loose ranking language.
-- `references/ranking-and-current-claims-discipline.md` now adds multi-dimensional tiering discipline, dimension-collapse warnings, an overall-label gate, and stronger weighting guidance for direct evidence vs inference.
-- `references/decision-report-template.md` now includes a stronger structure for first-tier / top-tier / multidimensional positioning memos.
-- `checklists/final-audit.md` now adds first-tier / top-tier delivery gates so reports must show scope / metric / timeframe / dimension-level conclusions before any overall prestige label.
-- `SKILL.md` now also routes mixed-evidence dimension-by-dimension judgments into source-traceability discipline with explicit evidence-weight separation for load-bearing claims.
-- `references/source-traceability-and-claim-citation.md` now adds a mixed-evidence weighting section for tier / positioning memos so traceability does not stop at bibliography theater.
-- `checklists/source-traceability.md` now requires load-bearing positioning judgments to show direct-evidence-vs-inference weighting in the body and prevents self-tests / roadmap reporting / valuation signals from silently carrying primary-evidence weight.
-- `references/report-template.md` now adds a required load-bearing evidence note for mixed-evidence positioning judgments.
-- `scripts/markdown_to_html.py` now uses stricter CJK-friendly line-breaking defaults (`word-break: keep-all`, `overflow-wrap: normal`, `text-autospace: no-autospace`) for body text and comparison blocks to reduce the broken-export / torn-character feel in Chinese PDFs.
-- `scripts/markdown_to_html.py` text normalization now more aggressively repairs broken CJK spacing around punctuation and separators (including `%`, `·`, `—`, `…`) before markdown parsing.
-- `references/option-selection-and-shortlist-discipline.md` now includes provider-selection heuristics for current model/API family, stale-anchor avoidance, and mainland-access / data-residency / SLA-sensitive ranking.
-- `references/decision-report-template.md` now explicitly adapts its structure for option-selection and shortlist tasks, including ranked shortlist flow, aggregation visibility, and change-the-ranking conditions.
-- `references/decision-report-template.md` now includes a stronger provider-selection structure with decision architecture, current snapshot table, ranked shortlist, and deployment archetypes.
-- `references/decision-report-template.md` now includes a dedicated market-entry structure with recommendation, why-now/why-not-now, hard gates, country shortlist, sequencing, entry archetypes, and 0-12 month milestones/KPIs.
-- `references/decision-report-template.md` now strengthens option-selection structure with explicit decision architecture, shortlist-construction visibility, quantitative-role labeling, runner-up credibility, and ranking-reversal conditions.
-- `checklists/option-selection-final-audit.md` now includes a provider/vendor current-state gate covering current model family, pricing units, accessibility, data residency, and SLA/status checks.
-- `checklists/option-selection-final-audit.md` now includes a market-entry / regional-expansion gate for explicit go/not-now/phased-entry calls, country comparison units, hard gates, and sequencing-change conditions.
-- `checklists/option-selection-final-audit.md` now also requires role-labeling of quantitative inputs (observed fact / proxy / assumption / model output), explicit fairness-measure visibility, and surfacing of hidden operational burden layers when they affect constrained-choice rankings.
-- `checklists/final-audit.md` now requires a provider snapshot and ranking-level treatment of accessibility/compliance/data-residency/SLA for model/API supplier decisions.
-- `checklists/final-audit.md` now adds market-entry gates for priority-vs-alternatives, shortlist/sequencing logic, and hub-vs-beachhead separation when relevant.
-- `checklists/final-audit.md` now adds market-outlook gates for current market snapshot, drivers/blockers/scenarios/stakeholder implications, and explicit labeling of outlook numbers when evidence role matters.
-- `checklists/final-audit.md` now also requires constrained-choice reports with composite scoring to label key quantitative inputs by evidence role when that distinction affects trust in the recommendation.
-- `checklists/final-audit.md` now hardens market-entry audit gates around explicit `go` / `not now` / `pilot only` / `phased entry` resolution, visible why-this-option-wins logic, KPI/milestone triggers, and ranking-change conditions.
-- `checklists/final-audit.md` now explicitly treats mixed evidence-layer vs modeling-layer labeling as an audit issue, so reports do not stop at `confirmed / inference / unknown` when important numbers are really proxies, assumptions, or planning-model outputs.
-- `checklists/final-audit.md` now adds a target-language coherence gate: Chinese final reports should use Chinese load-bearing structural labels unless bilingual output was explicitly requested, and mixed-language evidence buckets count as a delivery failure.
-
-### Why
-- A real MiniMax SEA memo PDF failure showed five delivery-layer issues that must be handled in rendering: comparison tables degrading in structure, source tables breaking poorly across pages, internal generator hints leaking into final output, placeholder/header residues, and poor horizontal-space usage.
-- A new AI coding agent market-outlook comparative case showed that market/industry-evolution tasks were still too prone to overview drift; the repo needed explicit market-outlook routing, scenario discipline, and stakeholder-action structure.
-- Repeated PDF export failures also showed a separate rendering failure family: comparison-heavy sections were degrading into tall vertical card stacks, placeholder fields like `#1 / —` could leak into the final PDF, and list/callout semantics were still bleeding into each other in the generated HTML.
-- The eval set has grown enough that recurring patterns now matter more than single-case accumulation.
-- A taxonomy makes it easier to decide whether a new report failure needs a new rule, a stronger checklist gate, a trigger-routing fix, or only another case file.
-- Current evidence shows that several failures are no longer "missing rule" problems but "rule activation / execution" problems; documenting that distinction is now important.
-- Three next-step eval artifacts were added to turn the taxonomy into execution guidance: one for rule activation failures, one for global scope-completeness failures, and one for decision-support quality beyond generic depth.
-- Comparative distillation needed to become a repeatable method rather than an ad-hoc discussion, so the repo now includes both a method file and a working template for paired-report comparisons.
-- The weekend destination comparison case exposed a broader missing-rule area: the repo needed general guidance for constrained choice, shortlist construction, multi-origin aggregation, and choice architecture beyond travel-specific prompting.
-- A new model/API supplier selection case exposed a more specific failure family inside constrained-choice work: stale current-state anchors, provider-encyclopedia drift, and failure to treat mainland accessibility / compliance / SLA as ranking variables.
-- A new SEA market-entry paired case exposed another constrained-choice failure family: expansion memos can still drift into regional overviews unless the skill forces priority-vs-alternatives, country-shortlist logic, sequencing, and hard gates.
-- The GPT side of that SEA case also exposed a delivery-layer failure: citation / retrieval artifacts can leak into an otherwise strong memo, so final-delivery cleanliness must be treated as a hard gate rather than a cosmetic issue.
-- A new multi-origin meetup-city paired case exposed a different constrained-choice execution gap: reports can know they are doing selection work yet still hide quantitative-role labeling, fairness measurement, shortlist-construction logic, and ranking-reversal conditions.
-- A new Cambricon first-tier positioning case exposed another ranking failure family: reports can define multiple dimensions and still collapse them into a polished but weakly-auditable prestige label, especially when global vs domestic scope, current vs roadmap products, and direct evidence vs inference are mixed.
-- The same Cambricon case also exposed an auditability gap: even when reports label confirmed facts, inference, and uncertainty, they may still fail to show which load-bearing claims are direct-evidence-backed versus inference-heavy, creating source-rich but weakly-auditable conclusions.
-- Repeated MiniMax PDF samples still showed a broken-export feeling in Chinese text texture, so the rendering layer needed another narrow CJK-spacing pass separate from research-discipline changes.
-- The skill itself needed to consume those additions through clearer routing, otherwise the new evals would remain documentation instead of affecting execution.
-- The routing surface had become too diffuse inside `SKILL.md`; a dedicated routing contract was needed so mature task families could be activated, reviewed, and audited more explicitly.
-- After the routing layer was separated, the repo also needed a lightweight architecture note so future changes can land in the right layer instead of expanding `SKILL.md` again by default.
+- `ROUTING-MATRIX.md`: Listed Company / Investment-style Research route Read list now includes `valuation-methodology.md`, `analyst-consensus-handling.md`, and `reporting-period-handling.md`.
+- `checklists/listed-company-report.md`: added `## Valuation methodology` and `## Reporting-period discipline` sections with consensus and period-labeling checks.
+- `checklists/forward-looking-claims.md`: added stale consensus check to source-type section.
+- `checklists/final-audit.md`: added valuation-precision check to metric-scope audit section.
+- `SYSTEM-MAP.md`: mapped new reference and eval files to Family C (valuation methodology, reporting-period handling) and Family E (analyst consensus handling).
+- `SKILL.md`: added listed-company synthesis wiring for `valuation-methodology.md`, `analyst-consensus-handling.md`, `reporting-period-handling.md`.
+- `references/reporting-period-handling.md`: fixed source priority rule — split into same-period priority (audited over preliminary) and freshness priority (latest period even if preliminary).
+- `references/analyst-consensus-handling.md`: softened coverage-count requirement — capture when available, never infer; clarified target price upside is acceptable if attributed.
+- `checklists/listed-company-report.md`: softened consensus analyst-count requirement; clarified target price must not be treated as fair value.
+- `evals/cases/consensus-and-forward-pe-misuse-case.md`: fixed Tesla earnings date (Jan 28); converted to fixed-scenario prompt with hypothetical bounds; clarified implied upside is acceptable if attributed.
+- `evals/cases/reporting-period-and-ttm-confusion-case.md`: fixed TTM example to use only available quarters; converted to fixed-scenario prompt.
 
 ## 0.4.0 - 2026-03-31
 

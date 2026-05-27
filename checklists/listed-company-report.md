@@ -24,6 +24,22 @@ Run through every item before delivering the final report.
 - [ ] forward-looking targets or estimates are clearly labeled as such, not presented as confirmed facts
 - [ ] older but still useful numbers are visibly labeled as historical background / older snapshot rather than treated as current-state anchors
 
+## Valuation methodology
+
+- [ ] valuation metric selection is justified by company characteristics (PE for stable earnings, PB for asset-heavy, PS for loss-making, EV/EBITDA for levered comparisons)
+- [ ] loss-making companies do not force PE-based valuation without explicit justification
+- [ ] cyclical companies are not valued at peak or trough earnings without cycle-stage labeling
+- [ ] high-growth companies have forward metrics clearly labeled as estimate-based
+- [ ] consensus target prices are presented with source, date, and analyst count when available (never inferred); target prices are not treated as fair value
+- [ ] consensus data timing is checked against latest earnings releases; stale consensus is noted
+
+## Reporting-period discipline
+
+- [ ] TTM / LTM figures are labeled as derived, not confused with reported fiscal year
+- [ ] preliminary earnings-release figures are labeled as preliminary
+- [ ] restated figures are used when available, with restatement noted
+- [ ] fiscal year vs calendar year distinction is explicit when it affects the claim
+
 ## Stale-anchor hard-fail gate
 
 - [ ] stale-anchor hard gate: a stale or mis-timed research-anchor layer — latest full-year, quarterly / interim, or current market snapshot — invalidates the memo unless synthesis was stopped, the anchor was re-checked, and the anchor was corrected or visibly downgraded before continuing — per SKILL.md fail-fast rule

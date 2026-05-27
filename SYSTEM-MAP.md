@@ -117,6 +117,8 @@ Protects fast-moving research from stale facts, frozen time layers, and blurred 
 ### Primary references
 - `references/current-state-verification.md`
 - `references/finance-date-discipline.md`
+- `references/valuation-methodology.md`
+- `references/reporting-period-handling.md`
 - `references/corporate-status-and-listing-state-discipline.md`
 - `references/ranking-and-current-claims-discipline.md`
 
@@ -133,6 +135,7 @@ Protects fast-moving research from stale facts, frozen time layers, and blurred 
 - `evals/cases/minimax-company-report-case.md`
 - `evals/cases/intel-current-state-freshness-case.md`
 - `evals/cases/cnooc-judgment-shape-improved-but-freshness-still-leaked-case.md`
+- `evals/cases/reporting-period-and-ttm-confusion-case.md`
 
 ### Typical failure signs
 - stale product or model generation presented as current
@@ -238,6 +241,7 @@ Controls forecasts, roadmap statements, target dates, and estimate-heavy claims 
 
 ### Primary references
 - `references/forward-looking-discipline.md`
+- `references/analyst-consensus-handling.md`
 - `references/finance-date-discipline.md`
 
 ### Primary checklists
@@ -248,6 +252,7 @@ Controls forecasts, roadmap statements, target dates, and estimate-heavy claims 
 - `evals/cases/apple-product-roadmap-and-investment-case.md`
 - `evals/cases/byd-report-format-discipline-case.md`
 - `evals/cases/hnb-industry-report-table-design-case.md`
+- `evals/cases/consensus-and-forward-pe-misuse-case.md`
 - `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md`
 
 ### Typical failure signs
