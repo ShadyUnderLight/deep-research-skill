@@ -10,14 +10,20 @@ Test whether the skill handles reporting-period definitions and TTM/LTM calculat
 
 All three can distort financial analysis. A report that mixes TTM and FY, or uses preliminary data as if it were audited, may draw conclusions from misaligned periods.
 
-## Prompt
+## Prompt (fixed scenario)
 
-Research BYD Company Limited (1211.HK / 002594.SZ) as a listed company and produce a deep-research style memo covering:
+You are conducting research as of March 15, 2026. Research BYD Company Limited (1211.HK / 002594.SZ) as a listed company and produce a deep-research style memo covering:
 
 - current financial performance (most recent reported period)
 - current trading status and valuation context
 - investment thesis and key risks
 - bottom line
+
+Use the following scenario facts for evaluating the skill's handling:
+- BYD fiscal year ends December 31
+- BYD released FY2025 preliminary earnings in late January 2026; full annual report published March 2026
+- BYD has not yet released Q1 2026 results (expected April 2026)
+- The latest available financial data covers FY2025 (full year ended December 2025), with quarterly breakdowns available through Q4 2025
 
 ## What this eval is testing
 
@@ -31,7 +37,7 @@ The report writes:
 
 If the report uses FY2025 revenue but TTM PE without distinguishing the periods, the reader cannot tell which periods the numbers belong to.
 
-**Pass behavior:** The report clearly labels `FY2025 revenue (from annual report)` and `TTM PE (based on Q2 2025 – Q1 2026 earnings, or as reported by Bloomberg as of [date])`, or explicitly states that TTM and FY figures use different period definitions.
+**Pass behavior:** The report clearly labels `FY2025 revenue (from annual report)` and `TTM PE (based on the last four reported quarters: Q1 2025 through Q4 2025)`, or explicitly states that TTM and FY figures use different period definitions.
 
 ### Failure Mode 2: Preliminary treated as audited
 

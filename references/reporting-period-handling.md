@@ -33,12 +33,20 @@ Distinguish among:
 4. **Earnings release** — preliminary disclosure before the full report, may contain unaudited figures
 
 ### Priority when multiple sources exist
-If both an earnings release and a full annual/interim report are available, prefer:
-1. Full annual report (audited) over interim report
-2. Interim report over quarterly report
-3. Full report over earnings release (preliminary)
 
-But note: the earnings release may be more current than the last full report. In that case, use the earnings release for the latest quarter while noting it is preliminary.
+Apply a two-layer rule: same-period priority first, then freshness.
+
+**Layer 1 — same period: prefer more complete/audited source**
+When comparing sources that cover the same reporting period:
+1. Full annual report (audited) over interim report
+2. Interim report (reviewed) over quarterly report
+3. Quarterly report (may be reviewed) over earnings release (preliminary)
+
+**Layer 2 — different periods: prefer more current, but label quality**
+When you need the newest available data, the most recent earnings release or interim report may be the best source even though it is preliminary.
+- Use the latest period's data even if it is preliminary
+- But label it: `preliminary, per earnings release dated [date]`
+- Do not let the older audited report silently become the "latest" period
 
 ## TTM / LTM / NTM
 
@@ -143,7 +151,7 @@ These are compliance and trading-behavior topics, not research-output discipline
 ## Common failure patterns
 
 ### TTM confused with latest fiscal year
-Using FY2025 revenue when the analysis date is March 2026 and TTM revenue would include Q4 2025 + Q1-Q3 2026 (if available).
+Using FY2025 revenue when the analysis date is March 2026 and TTM revenue would be based on the last four reported quarters (e.g., Q1 2025–Q4 2025), which is not the same FY2025 figure already in the report.
 
 ### Preliminary treated as audited
 Using earnings-release figures without noting they are preliminary and may be revised in the full report.

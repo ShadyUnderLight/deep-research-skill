@@ -30,7 +30,7 @@ Run through every item before delivering the final report.
 - [ ] loss-making companies do not force PE-based valuation without explicit justification
 - [ ] cyclical companies are not valued at peak or trough earnings without cycle-stage labeling
 - [ ] high-growth companies have forward metrics clearly labeled as estimate-based
-- [ ] consensus target prices are presented with source, date, and analyst count, not treated as fair value
+- [ ] consensus target prices are presented with source, date, and analyst count when available (never inferred); target prices are not treated as fair value
 - [ ] consensus data timing is checked against latest earnings releases; stale consensus is noted
 
 ## Reporting-period discipline

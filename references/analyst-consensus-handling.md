@@ -12,14 +12,14 @@ Consensus data requires metadata to be meaningful. A consensus number without so
 
 ## Required metadata
 
-For every consensus data point, capture at minimum:
+For every consensus data point, capture when available:
 
 - **Source / platform** — Bloomberg, FactSet, Refinitiv, Visible Alpha, or other
 - **Date** — when the consensus was compiled
-- **Coverage count** — number of analysts included
+- **Coverage count** — number of analysts included (if unavailable, state "coverage count not disclosed" and downgrade confidence; never infer or manufacture the count)
 - **Metric basis** — fiscal year, TTM, NTM, or specific quarter
 
-When the data is available, also capture:
+When the data is also available:
 
 - **Range** — high and low estimates
 - **Dispersion** — standard deviation, coefficient of variation, or range as percentage of mean
@@ -59,7 +59,11 @@ Example phrasing:
 Consensus target prices are opinions, not valuations. They reflect analyst methodology and assumptions, not market truth.
 
 ### Do not treat as fair value
-`The consensus target price is $180, suggesting 20% upside` implies the stock should be worth $180. Better: `The consensus target price is $180 (range $140–$220), which analysts derive from [methodology if known].`
+`The consensus target price is $180, therefore the stock is undervalued` equates analyst opinions with intrinsic value. This is the failure mode.
+
+It is acceptable to calculate implied upside or downside from consensus targets, as long as it is clearly attributed: `Consensus target price of $180 implies approximately 20% upside from the current price of $150. This is based on analyst opinions, not our own valuation conclusion.`
+
+Better: `The consensus target price is $180 (range $140–$220, 18 analysts, compiled 2026-03-15). The analyst-implied upside is roughly 20% from current levels, though the wide range suggests divergent views on methodology or assumptions.`
 
 ### Show dispersion when material
 If target prices range from $100 to $250, the "consensus" of $175 is not a strong signal. High dispersion means analysts disagree substantially on methodology or assumptions.
