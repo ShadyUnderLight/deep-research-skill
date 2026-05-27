@@ -8,6 +8,17 @@ on:
       - 'examples/**'
       - 'requirements.txt'
       - '.github/workflows/ci.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'scripts/**'
+      - 'schemas/**'
+      - 'examples/**'
+      - 'requirements.txt'
+      - '.github/workflows/ci.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '0 3 * * 1'
 
 jobs:
   quick:
