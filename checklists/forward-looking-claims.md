@@ -32,6 +32,7 @@ Run through every item before delivering the final report.
 - [ ] predictions sourced from official announcements are labeled as such
 - [ ] predictions from analyst estimates are labeled as consensus or individual analyst
 - [ ] predictions from media synthesis or speculation are labeled as such
+- [ ] consensus estimates used for forward-looking claims are checked against latest earnings releases; stale consensus is noted with timing gap
 
 ## Completeness
 

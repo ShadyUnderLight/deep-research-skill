@@ -15,6 +15,11 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `checklists/route-activation-audit.md`: Family B checklist — audits whether route activation was explicit and whether the route actually shaped the output.
 - `references/forward-looking-discipline.md`: Family E reference — dedicated discipline for forecasts, estimates, roadmap statements, announced-vs-rumored separation, and forward-looking assumption chains.
 - `references/delivery-operator-note.md`: Family H reference — operator-facing note on the rendering pipeline, known failure patterns, CJK concerns, and pre-delivery checks.
+- `references/valuation-methodology.md`: P2 reference — valuation methodology selection, metric choice logic, precision downgrade rules for cyclical/loss-making/high-growth companies, target price discipline.
+- `references/analyst-consensus-handling.md`: P2 reference — consensus data handling: source/date/coverage metadata, estimate vs target price vs rating distinction, stale consensus detection.
+- `references/reporting-period-handling.md`: P2 reference — reporting-period definitions: FY vs CY, TTM/LTM/NTM, preliminary/unaudited/restated, post-period events.
+- `evals/cases/consensus-and-forward-pe-misuse-case.md`: eval testing consensus target price as fair value, forward PE as reported fact, and stale consensus after earnings.
+- `evals/cases/reporting-period-and-ttm-confusion-case.md`: eval testing TTM vs fiscal year confusion, preliminary vs audited, and restated figures.
 
 ### Changed
 - `SYSTEM-MAP.md`: filled family-level coverage across all nine families: added missing file references (`mid-research-review.md`, `route-activation-and-preflight.md`), added newly created checklists, split combined Primary references/checklists sections into separate subsections for clarity, and updated Current thin spots to reflect resolved items.
@@ -31,6 +36,11 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `scripts/render_pdf.py`: added `--allow-remote` flag (remote resources blocked by default); route glob fixed to cover all http/https URLs
 - `scripts/md_to_pdf.py`: added `--allow-remote` passthrough (remote resources blocked by default)
 - `requirements.txt`: added `nh3>=0.2`
+- `ROUTING-MATRIX.md`: Listed Company / Investment-style Research route Read list now includes `valuation-methodology.md`, `analyst-consensus-handling.md`, and `reporting-period-handling.md`.
+- `checklists/listed-company-report.md`: added `## Valuation methodology` and `## Reporting-period discipline` sections with consensus and period-labeling checks.
+- `checklists/forward-looking-claims.md`: added stale consensus check to source-type section.
+- `checklists/final-audit.md`: added valuation-precision check to metric-scope audit section.
+- `SYSTEM-MAP.md`: mapped new reference and eval files to Family C (valuation methodology, reporting-period handling) and Family E (analyst consensus handling).
 
 ### Added
 - `references/mid-research-review.md`

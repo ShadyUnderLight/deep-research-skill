@@ -448,6 +448,9 @@ Use when the task is mainly about:
 
 ### Read
 - `references/finance-date-discipline.md`
+- `references/valuation-methodology.md` when valuation methodology or metric selection matters
+- `references/analyst-consensus-handling.md` when consensus data appears
+- `references/reporting-period-handling.md` when reporting-period definitions affect the conclusion
 - `references/forward-looking-discipline.md` when forward-looking claims appear
 - `references/market-sizing-and-share-discipline.md` when share/size claims matter
 - `references/source-traceability-and-claim-citation.md`

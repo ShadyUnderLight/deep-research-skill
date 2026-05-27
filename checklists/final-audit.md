@@ -134,6 +134,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for each load-bearing numeric claim, the report makes clear whether the number comes from a filing fact, management commentary, or an estimate
 - [ ] market-share, cumulative-sales, segment-growth, customer-scale, and product-performance claims do not imply more precision or universality than the source supports
 - [ ] if metric scope is incomplete or ambiguous, the claim is rewritten or downgraded with visible caveats
+- [ ] valuation precision matches data quality and company characteristics: loss-making companies do not get precise PE valuations, cyclical companies do not get valuations based on peak/trough earnings, and forward metrics are labeled as estimate-based
 
 ## Unknown-to-conclusion linkage
 
