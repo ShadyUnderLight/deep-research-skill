@@ -257,19 +257,21 @@ A scope miss can distort the final conclusion even when individual facts are cor
 ### Existing evals in this family
 - `evals/cases/hnb-industry-report-table-design-case.md`
 - `evals/cases/industry-landscape-depth-case.md` (partial overlap)
+- `evals/cases/global-market-scope-completeness-case.md`
+- `evals/meta/scope-completeness-discipline.md`
 
 ### Existing rule/checklist coverage
 - partially covered by `references/current-state-verification.md`
 - partially covered by `references/task-types.md`
 - partially covered by `checklists/final-audit.md`
+- partially covered by `ROUTING-MATRIX.md` (cross-cutting discipline: scope completeness)
 
 ### What this family suggests structurally
-This family is not yet fully formalized in the repo. It appears repeatedly enough that it likely deserves its own dedicated eval and possibly a checklist gate for global/industry reports.
+Scope completeness now has a dedicated case eval and a meta-eval discipline file. The remaining gap is formalizing checklist-level gates for global/industry reports, and ensuring the routing matrix triggers scope-completeness checks for broad-scope tasks.
 
 ### Priority improvement direction
-- add a dedicated eval for global-market scope completeness
-- add explicit checks for top geographies, top segments, and omitted load-bearing scope
-- require the report to state its actual coverage boundaries when it is not truly comprehensive
+- strengthen checklist-level gates for global/industry reports
+- ensure the routing matrix consistently triggers scope-completeness checks for broad-scope tasks
 
 ---
 
@@ -341,12 +343,19 @@ The current evidence suggests the next improvements should focus on:
 
 1. **Rule activation / checklist routing**
    - especially for listed companies, fast-moving current-state tasks, ranking claims, and forward-looking claims
+   - see `evals/meta/rule-activation-and-execution-discipline.md`
+   - see `checklists/route-activation-audit.md`
 
-2. **A dedicated scope-completeness eval**
-   - to capture omitted load-bearing geographies or market segments
+2. **A dedicated scope-completeness eval** ✅ done
+   - case: `evals/cases/global-market-scope-completeness-case.md`
+   - meta-eval: `evals/meta/scope-completeness-discipline.md`
+   - cross-cutting discipline: `ROUTING-MATRIX.md`
+   - next: strengthen checklist-level gates for global/industry reports
 
-3. **A decision-utility rubric**
-   - to complement depth scoring with actual decision support quality
+3. **A decision-utility rubric** ✅ done
+   - rubric: `evals/templates/decision-utility-rubric.md`
+   - meta-eval: `evals/meta/decision-utility-discipline.md`
+   - cross-cutting discipline: `ROUTING-MATRIX.md`
 
 4. **A formal distinction between case evals, rubrics, and distillation artifacts**
    - so new additions are easier to classify and maintain
@@ -362,8 +371,8 @@ The current evidence suggests the next improvements should focus on:
 | C. Forward-looking claim discipline | Are predictions structured and sourced? | Checklist exists | Output-time leakage |
 | D. Output structure / information density | Is the report readable and decision-efficient? | Improving template discipline | Measurable enforcement still weak |
 | E. Research depth / briefing drift | Is this deep research or polished summary? | Rubric exists | Decision-utility layer still thin |
-| F. Scope completeness / coverage geometry | Did the report miss a load-bearing part of the scope? | Weakly covered | Needs dedicated eval/gate |
-| Meta: Rule activation | Did the correct rule fire at all? | Recognized implicitly | Needs explicit eval/gate |
+| F. Scope completeness / coverage geometry | Did the report miss a load-bearing part of the scope? | Case + meta-eval + route discipline exist | Checklist-level gate still needed |
+| Meta: Rule activation | Did the correct rule fire at all? | Meta-eval + route checklist exist | Execution-drift enforcement |
 
 ---
 

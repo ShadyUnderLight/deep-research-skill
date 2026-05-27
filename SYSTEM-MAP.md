@@ -320,6 +320,8 @@ Protects against reports that sound smart but still fail as deep, load-bearing d
 - `checklists/final-audit.md`
 - `evals/templates/depth-rubric.md`
 - `evals/templates/decision-utility-rubric.md`
+- `evals/meta/scope-completeness-discipline.md`
+- `evals/meta/decision-utility-discipline.md`
 - `evals/cases/global-market-scope-completeness-case.md`
 - `evals/cases/industry-landscape-depth-case.md`
 

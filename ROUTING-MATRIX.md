@@ -567,6 +567,39 @@ Visible sign:
 Fail if:
 - the report body exposes internal syntax, parser debris, or generator hints
 
+### Scope completeness
+Attach when the task claims broad or global scope (global market / industry-wide / full landscape / comprehensive coverage).
+
+Read:
+- `references/failure-taxonomy.md` — Family F: Scope Completeness and Coverage Geometry
+
+Visible sign:
+- the report states its real scope clearly
+- load-bearing geographies, segments, or regulatory regimes are covered proportionally to their importance
+- scope boundaries are explicit when coverage is partial
+
+Fail if:
+- the report is functionally regional while presenting itself as global
+- a top-5 geography, major segment, or binding regulatory regime is missing or barely mentioned
+- scope boundaries are unstated, creating false confidence in the reader
+
+### Decision utility
+Attach when the task carries a recommendation, choice, judgment, or investment-style decision burden.
+
+Read:
+- `evals/templates/decision-utility-rubric.md`
+
+Visible sign:
+- the decision frame is explicit and drives report structure
+- load-bearing variables (3-5) are identified and prioritized
+- the bottom line is sharp and actionable
+- what could change the conclusion is explained
+
+Fail if:
+- the report is informative but leaves the reader unsure what to decide
+- the conclusion is soft, buried, or missing
+- the report answers "what exists" better than "what matters most"
+
 ---
 
 ## Routing priority
