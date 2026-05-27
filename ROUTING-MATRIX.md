@@ -570,9 +570,6 @@ Fail if:
 ### Scope completeness
 Attach when the task claims broad or global scope (global market / industry-wide / full landscape / comprehensive coverage).
 
-Read:
-- `references/failure-taxonomy.md` — Family F: Scope Completeness and Coverage Geometry
-
 Visible sign:
 - the report states its real scope clearly
 - load-bearing geographies, segments, or regulatory regimes are covered proportionally to their importance
@@ -585,9 +582,6 @@ Fail if:
 
 ### Decision utility
 Attach when the task carries a recommendation, choice, judgment, or investment-style decision burden.
-
-Read:
-- `evals/templates/decision-utility-rubric.md`
 
 Visible sign:
 - the decision frame is explicit and drives report structure

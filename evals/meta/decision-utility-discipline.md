@@ -1,141 +1,101 @@
 # Eval: Decision Utility Discipline
 
-Use this eval when a report sounds informed and well-sourced but does not clearly help the reader make a decision, judgment, or next step.
+Use this meta-eval when a report sounds informed and well-sourced but does not clearly help the reader make a decision, judgment, or next step.
 
-This is a meta-eval. It is not about whether the report's facts are correct. It is about whether the report is structured for decision support rather than informative summary — and whether the route correctly activated decision-utility disciplines at the right level.
+This eval is **not** about scoring a specific report's decision usefulness — use `evals/templates/decision-utility-rubric.md` (6-dimension scoring) for that. This eval is about deciding **which layer of the repo should change** when a decision-utility failure is observed.
 
 ## Goal
 
-Distinguish three different failure types:
+Distinguish five distinct root causes for a decision-utility failure:
 
-1. **Missing decision frame** — the report never identifies what judgment or choice the reader faces
-2. **Weak load-bearing variable selection** — the report covers many dimensions without identifying 3-5 factors that actually determine the answer
-3. **Soft conclusion** — the report stays noncommittal or buries the bottom line even when evidence could support a judgment
+1. **Missing route** — the task was misclassified as informational research when it should have been routed to a decision-focused route (provider selection, market entry, investment memo, etc.)
+2. **Route with weak decision contract** — the correct route was selected, but its visible artifact contract does not require decision frame, load-bearing variables, or bottom-line conclusion
+3. **Template gap** — the route's supporting template provides structure for facts but not for decision logic (no mandatory "what matters most", "bottom line", or "what would change the view" sections)
+4. **Execution failure** — the route, contract, and template all exist, but the final output still reads like an informative overview rather than a decision support memo
+5. **Wrong route for decision type** — the task type calls for a particular decision structure (e.g., go/no-go gates for market entry) but was routed to a route that supplies a different structure (e.g., option comparison)
 
-This distinction matters because these three problems require different fixes (route selection, template structure, execution contract, or checklist hardening).
-
----
-
-## Typical cases where this eval should be used
-
-- provider comparison that reads like a vendor catalog instead of a choice memo
-- market outlook that summarizes trends but does not recommend a position or scenario
-- company report that profiles the business but does not state an investment judgment
-- option analysis that lists pros and cons without a clear recommendation
-- shortlist memo where narrative weight is spread evenly across all options
+This distinction matters because these five causes require completely different fixes (routing guidance / artifact contract / template structure / checklist hardening / re-routing).
 
 ---
 
-## What this eval is testing
+## How to use this meta-eval
 
-### Failure Mode 1: Missing decision frame
+When you observe a decision-utility failure, walk through these questions in order:
 
-The report explains the topic well, but never clarifies what the reader should decide.
+### Step 1: Is it a missing route?
+Check: was the task treated as generic research when it should have been routed to a decision-focused route?
+- The routing matrix has 7 routes, most with explicit decision logic
+- A task like "should we buy from vendor A or B?" should use provider selection, not generic overview
+- If no route was selected → **missing route**
 
-Examples:
-- the practical question is unclear
-- decision context is absent or buried
-- criteria that would change the final answer are unnamed
+### Step 2: Route with weak decision contract?
+Check: the correct route was selected, but does its artifact contract require decision structure?
+- Example: "market outlook / industry evolution" requires scenario structure but does it require a clear bottom-line recommendation?
+- If the route contract does not mandate decision elements → **weak route contract**
 
-### Failure Mode 2: Weak load-bearing variable selection
+### Step 3: Template gap?
+Check: even if the route contract is strong, does the template provide a clear place for decision logic?
+- `references/decision-report-template.md` covers most decision elements
+- But if a specific route's template does not include mandatory decision output → **template gap**
 
-Many facts are presented, but the report does not prioritize the few variables that matter most.
+### Step 4: Execution failure?
+Check: all of the above existed, but the report still reads like an overview.
+- The route was correct, the template has decision sections, but the output filled them with general description instead of sharp judgment
+- → **execution failure** — fix goes in checklist hardening or execution contract
 
-Examples:
-- too many dimensions feel equally weighted
-- the report answers "what exists" better than "what matters most"
-- supporting detail is not subordinated to the primary drivers
-
-### Failure Mode 3: Soft or buried conclusion
-
-The report generates useful analysis but does not convert it into a bottom line.
-
-Examples:
-- the report stays noncommittal when evidence supports a judgment
-- the conclusion exists but is soft, buried, or not operationally useful
-- "what could change the conclusion" is absent even when uncertainty is material
-
----
-
-## Pass criteria
-
-A good answer should:
-
-1. **Make the decision frame explicit.**
-   - state the practical question clearly
-   - show decision context rather than topic summary
-   - name criteria that would change the final answer
-
-2. **Identify load-bearing variables.**
-   - prioritize 3-5 major variables that determine the conclusion
-   - explain why those matter more than the rest
-   - subordinate supporting detail to those variables
-
-3. **Deliver a sharp conclusion.**
-   - give an explicit bottom line
-   - include a recommendation, ranking, or directional judgment when appropriate
-   - state what could change the conclusion
-
-4. **Avoid informative-but-useless shape.**
-   - do not let generic description substitute for decision support
-   - do not leave the reader to infer the bottom line from scattered details
+### Step 5: Wrong route for decision type?
+Check: the task was routed to a route that supplies the wrong kind of decision structure.
+- Example: a "go/no-go market entry" question routed to "constrained choice / shortlist" (option ranking instead of gate decision)
+- If the route's default decision structure differs from what the task actually needs → **wrong route**
 
 ---
 
-## Scoring guide
+## Pass criteria for this meta-eval
 
-Use a simple 0-2 scale.
+A good diagnosis using this meta-eval should:
 
-### 0 = decision-utility failure
-- the report is informative but leaves the reader unsure what to decide
-- no decision frame, no load-bearing variable selection, or no conclusion
+1. **Classify the root cause correctly.**
+   - distinguish missing route from weak contract from execution failure
+   - avoid defaulting to "execution failure" when the real gap is that the route never mandated decision output
 
-### 1 = partial decision usefulness
-- some decision frame exists, but connection to body is weak
-- or load-bearing variables are named but not consistently used
-- or a conclusion exists but is soft or buried
+2. **Point to the narrowest correct fix layer.**
+   - missing route → routing selection guidance or SKILL routing step
+   - weak route contract → update the route's visible artifact contract in `ROUTING-MATRIX.md`
+   - template gap → update the route's supporting template in `references/`
+   - execution failure → checklist hardening or execution-contract update
+   - wrong route → route selection guidance or disambiguation in `ROUTING-MATRIX.md`
 
-### 2 = strong decision usefulness
-- the decision frame is explicit and drives report structure
-- load-bearing variables are clearly identified and prioritized
-- the bottom line is sharp and actionable
-- what could change the conclusion is explained
+3. **Avoid conflating "informative" with "decision-useful".**
+   - a report can be factually solid and well-organized yet still fail the decision-utility test
+   - distinguish factual adequacy from decision support
 
 ---
 
 ## Review questions
 
-When using this eval, ask:
+When applying this meta-eval, ask:
 
-- Does the report identify what judgment or decision the reader faces?
-- Does it identify what matters most, or does it treat all facts as equally important?
-- Does it help the reader choose, prioritize, approve, reject, or investigate further?
-- Does it give a clear bottom line?
-- Does it explain what could change the conclusion?
-- Would a busy decision-maker get value from the first page alone?
-- Is the right fix a route change, a template update, an execution-contract improvement, or a new checklist gate?
+- Was a primary route selected explicitly? If not, fix routing before anything else.
+- Does the selected route's artifact contract require decision elements (bottom line, recommendation, what matters most)? If not, fix the contract.
+- Does the route's supporting template provide a mandatory place for decision output? If not, fix the template.
+- If route, contract, and template are all present, did the report fill them with decision logic or with general description? If description, fix execution.
+- Is the decision gap recurring across multiple reports from the same route? If recurring, escalate from execution fix to structural fix.
 
 ---
 
 ## Output format for reviewers
 
-When you apply this eval, summarize the result as:
+When you apply this meta-eval, summarize the result as:
 
-- **Expected decision frame:**
-- **Load-bearing variables identified:**
-- **Conclusion sharpness:**
-- **Change-the-conclusion clarity:**
-- **Diagnosis:** missing decision frame / weak variable selection / soft conclusion / no failure
-- **Best next fix:** routing update / template update / execution-contract hardening / checklist update / new case eval only
-
----
-
-## Suggested prompts
-
-- Should we partner with this company, buy from it, or wait six months?
-- Which of these three vendors is best for a mid-market deployment, and why?
-- Is this market attractive enough for entry in the next 12 months?
-- Should an investor treat this stock as a growth opportunity, a hold, or an avoid-for-now case?
+- **Observed decision gap:**
+- **Was a route selected?** yes / no
+- **Route used:**
+- **Does the route contract require decision output?** yes / no
+- **Root cause diagnosis:** missing route / weak route contract / template gap / execution failure / wrong route
+- **Evidence for diagnosis:**
+- **Narrowest correct fix layer:** routing / route contract / template / checklist / re-route
+- **Recurring?** yes / no (first observed)
+- **Recommended action:**
 
 ---
 
@@ -143,15 +103,15 @@ When you apply this eval, summarize the result as:
 
 This meta-eval is distinct from `evals/templates/decision-utility-rubric.md`:
 
-- The **rubric** is a reusable scoring template for reviewers to score a specific report across 6 dimensions (0-2 each).
-- This **meta-eval** is used to determine whether a case or family of cases exposes a systematic decision-utility gap, and to decide which layer of the repo should change in response.
+- The **rubric** is a reusable scoring template for reviewers to score a specific report across 6 dimensions (0-2 each). It answers "how decision-useful is this specific report?"
+- This **meta-eval** is used to determine whether a case or family of cases exposes a systematic decision-utility gap. It answers "what should the repo do about it?"
 
-Use the rubric when scoring a specific report. Use this meta-eval when deciding whether the repo itself needs a structural improvement in how it handles decision usefulness.
+Use the rubric when scoring a specific report. Use this meta-eval when deciding whether the repo itself needs a structural improvement.
 
 ---
 
-## Why this eval exists
+## Why this meta-eval exists
 
-The repo has strong discipline for factual correctness (freshness, traceability, evidence weighting) but has been thinner on ensuring the output is actually useful for decision-making.
+The repo has strong discipline for factual correctness (freshness, traceability, evidence weighting) but has been thinner on ensuring the output is actually useful for decision-making. The rubric makes decision-utility measurable; this meta-eval makes it actionable.
 
-This eval exists to prevent the system from producing reports that are factually solid but decisionally weak — and to ensure that decision-utility failures are recognized as a distinct family requiring targeted structural fixes, not just more facts or better wording.
+This meta-eval exists to prevent decision-utility failures from being treated as "just add more facts" problems when the real fix may be routing, contract, or template structure.

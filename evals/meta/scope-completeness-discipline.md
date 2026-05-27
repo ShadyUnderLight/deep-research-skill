@@ -1,158 +1,111 @@
 # Eval: Scope Completeness Discipline
 
-Use this eval when a report claims broad scope (global / comprehensive / industry-wide / full landscape) but may omit one or more load-bearing markets, geographies, segments, or regulatory regimes.
+Use this meta-eval when a report claims broad scope (global / comprehensive / industry-wide / full landscape) but you suspect the actual coverage may not match the implied scope.
 
-This is a meta-eval. It is not primarily about whether the report's individual facts are correct. It is about whether the actual coverage matches the implied scope, and whether a scope miss could distort the conclusion.
+This eval is **not** about scoring a specific report's scope completeness — use `evals/cases/global-market-scope-completeness-case.md` (pass criteria + scoring guide) for that. This eval is about deciding **which layer of the repo should change** when a scope-completeness failure is observed.
 
 ## Goal
 
-Distinguish four different failure types:
+Distinguish five distinct root causes for a scope-completeness failure:
 
-1. **Name-only global coverage** — the report says "global" but effectively covers only the easiest or most visible markets
-2. **Missing load-bearing geography** — a geography that materially affects market size, supply chain, competition, or policy risk is missing or dismissed in one sentence
-3. **Flat competitive map** — the report lists global players but does not distinguish regional champions, incumbents vs emerging local challengers, or geography-dependent competitive dynamics
-4. **Scope boundaries not stated** — the report is actually a partial-scope memo, but it does not say so, creating false confidence in the reader
+1. **Missing rule** — the repo truly lacks guidance on what "global" / "comprehensive" should mean
+2. **Missing route trigger** — the task was not routed into a checklist or reference that checks scope boundaries
+3. **Route misclassification** — the task was routed to a route whose discipline set does not include scope checking (e.g., a global market report routed as "provider selection")
+4. **Execution failure** — the route was correct and the checklists exist, but the final output still omitted load-bearing geographies or segments
+5. **Data unavailability** — the omitted geography/segment genuinely lacks accessible sources, but the report did not state this omission
 
-This distinction matters because these four problems require different fixes (missing data, routing misclassification, template omission, or execution failure).
-
----
-
-## Typical cases where this eval should be used
-
-- global market report that effectively ignores a top-5 geography
-- competitive map missing a major local player set
-- regulatory analysis that only covers US/EU but not the most constraining regime
-- value-chain report that names all layers but skips the highest-friction or highest-value segment
-- industry landscape that looks broad but is concentrated on the most visible areas
+This distinction matters because these five causes require completely different fixes (reference prose / routing matrix / route attachment / checklist hardening / disclosure requirement).
 
 ---
 
-## What this eval is testing
+## How to use this meta-eval
 
-### Failure Mode 1: Name-only global coverage
+When you observe a scope-completeness failure, walk through these questions in order:
 
-The report says "global" but effectively covers only the easiest or most visible markets.
+### Step 1: Is it a missing rule?
+Check: does the repo have any document that defines what "global scope" must include?
+- Reference: `references/failure-taxonomy.md` — Family F (records the gap but does not define a standard)
+- Reference: `evals/cases/global-market-scope-completeness-case.md` (defines the evaluation but not a reusable rule)
+- If no document defines the minimum coverage for a global claim → **missing rule**
 
-Examples:
-- mostly US + Europe with little or no China
-- mostly public Western vendors while local leaders in Asia are absent
-- regulatory discussion centered on one regime while other binding regimes are ignored
+### Step 2: Is it a missing route trigger?
+Check: does `ROUTING-MATRIX.md` or any existing route attach a scope-completeness discipline for this task type?
+- Cross-cutting discipline "scope completeness" now exists in `ROUTING-MATRIX.md`
+- If the task type is global/industry-wide but the route selected does not reference this discipline → **missing route trigger**
 
-### Failure Mode 2: Missing load-bearing geography
+### Step 3: Is it route misclassification?
+Check: was the task routed to a specialized route that does not naturally require scope checking?
+- For example: a global AI market report routed as "provider / vendor selection" would miss scope-completeness entirely
+- If the chosen route's visible artifact contract and secondary disciplines do not include scope → **route misclassification**
 
-A geography that materially affects market size, supply chain, competition, or policy risk is missing or dismissed in one sentence.
+### Step 4: Is it execution failure?
+Check: all of the above existed, but the report still shows scope gaps.
+- The route was correct, the discipline was attached, but the output omitted key geographies
+- The report says "global" but effectively covers only the most visible regions
+- → **execution failure** — fix goes in checklist hardening or execution contract
 
-Examples:
-- the largest demand pool is barely covered
-- the most restrictive regulator is omitted
-- a key manufacturing region is absent from the supply-side analysis
-
-### Failure Mode 3: Flat competitive map
-
-The report lists global players but does not distinguish:
-- regional champions from global leaders
-- incumbents from emerging local challengers
-- where the competitive picture changes by geography
-
-### Failure Mode 4: Scope boundaries not stated
-
-The report is actually a partial-scope memo, but it does not say so.
-
-This creates false confidence because the reader assumes comprehensiveness.
+### Step 5: Is it data unavailability?
+Check: the omitted geography/segment may genuinely be poorly documented.
+- If so, the report should state the omission explicitly rather than silently excluding it
+- If it did not state the omission → still an execution failure (disclosure requirement not met)
 
 ---
 
-## Pass criteria
+## Pass criteria for this meta-eval
 
-A good answer should:
+A good diagnosis using this meta-eval should:
 
-1. **State the real scope clearly.**
-   - if the report is truly global, it should behave globally
-   - if it is partial, it should say what is excluded
+1. **Classify the root cause correctly.**
+   - distinguish missing rule from missing trigger from execution failure
+   - avoid defaulting to "missing rule" when the real gap is route misclassification or execution drift
 
-2. **Cover load-bearing geographies.**
-   - include the top markets or most consequential geographies for demand, supply, or regulation
-   - do not reduce a key geography to a passing mention
+2. **Point to the narrowest correct fix layer.**
+   - missing rule → `references/` or a new reference
+   - missing route trigger → `ROUTING-MATRIX.md` or route attachment update
+   - route misclassification → route selection guidance or route contract
+   - execution failure → checklist hardening or execution-contract update
+   - data unavailability → disclosure requirement (update case eval or reference)
 
-3. **Explain why geography changes the conclusion.**
-   - show where market structure, regulation, pricing, or competition differ by region
-   - do not treat global market conclusions as geography-free by default
-
-4. **Handle competitive scope honestly.**
-   - include regional leaders when they materially shape the market
-   - distinguish global leaders from region-specific leaders when needed
-
-5. **Make omissions explicit when evidence is weak.**
-   - if some markets are poorly documented, say so
-   - do not silently downgrade them into irrelevance
-
----
-
-## Scoring guide
-
-Use a simple 0-2 scale.
-
-### 0 = scope failure
-- one or more load-bearing markets or segments are missing
-- or the report is functionally regional while presenting itself as global
-- or scope boundaries are unstated, creating false confidence
-
-### 1 = partial scope discipline
-- the main geographies are present, but one important region/segment is underdeveloped
-- or coverage exists without showing how geography changes the analysis
-- or scope boundaries are implied but not explicit
-
-### 2 = strong scope completeness
-- the report covers the consequential geographies/segments, states its boundaries honestly, and shows how scope affects conclusions
+3. **Avoid treating every scope failure as a new rule problem.**
+   - most scope failures in a maturing repo will be route or execution failures, not missing rules
 
 ---
 
 ## Review questions
 
-When using this eval, ask:
+When applying this meta-eval, ask:
 
-- What are the top geographies or segments that could materially change the answer?
-- Did the report cover them proportionally to their importance?
-- Did it distinguish demand centers, supply centers, and regulatory centers?
-- Did it include local leaders where they matter?
-- If some major geography is thin, did the report explain why?
-- Would a different conclusion be possible if a missing geography were included?
-- Is the right fix a new rule, a stronger route trigger, a checklist gate, or a new case eval?
+- Does a scope-completeness discipline exist in the routing matrix? If not, that is the first fix.
+- If it exists, was it attached for this task type? If not, the route attachment is the fix.
+- If it was attached, does the report show evidence of scope checking (explicit coverage boundaries, omitted-region disclosure)? If not, execution failed.
+- Is this the first observed scope-completeness failure, or is it recurring? If recurring, escalate from execution fix to structural fix.
+- Would a different route selection have naturally triggered scope checking? If yes, fix route selection guidance.
 
 ---
 
 ## Output format for reviewers
 
-When you apply this eval, summarize the result as:
+When you apply this meta-eval, summarize the result as:
 
-- **Implied scope:**
-- **Actual coverage:**
-- **Load-bearing omissions:**
-- **Scope boundaries stated?**
-- **Diagnosis:** name-only global / missing load-bearing geography / flat competitive map / boundaries not stated / no failure
-- **Best next fix:** routing update / reference update / checklist update / new case eval only / no action
-
----
-
-## Suggested prompts
-
-- Research the global HNB market and compare major geographies, players, and regulatory constraints.
-- Map the global AI datacenter value chain and explain where value accrues by region.
-- Analyze the global EV battery market, including China, Europe, the US, Korea, and Japan.
-- Compare global cloud security vendors, noting where regional regulation changes adoption dynamics.
+- **Observed scope gap:**
+- **Root cause diagnosis:** missing rule / missing route trigger / route misclassification / execution failure / data unavailability
+- **Evidence for diagnosis:**
+- **Narrowest correct fix layer:** references / routing matrix / route attachment / checklist / case eval only
+- **Recurring?** yes / no (first observed)
+- **Recommended action:**
 
 ---
 
 ## Related files
 
-- `evals/cases/global-market-scope-completeness-case.md` — concrete case example for this family
+- `evals/cases/global-market-scope-completeness-case.md` — concrete scoring tool for a specific report
 - `references/failure-taxonomy.md` — Family F: Scope Completeness and Coverage Geometry
 - `ROUTING-MATRIX.md` — cross-cutting discipline: scope completeness
 
 ---
 
-## Why this eval exists
+## Why this meta-eval exists
 
-Several reports can look broad while still being structurally incomplete.
+The case eval (`global-market-scope-completeness-case.md`) can tell you whether a specific report has a scope problem. This meta-eval exists to answer the next question: **what should the repo do about it?**
 
-This eval exists to prevent "global" from becoming a stylistic label instead of a real coverage standard, and to ensure that scope completeness is explicitly evaluated as a cross-cutting discipline rather than assumed by default.
+Without this distinction, every scope failure risks being treated as a missing-rule problem, leading to more prose when the real fix may be routing, attachment, or execution hardening.
