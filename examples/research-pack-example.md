@@ -31,9 +31,9 @@ Stop when the top choice, runner-up logic, and ranking-change conditions are sup
 
 ## Degraded-search log
 - Search objective: current transport and logistics sources for candidate meetup cities
-- Primary discovery path attempted: configured live-search provider
+- Primary provider attempted: configured live-search provider
 - Fallback trigger: low-yield results for practical source discovery
-- Fallback path used: secondary discovery provider / browser search
+- Fallback provider used: secondary discovery provider / browser search
 - Why this fallback fits better: broader discovery of current web sources for schedules and logistics pages
 - Candidate-source quality: mixed
 - Claims still needing primary-page verification: exact transport timing, current venue constraints
