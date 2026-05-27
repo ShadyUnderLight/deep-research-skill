@@ -11,6 +11,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `evals/comparative-distillation/candidate-rule-registry.md`: comprehensive cross-case candidate tracking for all 11 comparative distillation files. Extracts all 60 candidate rules, maps each to existing checklist/reference coverage, and identifies recurring patterns. Finding: zero uncovered PROMOTE_NOW candidates — the existing skill system has already absorbed lessons from all 11 cases. See issue #96 for context.
 - `checklists/final-audit.md`: added delivery-time gate for market-outlook forward-looking claims — source role + time basis for all claims; assumption chain + failure condition for derived/modeled/load-bearing forecasts (validated against 3 real cases, see `report/validation-analysis.md`).
 - `checklists/workflow-spine-audit.md`: Family A checklist — audits whether the SKILL.md shared workflow spine was actually executed rather than assumed.
 - `checklists/route-activation-audit.md`: Family B checklist — audits whether route activation was explicit and whether the route actually shaped the output.
@@ -66,6 +67,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ### Why
 - Per issue #97 (P1), failure-taxonomy families lacked corresponding meta-evals and route-trigger coverage. Added meta-evals for scope completeness and decision utility, wired them into the execution chain (SKILL.md, ROUTING-MATRIX.md route Attach, checklists), and created a reusable reference-level rule for scope completeness that was previously missing.
+- Per issue #96 (P1), 11 comparative distillation cases existed but lacked a cross-case candidate rule registry. The registry confirms all PROMOTE_NOW candidates are already covered by existing checklists and references; no new promotion is needed. The main gap has shifted from missing rules to execution/activation discipline.
 
 ## 0.4.0 - 2026-03-31
 

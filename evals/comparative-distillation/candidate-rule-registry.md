@@ -1,0 +1,138 @@
+# Candidate Rule Registry
+
+Purpose: cross-case candidate tracking for comparative distillation.
+Only promote rules recurring across 2+ real cases.
+
+Reference: `references/comparative-distillation-method.md#step-6`
+
+---
+
+## Summary finding
+
+All PROMOTE_NOW candidates from the 11 existing distillation cases are **already covered** by existing checklists, SKILL.md, and reference documents. See each entry below for exact coverage location.
+
+There are **zero uncovered PROMOTE_NOW candidates** that require further case validation before promotion.
+
+**Implication:** running 2-3 more distillation cases is unlikely to produce new rule discoveries. The existing rule system has already absorbed the lessons from all 11 cases. The remaining gap is primarily execution/activation discipline rather than missing rules.
+
+---
+
+## Candidate-action table
+
+### Legend
+
+| Column | Meaning |
+|---|---|
+| ID | Unique identifier |
+| Candidate rule | Imperative statement of the rule |
+| Action type | NEW_RULE / CHECKLIST_HARDENING / TEMPLATE_CHANGE / DELIVERY_HARD_FAIL |
+| Source file(s) | Distillation case file(s) that produced this candidate |
+| Frequency | Number of cases that independently produced this or a near-identical candidate |
+| Original label | PROMOTE_NOW / WAIT_FOR_SECOND_CASE / (unlabeled) |
+| Existing coverage | File path and line number(s) where this rule already exists in the skill system |
+| Coverage status | 已覆盖 / 部分覆盖 / 无覆盖 / 已延期 |
+
+---
+
+| ID | Candidate rule | Action type | Source file(s) | Frequency | Original label | Existing coverage | Coverage status |
+|---|---|---|---|---|---|---|---|
+| R01 | Require a current market snapshot before forward-looking sections | CHECKLIST_HARDENING | ai-coding-agent-market-outlook | 1 | PROMOTE_NOW | `checklists/final-audit.md` L119; `references/report-template.md` L230-251 | 已覆盖 |
+| R02 | Label outlook numbers as observed / inferred / scenario / illustrative | NEW_RULE | ai-coding-agent-market-outlook, sea-market-entry | 2 | PROMOTE_NOW | `checklists/final-audit.md` L130; `references/report-template.md` L244-249; `references/decision-report-template.md` L109, L161 | 已覆盖 |
+| R03 | Add a dedicated market-outlook decision structure | TEMPLATE_CHANGE | ai-coding-agent-market-outlook | 1 | PROMOTE_NOW | `references/decision-report-template.md` L142-162 | 已覆盖 |
+| R04 | Force market-outlook reports to include stakeholder implications and monitoring signals | CHECKLIST_HARDENING | ai-coding-agent-market-outlook | 1 | PROMOTE_NOW | `references/report-template.md` L236-241; `references/decision-report-template.md` L149, L153 | 已覆盖 |
+| R05 | Use typed memo blocks for scenario-heavy and comparison-heavy sections | TEMPLATE_CHANGE | ai-coding-agent-market-outlook | 1 | PROMOTE_NOW | `references/decision-report-template.md` L142-155 (whole market-outlook structure) | 已覆盖 |
+| R06 | Add evidence-tier inflation guard | NEW_RULE | amd-minimax-equity-report, cas-space-minimax-company-report | 2 | PROMOTE_NOW | `checklists/listed-company-report.md` L85-91; `checklists/final-audit.md` L73-74 | 已覆盖 |
+| R07 | Add metric-scope audit for load-bearing numeric claims | CHECKLIST_HARDENING | amd-minimax-equity-report, cas-space-minimax-company-report | 2 | PROMOTE_NOW | `checklists/final-audit.md` L137-141; `checklists/listed-company-report.md` L88-89 | 已覆盖 |
+| R08 | Add unknown-to-conclusion linkage audit | CHECKLIST_HARDENING | amd-minimax-equity-report, cas-space-minimax-company-report | 2 | PROMOTE_NOW | `checklists/final-audit.md` L145-152; `checklists/listed-company-report.md` L77 | 已覆盖 |
+| R09 | Tighten company-report structure around thesis-first flow | TEMPLATE_CHANGE | amd-minimax-equity-report, cas-space-minimax-company-report | 2 | PROMOTE_NOW | `checklists/final-audit.md` L69-83; `checklists/listed-company-report.md` L70-81; `references/decision-report-template.md` L204-268 | 已覆盖 |
+| R10 | Add thesis-break / watch-metrics section later | WAIT_FOR_SECOND_CASE | amd-minimax-equity-report | 1 | WAIT_FOR_SECOND_CASE | `checklists/final-audit.md` L150; `checklists/option-selection-final-audit.md` L75-76; `references/decision-report-template.md` L413-431 | 已延期 |
+| R11 | Add provider-selection current snapshot gate | NEW_RULE | api-supplier-selection | 1 | (unlabeled) | `checklists/final-audit.md` L109; `checklists/option-selection-final-audit.md` L40-43; `references/decision-report-template.md` L164-183 | 已覆盖 |
+| R12 | Harden option-selection final audit for provider tasks | CHECKLIST_HARDENING | api-supplier-selection | 1 | (unlabeled) | `checklists/option-selection-final-audit.md` (entire file); `references/decision-report-template.md` L164-183 | 已覆盖 |
+| R13 | Update decision-report template for provider selection | TEMPLATE_CHANGE | api-supplier-selection | 1 | (unlabeled) | `references/decision-report-template.md` L164-183 | 已覆盖 |
+| R14 | Strengthen freshness audit for fast-moving vendor/model reports | CHECKLIST_HARDENING | api-supplier-selection | 1 | (unlabeled) | `checklists/option-selection-final-audit.md` L40-43; `checklists/final-audit.md` L103 | 已覆盖 |
+| R15 | Market-position conclusions require scope + conditional clause | CHECKLIST_HARDENING | byd | 1 | PROMOTE_NOW | `checklists/final-audit.md` L156-159; `references/report-template.md` L203-210 | 已覆盖 |
+| R16 | Use exact figures when source provides exact figures | NEW_RULE | byd | 1 | PROMOTE_NOW | `checklists/final-audit.md` L129 | 已覆盖 |
+| R17 | Add data-calibration note when using proxies or approximate mappings | TEMPLATE_CHANGE | byd | 1 | PROMOTE_NOW | `references/report-template.md` L195-201 | 已覆盖 |
+| R18 | Add evidence-tier legend at report top | TEMPLATE_CHANGE | byd | 1 | PROMOTE_NOW | `references/report-template.md` L153-183 | 已覆盖 |
+| R19 | Every forward-looking figure must name the source of the estimate | CHECKLIST_HARDENING | byd | 1 | PROMOTE_NOW | `checklists/final-audit.md` L127-128; `checklists/forward-looking-claims.md` L32-34 | 已覆盖 |
+| R20 | State the right unit of comparison in competitive analysis | NEW_RULE | byd | 1 | PROMOTE_NOW | `references/report-template.md` L212-222; `checklists/option-selection-final-audit.md` L30-33 | 已覆盖 |
+| R21 | Pair scale growth with profitability/cash-flow pressure when both exist | NEW_RULE | byd | 1 | PROMOTE_NOW | `checklists/final-audit.md` L163-165; `references/report-template.md` L224-228 | 已覆盖 |
+| R22 | Tighten company-report opening into judgment-summary-first structure | TEMPLATE_CHANGE | cas-space-minimax-company-report | 1 | PROMOTE_NOW | `checklists/final-audit.md` L69-71; `checklists/listed-company-report.md` L70-71; `references/decision-report-template.md` L204-220 | 已覆盖 |
+| R23 | Add issuer-claim grading guard | NEW_RULE | cas-space-minimax-company-report | 1 | PROMOTE_NOW | `checklists/listed-company-report.md` L85-91; `checklists/final-audit.md` L73-74 | 已覆盖 |
+| R24 | Add company-report judgment audit | CHECKLIST_HARDENING | cas-space-minimax-company-report | 1 | PROMOTE_NOW | `checklists/final-audit.md` L69-83 | 已覆盖 |
+| R25 | Add stronger metric-scope audit for company-report numbers | CHECKLIST_HARDENING | cas-space-minimax-company-report | 1 | PROMOTE_NOW | `checklists/final-audit.md` L137-141 | 已覆盖 |
+| R26 | Add unknown-to-conclusion linkage audit (company reports) | CHECKLIST_HARDENING | cas-space-minimax-company-report | 1 | PROMOTE_NOW | `checklists/final-audit.md` L145-152 | 已覆盖 |
+| R27 | Add final PDF delivery gate for company-style reports | CHECKLIST_HARDENING | cas-space-minimax-company-report | 1 | PROMOTE_NOW | `checklists/final-audit.md` L196-214; also L213-214 | 已覆盖 |
+| R28 | Require research-anchor block before broad company narrative | TEMPLATE_CHANGE | china-shenhua | 1 | PROMOTE_NOW | `checklists/listed-company-report.md` L6-14, L21, L43-45; `references/decision-report-template.md` L211 | 已覆盖 |
+| R29 | Separate multi-venue and market-snapshot number roles | CHECKLIST_HARDENING | china-shenhua | 1 | PROMOTE_NOW | `checklists/listed-company-report.md` L22-24 | 已覆盖 |
+| R30 | Require body-level auditability for thesis-bearing claims | CHECKLIST_HARDENING | china-shenhua | 1 | PROMOTE_NOW | `checklists/final-audit.md` L18; `checklists/listed-company-report.md` L73 | 已覆盖 |
+| R31 | Add corporate-action compression guard | NEW_RULE | china-shenhua | 1 | PROMOTE_NOW | `checklists/final-audit.md` L78; `checklists/listed-company-report.md` L81; `references/decision-report-template.md` L222-228 | 已覆盖 |
+| R32 | Tighten front-page judgment visibility under investment-style route | TEMPLATE_CHANGE | china-shenhua | 1 | PROMOTE_NOW | `checklists/final-audit.md` L169-172; `references/decision-report-template.md` L42-55 | 已覆盖 |
+| R33 | Require early support / weakening / unresolved split | TEMPLATE_CHANGE | china-shenhua | 1 | PROMOTE_NOW | `checklists/listed-company-report.md` L74-75; `checklists/final-audit.md` L36-38; `references/decision-report-template.md` L248-253 | 已覆盖 |
+| R34 | Route hardware/equipment procurement as procurement-style decision memo | NEW_RULE | home-server-equipment-recommendation | 1 | (unlabeled) | `checklists/final-audit.md` L111 | 已覆盖 |
+| R35 | Require recommendation compression (top / runner-up / rejected routes) | CHECKLIST_HARDENING | home-server-equipment-recommendation | 1 | (unlabeled) | `checklists/final-audit.md` L112; `checklists/option-selection-final-audit.md` L56-63; `references/decision-report-template.md` L270-296 | 已覆盖 |
+| R36 | Require budget closure (explicit includes/excludes, min vs recommended config) | CHECKLIST_HARDENING | home-server-equipment-recommendation | 1 | (unlabeled) | `checklists/final-audit.md` L113-114; `references/decision-report-template.md` L279-280, L292 | 已覆盖 |
+| R37 | Require hardware-system fit reasoning | CHECKLIST_HARDENING | home-server-equipment-recommendation | 1 | (unlabeled) | `checklists/final-audit.md` L115; `references/decision-report-template.md` L281 | 已覆盖 |
+| R38 | Require household-ops cost visibility (power, noise, maintenance, etc.) | CHECKLIST_HARDENING | home-server-equipment-recommendation | 1 | (unlabeled) | `checklists/final-audit.md` L116; `references/decision-report-template.md` L283-294 | 已覆盖 |
+| R39 | PDF broken typography = delivery hard fail | DELIVERY_HARD_FAIL | home-server-equipment-recommendation | 1 | (unlabeled) | `checklists/final-audit.md` L213-214 | 已覆盖 |
+| R40 | Require market-entry outputs to show explicit decision status, hard gates, sequencing, ranking-change logic | CHECKLIST_HARDENING | japan-vs-china-vs-sea-market-entry | 1 | (unlabeled) | `checklists/final-audit.md` L117; `checklists/option-selection-final-audit.md` L47-52; `references/decision-report-template.md` L298-325 | 已覆盖 |
+| R41 | Require visible separation between evidence-layer labels and modeling-layer number-role labels | CHECKLIST_HARDENING | japan-vs-china-vs-sea-market-entry | 1 | (unlabeled) | `checklists/final-audit.md` L130-132; `references/report-template.md` L173-181 | 已覆盖 |
+| R42 | Add target-language consistency gate for load-bearing structural labels | NEW_RULE + CHECKLIST_HARDENING | japan-vs-china-vs-sea-market-entry | 1 | (unlabeled) | `checklists/final-audit.md` L196-202; `references/report-template.md` L157 | 已覆盖 |
+| R43 | Treat mixed-language labels and CJK broken-export as final-delivery failures | CHECKLIST_HARDENING | japan-vs-china-vs-sea-market-entry | 1 | (unlabeled) | `checklists/final-audit.md` L198-200, L213-214 | 已覆盖 |
+| R44 | Require role-labeling of key quantitative inputs in constrained-choice memos | CHECKLIST_HARDENING | multi-origin-meetup-city-selection | 1 | PROMOTE_NOW | `checklists/final-audit.md` L131; `checklists/option-selection-final-audit.md` L34 | 已覆盖 |
+| R45 | Strengthen fairness/aggregation gate for multi-stakeholder selection | CHECKLIST_HARDENING | multi-origin-meetup-city-selection | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L35-36 | 已覆盖 |
+| R46 | Strengthen option-selection structure to show shortlist-construction logic and loser-specific failures | TEMPLATE_CHANGE | multi-origin-meetup-city-selection | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L56-63; `references/decision-report-template.md` L122-140 | 已覆盖 |
+| R47 | Strengthen option-selection structure with ranking-reversal conditions | TEMPLATE_CHANGE | multi-origin-meetup-city-selection | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L73-78; `references/decision-report-template.md` L139-140 | 已覆盖 |
+| R48 | Add practical-planning heuristic for multi-origin meetup/location choice (hidden friction) | NEW_RULE | multi-origin-meetup-city-selection | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L36; `references/decision-report-template.md` L294 (household) | 已覆盖 |
+| R49 | Add explicit market-entry trigger routing for go/no-go / regional expansion tasks | NEW_RULE | sea-market-entry | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L47-52; `references/report-template.md` L253-283 | 已覆盖 |
+| R50 | Add a dedicated market-entry memo structure | TEMPLATE_CHANGE | sea-market-entry | 1 | PROMOTE_NOW | `references/decision-report-template.md` L298-325 | 已覆盖 |
+| R51 | Require distinction of regional hub vs first beachhead vs later expansion | NEW_RULE | sea-market-entry | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L49; `references/decision-report-template.md` L317 | 已覆盖 |
+| R52 | Require one visible comparison unit across countries/markets | NEW_RULE | sea-market-entry | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L50; `references/decision-report-template.md` L305, L322 | 已覆盖 |
+| R53 | Require explicit hard gates and priority relative to alternatives | CHECKLIST_HARDENING | sea-market-entry | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L48, L51-52 | 已覆盖 |
+| R54 | Treat citation/retrieval artifact leakage as final-delivery failure | CHECKLIST_HARDENING | sea-market-entry | 1 | PROMOTE_NOW | `checklists/final-audit.md` L206-208 | 已覆盖 |
+| R55 | Separate operational feasibility, stable traits, and subjective reputation claims | NEW_RULE | weekend-seaside-destination | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L67-69 | 已覆盖 |
+| R56 | Require explicit aggregation logic for multi-origin comparisons | NEW_RULE | weekend-seaside-destination | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L30-33 | 已覆盖 |
+| R57 | Combine source-class note + evidence labels + stronger mapping for strong claims | TEMPLATE_CHANGE | weekend-seaside-destination | 1 | WAIT_FOR_SECOND_CASE | `references/report-template.md` L153-183; `checklists/final-audit.md` L15-19 | 已延期 |
+| R58 | Express travel uncertainty as scenario risks + fallback plans | CHECKLIST_HARDENING | weekend-seaside-destination | 1 | WAIT_FOR_SECOND_CASE | `checklists/option-selection-final-audit.md` L73-78; `references/decision-report-template.md` L139-140 | 已延期 |
+| R59 | For destination-selection tasks, lead with decision frame → comparison → shortlist → detail | TEMPLATE_CHANGE | weekend-seaside-destination | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L56-57; `references/decision-report-template.md` L122-140 | 已覆盖 |
+| R60 | Optimize destination-selection reports for choice architecture rather than guide-style description | NEW_RULE | weekend-seaside-destination | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L84-88 | 已覆盖 |
+
+---
+
+## Summary statistics
+
+| Metric | Count |
+|---|---|
+| Total candidate rules (all 11 files) | 60 |
+| PROMOTE_NOW | 43 |
+| WAIT_FOR_SECOND_CASE | 3 |
+| (unlabeled, implicitly actionable) | 14 |
+| **Covered by existing code** | **57 / 60** (95%) |
+| Pending / WAIT_FOR_SECOND_CASE | 3 (R10, R57, R58) |
+| **Truly uncovered PROMOTE_NOW** | **0** |
+
+---
+
+## Cross-case recurrence analysis
+
+### Rules appearing in ≥2 cases
+
+| Candidate theme | Cases | Current status |
+|---|---|---|
+| Evidence-tier inflation guard | amd (R06), cas-space (R06) | Already in `checklists/listed-company-report.md` L85-91 |
+| Metric-scope audit | amd (R07), cas-space (R07) | Already in `checklists/final-audit.md` L137-141 |
+| Unknown-to-conclusion linkage | amd (R08), cas-space (R08) | Already in `checklists/final-audit.md` L145-152 |
+| Thesis-first company structure | amd (R09), cas-space (R09) | Already in `checklists/final-audit.md` L69-83 |
+| Outlook number role labeling | ai-coding-agent (R02), sea-market-entry (merged) | Already in `checklists/final-audit.md` L130 |
+
+All recurring rules are already covered. No new promotion is needed.
+
+---
+
+## Conclusion for issue #96
+
+All PROMOTE_NOW candidates from the 11 existing distillation cases are already covered by the current skill system. The existing checklists, SKILL.md, and reference documents have absorbed the lessons from all 11 comparisons.
+
+**There is nothing new to promote.** Running 2-3 additional distillation cases is unlikely to produce uncovered rule discoveries; the marginal value would be validating that the current coverage is sufficient.
+
+The remaining gap is **execution/activation discipline** — the model often does not follow rules that already exist in checklists and templates. This is tracked separately in issue #97 and in failure-taxonomy.md.
