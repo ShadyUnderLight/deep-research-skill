@@ -115,6 +115,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for market-entry / regional-expansion / country-prioritization tasks, regional hub vs first beachhead vs later expansion market are separated when relevant
 - [ ] for market-outlook / industry-evolution tasks, a current market snapshot was verified before forward-looking sections
 - [ ] for market-outlook / industry-evolution tasks, drivers, blockers, scenarios, and stakeholder implications are explicit rather than implied
+- [ ] for market-outlook / industry-evolution tasks, all forward-looking claims have visible source role and time basis; derived, modeled, or load-bearing forecasts also show key assumptions and failure / reversal conditions
 - [ ] for first-tier / top-tier / multidimensional positioning tasks, scope, metric, timeframe, and dimension-level conclusions are visible before any overall label
 - [ ] for first-tier / top-tier / multidimensional positioning tasks, the report does not collapse geography, current products, roadmap products, ecosystem strength, traction, and capital-markets signaling into one vague prestige tag without an explicit aggregation rule
 
