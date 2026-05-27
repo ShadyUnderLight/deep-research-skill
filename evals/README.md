@@ -14,15 +14,28 @@ Evals should help identify:
 ## Directory structure
 
 - `cases/` — single-case failures, route-specific lessons, or delivery failures tied to one task
-- `comparative-distillation/` — paired-report comparisons used to extract reusable repo changes
+- `comparative-distillation/` — paired-report comparisons or single-output distillations used to extract reusable repo changes
 - `meta/` — cross-case execution, activation, and discipline notes
 - `templates/` — reusable eval scaffolds and evaluation templates
+
+### Naming conventions
+
+Eval subtypes are distinguished by naming rather than by additional subdirectories:
+
+| Directory | Recommended suffix | Example |
+|---|---|---|
+| `cases/` | `*-case.md` | `freshness-xiaomi-case.md` |
+| `comparative-distillation/` | `*-comparative-distillation.md` for paired-output comparisons or comparison-centered distillations; `*-distillation.md` for single-output hardening without a comparison-centered frame | `byd-gpt-vs-minimax-comparative-distillation.md`, `amd-minimax-equity-report-distillation.md` |
+| `templates/` | `*-template.md` or `*-rubric.md` | `comparative-distillation-template.md`, `depth-rubric.md` |
+| `meta/` | descriptive kebab-case (no fixed suffix) | `current-state-checks.md` |
+
+Rubric-like files may live in `templates/` or inside `evals/meta/`; use `*-rubric.md` when the file is primarily a reusable scoring rubric, while meta discipline checks may keep descriptive names.
 
 ## Which type to add
 
 Use `cases/` when a single real task exposes a clear failure family.
 
-Use `comparative-distillation/` when comparing two outputs is the main way to extract reusable changes.
+Use `comparative-distillation/` for distillation artifacts — either paired-output comparisons or single-output hardening exercises.
 
 Use `meta/` when the issue is not mainly one case but a broader execution, activation, or discipline problem.
 

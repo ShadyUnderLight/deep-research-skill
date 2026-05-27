@@ -11,7 +11,7 @@ This file tracks likely next improvements and helps keep repo evolution intentio
 - Tighten current-state verification if stale facts still leak into reports.
 - Continue testing whether the stale-anchor hard gate (added to `checklists/listed-company-report.md`) reliably triggers during real listed-company synthesis, and harden route activation if the gate keeps being skipped.
 - Add meta-evals and trigger-routing improvements for failure families identified in `references/failure-taxonomy.md`, especially rule activation, scope completeness, decision utility, and market-outlook routing.
-- Decide whether to formalize eval subtypes (`case`, `rubric`, `distillation`, `meta-eval`) in naming or folder structure.
+- Keep eval subtype formalization limited to naming conventions (`evals/README.md#naming-conventions`) unless eval volume justifies new folders.
 - Run at least 2-3 more real comparative-distillation cases and promote only the recurring candidate rules.
 - Validate the new market-outlook routing against 2-3 more real cases before hardening further wording or adding more specialized sub-checklists.
 
