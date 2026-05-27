@@ -98,6 +98,7 @@ Use when the task is mainly about:
 ### Attach
 - current-state verification
 - source traceability
+- decision utility
 - quantitative role labeling when pricing, benchmarks, or scoring matter
 
 ### Audit
@@ -158,6 +159,7 @@ Use when the task is mainly about:
 ### Attach
 - current-state verification
 - source traceability
+- decision utility
 - quantitative role labeling when market size, payback, cost assumptions, sequencing thresholds, or scenario-style numbers materially affect the recommendation
 
 ### Audit
@@ -216,6 +218,7 @@ Use when the task is mainly about:
 - current-state verification
 - forward-looking claims discipline
 - source traceability
+- scope completeness when the report claims global or broad market scope
 - quantitative role labeling when forecasts or scenario math appear
 
 ### Audit
@@ -270,6 +273,7 @@ Use when the task is mainly about:
 - current-state verification
 - source traceability
 - evidence-weight separation
+- scope completeness when the positioning claim is global or multi-region
 - quantitative role labeling when numbers materially affect the positioning judgment
 
 ### Audit
@@ -325,6 +329,7 @@ Use when the task is mainly about:
 - `references/decision-report-template.md`
 
 ### Attach
+- decision utility
 - quantitative role labeling when scoring, weighting, burden proxies, cost comparisons, or scenario comparisons materially affect ranking or recommendation
 
 ### Audit
@@ -389,6 +394,7 @@ Use when the task is mainly about:
 
 ### Attach
 - current-state verification when current market pricing, current platforms, or current device availability materially affect the answer
+- decision utility
 - quantitative role labeling when budgets, power estimates, operating costs, or scoring materially affect the recommendation
 - source traceability when specific hardware, pricing, system constraints, or long-run suitability claims carry the conclusion
 
@@ -462,6 +468,8 @@ Use when the task is mainly about:
 - current-state verification
 - forward-looking claims discipline when forecasts appear
 - source traceability
+- scope completeness when the report makes global market-position or global competitive claims
+- decision utility
 
 For this route, current-state verification must explicitly lock:
 
@@ -569,6 +577,9 @@ Fail if:
 
 ### Scope completeness
 Attach when the task claims broad or global scope (global market / industry-wide / full landscape / comprehensive coverage).
+
+Read:
+- `references/scope-completeness-discipline.md`
 
 Visible sign:
 - the report states its real scope clearly

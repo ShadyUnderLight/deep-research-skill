@@ -24,19 +24,20 @@ When you observe a decision-utility failure, walk through these questions in ord
 
 ### Step 1: Is it a missing route?
 Check: was the task treated as generic research when it should have been routed to a decision-focused route?
-- The routing matrix has 7 routes, most with explicit decision logic
+- The routing matrix has 7 routes, most with explicit decision or judgment logic
 - A task like "should we buy from vendor A or B?" should use provider selection, not generic overview
 - If no route was selected → **missing route**
 
 ### Step 2: Route with weak decision contract?
-Check: the correct route was selected, but does its artifact contract require decision structure?
-- Example: "market outlook / industry evolution" requires scenario structure but does it require a clear bottom-line recommendation?
-- If the route contract does not mandate decision elements → **weak route contract**
+Check: the correct route was selected, but does its artifact contract require decision-appropriate output?
+- A route with recommendation burden (provider selection, market entry, investment memo) should require clear bottom-line recommendation
+- A route with judgment burden (market outlook, competitive positioning) should require route-appropriate bottom line / judgment / scenario implication — not necessarily a hard recommendation
+- If the route contract does not mandate decision or judgment elements appropriate to its task type → **weak route contract**
 
 ### Step 3: Template gap?
-Check: even if the route contract is strong, does the template provide a clear place for decision logic?
+Check: even if the route contract is strong, does the template provide a clear place for decision or judgment output?
 - `references/decision-report-template.md` covers most decision elements
-- But if a specific route's template does not include mandatory decision output → **template gap**
+- But if a specific route's template does not include mandatory judgment or recommendation output → **template gap**
 
 ### Step 4: Execution failure?
 Check: all of the above existed, but the report still reads like an overview.
@@ -46,6 +47,7 @@ Check: all of the above existed, but the report still reads like an overview.
 ### Step 5: Wrong route for decision type?
 Check: the task was routed to a route that supplies the wrong kind of decision structure.
 - Example: a "go/no-go market entry" question routed to "constrained choice / shortlist" (option ranking instead of gate decision)
+- Example: a market outlook task forced into "provider selection" would produce a false recommendation when the real need is scenario analysis
 - If the route's default decision structure differs from what the task actually needs → **wrong route**
 
 ---
@@ -76,7 +78,7 @@ A good diagnosis using this meta-eval should:
 When applying this meta-eval, ask:
 
 - Was a primary route selected explicitly? If not, fix routing before anything else.
-- Does the selected route's artifact contract require decision elements (bottom line, recommendation, what matters most)? If not, fix the contract.
+- Does the selected route's artifact contract require route-appropriate decision or judgment output (bottom line, recommendation, scenario implication, or what matters most)? If not, fix the contract.
 - Does the route's supporting template provide a mandatory place for decision output? If not, fix the template.
 - If route, contract, and template are all present, did the report fill them with decision logic or with general description? If description, fix execution.
 - Is the decision gap recurring across multiple reports from the same route? If recurring, escalate from execution fix to structural fix.

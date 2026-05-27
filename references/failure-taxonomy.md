@@ -220,6 +220,8 @@ This is the most subtle failure family. It produces reports that feel good on fi
 ### Existing evals in this family
 - `evals/cases/industry-landscape-depth-case.md`
 - `evals/templates/depth-rubric.md`
+- `evals/templates/decision-utility-rubric.md`
+- `evals/meta/decision-utility-discipline.md`
 - `evals/cases/hnb-industry-report-table-design-case.md` (partial overlap)
 
 ### Existing rule/checklist coverage
@@ -227,14 +229,15 @@ This is the most subtle failure family. It produces reports that feel good on fi
 - `references/counter-evidence.md`
 - `references/decision-report-template.md`
 - `checklists/final-audit.md`
+- `ROUTING-MATRIX.md` (cross-cutting discipline: decision utility)
 
 ### What this family suggests structurally
-Depth is already recognized as a target, but the current repo still has stronger discipline for factual hygiene than for decision usefulness.
+Decision-utility evaluation now has a scoring rubric and a meta-eval discipline. The remaining gap is formalizing checklist-level gates for decision-utility enforcement, and ensuring that decision-utility concerns are activated in route execution contracts rather than only evaluated after delivery.
 
 ### Priority improvement direction
-- add explicit decision-utility evaluation, not just depth evaluation
-- identify whether the report names and tests the load-bearing variables
-- make "what would change the conclusion" a stronger required field
+- harden checklist-level gates for decision-utility enforcement (final-audit recall discipline)
+- ensure route execution contracts explicitly require decision output where the task carries recommendation or judgment burden
+- monitor whether the decision-utility discipline is being consistently activated across decision-bearing routes, not only evaluated reactively
 
 ---
 
@@ -261,17 +264,18 @@ A scope miss can distort the final conclusion even when individual facts are cor
 - `evals/meta/scope-completeness-discipline.md`
 
 ### Existing rule/checklist coverage
+- `references/scope-completeness-discipline.md`
 - partially covered by `references/current-state-verification.md`
 - partially covered by `references/task-types.md`
 - partially covered by `checklists/final-audit.md`
 - partially covered by `ROUTING-MATRIX.md` (cross-cutting discipline: scope completeness)
 
 ### What this family suggests structurally
-Scope completeness now has a dedicated case eval and a meta-eval discipline file. The remaining gap is formalizing checklist-level gates for global/industry reports, and ensuring the routing matrix triggers scope-completeness checks for broad-scope tasks.
+Scope completeness now has a reference-level rule, a dedicated case eval, and a meta-eval discipline file. The remaining gap is ensuring the routing matrix consistently triggers scope-completeness checks for broad-scope tasks, and hardening final-audit recall checks.
 
 ### Priority improvement direction
-- strengthen checklist-level gates for global/industry reports
-- ensure the routing matrix consistently triggers scope-completeness checks for broad-scope tasks
+- ensure the routing matrix consistently triggers scope-completeness checks for broad-scope tasks (see route-attach updates)
+- harden final-audit recall discipline for scope-completeness checks on global-scope outputs
 
 ---
 

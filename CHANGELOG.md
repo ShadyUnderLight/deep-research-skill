@@ -22,6 +22,28 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cases/consensus-and-forward-pe-misuse-case.md`: eval testing consensus target price as fair value, forward PE as reported fact, and stale consensus after earnings.
 - `evals/cases/reporting-period-and-ttm-confusion-case.md`: eval testing TTM vs fiscal year confusion, preliminary vs audited, and restated figures.
 
+### Added
+- `evals/meta/scope-completeness-discipline.md`: Family F meta-eval — root-cause diagnosis for scope-completeness failures (missing rule / missing trigger / route misclassification / execution failure / data unavailability).
+- `evals/meta/decision-utility-discipline.md`: meta-eval for decision-utility failures — root-cause diagnosis (missing route / weak contract / template gap / execution failure / wrong route). Distinguishable from `evals/templates/decision-utility-rubric.md` (scoring tool) by focus on "which repo layer should change".
+- `references/scope-completeness-discipline.md`: reusable minimum-coverage standard for global/comprehensive claims — geography coverage matrix, common failure patterns, acceptable partial scope rules.
+- `ROUTING-MATRIX.md`: added scope completeness and decision utility as cross-cutting disciplines with attach triggers, visible signs, and hard-fail conditions.
+- `ROUTING-MATRIX.md`: wired scope completeness and decision utility into relevant route `### Attach` lists (provider/vendor selection, market entry, market outlook, first-tier positioning, constrained choice, equipment selection, listed-company).
+- `SKILL.md`: added scope completeness and decision utility to core shared disciplines list.
+- `checklists/route-activation-audit.md`: added visible-execution checks for scope completeness and decision utility.
+- `checklists/final-audit.md`: added recall-discipline entries for scope completeness and decision utility.
+
+### Changed
+- `references/failure-taxonomy.md`:
+  - Family E: added decision-utility rubric and meta-eval to existing evals; updated priority direction from "add evaluation" to "checklist-level gate / route activation hardening".
+  - Family F: added `references/scope-completeness-discipline.md` and updated coverage status; updated priority direction from "dedicated eval" to "route-trigger consistency / final-audit recall".
+  - "What this taxonomy implies should happen next": marked scope-completeness eval and decision-utility rubric as done, with remaining next steps documented.
+  - Short classification table: updated Family F and Meta-Rule-Activation status to reflect current coverage.
+- `SYSTEM-MAP.md`: mapped `evals/meta/scope-completeness-discipline.md` and `evals/meta/decision-utility-discipline.md` to Family G.
+- `ROADMAP.md`: split P1 meta-eval item into completed (scope/decision meta-evals + route discipline) and remaining (checklist gate / market-outlook validation / remaining route hardening).
+
+### Why
+- Per issue #97 (P1), failure-taxonomy families lacked corresponding meta-evals and route-trigger coverage. Added meta-evals for scope completeness and decision utility, wired them into the execution chain (SKILL.md, ROUTING-MATRIX.md route Attach, checklists), and created a reusable reference-level rule for scope completeness that was previously missing.
+
 ### Changed
 - `SYSTEM-MAP.md`: filled family-level coverage across all nine families: added missing file references (`mid-research-review.md`, `route-activation-and-preflight.md`), added newly created checklists, split combined Primary references/checklists sections into separate subsections for clarity, and updated Current thin spots to reflect resolved items.
 - `SKILL.md`: narrowed PDF delivery trigger — replaced bare keyword matching with an explicit file-delivery intent model: added delivery-phrase list ("生成 PDF", "导出 PDF", "报告文件", "可下载报告", "给我报告文件", "作为附件给我" etc.) and a negation/discussion guardrail (不要 PDF, no PDF, 解释 PDF 渲染失败, etc.). Bare `报告` no longer triggers PDF pipeline.

@@ -24,9 +24,10 @@ When you observe a scope-completeness failure, walk through these questions in o
 
 ### Step 1: Is it a missing rule?
 Check: does the repo have any document that defines what "global scope" must include?
-- Reference: `references/failure-taxonomy.md` — Family F (records the gap but does not define a standard)
-- Reference: `evals/cases/global-market-scope-completeness-case.md` (defines the evaluation but not a reusable rule)
-- If no document defines the minimum coverage for a global claim → **missing rule**
+- Reference: `references/scope-completeness-discipline.md` (defines minimum coverage standards for global/comprehensive claims)
+- Reference: `references/failure-taxonomy.md` — Family F (records the family-level gap context)
+- Reference: `evals/cases/global-market-scope-completeness-case.md` (scoring tool for a specific report)
+- If the report still omitted a load-bearing geography after the rule was available → not a missing rule, proceed to step 2
 
 ### Step 2: Is it a missing route trigger?
 Check: does `ROUTING-MATRIX.md` or any existing route attach a scope-completeness discipline for this task type?
@@ -98,6 +99,7 @@ When you apply this meta-eval, summarize the result as:
 
 ## Related files
 
+- `references/scope-completeness-discipline.md` — reusable minimum-coverage standard for global/comprehensive claims
 - `evals/cases/global-market-scope-completeness-case.md` — concrete scoring tool for a specific report
 - `references/failure-taxonomy.md` — Family F: Scope Completeness and Coverage Geometry
 - `ROUTING-MATRIX.md` — cross-cutting discipline: scope completeness
