@@ -9,7 +9,7 @@ on:
       - 'requirements.txt'
       - '.github/workflows/ci.yml'
   push:
-    branches: [main]
+    branches: [$default-branch]
     paths:
       - 'scripts/**'
       - 'schemas/**'
