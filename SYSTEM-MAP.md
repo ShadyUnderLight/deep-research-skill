@@ -463,7 +463,7 @@ Change first:
 
 The current system is much clearer than before, but still has thin spots to watch:
 
-- formal grouping of eval subtypes is still implicit rather than encoded in folder structure
+- eval subtype grouping is partly encoded by naming conventions (`evals/README.md#naming-conventions`), but not by additional subfolders
 - some families still rely more on representative eval clusters than on explicit map files
 - not every route family yet has a clearly separated supporting reference vs checklist vs eval cluster
 

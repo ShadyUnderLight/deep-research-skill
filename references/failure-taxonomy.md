@@ -329,7 +329,7 @@ Example:
 - `byd-gpt-vs-minimax-comparative-distillation.md`
 
 ### Suggested implication
-The repo should gradually treat these as distinct eval subtypes, even if they stay in one folder.
+The repo should gradually treat these as distinct eval subtypes within the existing evals tree. Naming conventions are documented in `evals/README.md#naming-conventions` — prefer those suffixes when adding new eval files.
 
 ---
 
