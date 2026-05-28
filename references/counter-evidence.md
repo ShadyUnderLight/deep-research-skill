@@ -105,3 +105,45 @@ Include some version of:
 - what remains unresolved
 - how counter-evidence affected confidence
 - what would change the conclusion
+
+## Structured counter-evidence template
+
+For each load-bearing conclusion (see "Load-bearing conclusions" above), construct at least one counter-evidence block using this template.
+
+Use the search patterns and common angles defined earlier in this file to generate counter-evidence. Do not invent strawman arguments.
+
+This template exists to prevent counter-evidence from becoming ceremonial. Do not skip it for high-stakes conclusions.
+
+If a template field does not apply, write "N/A — [brief reason]" rather than leaving it blank.
+
+### Conclusion: [one sentence restating the claim]
+
+### Counter-argument: [strongest opposing claim]
+
+- Supporting evidence: [specific source, data point, or logic chain]
+- Argument strength: [strong / medium / weak]
+  - strong: direct data or factual support exists
+  - medium: reasonable inference but lacks direct evidence
+  - weak: pure logical speculation or thin analogy
+
+### Response
+
+- Why it does not fully hold: [specific rebuttal with data or reasoning]
+- Valid component: [where the counter-argument has a point — do not dismiss entirely]
+- Remaining uncertainty: [what we cannot fully exclude even after rebuttal]
+
+### Impact on conclusion
+
+- Conclusion holds unchanged: [state conditions]
+- Confidence downgrade needed: [state magnitude and reason]
+- Conclusion no longer holds: [state trigger condition]
+
+### Execution rule
+
+If a counter-argument is rated "strong", the corresponding conclusion must either:
+
+1. be downgraded in confidence, or
+2. have explicit constraints added, or
+3. have a visible reversal condition recorded
+
+Do not leave a "strong" counter-argument without visible impact on the conclusion.
