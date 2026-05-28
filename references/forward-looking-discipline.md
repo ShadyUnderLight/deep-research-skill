@@ -60,6 +60,10 @@ When the report derives a forward-looking number (revenue projection, market siz
 
 Example: "Assuming 15% annual growth (in line with industry consensus), the market would reach $X by 2028. If growth slows to 10%, the market would reach $Y. This is an illustrative scenario, not a forecast."
 
+For a general-purpose assumption chain template applicable to non-forward-looking assumptions (proxies, current-state estimates, scoring weights), see `references/quantitative-role-labeling.md` (#假设链).
+
+If the forward-looking assumption is high-sensitivity (the conclusion changes materially when the assumption moves ±10%), use the detailed template in `references/quantitative-role-labeling.md` instead of, or in addition to, the lighter pattern above.
+
 ## Common failure patterns
 
 ### Pattern 1: unlabeled `预计`
