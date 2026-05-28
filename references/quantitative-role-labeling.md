@@ -52,6 +52,8 @@ Quantitative role labeling should be visible when a number materially affects:
 
 If removing the number would materially weaken the argument, its role is probably load-bearing and should be visible.
 
+When a number is classified as a medium- or high-sensitivity assumption, sensitivity analysis should also be visible. See "Sensitivity classification" below.
+
 ## Common failure modes
 
 Common failures include:
@@ -72,8 +74,8 @@ An assumption chain makes the reasoning behind a load-bearing assumption visible
 
 Not every assumption needs a full chain. Apply this scope rule:
 
-- **Required** — assumptions whose deviation would materially affect the conclusion (high sensitivity). If a ±10% change in the assumption would alter the recommendation, shift the ranking, or change valuation by more than ±15%, the assumption chain is mandatory.
-- **Optional** — assumptions whose impact on the conclusion is estimated at under ±10% (or under ±15% for valuation only). A lightweight note is sufficient. If the impact falls in the 10–15% range for valuation, analyst judgment applies; err on the side of documenting.
+- **Required** — assumptions whose deviation would materially affect the conclusion (high sensitivity). If a ±20% change in the assumption would alter the recommendation, shift the ranking, or change valuation by more than ±15%, the assumption chain is mandatory. See also "Sensitivity classification" below for the full classification framework.
+- **Optional** — assumptions whose impact on the conclusion is estimated at under ±20% (or under ±15% for valuation only). A lightweight note is sufficient. If the impact falls in the 15–20% range for non-valuation conclusions, analyst judgment applies; err on the side of documenting.
 - **Not needed** — directly observed or officially reported facts (observed metrics). Facts do not become assumptions by being inconvenient.
 
 ### Remediation when a chain cannot be completed
@@ -109,6 +111,42 @@ For each key assumption, document the following fields. Not every field must be 
   - [如核心客户转向竞品，则假设需放弃]
 - 置信度: [高/中/低]
 ```
+
+### Sensitivity classification
+
+Classify each key assumption by its impact on the conclusion. This determines the required depth of sensitivity testing.
+
+| Classification | Definition | Test amplitudes | Required treatment |
+|----------------|------------|-----------------|-------------------|
+| **Low sensitivity** | Conclusion unchanged within ±20% deviation | ±20% | Conclusion is robust; label the sensitive variable |
+| **Medium sensitivity** | Conclusion direction unchanged but strength changes within ±20% | ±20%, ±50% | Conclusion holds conditionally; label the tipping point |
+| **High sensitivity** | Conclusion reverses within ±20% deviation | ±20%, ±50%, extreme scenario | Conclusion is assumption-dependent; reduce confidence or provide scenario analysis |
+
+**Test amplitude selection**:
+
+- **Routine assumptions** (e.g., market growth rate, cost assumptions): test ±20% and ±50%
+- **Load-bearing assumptions** (e.g., valuation multiples, core revenue growth): test ±20%, ±50%, and at least one extreme scenario
+- **Structural assumptions** (e.g., technology roadmap, regulatory environment): test reversal scenarios (what happens if the assumption fails entirely)
+
+**Output format**:
+
+```
+### 敏感性分析: [假设名称]
+
+| 变量 | 基准值 | -50% | -20% | +20% | +50% | 对结论影响 |
+|------|--------|------|------|------|------|-----------|
+| 市场增速 | 15% YoY | 7.5% | 12% | 18% | 22.5% | ±X% to 核心结论 |
+
+- 敏感度等级: [低/中/高]
+- 临界点: [结论翻转的阈值]
+- 建议: [降低 confidence / 提供情景分析 / 维持现有结论]
+```
+
+**When to apply this classification**:
+
+- **Required** — assumptions classified as high sensitivity. Full sensitivity table and scenario analysis are mandatory.
+- **Recommended** — assumptions classified as medium sensitivity. At minimum, document the tipping point.
+- **Optional** — assumptions classified as low sensitivity. A brief note is sufficient.
 
 ### Template example
 

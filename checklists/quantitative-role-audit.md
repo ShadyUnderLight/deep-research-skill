@@ -20,6 +20,13 @@ If load-bearing numbers materially affect the conclusion, their roles should be 
 - The dependency conditions in each assumption chain are reasonable for the context.
 - The failure signals in each assumption chain are observable and actionable (not generic disclaimers).
 
+## Sensitivity analysis checks
+
+- [BLOCKER] Has each load-bearing numerical assumption been classified by sensitivity level (low / medium / high) per `references/quantitative-role-labeling.md`?
+- [BLOCKER] High-sensitivity assumptions have a visible sensitivity table with at least ±20% and one wider amplitude (±50% or extreme scenario).
+- [NON-BLOCKER] Medium-sensitivity assumptions have at least the tipping point documented (the deviation at which the conclusion would change direction).
+- [NON-BLOCKER] The report states which assumptions are most load-bearing and what would change the conclusion.
+
 ## Hard fail signs
 
 - Numerical precision exceeds source certainty.
