@@ -69,6 +69,22 @@ When sources conflict:
 
 For structured conflict classification, resolution steps, and output templates, read `references/data-conflict-resolution.md`.
 
+## Cross-language conflict rules
+
+When researching Chinese-listed companies, Chinese-market topics, or cross-border comparisons, Chinese-language and English-language sources often coexist. Language itself is not a credibility signal — apply the same source-quality dimensions (directness, authority, recency, independence, specificity) regardless of language.
+
+This section covers conflict-handling patterns for cross-language scenarios. For static tier mapping of common Chinese-language sources (东方财富, Wind, 财新, 36氪, 雪球, etc.), read `references/data-conflict-resolution.md`.
+
+Common cross-language conflict patterns:
+
+1. **Chinese filing vs English filing** — same company, same period, different language versions. Differences are usually accounting-scope, translation, or disclosure-level differences, not factual contradictions. Identify the scope difference and use the version most relevant to the research objective.
+
+2. **Chinese filing vs English aggregator (Reuters / Yahoo Finance)** — the filing is the primary source; the aggregator is secondary. If the aggregator number differs from the filing, check whether the aggregator uses a different scope (e.g., consolidated vs parent, GAAP vs non-GAAP, RMB vs USD conversion date).
+
+3. **Chinese media vs English media** — both are secondary. Prefer the source that is more specific (has dates, numbers, direct citations) and more independent (not republishing the same original article). If neither is clearly superior, present both with explicit tension.
+
+4. **One source is more specific** — when one source provides exact dates, numbers, or direct citations and the other provides only a summary or paraphrase, prefer the more specific source regardless of language.
+
 ## Output expectation
 
 For important claims, be able to explain in one sentence why that source was chosen over others.

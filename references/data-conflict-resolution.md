@@ -43,6 +43,21 @@ When sources conflict, use this hierarchy to determine which source takes preced
 | **5** | Secondary media / analyst | Seeking Alpha, Reuters news, broker research, industry media | News flow, interpretation, synthesis |
 | **6** | Social / forum | Retail investor forums, social media, anonymous commentary | Discovery only; never as sole evidence for load-bearing claims |
 
+### Chinese-language source mapping
+
+When researching Chinese-listed companies, Chinese-market topics, or cross-border comparisons, use this mapping to classify common Chinese-language sources into the tier hierarchy above.
+
+| Tier | Chinese-language source | Mainland accessibility | Mapping rationale |
+|------|------------------------|----------------------|-------------------|
+| **1** | 上交所/深交所/港交所 official filings (年报、半年报、季报) | ✅ | Official regulatory filing, equivalent to SEC 10-K/10-Q |
+| **2** | 东方财富 Choice API (filed data), Wind (filed data), 巨潮资讯网 | ✅ | Exchange/regulatory aggregator when data is sourced from filings |
+| **3** | 公司官网公告、投资者互动平台、业绩说明会 | ✅ | Company disclosure (unaudited), same as earnings releases / investor presentations |
+| **4** | 财新、证券时报、21 经济、第一财经 | ✅ (财新部分内容需付费) | Reputable financial media with editorial standards; stronger than general industry media |
+| **5** | 36 氪、动点科技、半导体行业观察、新浪财经、同花顺 | ✅ | Industry media / news aggregation; useful for news flow and discovery |
+| **6** | 雪球、知乎、微博、东方财富股吧 | ✅ | Social / forum; discovery only, never as sole evidence for load-bearing claims |
+
+When a Chinese-language source provides data that conflicts with an English-language source for the same fact, apply the standard conflict-resolution protocol below. Language is not a credibility signal — tier and directness are.
+
 ### Tie-break rules
 
 When two sources are at the same tier, apply these rules in order. These rules are consistent with `references/source-quality.md`; this file adds the independence check as a formal tie-break step:
@@ -144,7 +159,7 @@ FY2025 revenue was $25.6M (per annual report [S01]); an earlier media report cit
 
 This file works alongside:
 
-- `references/source-quality.md` — for source ranking dimensions and tie-break rules (this file adds the tier hierarchy and conflict-specific protocol)
+- `references/source-quality.md` — for source ranking dimensions, tie-break rules, and cross-language conflict handling patterns (this file adds the tier hierarchy, conflict-specific protocol, and Chinese-language source mapping)
 - `references/counter-evidence.md` — for actively seeking contradicting evidence (this file adds structured handling once conflict is found)
 - `references/claim-matrix.md` — for tracking claim-level evidence and counter-evidence (this file adds conflict-specific resolution logic)
 - `references/source-traceability-and-claim-citation.md` — for source type classification and inline citation (this file adds conflict records)
@@ -161,6 +176,7 @@ Run the conflict-resolution check when:
 - finding contradictory analyst consensus or target prices
 - encountering headline-level claims that contradict filed data
 - comparing data across jurisdictions (SEC vs CSRC vs HKEX filings for the same company)
+- cross-verifying Chinese-language and English-language sources for the same claim (e.g., 中文年报 vs English Reuters summary; 东方财富 vs Yahoo Finance)
 
 Do not apply this protocol for:
 - expected noise in forward estimates (that is estimate uncertainty, not data conflict)
