@@ -171,6 +171,8 @@ Examples:
 
 Do not express these only as vague warnings. Tie them to the recommendation.
 
+When the chosen option involves major execution uncertainty with distinct success / partial-failure / total-failure paths, see `references/decision-tree-method.md` for structured post-decision branch planning.
+
 ---
 
 ## Step 8: Distinguish best overall, best fit, and best fallback
