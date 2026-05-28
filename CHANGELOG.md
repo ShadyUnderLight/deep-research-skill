@@ -33,6 +33,11 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `checklists/route-activation-audit.md`: added visible-execution checks for scope completeness and decision utility.
 - `checklists/final-audit.md`: added recall-discipline entries for scope completeness and decision utility.
 
+### Added — Decision tree / consequence mapping method (#124)
+- `references/decision-tree-method.md`: new reference for structured post-decision branch planning. Covers when to use, core 3-branch structure (success / blocked / all-blocked), output format, relationship to existing disciplines (change-the-conclusion, sensitivity analysis, market-outlook scenarios), and common failure modes.
+- `references/option-selection-and-shortlist-discipline.md`: added cross-reference to decision-tree-method.md in Step 7 (scenario logic).
+- `checklists/option-selection-final-audit.md`: added NON-BLOCKER check for post-decision branch with trigger condition and monitoring signal when execution uncertainty is major.
+
 ### Added — Sensitivity analysis enhancement (#119)
 - `references/quantitative-role-labeling.md`: enhanced assumption chain template with sensitivity classification (low / medium / high), test amplitude guidance (±20%, ±50%, extreme scenarios), and structured output format for sensitivity tables.
 - `checklists/quantitative-role-audit.md`: added sensitivity analysis checklist — BLOCKER checks for high-sensitivity assumption classification and visible sensitivity tables; NON-BLOCKER checks for tipping points and load-bearing variable identification.
@@ -84,6 +89,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - Per issue #100 and ROADMAP.md P2, the CJK spacing fixes in `markdown_to_html.py` needed validation on Chinese-heavy content. The validation uncovered two pipeline bugs: (1) CJK spacing regexes used `\s+` which merged headings with body paragraphs across `\n`, and (2) `NFKC` normalization degraded Chinese fullwidth punctuation to ASCII. Both were fixed, and a verification script (`test_cjk_pdf_pipeline.py`) was added to prevent regression.
 - Per issue #97 (P1), failure-taxonomy families lacked corresponding meta-evals and route-trigger coverage. Added meta-evals for scope completeness and decision utility, wired them into the execution chain (SKILL.md, ROUTING-MATRIX.md route Attach, checklists), and created a reusable reference-level rule for scope completeness that was previously missing.
 - Per issue #96 (P1), 11 comparative distillation cases existed but lacked a cross-case candidate rule registry. The registry confirms all PROMOTE_NOW candidates are already covered by existing checklists and references; no new promotion is needed. The main gap has shifted from missing rules to execution/activation discipline.
+- Per issue #124 (P2), selection tasks with major execution uncertainty lacked structured post-decision branch planning. The existing scenario logic (Step 7) and change-the-conclusion sections handle pre-decision ranking changes, but do not cover post-decision execution branching (success / blocked / all-blocked paths with trigger conditions and monitoring signals). Added a focused reference file and wired it into option-selection discipline and audit checklist.
 
 ## 0.4.0 - 2026-03-31
 

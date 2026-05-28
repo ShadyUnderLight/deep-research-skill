@@ -284,6 +284,7 @@ Supports tasks where the output must help choose among options rather than merel
 - `references/decision-report-template.md`
 - `references/market-outlook-and-scenario-discipline.md`
 - `references/ranking-and-current-claims-discipline.md`
+- `references/decision-tree-method.md`
 
 ### Primary checklists
 - `checklists/option-selection-final-audit.md`
@@ -303,6 +304,7 @@ Supports tasks where the output must help choose among options rather than merel
 - outlook memo becomes industry summary
 - ranking memo collapses multiple dimensions into prestige language
 - shortlist recommendation appears without shortlist-construction logic
+- selection recommendation without post-decision execution branching when uncertainty is high
 
 ### First place to change
 - `ROUTING-MATRIX.md` when a mature task family is misrouted or under-specified
