@@ -153,12 +153,13 @@ Protects fast-moving research from stale facts, frozen time layers, and blurred 
 ## Family D — Source traceability and evidence weighting
 
 ### Purpose
-Makes load-bearing claims auditable and separates primary evidence from inference-heavy judgment.
+Makes load-bearing claims auditable, separates primary evidence from inference-heavy judgment, and resolves cross-source data conflicts with explicit reasoning.
 
 ### Primary references
 - `references/source-traceability-and-claim-citation.md`
 - `references/source-quality.md`
 - `references/claim-matrix.md`
+- `references/data-conflict-resolution.md`
 - `references/report-template.md`
 
 ### Primary checklists
@@ -177,9 +178,11 @@ Makes load-bearing claims auditable and separates primary evidence from inferenc
 - numbers and dates appear without visible support
 - direct evidence and inference are blended
 - mixed-evidence positioning judgments hide which claims are load-bearing
+- conflicting data from different sources is silently resolved without explanation
 
 ### First place to change
 - references when evidence structure itself is weak
+- `references/data-conflict-resolution.md` when cross-source conflicts are not being handled systematically
 - checklists when traceability exists in theory but not in the report body
 - route contracts when certain task families should always attach traceability but do not
 
