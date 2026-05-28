@@ -429,6 +429,76 @@ Fail if the report:
 
 ---
 
+## Route: Technical Deep-dive / Architecture Analysis
+
+### Micro-audit focus
+For this route, be especially strict about:
+
+- whether the report makes a technical judgment, not just a technical survey
+- whether comparison dimensions are explicit when architectures are compared
+- whether technical state is current (versions, capabilities, benchmarks)
+- whether vendor claims are distinguished from independently verified technical facts
+- whether roadmap claims are separated into announced / rumored / speculative
+
+### Trigger
+Use when the task is mainly about:
+
+- understanding how a technology works (技术原理分析)
+- comparing technical architectures (架构对比)
+- evaluating patent portfolios or trends (专利趋势)
+- assessing technical feasibility (技术可行性)
+- evaluating technology roadmaps (技术路线评估)
+
+**Choose this route when:** the core question is technical judgment — understanding原理, evaluating feasibility, comparing architectures, or assessing technology maturity.
+
+**Do not use this route when:** the task is mainly about selecting a product or vendor (use provider selection or equipment selection), market evolution (use market outlook), or choosing among defined options (use constrained choice).
+
+**Often confused with:** equipment selection / procurement, constrained choice / shortlist, market outlook / industry evolution.
+
+**Route-conflict examples:**
+- "Kubernetes vs Docker Swarm architecture" — this is a technical deep-dive if the question is about architectural principles and trade-offs; it becomes constrained choice if the question is "which should I deploy?"
+- "Is Rust suitable for systems programming?" — this is a technical feasibility question
+- "What does this patent portfolio cover?" — this is a technical deep-dive, not market analysis
+- "Which GPU server should I buy?" — this is equipment selection, not technical deep-dive
+
+### Read
+- `references/technical-analysis-discipline.md`
+- `references/source-traceability-and-claim-citation.md`
+- `references/forward-looking-discipline.md` when roadmap evaluation is involved
+
+### Attach
+- current-state verification when versions, capabilities, benchmarks, or maturity levels materially affect the answer
+- source traceability for technical claims
+- forward-looking claims discipline when roadmap evaluation is involved
+- quantitative role labeling when benchmarks, performance metrics, or cost comparisons appear
+
+### Audit
+- `checklists/technical-analysis-audit.md`
+- `checklists/source-traceability.md`
+- `checklists/final-audit.md`
+
+### Visible artifact contract
+The final report should visibly show:
+
+- **For principle analysis:** core mechanism, key components, fundamental constraints, comparison with alternatives
+- **For architecture comparison:** candidate architectures, explicit comparison dimensions, dimension-by-dimension analysis, trade-off summary, conditional recommendation
+- **For feasibility assessment:** what is being attempted, available approaches, evidence of viability, critical unknowns, validation requirements, explicit conclusion (feasible / conditionally feasible / not feasible)
+- **For roadmap evaluation:** current state of the art, announced vs. rumored roadmaps, key milestones and dependencies, risk factors, realistic timeline assessment
+- **For patent analysis:** patent landscape, technical coverage areas, freedom-to-operate assessment, filing trends
+
+### Hard fail
+Fail if the report:
+
+- becomes a pure technical survey without judgment or recommendation
+- compares architectures without explicit comparison dimensions
+- uses stale technical state without verification
+- treats vendor claims as confirmed technical facts
+- assesses feasibility without evidence of viability
+- evaluates roadmaps without separating announced vs. shipped capabilities
+- analyzes patents without understanding technical coverage
+
+---
+
 ## Route: Listed Company / Investment-style Research
 
 ### Micro-audit focus
@@ -620,9 +690,10 @@ If multiple primary-looking routes apply, use this order:
 2. market entry / regional expansion
 3. provider / vendor selection
 4. first-tier / competitive positioning
-5. equipment selection / procurement / home-server planning
-6. market outlook / industry evolution
-7. constrained choice / shortlist
+5. technical deep-dive / architecture analysis
+6. equipment selection / procurement / home-server planning
+7. market outlook / industry evolution
+8. constrained choice / shortlist
 
 Choose the route that most strongly determines report structure and audit burden.
 

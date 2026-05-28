@@ -92,6 +92,7 @@ Makes mature task families explicit so the right discipline set and delivery con
 - market entry / regional expansion
 - market outlook / industry evolution
 - first-tier / competitive positioning
+- technical deep-dive / architecture analysis
 - equipment selection / procurement / home-server planning
 - constrained choice / shortlist
 - listed-company / investment-style research

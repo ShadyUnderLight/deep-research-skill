@@ -11,6 +11,21 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `references/technical-analysis-discipline.md`: new discipline file for technical analysis tasks — covers principle analysis, architecture comparison, patent analysis, feasibility assessment, and roadmap evaluation. Includes comparison dimensions, maturity assessment frameworks (TRL, adoption lifecycle), and common failure modes (#116).
+- `checklists/technical-analysis-audit.md`: new checklist for technical deep-dive route — verifies route activation, technical state verification, evidence quality, comparison structure, feasibility assessment, maturity assessment, and judgment quality (#116).
+- `evals/cases/technical-analysis-kubernetes-vs-docker-case.md`: new eval case for technical deep-dive routing — tests whether the skill correctly activates the technical deep-dive route for architecture comparison tasks and produces a report that satisfies the artifact contract (#116).
+- `ROUTING-MATRIX.md`: added Technical Deep-dive / Architecture Analysis as a first-class route with trigger, artifact contract, hard-fail conditions, and routing priority (#116).
+- `SYSTEM-MAP.md`: added technical deep-dive to Family B supported mature routes list (#116).
+- `ARCHITECTURE.md`: added technical deep-dive to first-class routes list (#116).
+- `ROADMAP.md`: added technical deep-dive route validation task to P1 remaining priorities (#116).
+
+### Changed
+- `ROUTING-MATRIX.md`: updated routing priority from 7 to 8 routes — technical deep-dive inserted at position 5 (after first-tier positioning, before equipment selection) (#116).
+
+### Why
+- Per issue #116, technical analysis tasks (principle analysis, architecture comparison, patent analysis, feasibility assessment, roadmap evaluation) lacked a dedicated route. These tasks were being routed to generic research or adjacent routes (equipment selection, constrained choice), producing reports with wrong structure. The new technical deep-dive route provides explicit trigger conditions, artifact contract, and hard-fail conditions for technical judgment tasks.
+
+### Added
 - `references/data-conflict-resolution.md`: added Chinese-language source mapping table (Tier 1–6) for common Chinese sources (东方财富, Wind, 财新, 36氪, 雪球, etc.) and cross-language conflict trigger in "When to apply" section (#125).
 - `references/source-quality.md`: added cross-language conflict rules section — 4 common patterns (filing vs filing, filing vs aggregator, media vs media, specificity priority) with language-neutral credibility guidance (#125).
 - `checklists/final-audit.md`: added NON-BLOCKER check item for cross-language source conflict handling when Chinese and English sources coexist (#125).
