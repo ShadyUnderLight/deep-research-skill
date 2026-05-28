@@ -67,6 +67,8 @@ When sources conflict:
 2. prefer the source closest to the underlying event or measurement
 3. if conflict remains unresolved, state the conflict instead of forcing certainty
 
+For structured conflict classification, resolution steps, and output templates, read `references/data-conflict-resolution.md`.
+
 ## Output expectation
 
 For important claims, be able to explain in one sentence why that source was chosen over others.

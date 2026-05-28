@@ -100,6 +100,7 @@ Use when the task is mainly about:
 - source traceability
 - decision utility
 - quantitative role labeling when pricing, benchmarks, or scoring matter
+- data conflict resolution when pricing, performance metrics, or benchmark data from different sources disagree
 
 ### Audit
 - `checklists/option-selection-final-audit.md`
@@ -468,6 +469,7 @@ Use when the task is mainly about:
 - current-state verification
 - forward-looking claims discipline when forecasts appear
 - source traceability
+- data conflict resolution when financial data from multiple platforms or sources disagree
 - scope completeness when the report makes global market-position or global competitive claims
 - decision utility
 
