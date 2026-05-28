@@ -204,12 +204,15 @@ Prevents proxies, assumptions, and model outputs from masquerading as observed f
 - model outputs written as facts
 - composite scoring with invisible epistemic roles
 - recommendation logic quietly resting on assumptions or proxies
+- high-sensitivity assumptions without visible sensitivity analysis
+- conclusions that flip when key assumptions deviate ±20%, but this is not documented
 
 ### First place to change
 - route attachment when numeric burden is not activating the discipline
 - shared discipline docs when role definitions are unclear
 - templates when reports do not surface number roles visibly
 - audit layer when the distinction exists in theory but not in delivery
+- sensitivity classification when high-sensitivity assumptions lack visible testing
 
 ---
 

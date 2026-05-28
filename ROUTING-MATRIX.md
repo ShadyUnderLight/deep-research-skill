@@ -162,6 +162,7 @@ Use when the task is mainly about:
 - source traceability
 - decision utility
 - quantitative role labeling when market size, payback, cost assumptions, sequencing thresholds, or scenario-style numbers materially affect the recommendation
+- sensitivity analysis when the recommendation depends on load-bearing numerical assumptions (growth rates, market size, payback periods)
 
 ### Audit
 - `checklists/option-selection-final-audit.md`
@@ -188,7 +189,7 @@ Fail if the report:
 - drifts into a generic market overview
 - gives country notes without a unified comparison unit
 - recommends expansion without hard gates or sequencing logic
-- collapses hub / beachhead / later expansion market into one vague “best market”
+- collapses hub / beachhead / later expansion market into one vague "best market"
 
 ---
 
@@ -221,6 +222,7 @@ Use when the task is mainly about:
 - source traceability
 - scope completeness when the report claims global or broad market scope
 - quantitative role labeling when forecasts or scenario math appear
+- sensitivity analysis when forecasts, market size estimates, or adoption projections materially affect the conclusion
 
 ### Audit
 - `checklists/forward-looking-claims.md`
@@ -472,6 +474,7 @@ Use when the task is mainly about:
 - data conflict resolution when financial data from multiple platforms or sources disagree
 - scope completeness when the report makes global market-position or global competitive claims
 - decision utility
+- sensitivity analysis when valuation, growth assumptions, or financial projections materially affect the investment thesis
 
 For this route, current-state verification must explicitly lock:
 

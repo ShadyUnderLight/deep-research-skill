@@ -33,6 +33,12 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `checklists/route-activation-audit.md`: added visible-execution checks for scope completeness and decision utility.
 - `checklists/final-audit.md`: added recall-discipline entries for scope completeness and decision utility.
 
+### Added — Sensitivity analysis enhancement (#119)
+- `references/quantitative-role-labeling.md`: enhanced assumption chain template with sensitivity classification (low / medium / high), test amplitude guidance (±20%, ±50%, extreme scenarios), and structured output format for sensitivity tables.
+- `checklists/quantitative-role-audit.md`: added sensitivity analysis checklist — BLOCKER checks for high-sensitivity assumption classification and visible sensitivity tables; NON-BLOCKER checks for tipping points and load-bearing variable identification.
+- `ROUTING-MATRIX.md`: wired sensitivity analysis into market entry, market outlook, and listed-company routes as an attached discipline when numerical assumptions materially affect the conclusion.
+- `SYSTEM-MAP.md`: updated Family D2 (Quantitative role clarity) to include sensitivity analysis failure signs and intervention guidance.
+
 ### Changed
 - `scripts/markdown_to_html.py`: fixed two CJK normalization bugs found during validation:
   - CJK spacing regexes used `\s+` which matched across newlines, merging headings with body paragraphs. Changed to `[ \t]+` (horizontal whitespace only).

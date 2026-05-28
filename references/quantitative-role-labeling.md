@@ -110,6 +110,42 @@ For each key assumption, document the following fields. Not every field must be 
 - 置信度: [高/中/低]
 ```
 
+### Sensitivity classification
+
+Classify each key assumption by its impact on the conclusion. This determines the required depth of sensitivity testing.
+
+| Classification | Definition | Test amplitudes | Required treatment |
+|----------------|------------|-----------------|-------------------|
+| **Low sensitivity** | Conclusion unchanged within ±20% deviation | ±20% | Conclusion is robust; label the sensitive variable |
+| **Medium sensitivity** | Conclusion direction unchanged but strength changes within ±20% | ±20%, ±50% | Conclusion holds conditionally; label the tipping point |
+| **High sensitivity** | Conclusion reverses within ±20% deviation | ±20%, ±50%, extreme scenario | Conclusion is assumption-dependent; reduce confidence or provide scenario analysis |
+
+**Test amplitude selection**:
+
+- **Routine assumptions** (e.g., market growth rate, cost assumptions): test ±20% and ±50%
+- **Load-bearing assumptions** (e.g., valuation multiples, core revenue growth): test ±20%, ±50%, and at least one extreme scenario
+- **Structural assumptions** (e.g., technology roadmap, regulatory environment): test reversal scenarios (what happens if the assumption fails entirely)
+
+**Output format**:
+
+```
+### 敏感性分析: [假设名称]
+
+| 变量 | 基准值 | -50% | -20% | +20% | +50% | 对结论影响 |
+|------|--------|------|------|------|------|-----------|
+| 市场增速 | 15% YoY | 7.5% | 12% | 18% | 22.5% | ±X% to 核心结论 |
+
+- 敏感度等级: [低/中/高]
+- 临界点: [结论翻转的阈值]
+- 建议: [降低 confidence / 提供情景分析 / 维持现有结论]
+```
+
+**When to apply this classification**:
+
+- **Required** — assumptions classified as high sensitivity. Full sensitivity table and scenario analysis are mandatory.
+- **Recommended** — assumptions classified as medium sensitivity. At minimum, document the tipping point.
+- **Optional** — assumptions classified as low sensitivity. A brief note is sufficient.
+
 ### Template example
 
 ```
