@@ -52,6 +52,8 @@ Quantitative role labeling should be visible when a number materially affects:
 
 If removing the number would materially weaken the argument, its role is probably load-bearing and should be visible.
 
+When a number is classified as a medium- or high-sensitivity assumption, sensitivity analysis should also be visible. See "Sensitivity classification" below.
+
 ## Common failure modes
 
 Common failures include:
@@ -72,8 +74,8 @@ An assumption chain makes the reasoning behind a load-bearing assumption visible
 
 Not every assumption needs a full chain. Apply this scope rule:
 
-- **Required** — assumptions whose deviation would materially affect the conclusion (high sensitivity). If a ±10% change in the assumption would alter the recommendation, shift the ranking, or change valuation by more than ±15%, the assumption chain is mandatory.
-- **Optional** — assumptions whose impact on the conclusion is estimated at under ±10% (or under ±15% for valuation only). A lightweight note is sufficient. If the impact falls in the 10–15% range for valuation, analyst judgment applies; err on the side of documenting.
+- **Required** — assumptions whose deviation would materially affect the conclusion (high sensitivity). If a ±20% change in the assumption would alter the recommendation, shift the ranking, or change valuation by more than ±15%, the assumption chain is mandatory. See also "Sensitivity classification" below for the full classification framework.
+- **Optional** — assumptions whose impact on the conclusion is estimated at under ±20% (or under ±15% for valuation only). A lightweight note is sufficient. If the impact falls in the 15–20% range for non-valuation conclusions, analyst judgment applies; err on the side of documenting.
 - **Not needed** — directly observed or officially reported facts (observed metrics). Facts do not become assumptions by being inconvenient.
 
 ### Remediation when a chain cannot be completed
