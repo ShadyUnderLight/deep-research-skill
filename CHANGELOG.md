@@ -11,6 +11,8 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `evals/cases/cjk-pdf-validation-input-company-case.md`, `evals/cases/cjk-pdf-validation-input-market-case.md`: Chinese-heavy test markdown files (5,000+ CJK chars each) for PDF rendering validation (#100).
+- `evals/cases/cjk-pdf-validation-findings-case.md`: validation findings for Chinese-heavy PDF rendering (#100). Uncovered and fixed two pipeline bugs (see Changed).
 - `evals/comparative-distillation/candidate-rule-registry.md`: comprehensive cross-case candidate tracking for all 11 comparative distillation files. Extracts all 60 candidate rules, maps each to existing checklist/reference coverage, and identifies recurring patterns. Finding: zero uncovered PROMOTE_NOW candidates — the existing skill system has already absorbed lessons from all 11 cases. See issue #96 for context.
 - `checklists/final-audit.md`: added delivery-time gate for market-outlook forward-looking claims — source role + time basis for all claims; assumption chain + failure condition for derived/modeled/load-bearing forecasts (validated against 3 real cases, see `report/validation-analysis.md`).
 - `checklists/workflow-spine-audit.md`: Family A checklist — audits whether the SKILL.md shared workflow spine was actually executed rather than assumed.
@@ -32,6 +34,13 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `checklists/final-audit.md`: added recall-discipline entries for scope completeness and decision utility.
 
 ### Changed
+- `scripts/markdown_to_html.py`: fixed two CJK normalization bugs found during validation:
+  - CJK spacing regexes used `\s+` which matched across newlines, merging headings with body paragraphs. Changed to `[ \t]+` (horizontal whitespace only).
+  - `unicodedata.normalize('NFKC', ...)` degraded Chinese fullwidth punctuation (（）→(), ，→,) to ASCII. Changed to `NFC` to preserve CJK punctuation.
+- `scripts/test_cjk_pdf_pipeline.py`: added dedicated verification script covering block structure integrity, Chinese punctuation fidelity, and same-line CJK spacing (6 tests).
+- `.gitignore`: narrowed PDF/HTML exclusion to `evals/cases/*.pdf` and `evals/cases/*.html` to avoid hiding future non-generated files.
+- `ROADMAP.md`: updated P2 CJK validation item — found and fixed two pipeline bugs; not yet marked complete (remaining: more report types, CI gate).
+- `evals/cases/cjk-pdf-validation-findings-case.md`: updated to document bugs discovered, fixes applied, and remaining limitations.
 - `references/failure-taxonomy.md`:
   - Family E: added decision-utility rubric and meta-eval to existing evals; updated priority direction from "add evaluation" to "checklist-level gate / route activation hardening".
   - Family F: added `references/scope-completeness-discipline.md` and updated coverage status; updated priority direction from "dedicated eval" to "route-trigger consistency / final-audit recall".
@@ -66,6 +75,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cases/reporting-period-and-ttm-confusion-case.md`: fixed TTM example to use only available quarters; converted to fixed-scenario prompt.
 
 ### Why
+- Per issue #100 and ROADMAP.md P2, the CJK spacing fixes in `markdown_to_html.py` needed validation on Chinese-heavy content. The validation uncovered two pipeline bugs: (1) CJK spacing regexes used `\s+` which merged headings with body paragraphs across `\n`, and (2) `NFKC` normalization degraded Chinese fullwidth punctuation to ASCII. Both were fixed, and a verification script (`test_cjk_pdf_pipeline.py`) was added to prevent regression.
 - Per issue #97 (P1), failure-taxonomy families lacked corresponding meta-evals and route-trigger coverage. Added meta-evals for scope completeness and decision utility, wired them into the execution chain (SKILL.md, ROUTING-MATRIX.md route Attach, checklists), and created a reusable reference-level rule for scope completeness that was previously missing.
 - Per issue #96 (P1), 11 comparative distillation cases existed but lacked a cross-case candidate rule registry. The registry confirms all PROMOTE_NOW candidates are already covered by existing checklists and references; no new promotion is needed. The main gap has shifted from missing rules to execution/activation discipline.
 
