@@ -24,7 +24,13 @@ Classify each conflict by severity:
 - **Level 2**: Compare source quality (see `references/source-quality.md`). Prefer the source with better directness, authority, and recency. If both remain credible, present both with explicit tension.
 - **Level 3**: Treat as a research blocker until resolved. Escalate to primary sources (filings, regulatory disclosures). If resolution is not possible, downgrade confidence on all claims that depend on this number.
 
+### Multi-level conflicts
+
+When a conflict spans multiple levels, classify at the highest severity level that applies. For example, a scope difference (Level 1) that also produces directional inconsistency (Level 2) should be treated as Level 2.
+
 ## Source credibility hierarchy for conflict resolution
+
+This tier hierarchy is a specialized refinement for financial and market data conflicts. For general source quality dimensions (directness, authority, recency, independence, specificity), see `references/source-quality.md`.
 
 When sources conflict, use this hierarchy to determine which source takes precedence:
 
@@ -39,7 +45,7 @@ When sources conflict, use this hierarchy to determine which source takes preced
 
 ### Tie-break rules
 
-When two sources are at the same tier:
+When two sources are at the same tier, apply these rules in order. These rules are consistent with `references/source-quality.md`; this file adds the independence check as a formal tie-break step:
 
 1. **Prefer the more direct source** — a filing summary beats a media paraphrase of the same filing
 2. **Prefer the more current source** — for fast-moving data, newer is better unless the older source is audited and the newer is preliminary
@@ -119,7 +125,7 @@ FY2025 revenue was $25.6M (per annual report [S01]); an earlier media report cit
 - **Impact on conclusion**: [None — revenue figure is not load-bearing for the current thesis] / [Moderate — revenue figure affects valuation range; confidence downgraded]
 ```
 
-### Uncannotated conflict (when resolution is not possible)
+### Unresolved conflict (when resolution is not possible)
 
 ```
 ### ⚠️ Unresolved Data Conflict
@@ -160,6 +166,15 @@ Do not apply this protocol for:
 - expected noise in forward estimates (that is estimate uncertainty, not data conflict)
 - normal variance in analyst opinions (that is opinion dispersion, not factual conflict)
 - historical vs forward-looking data (that is time-layer separation, handled by `references/finance-date-discipline.md`)
+
+### Distinguishing opinion dispersion from factual conflict
+
+When analyst estimates for the same metric and period diverge, determine whether this is normal dispersion or a factual conflict:
+
+- **Opinion dispersion**: Estimates differ by a typical margin for the metric's volatility, agree on direction, and use similar methodologies. Treat as normal variance.
+- **Factual conflict**: Estimates contradict directionally, differ by an unusual margin, or use incompatible data sources. Treat as a data conflict and apply this protocol.
+
+The threshold depends on the metric's typical volatility. For example, a 10% gap in revenue estimates for a stable utility is significant; the same gap for a high-growth startup may be normal.
 
 ## Common failure patterns
 
