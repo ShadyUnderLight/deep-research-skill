@@ -27,7 +27,13 @@ This file tracks likely next improvements and helps keep repo evolution intentio
 - Add more examples of good and bad outputs.
 - Improve task-type guidance for company, vendor-selection, technical-feasibility, and market-outlook research.
 - Continue separating rendering-layer PDF fixes from research-discipline commits so layout failures can be traced independently.
-- Validate whether recent CJK text-rhythm tweaks actually reduce the "broken export / OCR-like spacing" feel in Chinese-heavy PDFs before making larger visual changes.
+- **Validate whether recent CJK text-rhythm tweaks actually reduce the "broken export / OCR-like spacing" feel in Chinese-heavy PDFs before making larger visual changes.**
+  - Validation uncovered two pipeline bugs that were fixed:
+    - `normalize_text_for_pdf()` used `\s+` in CJK spacing regexes, which matched across newlines and merged headings with body paragraphs
+    - `unicodedata.normalize('NFKC', ...)` degraded Chinese fullwidth punctuation (（）→(), ，→,) to ASCII equivalents
+  - Both bugs fixed (`\s+` → `[ \t]+`; `NFKC` → `NFC`). Re-validated against 2 reports (5,000+ CJK chars each) — block structure preserved, CJK punctuation intact, no cross-paragraph merging.
+  - See `evals/cases/cjk-pdf-validation-findings-case.md` for full results.
+  - Remaining: testing against more report types (code-heavy, academic), adding CI gate for rendering regression.
 - Add one more real-case pass on market-entry memo information design so recommendation, hard gates, shortlist, and phased-entry blocks become easier to scan in PDF output.
 
 ### P3

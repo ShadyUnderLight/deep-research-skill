@@ -1,2 +1,5 @@
 __pycache__/
 *.pyc
+# Generated pipeline artifacts (PDF, HTML intermediates) — eval output only
+evals/cases/*.pdf
+evals/cases/*.html

@@ -666,7 +666,7 @@ def normalize_text_for_pdf(text):
     if not text:
         return text
 
-    text = unicodedata.normalize('NFKC', text)
+    text = unicodedata.normalize('NFC', text)
     text = ''.join(
         ch for ch in text
         if ch in ('\n', '\r', '\t') or ord(ch) >= 32
@@ -677,13 +677,13 @@ def normalize_text_for_pdf(text):
 
     cjk = r'\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff'
 
-    # Stronger CJK spacing repair, especially for broken headings/metadata lines.
-    text = re.sub(rf'([{cjk}])\s+([{cjk}])', r'\1\2', text)
-    text = re.sub(rf'([{cjk}])\s+([，。！？；：、）】》％%])', r'\1\2', text)
-    text = re.sub(rf'([（【《])\s+([{cjk}])', r'\1\2', text)
-    text = re.sub(rf'([{cjk}])\s+([·—…])\s*([{cjk}])', r'\1\2\3', text)
-    text = re.sub(rf'([{cjk}])\s+([A-Za-z0-9])', r'\1 \2', text)
-    text = re.sub(rf'([A-Za-z0-9])\s+([{cjk}])', r'\1 \2', text)
+    # CJK spacing repair (line-local only: [ \t] avoids merging paragraphs).
+    text = re.sub(rf'([{cjk}])[ \t]+([{cjk}])', r'\1\2', text)
+    text = re.sub(rf'([{cjk}])[ \t]+([，。！？；：、）】》％%])', r'\1\2', text)
+    text = re.sub(rf'([（【《])[ \t]+([{cjk}])', r'\1\2', text)
+    text = re.sub(rf'([{cjk}])[ \t]+([·—…])[ \t]*([{cjk}])', r'\1\2\3', text)
+    text = re.sub(rf'([{cjk}])[ \t]+([A-Za-z0-9])', r'\1 \2', text)
+    text = re.sub(rf'([A-Za-z0-9])[ \t]+([{cjk}])', r'\1 \2', text)
     text = re.sub(r'(?m)^((?:[A-Z][A-Za-z\-]+\s*[:：]\s*)+)(.+)$', lambda m: re.sub(r'\s{2,}', ' ', m.group(1)).strip() + ' ' + m.group(2).strip(), text)
 
     # Normalize bullets/odd line starts that often confuse markdown parsers.
