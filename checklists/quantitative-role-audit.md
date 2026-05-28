@@ -14,6 +14,12 @@ If load-bearing numbers materially affect the conclusion, their roles should be 
 - Does uncertainty treatment match the role of the number?
 - If assumptions changed, would the conclusion visibly change? If yes, are those assumptions labeled clearly enough?
 
+## Assumption chain checks
+
+- Each high-sensitivity assumption has a complete assumption chain (supporting evidence, dependency conditions, sensitivity, failure signals, confidence). If the chain cannot be fully populated, one of the following must apply: (a) fill the chain from available evidence, (b) downgrade the assumption's sensitivity classification, or (c) restructure the analysis to reduce dependence on that assumption. Do not leave the chain incomplete without an explicit remediation decision.
+- The dependency conditions in each assumption chain are reasonable for the context.
+- The failure signals in each assumption chain are observable and actionable (not generic disclaimers).
+
 ## Hard fail signs
 
 - Numerical precision exceeds source certainty.
