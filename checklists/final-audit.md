@@ -23,6 +23,9 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] the strongest argument against the main conclusion is present
 - [ ] competing explanations are noted where relevant
 - [ ] limitations and risks are explicit, not buried
+- [ ] each high-confidence conclusion has a corresponding structured counter-argument (see `references/counter-evidence.md` template)
+- [ ] counter-arguments are based on real evidence or reasonable logic, not strawman
+- [ ] if a counter-argument is rated "strong", the conclusion has been visibly adjusted (confidence downgrade, constraints, or reversal condition)
 
 ## Uncertainty
 
