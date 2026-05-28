@@ -628,9 +628,13 @@ Choose the route that most strongly determines report structure and audit burden
 Before delivery:
 
 - run `checklists/route-activation-audit.md` when a specialized route was selected
-- run `checklists/workflow-spine-audit.md` when no mature specialized route applies, or when output shows generic drift despite route selection
+- run `checklists/workflow-spine-audit.md`
+- run `checklists/final-audit.md`
+- verify that the required audits for the task were executed:
+  - if a specialized route was selected: confirm all audits listed in that route's `### Audit` section were run
+  - if no specialized route applies (shared-workflow path): confirm at least `workflow-spine-audit.md` and `final-audit.md` were run
 
-Then ask:
+Then ask (route-selected only — skip these if no specialized route applies):
 
 1. did the correct route fire?
 2. did the required secondary disciplines attach?

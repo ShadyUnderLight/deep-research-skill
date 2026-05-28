@@ -48,7 +48,7 @@ Read `ROUTING-MATRIX.md` to select:
 - required audits
 - visible output structure
 
-Before deep collection, explicitly select one primary route. If no mature specialized route applies, treat the task as a shared-workflow task and use `checklists/workflow-spine-audit.md` for the final gate.
+Before deep collection, explicitly select one primary route. If no mature specialized route applies, treat the task as a shared-workflow task (the delivery-time final discipline handles audit selection: see step 3 and 6 below).
 
 Use one primary route plus only the smallest necessary supporting set.
 
@@ -368,11 +368,17 @@ Before delivery:
 
 1. run the route-specific audits required by `ROUTING-MATRIX.md`
 2. run `checklists/route-activation-audit.md` when a specialized route was selected
-3. run `checklists/workflow-spine-audit.md` when no mature specialized route applies, or when output shows generic drift despite route selection
+3. run `checklists/workflow-spine-audit.md`
 4. run `checklists/final-audit.md`
-5. confirm that the selected route is visibly executed in the final artifact
+5. confirm that the required artifact contract is visibly satisfied:
+   - if a specialized route was selected, confirm the route's artifact contract is visibly executed in the final artifact
+   - if no specialized route applies (shared-workflow path), confirm the shared workflow spine is visibly executed instead
+6. verify that all required audits for the task have been executed:
+   - if a specialized route was selected, confirm all audits listed in its `### Audit` section in `ROUTING-MATRIX.md` were run
+   - if no specialized route applies (shared-workflow path), confirm at least `workflow-spine-audit.md` and `final-audit.md` were run
+   - if a required audit is missing, run it before proceeding
 
-A report that sounds informed but does not visibly satisfy the selected route's artifact contract is not ready.
+A report that sounds informed but does not visibly satisfy its required artifact contract (route-specific or shared-workflow) is not ready.
 
 If the failure seems to be:
 - missing rule
@@ -381,7 +387,7 @@ If the failure seems to be:
 
 use `evals/meta/rule-activation-and-execution-discipline.md`.
 
-If no mature specialized route applies, treat the task as a shared-workflow task and run the workflow-spine audit instead.
+If no mature specialized route applies, treat the task as a shared-workflow task — the workflow-spine audit (already run in step 3) replaces route-specific checks; skip the route-dependent parts of steps 5 and 6.
 
 ## Output quality bar
 

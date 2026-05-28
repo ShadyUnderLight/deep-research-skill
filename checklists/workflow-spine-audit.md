@@ -4,7 +4,7 @@ Use this checklist when the research output feels generic, directionless, or lac
 
 It audits whether the shared workflow spine defined in `SKILL.md` was actually executed rather than assumed.
 
-Run this checklist before delivery when no mature specialized route applies, or when a route-specialized report still reads like unplanned prose.
+Run this checklist before every delivery. It is a Tier-1 gate that audits whether the shared workflow spine was executed, regardless of whether a specialized route was selected.
 
 ## Objective clarity
 
@@ -52,9 +52,9 @@ Run this checklist before delivery when no mature specialized route applies, or 
 
 ## Final discipline
 
-- [ ] the required audits for the selected route were run and pass
-- [ ] the report satisfies the visible artifact contract of its primary route
-- [ ] if no mature specialized route was triggered, the report still follows the shared workflow spine and does not drift into generic overview mode
+- [ ] if a specialized route was selected: the required audits for that route were run and pass
+- [ ] if a specialized route was selected: the report satisfies the visible artifact contract of its primary route
+- [ ] if no mature specialized route was triggered: the report follows the shared workflow spine and does not drift into generic overview mode
 
 ## Quality bar
 
