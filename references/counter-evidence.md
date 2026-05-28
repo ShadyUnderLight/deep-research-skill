@@ -108,9 +108,13 @@ Include some version of:
 
 ## Structured counter-evidence template
 
-For each load-bearing conclusion labeled "confirmed" or "high confidence", construct at least one counter-evidence block using this template.
+For each load-bearing conclusion (see "Load-bearing conclusions" above), construct at least one counter-evidence block using this template.
+
+Use the search patterns and common angles defined earlier in this file to generate counter-evidence. Do not invent strawman arguments.
 
 This template exists to prevent counter-evidence from becoming ceremonial. Do not skip it for high-stakes conclusions.
+
+If a template field does not apply, write "N/A — [brief reason]" rather than leaving it blank.
 
 ### Conclusion: [one sentence restating the claim]
 
@@ -122,7 +126,7 @@ This template exists to prevent counter-evidence from becoming ceremonial. Do no
   - medium: reasonable inference but lacks direct evidence
   - weak: pure logical speculation or thin analogy
 
-### Our response
+### Response
 
 - Why it does not fully hold: [specific rebuttal with data or reasoning]
 - Valid component: [where the counter-argument has a point — do not dismiss entirely]
