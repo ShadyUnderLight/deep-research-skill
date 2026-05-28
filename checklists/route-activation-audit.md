@@ -9,7 +9,7 @@ It audits whether route activation was explicit and whether the route actually s
 - [ ] the primary route was consciously chosen before deep collection began, not retrofitted during writing
 - [ ] the closest alternative route was identified and a reason exists for why the chosen route wins
 - [ ] a compact execution contract exists before synthesis: opening mandate, mandatory sections, hard-fail conditions
-- [ ] all required audits for this route (from `ROUTING-MATRIX.md`) are identified and confirmed executed before delivery; if any required audit is missing, it is run before the report is considered ready
+- [ ] all required audits for this route (from `ROUTING-MATRIX.md` `### Audit` section) are identified and confirmed executed before delivery (results visible in the artifact or process log); if any required audit is missing, it is run before the report is considered ready; if any required audit was intentionally skipped, the reason is documented
 
 ## Route selection visibility
 
@@ -46,6 +46,22 @@ It audits whether route activation was explicit and whether the route actually s
 
 - [ ] route-specific hard-fail conditions from the routing matrix were checked before delivery
 - [ ] the report does not exhibit any of the named hard-fail patterns for its primary route
+
+## Contract item-by-item verification
+
+The route execution contract (from `ROUTING-MATRIX.md`) defines what the final artifact must visibly deliver. Run this block to verify that each contract dimension is satisfied in the delivered output, not only in the research plan.
+
+This block complements the sections above — it checks contract‑specific tests that operate at item level rather than structural level. If a contract dimension does not exist for the chosen route (e.g. the route defines no mandatory sections, or has no explicit labels), mark that item as N/A.
+
+### Opening drift check
+- [ ] the opening could NOT be swapped into a different route type without sounding unnatural (pass: opening is route-specific; fail: opening is generic enough to carry across routes — swap test from `ROUTING-MATRIX.md` line 649)
+- [ ] removing background paragraphs from the opening would sharpen rather than weaken the report (fail: background-first drift — the opening is route-agnostic background, not route-executing judgment)
+
+### Mandatory section quality
+- [ ] each mandatory section from the contract is decision‑useful (it changes the reader's view) rather than descriptive filler (it adds completeness without changing the view)
+
+### Visible label check
+- [ ] route‑specific labels or structural markers from the contract appear explicitly in the final artifact (e.g. "go / not now / pilot only", "ranked shortlist", "base case vs scenarios", "hub / beachhead / expansion"; for structure-prescribed routes like first-tier positioning: dimension-level conclusions, evidence-strength separation)
 
 ## Quality bar
 
