@@ -111,6 +111,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] option-selection final audit was run for shortlist, ranking, or constrained-choice outputs
 - [ ] for model/API/provider selection tasks, a current provider snapshot was verified before ranking or recommendation
 - [ ] for China-mainland deployment decisions, accessibility, compliance, data residency, and SLA were treated as part of ranking logic when relevant
+- [ ] when the report uses Chinese-language sources alongside English-language sources, cross-language conflicts were handled explicitly (see `references/source-quality.md` and `references/data-conflict-resolution.md`)
 - [ ] for equipment-selection / procurement / home-server-planning tasks, the report is visibly a procurement memo rather than a broad route overview
 - [ ] for equipment-selection / procurement / home-server-planning tasks, top recommendation, credible runner-up, and rejected routes are explicit rather than implied
 - [ ] for equipment-selection / procurement / home-server-planning tasks, budget assumptions are explicit, especially drives, UPS, networking upgrades, accessories, and what is excluded

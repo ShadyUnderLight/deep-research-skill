@@ -179,6 +179,7 @@ Makes load-bearing claims auditable, separates primary evidence from inference-h
 - direct evidence and inference are blended
 - mixed-evidence positioning judgments hide which claims are load-bearing
 - conflicting data from different sources is silently resolved without explanation
+- Chinese-language and English-language sources coexist but cross-language conflicts are not handled
 
 ### First place to change
 - references when evidence structure itself is weak
