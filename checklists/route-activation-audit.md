@@ -9,6 +9,7 @@ It audits whether route activation was explicit and whether the route actually s
 - [ ] the primary route was consciously chosen before deep collection began, not retrofitted during writing
 - [ ] the closest alternative route was identified and a reason exists for why the chosen route wins
 - [ ] a compact execution contract exists before synthesis: opening mandate, mandatory sections, hard-fail conditions
+- [ ] all required audits for this route (from `ROUTING-MATRIX.md`) are identified and confirmed executed before delivery; if any required audit is missing, it is run before the report is considered ready
 
 ## Route selection visibility
 
