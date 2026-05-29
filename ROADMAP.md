@@ -12,6 +12,7 @@ This file tracks likely next improvements and helps keep repo evolution intentio
   - Wired into execution chain: SKILL.md, ROUTING-MATRIX.md route Attach, route-activation-audit.md, final-audit.md
 
 ### P1 — Remaining
+- **Run first rule-trigger-rate audit** against existing 32+ eval cases to validate the audit framework and establish baseline trigger rates for the 8 core disciplines. (toward #123)
 - Use `SYSTEM-MAP.md` to tighten family-level coverage and identify where a dedicated family map, route-supporting reference, checklist hardening, or delivery note is still missing.
 - Add more evals for freshness, counter-evidence, and decision-quality regressions.
 - Test the skill against more real fast-moving company/product cases.

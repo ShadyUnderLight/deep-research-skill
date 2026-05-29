@@ -11,8 +11,6 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
-- `evals/meta/rule-trigger-audit.md`: new meta-eval for periodic rule trigger rate auditing — tracks activation rates for 8 core disciplines across eval cases, defines threshold-based action triggers (#123).
-- `evals/README.md`: added periodic audit guidance — note discipline applicability when adding case evals (#123).
 - `ROUTING-MATRIX.md`: added Academic / Literature Review as an experimental first-class route with trigger, artifact contract, hard-fail conditions, and routing priority (#128).
 - `references/academic-evidence-hierarchy.md`: new discipline file for academic research tasks — covers evidence hierarchy (meta-analysis → RCT → peer-reviewed → preprint → conference → weak evidence), source labeling requirements, statistical assessment, literature search methodology, and hard-fail conditions (#128).
 - `SYSTEM-MAP.md`: added academic / literature review to Family B supported mature routes list with academic-specific failure signs (#128).
@@ -23,6 +21,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cases/academic-route-activation-llm-hallucination-comparison-case.md`: new eval case for academic routing — tests paper comparison and methodological evaluation (#128).
 - `checklists/academic-analysis-audit.md`: new checklist for academic / literature review route — covers route activation, evidence hierarchy compliance, search strategy documentation, statistical assessment, cherry-picking detection, source labeling, and hard-fail gates (#128).
 - `checklists/final-audit.md`: added recall discipline entries for academic / literature review tasks (#128).
+- `evals/meta/rule-trigger-audit.md`: new meta-eval for periodic rule trigger rate auditing — tracks activation rates for 8 core disciplines across eval cases, defines threshold-based action triggers (#123).
+- `evals/README.md`: added periodic audit guidance — note discipline applicability when adding case evals (#123).
+- `SYSTEM-MAP.md`: added rule-trigger-audit.md to Family G meta-evals (#123).
+- `ROADMAP.md`: added first rule-trigger-rate audit run to P1 remaining (#123).
 
 ### Changed
 - `ROUTING-MATRIX.md`: updated routing priority from 10 to 11 routes — academic / literature review added as experimental route at position 11 (after constrained choice) (#128).

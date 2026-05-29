@@ -54,16 +54,24 @@ Track activation rates for the 8 core shared disciplines defined in `SKILL.md`. 
 
 ### Applicable cases
 
-Count only cases where the discipline **should** have been triggered based on the task type:
+Count only cases where the discipline **should** have been triggered based on the task type.
 
-- Current-state verification → listed-company, current-position, ranking, fast-moving product tasks
+**Always applicable** (count for all cases):
 - Source traceability → all cases
+- Delivery cleanliness → all cases
+- Target-language coherence → all user-facing cases
+
+**Task-type specific** (count only when task matches):
+- Current-state verification → listed-company, current-position, ranking, fast-moving product tasks
 - Forward-looking claims → cases with forecasts, estimates, roadmaps, target prices
 - Quantitative role labeling → cases with load-bearing numeric claims
 - Scope completeness → global, comprehensive, industry-wide scope claims
 - Decision utility → cases with recommendation, selection, or judgment burden
-- Delivery cleanliness → all cases
-- Target-language coherence → all user-facing cases
+
+**Note on #7 (Delivery cleanliness) vs #8 (Target-language coherence)**:
+- Delivery cleanliness checks formatting, structure, and rendering quality
+- Target-language coherence checks that the report language is consistent and natural (e.g., no mixed-language labels in user-facing output)
+- A report can pass delivery cleanliness but fail target-language coherence (e.g., clean formatting but mixed English/Chinese headers in a Chinese report)
 
 ### Triggered
 
@@ -109,3 +117,11 @@ The repo has accumulated 60+ candidate rules across 11 distillation cases and 32
 The remaining gap is **execution/activation discipline** — rules exist but are not consistently triggered. This audit provides a lightweight, periodic check on whether that gap is widening or narrowing.
 
 Without this audit, under-triggered disciplines can silently degrade report quality without anyone noticing until a major failure surfaces.
+
+## How this differs from rule-activation-and-execution-discipline.md
+
+`evals/meta/rule-activation-and-execution-discipline.md` is a **single-case diagnostic tool** — it diagnoses whether a specific report's failure was caused by a missing rule, a missing trigger, or an execution failure.
+
+This file (`rule-trigger-audit.md`) is a **cross-case aggregate statistics tool** — it periodically measures trigger rates across many eval cases to detect systemic under-triggering patterns before they cause visible failures.
+
+Use `rule-activation-and-execution-discipline.md` when diagnosing a specific report failure. Use this audit when checking whether the overall system is consistently activating the right disciplines.
