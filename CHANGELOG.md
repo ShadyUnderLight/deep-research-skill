@@ -19,6 +19,8 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cases/academic-route-activation-transformer-origin-case.md`: new eval case for academic routing — tests technology origin tracing through academic literature (#128).
 - `evals/cases/academic-route-activation-crispr-progress-case.md`: new eval case for academic routing — tests field progress analysis through academic literature (#128).
 - `evals/cases/academic-route-activation-llm-hallucination-comparison-case.md`: new eval case for academic routing — tests paper comparison and methodological evaluation (#128).
+- `checklists/academic-analysis-audit.md`: new checklist for academic / literature review route — covers route activation, evidence hierarchy compliance, search strategy documentation, statistical assessment, cherry-picking detection, source labeling, and hard-fail gates (#128).
+- `checklists/final-audit.md`: added recall discipline entries for academic / literature review tasks (#128).
 
 ### Changed
 - `ROUTING-MATRIX.md`: updated routing priority from 10 to 11 routes — academic / literature review added as experimental route at position 11 (after constrained choice) (#128).

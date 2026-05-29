@@ -59,6 +59,53 @@
 - Ignoring negative or conflicting findings
 - Missing venue information
 
+## Pass criteria
+
+A good answer should:
+
+### 1. Activate the correct route
+- explicitly classify this as an academic field progress analysis
+- not default to market outlook or generic research
+
+### 2. Satisfy the artifact contract
+- define search strategy and scope
+- identify key breakthroughs with full citations
+- describe current state of the art
+- document open questions and future directions
+- assess evidence quality with tier labels
+
+### 3. Apply evidence hierarchy correctly
+- label publication type and peer-review status for each paper
+- distinguish study design quality from publication venue prestige
+- respect discipline-specific venue prestige
+
+### 4. Avoid hard-fail conditions
+- no preprints treated as peer-reviewed
+- no cherry-picking (include negative findings)
+- no missing venue information
+- no conflation of evidence dimensions
+
+## Failure signs
+
+The route activation failed if:
+
+### Route selection failure
+- the report is structured as a market outlook (focusing on commercial applications)
+- the report focuses on company analysis instead of research progress
+- the report is a generic overview without academic evidence assessment
+
+### Artifact contract failure
+- no search strategy documented
+- no key breakthroughs identified
+- no current state of the art described
+- no evidence quality assessment
+
+### Evidence hierarchy failure
+- preprints cited without "not peer-reviewed" label
+- no publication venue information
+- evidence tiers not distinguished
+- negative findings ignored
+
 ## Simulated evidence collection
 
 ### Search strategy

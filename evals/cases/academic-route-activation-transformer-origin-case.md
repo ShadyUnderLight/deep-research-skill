@@ -57,6 +57,53 @@
 - Missing venue information for cited papers
 - Presenting research trends without distinguishing evidence tiers
 
+## Pass criteria
+
+A good answer should:
+
+### 1. Activate the correct route
+- explicitly classify this as an academic literature review
+- not default to technical deep-dive or generic research
+
+### 2. Satisfy the artifact contract
+- define search strategy and scope
+- identify seminal work with full citations
+- document key evolutionary steps
+- describe current dominant paradigm
+- assess evidence quality with tier labels
+
+### 3. Apply evidence hierarchy correctly
+- label publication type and peer-review status for each paper
+- distinguish study design quality from publication venue prestige
+- respect discipline-specific venue prestige (CS conferences are top-tier)
+
+### 4. Avoid hard-fail conditions
+- no preprints treated as peer-reviewed
+- no cherry-picking to support pre-determined narrative
+- no missing venue information
+- no conflation of evidence dimensions
+
+## Failure signs
+
+The route activation failed if:
+
+### Route selection failure
+- the report is structured as a technical deep-dive (explaining how Transformers work)
+- the report focuses on market applications instead of academic lineage
+- the report is a generic overview without academic evidence assessment
+
+### Artifact contract failure
+- no search strategy documented
+- no seminal work identified
+- no evolutionary steps traced
+- no evidence quality assessment
+
+### Evidence hierarchy failure
+- preprints cited without "not peer-reviewed" label
+- no publication venue information
+- evidence tiers not distinguished
+- study design and venue prestige conflated
+
 ## Simulated evidence collection
 
 ### Search strategy

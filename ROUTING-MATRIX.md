@@ -747,16 +747,17 @@ Fail if the report:
 
 ## Route: Academic / Literature Review
 
-> ⚠️ **Experimental route**: This route is defined but not yet validated against real use cases. Accumulate 2-3 real academic research cases before making a formal evaluation. Currently suitable for literature-research sub-tasks within technical deep-dive, not for independent systematic reviews.
+> ⚠️ **Experimental route**: This route is defined but not yet validated against real use cases. Accumulate 2-3 real academic research cases before making a formal evaluation. This route may produce lower-quality outputs for complex systematic reviews until validated.
 
 ### Micro-audit focus
 For this route, be especially strict about:
 
 - whether preprints are explicitly distinguished from peer-reviewed publications
-- whether the evidence hierarchy is respected (meta-analysis > RCT > cohort > case report)
+- whether evidence is assessed on two dimensions: study design quality AND publication venue prestige
 - whether statistical claims include effect sizes and confidence intervals, not just p-values
 - whether publication bias or cherry-picking is acknowledged
 - whether the search strategy is documented when the review claims completeness
+- whether discipline-specific venue prestige is respected (e.g., CS conferences are top-tier venues)
 
 ### Trigger
 Use when the task is mainly about:
@@ -764,7 +765,7 @@ Use when the task is mainly about:
 - academic field progress analysis (学术领域进展分析)
 - literature review or systematic review (文献综述 / 系统性综述)
 - paper comparison or methodological evaluation (论文对比分析)
-- technology origin tracing through academic publications (技术 origin 追溯)
+- technology origin tracing through academic publications (技术溯源)
 - research quality assessment (研究质量评估)
 
 **Choose this route when:** the core question is understanding academic evidence, evaluating research quality, or surveying field progress through peer-reviewed literature.
@@ -790,6 +791,7 @@ Use when the task is mainly about:
 - scope completeness when the review claims to cover a broad field
 
 ### Audit
+- `checklists/academic-analysis-audit.md`
 - `checklists/source-traceability.md`
 - `checklists/final-audit.md`
 

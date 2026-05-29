@@ -57,6 +57,53 @@
 - Missing methodological details
 - Cherry-picking papers to support preferred conclusion
 
+## Pass criteria
+
+A good answer should:
+
+### 1. Activate the correct route
+- explicitly classify this as an academic paper comparison
+- not default to technical deep-dive or generic research
+
+### 2. Satisfy the artifact contract
+- define comparison dimensions explicitly
+- provide paper-by-paper analysis with full citations
+- identify cross-cutting themes
+- document methodological strengths and weaknesses
+- include recommendations for practitioners
+
+### 3. Apply evidence hierarchy correctly
+- label publication type and peer-review status for each paper
+- distinguish study design quality from publication venue prestige
+- respect discipline-specific venue prestige
+
+### 4. Avoid hard-fail conditions
+- no comparing papers without explicit dimensions
+- no preprints treated as peer-reviewed
+- no missing methodological details
+- no cherry-picking to support preferred conclusion
+
+## Failure signs
+
+The route activation failed if:
+
+### Route selection failure
+- the report is structured as a technical deep-dive (explaining how methods work)
+- the report focuses on market applications instead of methodology comparison
+- the report is a generic overview without academic evidence assessment
+
+### Artifact contract failure
+- no comparison dimensions explicitly stated
+- no paper-by-paper analysis
+- no cross-cutting themes identified
+- no methodological strengths/weaknesses documented
+
+### Evidence hierarchy failure
+- preprints cited without "not peer-reviewed" label
+- no publication venue information
+- comparison dimensions not explicit
+- cherry-picking detected
+
 ## Simulated evidence collection
 
 ### Search strategy
@@ -203,36 +250,3 @@
 3. Consider adding explicit handling of conflicting findings
 
 **Confidence**: High. Route definition is clear, artifact contract is satisfied, hard-fail conditions are avoided.
-
-## Overall validation summary
-
-### Three cases validated
-1. **Transformer origin tracing** (technology origin): ✅ Route correctly activated
-2. **CRISPR field progress** (field progress): ✅ Route correctly activated
-3. **LLM hallucination paper comparison** (paper comparison): ✅ Route correctly activated
-
-### Common strengths
-- Evidence hierarchy framework works well
-- Publication type labeling forces explicit epistemic humility
-- Academic route clearly differentiates from technical deep-dive
-
-### Common areas for improvement
-- Could add more systematic search methodology
-- Could add explicit comparison templates
-- Could add more structured timeline visualization
-
-### Recommendation for route promotion
-**Status**: Keep experimental for now. Accumulate 2-3 more real-world cases before promoting to mature route.
-
-**Rationale**:
-- All three validation cases show correct route activation
-- Artifact contracts are satisfied
-- Hard-fail conditions are avoided
-- But: validation cases are simulated, not real user requests
-- Need: real-world validation with actual user requests and real search results
-
-**Next steps**:
-1. Deploy experimental route
-2. Collect real user requests that trigger academic route
-3. Evaluate artifact quality with real evidence
-4. Promote to mature route after 2-3 successful real-world cases

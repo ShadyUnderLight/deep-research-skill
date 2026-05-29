@@ -25,41 +25,88 @@ Do not use this discipline when:
 
 ## Evidence hierarchy
 
-Academic evidence has a different hierarchy from business/technical evidence:
+Academic evidence evaluation has two orthogonal dimensions:
 
-### Tier 1 — Strongest evidence
+1. **Study design quality** — how the research was conducted
+2. **Publication venue prestige** — where it was published
 
-| Type | Description | Example sources |
-|------|-------------|-----------------|
-| Meta-analysis | Systematic pooling of multiple studies | Cochrane Reviews, meta-analyses in top journals |
-| Systematic review | Structured literature search with inclusion/exclusion criteria | PRISMA-compliant reviews |
-| Randomized controlled trial (RCT) | Gold standard for causal inference | Clinical trials, A/B tests with proper randomization |
+Both dimensions matter. A well-designed RCT published in a top journal is stronger than a poorly designed RCT in a predatory journal. A cohort study in Nature is stronger than a cohort study in an obscure journal.
 
-### Tier 2 — Strong evidence
+### Dimension 1: Study design quality
 
-| Type | Description | Example sources |
-|------|-------------|-----------------|
-| Peer-reviewed journal article | Original research published after peer review | Nature, Science, PNAS, field-specific top journals |
-| Cohort study | Observational study following a population over time | Longitudinal studies, prospective studies |
-| Case-control study | Comparing groups with/without outcome | Retrospective studies |
+Use this hierarchy when evaluating **how the research was conducted**:
 
-### Tier 3 — Moderate evidence
+| Level | Study design | Description | Typical strength |
+|-------|--------------|-------------|------------------|
+| 1 | Meta-analysis | Systematic pooling of multiple studies | Strongest for synthesizing evidence |
+| 2 | Systematic review | Structured literature search with inclusion/exclusion criteria | Strongest for comprehensive literature survey |
+| 3 | Randomized controlled trial (RCT) | Gold standard for causal inference | Strongest for intervention effects |
+| 4 | Cohort study | Observational study following a population over time | Good for longitudinal associations |
+| 5 | Case-control study | Comparing groups with/without outcome | Moderate for rare outcomes |
+| 6 | Cross-sectional study | Snapshot of a population at one time point | Weak for causal claims |
+| 7 | Case report / Case series | Single or small number of cases | Weakest for generalizability |
 
-| Type | Description | Example sources |
-|------|-------------|-----------------|
-| Conference paper | Peer-reviewed but typically shorter, less rigorous | NeurIPS, ICML, ACL, CVPR, field-specific conferences |
-| Preprint | Not yet peer-reviewed, use with caution | arXiv, bioRxiv, medRxiv, SSRN |
-| Working paper | Preliminary version, often in economics/social sciences | NBER, IZA working papers |
-| Technical report | Institutional publication, variable quality | Company research labs, government agencies |
+### Dimension 2: Publication venue prestige
 
-### Tier 4 — Weak evidence
+Use this hierarchy when evaluating **where the research was published**:
 
-| Type | Description | Example sources |
-|------|-------------|-----------------|
-| Case report | Single or small number of cases | Medical case reports |
-| Editorial / Opinion | Expert opinion, not original research | Journal editorials, commentaries |
-| Thesis / Dissertation | Student work, variable quality | Institutional repositories |
-| News / Blog / Social media | Secondary reporting, not peer-reviewed | Science journalism, researcher blogs |
+| Level | Venue type | Description | Examples |
+|-------|------------|-------------|----------|
+| 1 | Top-tier journal | Highest prestige, most rigorous peer review | Nature, Science, NEJM, Lancet, PNAS |
+| 2 | Field-specific top journal | Top venue in a specific field | JAMA, Cell, ICML, NeurIPS, CVPR, ACL |
+| 3 | Peer-reviewed journal | Standard peer-reviewed publication | Field-specific journals, regional journals |
+| 4 | Peer-reviewed conference | Peer-reviewed but typically shorter | Field-specific conferences (CS, engineering) |
+| 5 | Preprint | Not yet peer-reviewed, use with caution | arXiv, bioRxiv, medRxiv, SSRN |
+| 6 | Working paper | Preliminary version, often in economics | NBER, IZA working papers |
+| 7 | Technical report | Institutional publication, variable quality | Company research labs, government agencies |
+| 8 | Thesis / Dissertation | Student work, variable quality | Institutional repositories |
+
+### Combined evidence assessment
+
+When evaluating a source, combine both dimensions:
+
+```
+[Study design level] × [Venue prestige level] = Evidence strength
+```
+
+**Examples**:
+- Meta-analysis in Nature → Level 1 × Level 1 = Strongest
+- RCT in NEJM → Level 3 × Level 1 = Very strong
+- Cohort study in field journal → Level 4 × Level 3 = Moderate
+- Preprint of RCT → Level 3 × Level 5 = Moderate (high design, low venue)
+- Conference paper of empirical study → Level 4 × Level 4 = Moderate
+
+**Important**: Do not conflate the two dimensions. A preprint of an RCT (high design quality, low venue prestige) is not the same as a published case report (low design quality, moderate venue prestige).
+
+### Discipline-specific venue prestige
+
+The venue prestige hierarchy varies by discipline:
+
+#### Computer Science / Engineering
+- **Top-tier conferences** (NeurIPS, ICML, CVPR, ACL, SIGCOMM, OSDI) are the primary publication venues
+- Conference papers are often more prestigious than journal articles
+- Preprints (arXiv) are widely accepted and often cited before peer review
+- Journal publications are less common and often extended versions of conference papers
+
+#### Medicine / Biomedical
+- **Top-tier journals** (NEJM, Lancet, JAMA, Nature Medicine) are the primary venues
+- RCTs and systematic reviews are the gold standard
+- Conference abstracts are preliminary; full papers are expected in journals
+- Preprints (bioRxiv, medRxiv) should be treated with extra caution
+
+#### Social Sciences / Economics
+- **Top-tier journals** (AER, QJE, Econometrica, APSR) are the primary venues
+- Working papers (NBER, IZA) are a major venue and often cited
+- Conference papers are less formal; journal publications are the standard
+- Preprints are less common; working papers serve a similar role
+
+#### Physics / Mathematics
+- **Preprints** (arXiv) are the primary venue and widely accepted
+- Journal publication is a formality; peer review happens after community validation
+- Conference papers are less common; journal articles are the standard
+- Venue prestige matters less than community recognition
+
+**When in doubt**: Check the norms of the specific field. A CS conference paper at NeurIPS is not "less rigorous" than a journal article — it's the primary publication venue.
 
 ## Source labeling requirements
 
@@ -162,7 +209,7 @@ An academic literature review report should visibly show:
 
 ## Related references
 
-- `references/source-quality.md` — for general source ranking (academic sources add venue prestige and peer-review status as additional dimensions)
+- `references/source-quality.md` — for general source ranking (academic sources use a separate two-dimensional hierarchy: study design quality + publication venue prestige)
 - `references/source-traceability-and-claim-citation.md` — for inline citation requirements
 - `references/counter-evidence.md` — for actively seeking contradicting evidence in academic literature
 - `references/forward-looking-discipline.md` — when research trends or future directions are discussed
