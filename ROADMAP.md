@@ -36,6 +36,7 @@ This file tracks likely next improvements and helps keep repo evolution intentio
   - Both bugs fixed (`\s+` → `[ \t]+`; `NFKC` → `NFC`). Re-validated against 2 reports (5,000+ CJK chars each) — block structure preserved, CJK punctuation intact, no cross-paragraph merging.
   - See `evals/cases/cjk-pdf-validation-findings-case.md` for full results.
   - Remaining: testing against more report types (code-heavy, academic), adding CI gate for rendering regression.
+    - **Partial**: CJK HTML pipeline test (`test_cjk_pdf_pipeline.py`) wired into CI quick job. Still missing: PDF-level rendering tests, English/mixed/table-heavy test scenarios, unified `test_pdf_regression.py` script. (toward #126)
 - Add one more real-case pass on market-entry memo information design so recommendation, hard gates, shortlist, and phased-entry blocks become easier to scan in PDF output.
 - **Validate the new private company / startup evaluation routing** against 2-3 real private company cases and harden the route definition if activation or artifact contract execution is weak. (toward #121)
 - **Validate the new regulatory / policy impact analysis routing** against 2-3 real regulatory analysis cases (export controls, data compliance, industry regulation) and harden the route definition if activation or artifact contract execution is weak. (toward #122)

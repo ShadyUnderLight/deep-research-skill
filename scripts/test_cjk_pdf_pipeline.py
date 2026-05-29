@@ -204,7 +204,7 @@ def test_normalize_preserves_chinese_punctuation():
 
 def test_full_pipeline_block_integrity():
     """Full pipeline (normalize → markdown → HTML) preserves heading and list counts."""
-    md = "# H1\n\nP1.\n\n## H2\n\n- Li1\n- Li2\n\n### H3\n\nP2.\n\n> Bq\n\n## H4\n\nP3."
+    md = "# H1\n\nP1.\n\n## H2\n\n- Li1\n- Li2\n\n### H3\n\nP2.\n\n> Bq\n\n#### H4\n\nP3."
     errors, _, html = verify_cjk_pipeline(md)
     assert not errors, f"pipeline integrity errors: {errors}"
     # Verify specific heading text is not merged with body
