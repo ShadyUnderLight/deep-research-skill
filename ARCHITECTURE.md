@@ -85,6 +85,7 @@ The current first-class routes are:
 - equipment selection / procurement / home-server planning
 - constrained choice / shortlist
 - listed-company / investment-style research
+- private company / startup evaluation
 
 As a rule:
 

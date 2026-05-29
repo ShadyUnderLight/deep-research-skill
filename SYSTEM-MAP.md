@@ -86,6 +86,7 @@ Makes mature task families explicit so the right discipline set and delivery con
 
 ### Primary checklists
 - `checklists/route-activation-audit.md`
+- `checklists/startup-company-report.md` (for private company route)
 
 ### Supported mature routes
 - provider / vendor selection
@@ -96,12 +97,15 @@ Makes mature task families explicit so the right discipline set and delivery con
 - equipment selection / procurement / home-server planning
 - constrained choice / shortlist
 - listed-company / investment-style research
+- private company / startup evaluation
 
 ### Typical failure signs
 - the correct rule exists but does not activate
 - the report uses the right vocabulary but the wrong structure
 - the route is implicit in reasoning but invisible in the final artifact
 - a task drifts from choice memo into overview memo
+- a private company evaluation uses listed-company valuation methods (PE, PB, DCF)
+- founder-sourced claims are treated as confirmed facts without labeling
 
 ### First place to change
 - `ROUTING-MATRIX.md` when route selection or attached discipline mapping is wrong

@@ -11,6 +11,19 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `checklists/startup-company-report.md`: new checklist for private company / startup evaluation route — covers company status, team/founders, product/PMF signals, funding/financials, market/competition, source quality, judgment shape, and hard-fail gates (#121).
+- `references/startup-evaluation-discipline.md`: new discipline file for private company evaluation — covers stage identification, team assessment, PMF signals, funding/valuation framework, financial metrics, competitive positioning, risk assessment, source hierarchy, and output structure (#121).
+- `evals/cases/startup-evaluation-route-activation-case.md`: new eval case for private company routing — tests whether the skill correctly activates the private company route for startup evaluation tasks and produces a report that satisfies the artifact contract (#121).
+- `ROUTING-MATRIX.md`: added Private Company / Startup Evaluation as a first-class route with trigger, artifact contract, hard-fail conditions, and routing priority (#121).
+- `SYSTEM-MAP.md`: added private company / startup evaluation to Family B supported mature routes list (#121).
+- `ARCHITECTURE.md`: added private company / startup evaluation to first-class routes list (#121).
+- `ROADMAP.md`: added private company route validation task to P2 priorities (#121).
+- `references/source-quality.md`: added private company sources section — 6-tier hierarchy (company materials → Crunchbase/PitchBook → regulatory filings → investor sources → media → social) with labeling rules (#121).
+
+### Changed
+- `ROUTING-MATRIX.md`: updated routing priority from 8 to 9 routes — private company / startup evaluation inserted at position 2 (after listed-company, before market entry) (#121).
+
+### Added
 - `references/technical-analysis-discipline.md`: new discipline file for technical analysis tasks — covers principle analysis, architecture comparison, patent analysis, feasibility assessment, and roadmap evaluation. Includes comparison dimensions, maturity assessment frameworks (TRL, adoption lifecycle), and common failure modes (#116).
 - `checklists/technical-analysis-audit.md`: new checklist for technical deep-dive route — verifies route activation, technical state verification, evidence quality, comparison structure, feasibility assessment, maturity assessment, and judgment quality (#116).
 - `evals/cases/technical-analysis-kubernetes-vs-docker-case.md`: new eval case for technical deep-dive routing — tests whether the skill correctly activates the technical deep-dive route for architecture comparison tasks and produces a report that satisfies the artifact contract (#116).
