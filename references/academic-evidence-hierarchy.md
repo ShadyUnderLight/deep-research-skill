@@ -11,7 +11,7 @@ Apply this discipline when the task involves:
 - literature review or systematic review (文献综述 / 系统性综述)
 - academic field progress analysis (学术领域进展分析)
 - paper comparison or methodological evaluation (论文对比分析)
-- technology origin tracing through academic publications (技术 origin 追溯)
+- technology origin tracing through academic publications (技术溯源)
 - research quality assessment (研究质量评估)
 
 ## When NOT to use
