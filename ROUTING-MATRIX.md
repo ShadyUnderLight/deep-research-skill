@@ -597,6 +597,82 @@ Fail if the report:
 
 ---
 
+## Route: Private Company / Startup Evaluation
+
+### Micro-audit focus
+For this route, be especially strict about:
+
+- whether the report avoids listed-company valuation methods (PE, PB, DCF) when the company has no public market data
+- whether founder-sourced claims are labeled as issuer-sourced rather than confirmed facts
+- whether PMF signals are grounded in available evidence rather than assumed from marketing language
+- whether source reliability levels are explicit rather than treating all sources as equal
+- whether funding and financial data are labeled by source type (company-disclosed / estimated / inferred)
+
+### Trigger
+Use when the task is mainly about:
+
+- private / unlisted company analysis
+- startup due diligence
+- PMF (Product-Market Fit) evaluation
+- funding round analysis
+- early-stage company assessment
+- founder / team evaluation
+
+**Choose this route when:** the core question is evaluating a non-public company's current state, prospects, or investment value.
+
+**Do not use this route when:** the company is publicly listed and trading (use listed-company route). If the company is filing for IPO but not yet listed, use this route but note IPO status.
+
+**Often confused with:** listed-company / investment-style research, first-tier / competitive positioning.
+
+**Key differences from listed-company route:**
+
+- no mandatory financial disclosures → source hierarchy must be redefined
+- founder / team background becomes a primary variable (rarely central in listed-company analysis)
+- PMF signals, funding trajectory, metric quality become key
+- valuation method differs (comparable transactions / latest round / revenue multiples vs PE / DCF)
+- source hierarchy differs (Crunchbase, PitchBook, SEC Form D, founder social media vs SEC filings, exchange disclosures)
+
+### Read
+- `references/startup-evaluation-discipline.md`
+- `references/source-quality.md`
+- `references/source-traceability-and-claim-citation.md`
+- `references/forward-looking-discipline.md` when forward-looking claims appear
+
+### Attach
+- current-state verification (funding status, product stage, team composition)
+- source traceability (especially for unverified founder claims)
+- forward-looking claims discipline (PMF signals, growth projections, runway estimates)
+- decision utility when the task carries investment or partnership judgment
+
+### Audit
+- `checklists/startup-company-report.md`
+- `checklists/source-traceability.md`
+- `checklists/final-audit.md`
+
+### Visible artifact contract
+The final report should visibly show:
+
+- company overview and stage positioning (what the company does, what stage it is in)
+- team assessment (founders, key hires, relevant background)
+- product and PMF signals (what exists, what traction is real vs claimed)
+- market and competitive position (who they compete with, what advantages exist)
+- funding and financial overview (known funding, revenue if disclosed, burn/runway if known — labeled by source type)
+- key strengths and risks (specific to this company, not generic startup risks)
+- 12-24 month key milestones (what to watch for)
+- judgment and recommendation (if applicable, with explicit uncertainty bounds)
+
+### Hard fail
+Fail if the report:
+
+- uses PE / PB / PS / DCF as primary valuation framing for a private company without explicit justification
+- treats unverified founder claims as confirmed facts
+- presents weak or absent financial data as if it were comparable to audited public-company disclosures
+- does not label source reliability levels
+- writes the report as a mini listed-company analysis with private company data gaps hidden
+- uses `唯一` / `only` / `first` / `领先` wording without evidence strong enough for that claim strength
+
+---
+
 ## Cross-cutting disciplines
 
 ### Current-state verification
@@ -687,15 +763,18 @@ Fail if:
 If multiple primary-looking routes apply, use this order:
 
 1. listed-company / investment-style
-2. market entry / regional expansion
-3. provider / vendor selection
-4. first-tier / competitive positioning
-5. technical deep-dive / architecture analysis
-6. equipment selection / procurement / home-server planning
-7. market outlook / industry evolution
-8. constrained choice / shortlist
+2. private company / startup evaluation
+3. market entry / regional expansion
+4. provider / vendor selection
+5. first-tier / competitive positioning
+6. technical deep-dive / architecture analysis
+7. equipment selection / procurement / home-server planning
+8. market outlook / industry evolution
+9. constrained choice / shortlist
 
 Choose the route that most strongly determines report structure and audit burden.
+
+**Borderline case — private company filing for IPO:** Use private company route if not yet trading. Use listed-company route if trading has begun. Note IPO status explicitly in either case.
 
 ---
 

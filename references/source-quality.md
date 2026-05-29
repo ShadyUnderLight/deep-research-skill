@@ -59,6 +59,28 @@ For audited financials, legal text, filings, architecture docs, and official dis
 - authority matters more than media interpretation
 - primary source should anchor the claim whenever available
 
+## Private company sources
+
+For private, unlisted, or early-stage companies, source availability differs from listed companies. Adjust source hierarchy accordingly.
+
+Preferred order for private companies:
+
+1. **Company official materials** — blog posts, product documentation, whitepapers, official announcements
+2. **Credible third-party databases** — Crunchbase, PitchBook, CB Insights (label as aggregator data, not primary source)
+3. **Regulatory filings** — SEC Form D, state filings, international equivalents (when available)
+4. **Investor-sourced information** — investor blogs, portfolio pages, LP letters (label as investor perspective)
+5. **Media coverage** — TechCrunch, 36氪, The Information (treat as discovery, verify claims independently)
+6. **Social / community** — founder Twitter/LinkedIn, Reddit, V2EX (minimum weight, supplemental only)
+
+Key rules for private company sources:
+
+- **Crunchbase / PitchBook**: Aggregator data, not primary source. Funding amounts and valuations may be approximate. Label as "per [source], estimated."
+- **Media coverage**: Discovery tool, not evidence. Verify load-bearing claims via primary sources when possible.
+- **Founder claims**: Issuer-sourced. Do not elevate to confirmed fact without independent validation.
+- **Social media**: Weak supplemental signal. Do not use as primary evidence for any load-bearing claim.
+
+For detailed private company evaluation methodology, read `references/startup-evaluation-discipline.md`.
+
 ## Conflict handling
 
 When sources conflict:

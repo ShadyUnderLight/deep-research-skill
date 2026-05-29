@@ -36,6 +36,7 @@ This file tracks likely next improvements and helps keep repo evolution intentio
   - See `evals/cases/cjk-pdf-validation-findings-case.md` for full results.
   - Remaining: testing against more report types (code-heavy, academic), adding CI gate for rendering regression.
 - Add one more real-case pass on market-entry memo information design so recommendation, hard gates, shortlist, and phased-entry blocks become easier to scan in PDF output.
+- **Validate the new private company / startup evaluation routing** against 2-3 real private company cases and harden the route definition if activation or artifact contract execution is weak. (Closes #121)
 
 ### P3
 - Consider scripts for normalizing evidence and claim records only after the protocol is stable.
