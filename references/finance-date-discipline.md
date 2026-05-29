@@ -77,6 +77,47 @@ If this data cannot be obtained cleanly, note the limitation explicitly rather t
 
 Do not write a listed-company investment memo without current market context. Historical financials alone are insufficient for investment analysis.
 
+### Research Anchor Block (研究锚定块)
+
+For listed-company / investment-style work, the report must begin with a **compact research-anchor block** before broad business or industry analysis starts.
+
+This block explicitly locks the time layers that govern the entire memo. Without it, readers cannot verify whether financial data is anchored on the newest reporting layers.
+
+**Required elements (all four must appear in one visible block):**
+
+1. **Latest full-year reported period (FY)** — e.g., `FY2025` or `2025年年报`
+2. **Latest quarterly / interim reported period** — e.g., `2026Q1` or `2026年一季报`
+3. **Latest current market snapshot date** — the date of price, valuation, and market data
+4. **Latest management / leadership state** — when decision-relevant (e.g., CEO change, major restructuring, guidance update)
+
+**Placement rule:**
+
+The research-anchor block must appear before business description, competitive analysis, or financial review begins. It should be one of the first things a reader sees, not buried in section 4 or 9.
+
+**Format pattern:**
+
+```
+研究锚定：
+- 最新完整财年：FY2025（来源：年报）
+- 最新季度：2026Q1（来源：一季报）
+- 市场快照：2026-05-29 收盘
+- 管理层：无重大变动 / [CEO Name] 于 YYYY-MM 接任
+```
+
+**Why this matters:**
+
+- prevents stale anchors from silently governing the memo
+- forces the agent to verify freshness before broad synthesis
+- gives the reader immediate visibility into data timeliness
+- separates "what the company reported" from "what the market currently reflects"
+
+**Common failure patterns:**
+
+- anchor data scattered across multiple sections instead of centralized
+- no explicit lock — reader must infer the time layers from context
+- stale quarter used as "latest" without declaration
+- management state omitted when it materially affects the thesis
+
 ### Freshness hard gate for listed-company work
 
 Before broad analysis, explicitly lock three time layers:

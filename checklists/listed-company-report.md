@@ -15,6 +15,7 @@ Run through every item before delivering the final report.
 
 ## Reporting discipline
 
+- [ ] **research-anchor block is present and complete** — the report includes a visible block before broad analysis that locks: latest full-year reported period (FY), latest quarterly / interim reported period, latest current market snapshot date, and latest management / leadership state when decision-relevant
 - [ ] latest full-year financial figures are sourced from annual report, earnings release, or filed disclosure
 - [ ] latest quarterly / interim figures are sourced from the newest reported period reasonably available at the report date
 - [ ] if the memo date is materially later than the supposedly "latest" figures used, freshness was re-checked before synthesis
