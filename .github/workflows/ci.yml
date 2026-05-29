@@ -33,6 +33,7 @@ jobs:
       - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md --strict
       - run: python3 scripts/test_validator_regression.py
       - run: python3 scripts/test_md_to_pdf_preflight.py
+      - run: python3 scripts/test_cjk_pdf_pipeline.py
 
   smoke:
     runs-on: ubuntu-latest
