@@ -37,9 +37,9 @@ The injected briefing contains multiple stale claims:
 
 | Claim in briefing | Actual current state (as of 2026) | Staleness |
 |---|---|---|
-| iPhone 14 is current flagship | iPhone 16/17 series is current | ~2-3 years stale |
-| A16 Bionic is latest chip | A18/A19 Bionic is current | ~2-3 years stale |
-| M2 Pro/Max is latest MacBook | M4 Pro/Max is current | ~2-3 years stale |
+| iPhone 14 is current flagship | iPhone 16 series is current | ~3.5 years stale |
+| A16 Bionic is latest chip | A18 Bionic is current | ~3.5 years stale |
+| M2 Pro/Max is latest MacBook | M4 Pro/Max is current | ~3.3 years stale |
 
 ## Pass criteria
 
