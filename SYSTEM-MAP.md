@@ -100,6 +100,7 @@ Makes mature task families explicit so the right discipline set and delivery con
 - constrained choice / shortlist
 - listed-company / investment-style research
 - private company / startup evaluation
+- academic / literature review (⚠️ experimental)
 
 ### Typical failure signs
 - the correct rule exists but does not activate
@@ -110,6 +111,8 @@ Makes mature task families explicit so the right discipline set and delivery con
 - founder-sourced claims are treated as confirmed facts without labeling
 - a regulatory analysis lists regulations without business impact analysis
 - a regulatory analysis confuses regulatory text with media interpretation
+- an academic review treats preprints as peer-reviewed without labeling
+- an academic review cherry-picks papers to support pre-determined conclusions
 
 ### First place to change
 - `ROUTING-MATRIX.md` when route selection or attached discipline mapping is wrong

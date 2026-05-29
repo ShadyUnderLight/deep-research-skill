@@ -745,6 +745,93 @@ Fail if the report:
 
 ---
 
+## Route: Academic / Literature Review
+
+> ⚠️ **Experimental route**: This route is defined but not yet validated against real use cases. Accumulate 2-3 real academic research cases before making a formal evaluation. Currently suitable for literature-research sub-tasks within technical deep-dive, not for independent systematic reviews.
+
+### Micro-audit focus
+For this route, be especially strict about:
+
+- whether preprints are explicitly distinguished from peer-reviewed publications
+- whether the evidence hierarchy is respected (meta-analysis > RCT > cohort > case report)
+- whether statistical claims include effect sizes and confidence intervals, not just p-values
+- whether publication bias or cherry-picking is acknowledged
+- whether the search strategy is documented when the review claims completeness
+
+### Trigger
+Use when the task is mainly about:
+
+- academic field progress analysis (学术领域进展分析)
+- literature review or systematic review (文献综述 / 系统性综述)
+- paper comparison or methodological evaluation (论文对比分析)
+- technology origin tracing through academic publications (技术 origin 追溯)
+- research quality assessment (研究质量评估)
+
+**Choose this route when:** the core question is understanding academic evidence, evaluating research quality, or surveying field progress through peer-reviewed literature.
+
+**Do not use this route when:** the task can be adequately answered using the more mature technical deep-dive route (e.g., comparing software architectures, evaluating product feasibility). If the task involves academic evidence but the decision burden is about product selection, vendor choice, or market entry, use those routes and attach academic evidence discipline as a secondary discipline.
+
+**Often confused with:** technical deep-dive / architecture analysis (when technology origin is involved), market outlook / industry evolution (when research trends are involved).
+
+**Route-conflict examples:**
+- "What are the key papers on Transformer architecture?" — this is academic route if the goal is literature survey; it becomes technical deep-dive if the goal is understanding how Transformers work for practical application
+- "What is the current state of CRISPR research?" — this is academic route if analyzing research progress; it becomes market outlook if analyzing commercial applications
+- "Compare the methodologies of these 5 papers on LLM hallucination" — this is academic route, not technical deep-dive
+
+### Read
+- `references/academic-evidence-hierarchy.md`
+- `references/source-traceability-and-claim-citation.md`
+- `references/counter-evidence.md` when the research area is contentious or has conflicting findings
+
+### Attach
+- source traceability with academic-specific labeling (publication type, peer-review status, venue)
+- current-state verification when the field is fast-moving (e.g., AI/ML, genomics)
+- forward-looking claims discipline when research trends or future directions are discussed
+- scope completeness when the review claims to cover a broad field
+
+### Audit
+- `checklists/source-traceability.md`
+- `checklists/final-audit.md`
+
+### Visible artifact contract
+The final report should visibly show:
+
+**For field progress analysis:**
+- scope of the review (time period, sub-fields covered, search strategy)
+- key research themes and trends
+- major breakthroughs and milestones
+- current state of the art
+- open questions and future directions
+- evidence quality assessment
+
+**For paper comparison:**
+- comparison dimensions (methodology, dataset, results, limitations)
+- paper-by-paper analysis with venue and peer-review status
+- cross-cutting themes
+- methodological strengths and weaknesses
+- recommendations for practitioners
+
+**For technology origin tracing:**
+- original seminal work(s) with full citation
+- key evolutionary steps
+- branching points and divergent approaches
+- current dominant paradigm
+- competing approaches and their evidence bases
+
+### Hard fail
+Fail if the report:
+
+- treats preprints as peer-reviewed without explicit labeling
+- cherry-picks papers to support pre-determined conclusions
+- infers causation from observational studies without proper caveats
+- reports p-values without effect sizes or confidence intervals
+- uses outdated research when newer evidence exists without justification
+- cites papers without noting publication venue or peer-review status
+- ignores publication bias or the "file drawer problem"
+- presents a literature survey without distinguishing evidence tiers
+
+---
+
 ## Cross-cutting disciplines
 
 ### Current-state verification
@@ -844,10 +931,13 @@ If multiple primary-looking routes apply, use this order:
 8. equipment selection / procurement / home-server planning
 9. market outlook / industry evolution
 10. constrained choice / shortlist
+11. academic / literature review (⚠️ experimental)
 
 Choose the route that most strongly determines report structure and audit burden.
 
 **Borderline case — private company filing for IPO:** Use private company route if not yet trading. Use listed-company route if trading has begun. Note IPO status explicitly in either case.
+
+**Borderline case — academic vs technical deep-dive:** Use academic route when the core question is about research evidence, methodology, or field progress through literature. Use technical deep-dive when the core question is about how technology works, comparing architectures, or evaluating feasibility — even if academic papers are used as sources.
 
 ---
 

@@ -11,6 +11,22 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `ROUTING-MATRIX.md`: added Academic / Literature Review as an experimental first-class route with trigger, artifact contract, hard-fail conditions, and routing priority (#128).
+- `references/academic-evidence-hierarchy.md`: new discipline file for academic research tasks — covers evidence hierarchy (meta-analysis → RCT → peer-reviewed → preprint → conference → weak evidence), source labeling requirements, statistical assessment, literature search methodology, and hard-fail conditions (#128).
+- `SYSTEM-MAP.md`: added academic / literature review to Family B supported mature routes list with academic-specific failure signs (#128).
+- `ARCHITECTURE.md`: added academic / literature review to first-class routes list (#128).
+- `ROADMAP.md`: added academic route validation task to P2 priorities (#128).
+- `evals/cases/academic-route-activation-transformer-origin-case.md`: new eval case for academic routing — tests technology origin tracing through academic literature (#128).
+- `evals/cases/academic-route-activation-crispr-progress-case.md`: new eval case for academic routing — tests field progress analysis through academic literature (#128).
+- `evals/cases/academic-route-activation-llm-hallucination-comparison-case.md`: new eval case for academic routing — tests paper comparison and methodological evaluation (#128).
+
+### Changed
+- `ROUTING-MATRIX.md`: updated routing priority from 10 to 11 routes — academic / literature review added as experimental route at position 11 (after constrained choice) (#128).
+
+### Why
+- Per issue #128, academic research tasks (literature review, field progress analysis, paper comparison) lacked a dedicated route. These tasks were being routed to technical deep-dive or generic research, producing reports that did not properly distinguish evidence tiers, label publication types, or apply academic methodology. The new academic route provides explicit trigger conditions, artifact contract (evidence hierarchy, search strategy, publication type labeling), and hard-fail conditions for academic research tasks. Route is marked as experimental pending real-world validation.
+
+### Added
 - `ROUTING-MATRIX.md`: added Regulatory / Policy Impact Analysis as a first-class route with trigger, artifact contract, hard-fail conditions, and routing priority (#122).
 - `SYSTEM-MAP.md`: added regulatory / policy impact analysis to Family B supported mature routes list (#122).
 - `ARCHITECTURE.md`: added regulatory / policy impact analysis to first-class routes list (#122).

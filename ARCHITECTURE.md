@@ -87,6 +87,7 @@ The current first-class routes are:
 - constrained choice / shortlist
 - listed-company / investment-style research
 - private company / startup evaluation
+- academic / literature review (⚠️ experimental)
 
 As a rule:
 
