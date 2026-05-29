@@ -54,6 +54,16 @@ Use provider selection when the task is to choose.
 
 Use market outlook when the task is to understand market direction, industry evolution, or future structure rather than select an option.
 
+### Regulatory / policy impact analysis vs market outlook
+Use regulatory analysis when the core question is understanding the regulatory environment, assessing policy risk, or judging compliance impact. The report structure is organized around current regulations → business impact → scenarios → implications.
+
+Use market outlook when the focus is market evolution with regulation as one driver among many (technology, demand, competition). The report structure is organized around current state → drivers → scenarios → stakeholder implications.
+
+### Regulatory / policy impact analysis vs listed-company research
+Use regulatory analysis when the primary burden is understanding regulatory impact on an industry or business. Company-specific analysis is secondary.
+
+Use listed-company research when the primary burden is investment judgment. Regulation is one section within a broader thesis.
+
 ## Minimal internal shape
 
 A compact preflight may use this shape:

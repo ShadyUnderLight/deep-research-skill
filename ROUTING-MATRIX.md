@@ -360,6 +360,78 @@ Fail if the report:
 
 ---
 
+## Route: Regulatory / Policy Impact Analysis
+
+### Micro-audit focus
+For this route, be especially strict about:
+
+- whether the report separates current regulations from pending/in-progress legislation
+- whether regulatory impact is analyzed at business level (direct vs indirect impact)
+- whether enforcement reality is distinguished from letter-of-law analysis
+- whether uncertainty around regulatory timing and enforcement is explicitly bounded
+- whether scenario analysis covers optimistic / base / pessimistic outcomes
+
+### Trigger
+Use when the task is mainly about:
+
+- regulatory environment assessment
+- policy risk evaluation
+- compliance impact analysis
+- regulatory change impact on business/industry
+- policy-driven investment or strategic decisions
+
+**Choose this route when:** the core question is understanding the regulatory environment, assessing policy risk, or judging compliance impact on a business or industry.
+
+**Do not use this route when:** regulation is background context only (use other routes + attach regulatory discipline). If the task is primarily about listed-company valuation, market entry sequencing, or technical feasibility, use those routes and attach regulatory analysis as a secondary discipline.
+
+**Often confused with:** listed-company / investment-style research (regulation may be one section), market outlook / industry evolution (regulatory changes may be one driver).
+
+**Route-conflict examples:**
+- "Analyze the impact of EU AI Act on the European AI market" — this is regulatory analysis if the core question is understanding the regulatory framework and its business impact; it becomes market outlook if the focus is market evolution with regulation as one driver
+- "Should we enter the Chinese market given new data localization laws?" — this is market entry if the question is entry sequencing; it becomes regulatory analysis if the question is primarily about understanding and evaluating the regulatory constraint
+- "How will US export controls affect our listed company's revenue?" — this is listed-company research if the task is investment judgment; it becomes regulatory analysis if the task is understanding the regulatory impact mechanism
+
+### Read
+- `references/current-state-verification.md` (current regulatory snapshot)
+- `references/forward-looking-discipline.md` (when predicting regulatory changes)
+- `references/source-quality.md` (regulatory sources: official gazette vs news interpretation vs analyst speculation)
+- `references/data-conflict-resolution.md` (when regulatory interpretations conflict across sources)
+
+### Attach
+- current-state verification (current regulatory state)
+- source traceability (regulatory text vs interpretation vs speculation)
+- forward-looking claims discipline (regulatory change predictions)
+- scope completeness when regulatory analysis claims global or multi-jurisdiction coverage
+
+### Audit
+- `checklists/regulatory-analysis-audit.md`
+- `checklists/source-traceability.md`
+- `checklists/final-audit.md`
+
+### Visible artifact contract
+The final report should visibly show:
+
+- **Current regulatory snapshot**: regulations currently in effect
+- **Pending legislation / policy**: in-progress bills, draft regulations, public comment periods
+- **Business impact analysis**: direct impact vs indirect impact, quantified where possible
+- **Timeline**: enacted → transition period → future changes
+- **Uncertainty bounds**: enforcement intensity, timing, possible exemptions
+- **Scenario analysis**: optimistic / base / pessimistic scenarios
+- **Business/industry implications**: actionable conclusions for decision-makers
+- **Monitoring signals**: what to watch for regulatory changes
+
+### Hard fail
+Fail if the report:
+
+- lists regulations without analyzing business impact
+- confuses regulatory text with media interpretation
+- gives false precision on regulatory timing ("will pass in month X") without uncertainty bounds
+- ignores enforcement reality (letter-of-law vs actual enforcement)
+- treats all jurisdictions as equivalent without prioritizing binding regimes
+- presents regulatory risk as binary (yes/no) rather than graduated with scenarios
+
+---
+
 ## Route: Equipment Selection / Procurement / Home-server Planning
 
 ### Micro-audit focus
@@ -765,12 +837,13 @@ If multiple primary-looking routes apply, use this order:
 1. listed-company / investment-style
 2. private company / startup evaluation
 3. market entry / regional expansion
-4. provider / vendor selection
-5. first-tier / competitive positioning
-6. technical deep-dive / architecture analysis
-7. equipment selection / procurement / home-server planning
-8. market outlook / industry evolution
-9. constrained choice / shortlist
+4. regulatory / policy impact analysis
+5. provider / vendor selection
+6. first-tier / competitive positioning
+7. technical deep-dive / architecture analysis
+8. equipment selection / procurement / home-server planning
+9. market outlook / industry evolution
+10. constrained choice / shortlist
 
 Choose the route that most strongly determines report structure and audit burden.
 

@@ -79,6 +79,7 @@ The current first-class routes are:
 
 - provider / vendor selection
 - market entry / regional expansion
+- regulatory / policy impact analysis
 - market outlook / industry evolution
 - first-tier / competitive positioning
 - technical deep-dive / architecture analysis

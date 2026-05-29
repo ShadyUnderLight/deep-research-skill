@@ -46,11 +46,14 @@
 
 - provider / vendor selection
 - market entry / regional expansion
+- regulatory / policy impact analysis
 - market outlook / industry evolution
 - first-tier / competitive positioning
+- technical deep-dive / architecture analysis
 - equipment selection / procurement / home-server planning
 - constrained choice / shortlist
 - listed-company / moat / monopoly-style judgment
+- private company / startup evaluation
 - uncertainty-sensitive、forward-looking、comparative research
 
 ### 3. 研究纪律可复用
