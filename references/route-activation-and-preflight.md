@@ -64,6 +64,20 @@ Use regulatory analysis when the primary burden is understanding regulatory impa
 
 Use listed-company research when the primary burden is investment judgment. Regulation is one section within a broader thesis.
 
+### Academic / literature review vs technical deep-dive
+Use academic route when the core question is about understanding research evidence, evaluating research quality, or surveying field progress through academic literature.
+
+Use technical deep-dive when the core question is about how technology works, comparing architectures, or evaluating feasibility — even if academic papers are used as sources.
+
+**Borderline case**: "What are the key papers on Transformer architecture?" — use academic route if the goal is literature survey; use technical deep-dive if the goal is understanding how Transformers work for practical application.
+
+### Academic / literature review vs market outlook
+Use academic route when the focus is research progress, breakthroughs, and future directions in academic literature.
+
+Use market outlook when the focus is market evolution, commercial applications, or industry trajectory.
+
+**Borderline case**: "What is the current state of CRISPR research?" — use academic route if analyzing research progress; use market outlook if analyzing commercial applications.
+
 ## Minimal internal shape
 
 A compact preflight may use this shape:

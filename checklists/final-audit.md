@@ -131,6 +131,9 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for regulatory / policy impact analysis tasks, current regulations are separated from pending/in-progress legislation
 - [ ] for regulatory / policy impact analysis tasks, business impact is analyzed (direct vs indirect) and uncertainty is explicitly bounded
 - [ ] for regulatory / policy impact analysis tasks, scenario analysis covers optimistic / base / pessimistic outcomes
+- [ ] for academic / literature review tasks, evidence is assessed on two dimensions: study design quality AND publication venue prestige
+- [ ] for academic / literature review tasks, publication type and peer-review status are labeled for each source
+- [ ] for academic / literature review tasks, preprints are explicitly distinguished from peer-reviewed publications
 
 ## Precision and estimate sourcing
 
