@@ -10,6 +10,7 @@ Run through every item before delivering the final report.
 - [ ] each `[SN]` maps to a single specific source, not a generic "multiple sources"
 - [ ] inferred claims use `[IN]` with a documented reasoning chain in the register
 - [ ] unconfirmable claims use `[UN]` and are listed in the uncertainty register
+- [ ] **hard-fail gate**: if the report has an appendix source list or bibliography but zero body-level `[SN]` inline citations, the traceability discipline is not satisfied — do not deliver
 
 ## Source register
 
