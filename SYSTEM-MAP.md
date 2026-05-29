@@ -343,6 +343,7 @@ Protects against reports that sound smart but still fail as deep, load-bearing d
 - `evals/templates/decision-utility-rubric.md`
 - `evals/meta/scope-completeness-discipline.md`
 - `evals/meta/decision-utility-discipline.md`
+- `evals/meta/rule-trigger-audit.md`
 - `evals/cases/global-market-scope-completeness-case.md`
 - `evals/cases/industry-landscape-depth-case.md`
 

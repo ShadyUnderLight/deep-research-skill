@@ -21,6 +21,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cases/academic-route-activation-llm-hallucination-comparison-case.md`: new eval case for academic routing — tests paper comparison and methodological evaluation (#128).
 - `checklists/academic-analysis-audit.md`: new checklist for academic / literature review route — covers route activation, evidence hierarchy compliance, search strategy documentation, statistical assessment, cherry-picking detection, source labeling, and hard-fail gates (#128).
 - `checklists/final-audit.md`: added recall discipline entries for academic / literature review tasks (#128).
+- `evals/meta/rule-trigger-audit.md`: new meta-eval for periodic rule trigger rate auditing — tracks activation rates for 8 core disciplines across eval cases, defines threshold-based action triggers (#123).
+- `evals/README.md`: added periodic audit guidance — note discipline applicability when adding case evals (#123).
+- `SYSTEM-MAP.md`: added rule-trigger-audit.md to Family G meta-evals (#123).
+- `ROADMAP.md`: added first rule-trigger-rate audit run to P1 remaining (#123).
 
 ### Changed
 - `ROUTING-MATRIX.md`: updated routing priority from 10 to 11 routes — academic / literature review added as experimental route at position 11 (after constrained choice) (#128).
