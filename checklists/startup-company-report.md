@@ -70,6 +70,8 @@ Run through every item before delivering the final report.
 - [ ] the report does not treat unverified founder claims as confirmed facts
 - [ ] the report does not present weak or absent financial data as if it were comparable to audited public-company disclosures
 - [ ] the report labels source reliability levels rather than treating all sources as equal
+- [ ] the report does not write as a mini listed-company analysis with private company data gaps hidden
+- [ ] the report does not use `唯一` / `only` / `first` / `领先` wording without evidence strong enough for that claim strength
 
 ## Flags
 
