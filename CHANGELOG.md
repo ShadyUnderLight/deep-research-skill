@@ -18,6 +18,9 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `SYSTEM-MAP.md`: added technical deep-dive to Family B supported mature routes list (#116).
 - `ARCHITECTURE.md`: added technical deep-dive to first-class routes list (#116).
 - `ROADMAP.md`: added technical deep-dive route validation task to P1 remaining priorities (#116).
+- `references/data-conflict-resolution.md`: added Chinese-language source mapping table (Tier 1–6) for common Chinese sources (东方财富, Wind, 财新, 36氪, 雪球, etc.) and cross-language conflict trigger in "When to apply" section (#125).
+- `references/source-quality.md`: added cross-language conflict rules section — 4 common patterns (filing vs filing, filing vs aggregator, media vs media, specificity priority) with language-neutral credibility guidance (#125).
+- `checklists/final-audit.md`: added NON-BLOCKER check item for cross-language source conflict handling when Chinese and English sources coexist (#125).
 
 ### Changed
 - `ROUTING-MATRIX.md`: updated routing priority from 7 to 8 routes — technical deep-dive inserted at position 5 (after first-tier positioning, before equipment selection) (#116).
@@ -25,10 +28,6 @@ This file is intentionally lightweight. Use concise entries that explain:
 ### Why
 - Per issue #116, technical analysis tasks (principle analysis, architecture comparison, patent analysis, feasibility assessment, roadmap evaluation) lacked a dedicated route. These tasks were being routed to generic research or adjacent routes (equipment selection, constrained choice), producing reports with wrong structure. The new technical deep-dive route provides explicit trigger conditions, artifact contract, and hard-fail conditions for technical judgment tasks.
 
-### Added
-- `references/data-conflict-resolution.md`: added Chinese-language source mapping table (Tier 1–6) for common Chinese sources (东方财富, Wind, 财新, 36氪, 雪球, etc.) and cross-language conflict trigger in "When to apply" section (#125).
-- `references/source-quality.md`: added cross-language conflict rules section — 4 common patterns (filing vs filing, filing vs aggregator, media vs media, specificity priority) with language-neutral credibility guidance (#125).
-- `checklists/final-audit.md`: added NON-BLOCKER check item for cross-language source conflict handling when Chinese and English sources coexist (#125).
 - `evals/cases/cjk-pdf-validation-input-company-case.md`, `evals/cases/cjk-pdf-validation-input-market-case.md`: Chinese-heavy test markdown files (5,000+ CJK chars each) for PDF rendering validation (#100).
 - `evals/cases/cjk-pdf-validation-findings-case.md`: validation findings for Chinese-heavy PDF rendering (#100). Uncovered and fixed two pipeline bugs (see Changed).
 - `evals/comparative-distillation/candidate-rule-registry.md`: comprehensive cross-case candidate tracking for all 11 comparative distillation files. Extracts all 60 candidate rules, maps each to existing checklist/reference coverage, and identifies recurring patterns. Finding: zero uncovered PROMOTE_NOW candidates — the existing skill system has already absorbed lessons from all 11 cases. See issue #96 for context.

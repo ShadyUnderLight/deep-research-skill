@@ -1,6 +1,6 @@
 # Technical Analysis Discipline
 
-Use this file when the research task is mainly about understanding, comparing, or evaluating technology — its原理、架构、可行性、成熟度、或技术路线。
+Use this file when the research task is mainly about understanding, comparing, or evaluating technology — its technical principles, architecture, feasibility, maturity, or technology roadmap (原理、架构、可行性、成熟度、技术路线).
 
 This discipline applies when the core question is **technical judgment**, not product selection, vendor comparison, or market sizing.
 
@@ -163,3 +163,10 @@ Fail the report if:
 - it assesses feasibility without evidence of viability
 - it evaluates roadmaps without separating announced vs. shipped capabilities
 - it analyzes patents without understanding technical coverage
+
+## Related references
+
+- `references/forward-looking-discipline.md` — for forecasts, roadmap statements, announced-vs-rumored separation, and forward-looking assumption chains. Use when the task involves technology roadmap evaluation.
+- `references/source-traceability-and-claim-citation.md` — for source type classification and inline citation. Use for all technical claims.
+- `references/source-quality.md` — for source ranking dimensions and tie-break rules. Use when source credibility is ambiguous.
+- `references/counter-evidence.md` — for actively seeking contradicting evidence. Use when the technical claim is contentious or high-stakes.

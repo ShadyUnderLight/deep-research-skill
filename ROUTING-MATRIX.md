@@ -449,7 +449,7 @@ Use when the task is mainly about:
 - assessing technical feasibility (技术可行性)
 - evaluating technology roadmaps (技术路线评估)
 
-**Choose this route when:** the core question is technical judgment — understanding原理, evaluating feasibility, comparing architectures, or assessing technology maturity.
+**Choose this route when:** the core question is technical judgment — understanding principles (原理), evaluating feasibility, comparing architectures, or assessing technology maturity.
 
 **Do not use this route when:** the task is mainly about selecting a product or vendor (use provider selection or equipment selection), market evolution (use market outlook), or choosing among defined options (use constrained choice).
 
