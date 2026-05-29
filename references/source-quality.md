@@ -81,7 +81,25 @@ Key rules for private company sources:
 
 For detailed private company evaluation methodology, read `references/startup-evaluation-discipline.md`.
 
-## Conflict handling
+## Regulatory sources
+
+For regulatory and policy analysis, source hierarchy differs from corporate or market research. The key distinction is between regulatory text itself and interpretations of it.
+
+Preferred order for regulatory claims:
+
+1. **Official gazette / regulatory text** — the actual law, regulation, rule, or order as published (Federal Register, 国务院公报, EU Official Journal, agency rule text)
+2. **Regulatory filings and disclosures** — formal compliance filings, license applications, enforcement actions, consent orders
+3. **Government publications** — regulatory agency guidance, consultation papers, impact assessments, press releases from regulators
+4. **Institutional analysis** — law firm memos, policy think-tank reports, official impact studies (label as expert interpretation, not regulatory text)
+5. **Media coverage** — news reporting on regulatory developments (treat as discovery, verify against primary sources; enforcement actions are often reported before official documents are published)
+6. **Social / analyst commentary** — analyst notes, forum discussion, social media speculation (minimum weight, supplemental only)
+
+Key rules for regulatory sources:
+
+- **Official gazette vs news**: Do not cite a news article's summary of a regulation as if it were the regulation itself. Always verify the actual text for load-bearing claims.
+- **Enforcement vs letter-of-law**: Distinguish between what the regulation says and how it is actually enforced. Both matter, but they are not the same source.
+- **Draft vs enacted**: Clearly distinguish draft regulations, consultation papers, and proposed rules from enacted law. Do not present a draft as if it were final.
+- **Cross-jurisdiction**: When comparing regulatory regimes across jurisdictions, ensure each regime's sources are at the same tier (do not compare official gazette text of one jurisdiction with media coverage of another).
 
 When sources conflict:
 

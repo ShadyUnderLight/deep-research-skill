@@ -87,10 +87,12 @@ Makes mature task families explicit so the right discipline set and delivery con
 ### Primary checklists
 - `checklists/route-activation-audit.md`
 - `checklists/startup-company-report.md` (for private company route)
+- `checklists/regulatory-analysis-audit.md` (for regulatory route)
 
 ### Supported mature routes
 - provider / vendor selection
 - market entry / regional expansion
+- regulatory / policy impact analysis
 - market outlook / industry evolution
 - first-tier / competitive positioning
 - technical deep-dive / architecture analysis
@@ -106,6 +108,8 @@ Makes mature task families explicit so the right discipline set and delivery con
 - a task drifts from choice memo into overview memo
 - a private company evaluation uses listed-company valuation methods (PE, PB, DCF)
 - founder-sourced claims are treated as confirmed facts without labeling
+- a regulatory analysis lists regulations without business impact analysis
+- a regulatory analysis confuses regulatory text with media interpretation
 
 ### First place to change
 - `ROUTING-MATRIX.md` when route selection or attached discipline mapping is wrong

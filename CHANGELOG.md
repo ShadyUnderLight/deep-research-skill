@@ -11,6 +11,12 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `ROUTING-MATRIX.md`: added Regulatory / Policy Impact Analysis as a first-class route with trigger, artifact contract, hard-fail conditions, and routing priority (#122).
+- `SYSTEM-MAP.md`: added regulatory / policy impact analysis to Family B supported mature routes list (#122).
+- `ARCHITECTURE.md`: added regulatory / policy impact analysis to first-class routes list (#122).
+- `checklists/regulatory-analysis-audit.md`: new checklist for regulatory / policy impact analysis route — covers route activation, regulatory state verification, evidence quality, business impact analysis, uncertainty and scenarios, business/industry implications, and hard-fail gates (#122).
+- `checklists/final-audit.md`: added recall discipline entries for regulatory / policy impact analysis tasks (#122).
+- `evals/cases/regulatory-analysis-route-activation-case.md`: new eval case for regulatory analysis routing — tests whether the skill correctly activates the regulatory route for policy impact analysis tasks and produces a report that satisfies the artifact contract (#122).
 - `checklists/startup-company-report.md`: new checklist for private company / startup evaluation route — covers company status, team/founders, product/PMF signals, funding/financials, market/competition, source quality, judgment shape, and hard-fail gates (#121).
 - `references/startup-evaluation-discipline.md`: new discipline file for private company evaluation — covers stage identification, team assessment, PMF signals, funding/valuation framework, financial metrics, competitive positioning, risk assessment, source hierarchy, and output structure (#121).
 - `evals/cases/startup-evaluation-route-activation-case.md`: new eval case for private company routing — tests whether the skill correctly activates the private company route for startup evaluation tasks and produces a report that satisfies the artifact contract (#121).
@@ -21,7 +27,11 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `references/source-quality.md`: added private company sources section — 6-tier hierarchy (company materials → Crunchbase/PitchBook → regulatory filings → investor sources → media → social) with labeling rules (#121).
 
 ### Changed
+- `ROUTING-MATRIX.md`: updated routing priority from 9 to 10 routes — regulatory / policy impact analysis inserted at position 4 (after market entry, before provider selection) (#122).
 - `ROUTING-MATRIX.md`: updated routing priority from 8 to 9 routes — private company / startup evaluation inserted at position 2 (after listed-company, before market entry) (#121).
+
+### Why
+- Per issue #122, regulatory/policy analysis tasks (export controls, data compliance, industry regulation) lacked a dedicated route. These tasks were being routed to market outlook, listed-company, or generic research, producing reports that listed regulations without systematic business-impact analysis. The new regulatory route provides explicit trigger conditions, artifact contract (current vs pending separation, enforcement reality, scenario analysis), and hard-fail conditions for regulatory impact tasks.
 
 ### Added
 - `references/technical-analysis-discipline.md`: new discipline file for technical analysis tasks — covers principle analysis, architecture comparison, patent analysis, feasibility assessment, and roadmap evaluation. Includes comparison dimensions, maturity assessment frameworks (TRL, adoption lifecycle), and common failure modes (#116).
