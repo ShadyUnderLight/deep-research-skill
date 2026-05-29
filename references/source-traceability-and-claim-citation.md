@@ -11,6 +11,8 @@ Every important claim needs to be traceable to a specific source and labeled by 
 - Layer 1: inline claim-level citations in the body text
 - Layer 2: a source register at the end mapping each source id to a specific source with type and relevance
 
+**Hard rule: A source list or bibliography appendix does NOT satisfy the traceability requirement.** If the body text has no `[SN]` inline citations but the report has an appendix source list, the traceability discipline is not yet satisfied. The appendix is supplementary; inline citations are mandatory. A report with a bibliography but zero body-level `[SN]` references is a hard-fail.
+
 ## Why this matters
 
 Without claim-level traceability:
@@ -39,6 +41,7 @@ Examples:
 - `MTT S5000 is positioned as the current flagship AI chip [S01][S03].`
 - `The company filed for STAR Market IPO in June 2025 [S01].`
 - `Qwen3.5 compatibility was announced via a press release [S04]; GLM-5 compatibility remains unconfirmed at the time of writing [U01].`
+- `三星已量产HBM4 [S3]` (body) → `[S3] Samsung Semiconductor, 2026-03-18, Press Release` (appendix)
 
 Guidelines for inline citations:
 
@@ -207,6 +210,8 @@ If a thesis-bearing claim cannot be made auditable in the body without awkwardne
 The report lists many sources at the bottom but does not use inline citations. Readers cannot determine which specific claim comes from which source.
 
 **Fix:** Use inline `[SN]` citations for every important claim and map them in the source register.
+
+**Hard-fail: A bibliography appendix with zero body-level `[SN]` references is not acceptable. Do not deliver.**
 
 ### Pattern 2: Source-type blur
 

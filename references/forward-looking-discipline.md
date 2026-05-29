@@ -10,6 +10,10 @@ Every forward-looking claim needs a visible source role and time basis.
 
 A single unlabeled `预计` / `expected` / `likely` in a load-bearing position is enough to reduce the report's credibility. Multiple unlabeled forward claims without source role or confidence framing mean the report is not yet disciplined enough for delivery.
 
+Every `预计` must have a named source attribution: "据公司指引预计" / "据分析师预计" / "据行业路线图预计". A bare `预计` without "据XX" is a hard-fail.
+
+Exception: Generic background statements like "行业普遍预计增长" or "市场共识认为..." are acceptable when they are NOT load-bearing (i.e., they do not support the report's main conclusion or a key number). If such a statement IS load-bearing, it must have a specific source attribution.
+
 ## Separate these categories
 
 Always distinguish among these three categories in the final output:
@@ -70,6 +74,14 @@ If the forward-looking assumption is high-sensitivity (the conclusion changes ma
 `预计该公司的收入将在2026年增长20%` — who expects this? The company? An analyst? The model?
 
 Fix: `[公司]预计2026年收入增长20%（公司2025年报指引）` or `[分析师Name]预计2026年收入增长20%（来源: [SN]）`.
+
+More examples:
+
+- ❌ `预计2027-2028发布` → ✅ `据 JEDEC 行业路线图预计2027-2028发布 [S2]`
+- ❌ `商用预计2029-2030年` → ✅ `据 TrendForce 分析师预计，商用时间在2029-2030年 [S5]`
+- ❌ `预计销售额年复合增长率55%` → ✅ `摩根大通预计销售额年复合增长率55% [S8]`
+
+**Hard-fail: Any sentence containing "预计" / "expected" / "likely" in a load-bearing position without a named source attribution is not acceptable. Do not deliver.** Generic background statements (e.g., "行业普遍预计增长") are exempt when not load-bearing.
 
 ### Pattern 2: roadmap claims without announced vs rumored separation
 `Apple 将在2026年发布M5芯片` — is this announced or media-reported?

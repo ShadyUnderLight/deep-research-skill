@@ -128,6 +128,36 @@ Organize by task type. Examples:
 
 - list the most important sources
 - when applicable, use a structured source register rather than a loose bibliography
+- a bibliography appendix without body-level `[SN]` inline citations does not satisfy source traceability — see `references/source-traceability-and-claim-citation.md`
+
+#### Inline citation format
+
+Use a three-layer system for every load-bearing claim:
+
+1. **Confidence label** in the body: `[CONF]` / `[INFER]` / `[UNKN]`
+2. **Inline source citation** in the body: `[SN]` at the end of the relevant clause
+3. **Source register entry** in the appendix: `[SN] source title, date, type`
+
+Body text example:
+```
+三星已量产HBM4 [CONF][S3]，但良率仍低于美光 [INFER][S5]。
+```
+
+Appendix example:
+```
+| ID  | Source | Type | Date | Relevance |
+|-----|--------|------|------|-----------|
+| S3  | Samsung Semiconductor press release | Primary company | 2026-03-18 | HBM4 mass production announcement |
+| S5  | TrendForce analyst note | Secondary analyst | 2026-04 | HBM4 yield comparison across vendors |
+```
+
+For forward-looking claims, the inline citation must also include the source role:
+```
+据 JEDEC 行业路线图预计2027-2028发布 [S2]。
+据摩根大通预计销售额年复合增长率55% [S8]。
+```
+
+Do not use bare `预计` without "据XX" attribution. See `references/forward-looking-discipline.md`.
 
 ## Final-delivery rule
 

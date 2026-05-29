@@ -33,6 +33,7 @@ Run through every item before delivering the final report.
 - [ ] predictions from analyst estimates are labeled as consensus or individual analyst
 - [ ] predictions from media synthesis or speculation are labeled as such
 - [ ] consensus estimates used for forward-looking claims are checked against latest earnings releases; stale consensus is noted with timing gap
+- [ ] every instance of "预计" / "expected" / "likely" in the report has a named source attribution (who expects this?); bare "预计" without "据XX" = fail — go back and add source role before delivery
 
 ## Completeness
 
