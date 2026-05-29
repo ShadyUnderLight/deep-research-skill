@@ -127,6 +127,8 @@ Rules:
 - both sides apply the same evidence-label discipline ([CONF] / [INFER] / [UNKN])
 - if one side has a table, the other side should have a comparable table
 - do not let the bear case become a bullet list of generic risks while the bull case is a structured analysis
+- if one side has significantly less evidence than the other, still use the same structure but mark empty cells as "无相关证据" or "暂无数据" rather than omitting the structure
+- asymmetric evidence strength is acceptable; asymmetric structure is not
 
 This symmetry matters because asymmetric structure signals to the reader that one side was analyzed more rigorously than the other, even if the substance is equally strong.
 

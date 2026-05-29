@@ -155,8 +155,11 @@ When the report uses one metric as the primary valuation anchor, briefly state w
 - the company has characteristics that could support multiple metrics (e.g., positive earnings AND significant assets)
 - the chosen metric is not the industry default
 - the company is in a transitional state (post-restructuring, cyclical trough, high-growth phase)
+- the company has significant related-party transaction exposure or concentrated ownership that could distort earnings quality
 
-Example pattern: "选用PE而非EV/EBITDA作为主要估值锚，因为[公司]资本结构简单、折旧政策稳定，PE更能反映股东视角的回报预期"
+Example patterns:
+- "选用PE而非EV/EBITDA作为主要估值锚，因为[公司]资本结构简单、折旧政策稳定，PE更能反映股东视角的回报预期"
+- "选用EV/EBITDA而非PE作为主要估值锚，因为[公司]关联方交易占比高，PE可能受非经常性损益影响较大，EV/EBITDA更能反映经营层面的真实估值水平"
 
 For loss-making or cyclical companies, see the precision downgrade rules above. If no metric applies cleanly, say so.
 

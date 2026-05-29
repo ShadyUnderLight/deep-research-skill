@@ -158,11 +158,13 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] if a valuation range or target price is labeled as inference, the report states the multiple range, comparable selection logic, and key assumptions
 - [ ] metric selection justification is present when the chosen metric is not the obvious default for the company type
 - [ ] these are non-blocker checks: failures indicate areas for improvement but do not block delivery
+- [ ] this check complements the metric-scope audit above: metric-scope checks focus on data quality and precision, while this check focuses on methodology transparency
 
 ## Bull/bear structural symmetry (non-blocker)
 
 - [ ] when both bull and bear case sections exist, they use the same structural format (same column breakdown, same evidence-label discipline)
 - [ ] this is a non-blocker check: asymmetric structure is a quality signal, not a hard fail
+- [ ] this check complements the "Risks and counter-evidence" section of the report template: the template requires counter-evidence content, this check requires structural symmetry
 
 ## Unknown-to-conclusion linkage
 
