@@ -11,43 +11,19 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `references/technical-analysis-discipline.md`: new discipline file for technical analysis tasks — covers principle analysis, architecture comparison, patent analysis, feasibility assessment, and roadmap evaluation. Includes comparison dimensions, maturity assessment frameworks (TRL, adoption lifecycle), and common failure modes (#116).
+- `checklists/technical-analysis-audit.md`: new checklist for technical deep-dive route — verifies route activation, technical state verification, evidence quality, comparison structure, feasibility assessment, maturity assessment, and judgment quality (#116).
+- `evals/cases/technical-analysis-kubernetes-vs-docker-case.md`: new eval case for technical deep-dive routing — tests whether the skill correctly activates the technical deep-dive route for architecture comparison tasks and produces a report that satisfies the artifact contract (#116).
+- `ROUTING-MATRIX.md`: added Technical Deep-dive / Architecture Analysis as a first-class route with trigger, artifact contract, hard-fail conditions, and routing priority (#116).
+- `SYSTEM-MAP.md`: added technical deep-dive to Family B supported mature routes list (#116).
+- `ARCHITECTURE.md`: added technical deep-dive to first-class routes list (#116).
+- `ROADMAP.md`: added technical deep-dive route validation task to P1 remaining priorities (#116).
 - `references/data-conflict-resolution.md`: added Chinese-language source mapping table (Tier 1–6) for common Chinese sources (东方财富, Wind, 财新, 36氪, 雪球, etc.) and cross-language conflict trigger in "When to apply" section (#125).
 - `references/source-quality.md`: added cross-language conflict rules section — 4 common patterns (filing vs filing, filing vs aggregator, media vs media, specificity priority) with language-neutral credibility guidance (#125).
 - `checklists/final-audit.md`: added NON-BLOCKER check item for cross-language source conflict handling when Chinese and English sources coexist (#125).
-- `evals/cases/cjk-pdf-validation-input-company-case.md`, `evals/cases/cjk-pdf-validation-input-market-case.md`: Chinese-heavy test markdown files (5,000+ CJK chars each) for PDF rendering validation (#100).
-- `evals/cases/cjk-pdf-validation-findings-case.md`: validation findings for Chinese-heavy PDF rendering (#100). Uncovered and fixed two pipeline bugs (see Changed).
-- `evals/comparative-distillation/candidate-rule-registry.md`: comprehensive cross-case candidate tracking for all 11 comparative distillation files. Extracts all 60 candidate rules, maps each to existing checklist/reference coverage, and identifies recurring patterns. Finding: zero uncovered PROMOTE_NOW candidates — the existing skill system has already absorbed lessons from all 11 cases. See issue #96 for context.
-- `checklists/final-audit.md`: added delivery-time gate for market-outlook forward-looking claims — source role + time basis for all claims; assumption chain + failure condition for derived/modeled/load-bearing forecasts (validated against 3 real cases, see `report/validation-analysis.md`).
-- `checklists/workflow-spine-audit.md`: Family A checklist — audits whether the SKILL.md shared workflow spine was actually executed rather than assumed.
-- `checklists/route-activation-audit.md`: Family B checklist — audits whether route activation was explicit and whether the route actually shaped the output.
-- `references/forward-looking-discipline.md`: Family E reference — dedicated discipline for forecasts, estimates, roadmap statements, announced-vs-rumored separation, and forward-looking assumption chains.
-- `references/delivery-operator-note.md`: Family H reference — operator-facing note on the rendering pipeline, known failure patterns, CJK concerns, and pre-delivery checks.
-- `references/valuation-methodology.md`: P2 reference — valuation methodology selection, metric choice logic, precision downgrade rules for cyclical/loss-making/high-growth companies, target price discipline.
-- `references/analyst-consensus-handling.md`: P2 reference — consensus data handling: source/date/coverage metadata, estimate vs target price vs rating distinction, stale consensus detection.
-- `references/reporting-period-handling.md`: P2 reference — reporting-period definitions: FY vs CY, TTM/LTM/NTM, preliminary/unaudited/restated, post-period events.
-- `evals/cases/consensus-and-forward-pe-misuse-case.md`: eval testing consensus target price as fair value, forward PE as reported fact, and stale consensus after earnings.
-- `evals/cases/reporting-period-and-ttm-confusion-case.md`: eval testing TTM vs fiscal year confusion, preliminary vs audited, and restated figures.
-- `evals/meta/scope-completeness-discipline.md`: Family F meta-eval — root-cause diagnosis for scope-completeness failures (missing rule / missing trigger / route misclassification / execution failure / data unavailability).
-- `evals/meta/decision-utility-discipline.md`: meta-eval for decision-utility failures — root-cause diagnosis (missing route / weak contract / template gap / execution failure / wrong route). Distinguishable from `evals/templates/decision-utility-rubric.md` (scoring tool) by focus on "which repo layer should change".
-- `references/scope-completeness-discipline.md`: reusable minimum-coverage standard for global/comprehensive claims — geography coverage matrix, common failure patterns, acceptable partial scope rules.
-- `ROUTING-MATRIX.md`: added scope completeness and decision utility as cross-cutting disciplines with attach triggers, visible signs, and hard-fail conditions.
-- `ROUTING-MATRIX.md`: wired scope completeness and decision utility into relevant route `### Attach` lists (provider/vendor selection, market entry, market outlook, first-tier positioning, constrained choice, equipment selection, listed-company).
-- `SKILL.md`: added scope completeness and decision utility to core shared disciplines list.
-- `checklists/route-activation-audit.md`: added visible-execution checks for scope completeness and decision utility.
-- `checklists/final-audit.md`: added recall-discipline entries for scope completeness and decision utility.
-
-### Added — Decision tree / consequence mapping method (#124)
-- `references/decision-tree-method.md`: new reference for structured post-decision branch planning. Covers when to use, core 3-branch structure (success / blocked / all-blocked), output format, relationship to existing disciplines (change-the-conclusion, sensitivity analysis, market-outlook scenarios), and common failure modes.
-- `references/option-selection-and-shortlist-discipline.md`: added cross-reference to decision-tree-method.md in Step 7 (scenario logic).
-- `checklists/option-selection-final-audit.md`: added NON-BLOCKER check for post-decision branch with trigger condition and monitoring signal when execution uncertainty is major.
-
-### Added — Sensitivity analysis enhancement (#119)
-- `references/quantitative-role-labeling.md`: enhanced assumption chain template with sensitivity classification (low / medium / high), test amplitude guidance (±20%, ±50%, extreme scenarios), and structured output format for sensitivity tables.
-- `checklists/quantitative-role-audit.md`: added sensitivity analysis checklist — BLOCKER checks for high-sensitivity assumption classification and visible sensitivity tables; NON-BLOCKER checks for tipping points and load-bearing variable identification.
-- `ROUTING-MATRIX.md`: wired sensitivity analysis into market entry, market outlook, and listed-company routes as an attached discipline when numerical assumptions materially affect the conclusion.
-- `SYSTEM-MAP.md`: updated Family D2 (Quantitative role clarity) to include sensitivity analysis failure signs and intervention guidance.
 
 ### Changed
+- `ROUTING-MATRIX.md`: updated routing priority from 7 to 8 routes — technical deep-dive inserted at position 5 (after first-tier positioning, before equipment selection) (#116).
 - `scripts/markdown_to_html.py`: fixed two CJK normalization bugs found during validation:
   - CJK spacing regexes used `\s+` which matched across newlines, merging headings with body paragraphs. Changed to `[ \t]+` (horizontal whitespace only).
   - `unicodedata.normalize('NFKC', ...)` degraded Chinese fullwidth punctuation (（）→(), ，→,) to ASCII. Changed to `NFC` to preserve CJK punctuation.
@@ -89,6 +65,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `evals/cases/reporting-period-and-ttm-confusion-case.md`: fixed TTM example to use only available quarters; converted to fixed-scenario prompt.
 
 ### Why
+- Per issue #116, technical analysis tasks (principle analysis, architecture comparison, patent analysis, feasibility assessment, roadmap evaluation) lacked a dedicated route. These tasks were being routed to generic research or adjacent routes (equipment selection, constrained choice), producing reports with wrong structure. The new technical deep-dive route provides explicit trigger conditions, artifact contract, and hard-fail conditions for technical judgment tasks.
 - Per issue #100 and ROADMAP.md P2, the CJK spacing fixes in `markdown_to_html.py` needed validation on Chinese-heavy content. The validation uncovered two pipeline bugs: (1) CJK spacing regexes used `\s+` which merged headings with body paragraphs across `\n`, and (2) `NFKC` normalization degraded Chinese fullwidth punctuation to ASCII. Both were fixed, and a verification script (`test_cjk_pdf_pipeline.py`) was added to prevent regression.
 - Per issue #97 (P1), failure-taxonomy families lacked corresponding meta-evals and route-trigger coverage. Added meta-evals for scope completeness and decision utility, wired them into the execution chain (SKILL.md, ROUTING-MATRIX.md route Attach, checklists), and created a reusable reference-level rule for scope completeness that was previously missing.
 - Per issue #96 (P1), 11 comparative distillation cases existed but lacked a cross-case candidate rule registry. The registry confirms all PROMOTE_NOW candidates are already covered by existing checklists and references; no new promotion is needed. The main gap has shifted from missing rules to execution/activation discipline.

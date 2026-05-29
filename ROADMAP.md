@@ -21,6 +21,7 @@ This file tracks likely next improvements and helps keep repo evolution intentio
 - Keep eval subtype formalization limited to naming conventions (`evals/README.md#naming-conventions`) unless eval volume justifies new folders.
 - Run at least 2-3 more real comparative-distillation cases and promote only the recurring candidate rules.
 - Validate the new market-outlook routing against 2-3 more real cases before hardening further wording or adding more specialized sub-checklists.
+- **Validate the new technical deep-dive routing** against 2-3 real technical analysis cases (architecture comparison, feasibility assessment, patent analysis) and harden the route definition if activation or artifact contract execution is weak.
 
 ### P2
 - Expand finance/investment-specific guidance for valuation, consensus, and reporting-period handling.

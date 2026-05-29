@@ -125,6 +125,9 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for market-outlook / industry-evolution tasks, all forward-looking claims have visible source role and time basis; derived, modeled, or load-bearing forecasts also show key assumptions and failure / reversal conditions
 - [ ] for first-tier / top-tier / multidimensional positioning tasks, scope, metric, timeframe, and dimension-level conclusions are visible before any overall label
 - [ ] for first-tier / top-tier / multidimensional positioning tasks, the report does not collapse geography, current products, roadmap products, ecosystem strength, traction, and capital-markets signaling into one vague prestige tag without an explicit aggregation rule
+- [ ] for technical deep-dive / architecture analysis tasks, the report makes a technical judgment (not just a survey) and the judgment is supported by evidence
+- [ ] for technical deep-dive / architecture analysis tasks, comparison dimensions are explicit and the analysis is dimension-by-dimension (not just a feature list)
+- [ ] for technical deep-dive / architecture analysis tasks, technical state is current and vendor claims are distinguished from independently verified technical facts
 
 ## Precision and estimate sourcing
 
