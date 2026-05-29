@@ -135,6 +135,38 @@ When target price cannot be supported, prefer:
 - valuation range with explicit assumptions
 - "insufficient data for a target price" as a valid conclusion
 
+## Valuation inference documentation
+
+When presenting a valuation range, target price, or fair value estimate labeled as inference, the reader must be able to reconstruct the reasoning chain. Do not present a valuation conclusion without visible methodology.
+
+### Required elements for valuation inference
+
+Every valuation inference must include:
+
+1. **Multiple assumption range** — state the PE (or other metric) range used, not just the final number. Example: "基于2026年预期PE 25-30x" rather than "目标价600元"
+2. **Comparable selection logic** — if comparables are used, state why these companies were chosen and what they share with the target. Do not assume the reader knows why Company X is a valid comp
+3. **Scenario parameters** — if the valuation uses optimistic/base/pessimistic scenarios, state the key variable that differs across scenarios (e.g., margin assumption, growth rate, market share)
+4. **Limitation disclosure** — state what the valuation does not capture or where the methodology is weakest
+
+### Metric selection justification
+
+When the report uses one metric as the primary valuation anchor, briefly state why. This is especially important when:
+
+- the company has characteristics that could support multiple metrics (e.g., positive earnings AND significant assets)
+- the chosen metric is not the industry default
+- the company is in a transitional state (post-restructuring, cyclical trough, high-growth phase)
+
+Example pattern: "选用PE而非EV/EBITDA作为主要估值锚，因为[公司]资本结构简单、折旧政策稳定，PE更能反映股东视角的回报预期"
+
+For loss-making or cyclical companies, see the precision downgrade rules above. If no metric applies cleanly, say so.
+
+### Common failure patterns
+
+- Presenting a target price without stating the multiple or methodology
+- Using "保守区间" or "合理估值" without showing the assumptions behind the range
+- Choosing comparables without explaining the selection logic
+- Stating a PE range without explaining why that range is appropriate for this company's growth/risk profile
+
 ## Common failure patterns
 
 ### Using TTM PE for cyclical stocks

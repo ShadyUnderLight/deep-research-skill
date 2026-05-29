@@ -153,6 +153,17 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] if metric scope is incomplete or ambiguous, the claim is rewritten or downgraded with visible caveats
 - [ ] valuation precision matches data quality and company characteristics: loss-making companies do not get precise PE valuations, cyclical companies do not get valuations based on peak/trough earnings, and forward metrics are labeled as estimate-based
 
+## Valuation inference transparency (non-blocker)
+
+- [ ] if a valuation range or target price is labeled as inference, the report states the multiple range, comparable selection logic, and key assumptions
+- [ ] metric selection justification is present when the chosen metric is not the obvious default for the company type
+- [ ] these are non-blocker checks: failures indicate areas for improvement but do not block delivery
+
+## Bull/bear structural symmetry (non-blocker)
+
+- [ ] when both bull and bear case sections exist, they use the same structural format (same column breakdown, same evidence-label discipline)
+- [ ] this is a non-blocker check: asymmetric structure is a quality signal, not a hard fail
+
 ## Unknown-to-conclusion linkage
 
 - [ ] for each major unknown or unresolved current-state gap, the report explains whether it limits directional judgment, quantitative precision, valuation confidence, ranking confidence, timing confidence, or recommendation strength
