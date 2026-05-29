@@ -11,6 +11,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `evals/cases/injection-stale-product-data-case.md`: new adversarial injection test for current-state verification — deliberately feeds stale Apple product data (iPhone 14 as current flagship, A16 Bionic as latest chip) and checks whether the defense mechanism detects and corrects it (#127).
 - `ROUTING-MATRIX.md`: added Academic / Literature Review as an experimental first-class route with trigger, artifact contract, hard-fail conditions, and routing priority (#128).
 - `references/academic-evidence-hierarchy.md`: new discipline file for academic research tasks — covers evidence hierarchy (meta-analysis → RCT → peer-reviewed → preprint → conference → weak evidence), source labeling requirements, statistical assessment, literature search methodology, and hard-fail conditions (#128).
 - `SYSTEM-MAP.md`: added academic / literature review to Family B supported mature routes list with academic-specific failure signs (#128).
@@ -30,6 +31,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `ROUTING-MATRIX.md`: updated routing priority from 10 to 11 routes — academic / literature review added as experimental route at position 11 (after constrained choice) (#128).
 
 ### Why
+- Per issue #127, the current eval framework only tests current-state verification against the agent's own stale knowledge (neutral prompts). This injection test adds adversarial testing — deliberately feeding stale product data as input context to verify whether the defense mechanism works when stale data comes from external sources. This complements existing freshness evals like `freshness-xiaomi-case.md` and helps identify whether current-state verification is truly robust or only effective against internal knowledge gaps.
 - Per issue #128, academic research tasks (literature review, field progress analysis, paper comparison) lacked a dedicated route. These tasks were being routed to technical deep-dive or generic research, producing reports that did not properly distinguish evidence tiers, label publication types, or apply academic methodology. The new academic route provides explicit trigger conditions, artifact contract (evidence hierarchy, search strategy, publication type labeling), and hard-fail conditions for academic research tasks. Route is marked as experimental pending real-world validation.
 
 ### Added
