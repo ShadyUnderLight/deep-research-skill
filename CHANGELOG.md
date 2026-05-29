@@ -11,6 +11,8 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `evals/meta/rule-trigger-audit.md`: new meta-eval for periodic rule trigger rate auditing — tracks activation rates for 8 core disciplines across eval cases, defines threshold-based action triggers (#123).
+- `evals/README.md`: added periodic audit guidance — note discipline applicability when adding case evals (#123).
 - `ROUTING-MATRIX.md`: added Academic / Literature Review as an experimental first-class route with trigger, artifact contract, hard-fail conditions, and routing priority (#128).
 - `references/academic-evidence-hierarchy.md`: new discipline file for academic research tasks — covers evidence hierarchy (meta-analysis → RCT → peer-reviewed → preprint → conference → weak evidence), source labeling requirements, statistical assessment, literature search methodology, and hard-fail conditions (#128).
 - `SYSTEM-MAP.md`: added academic / literature review to Family B supported mature routes list with academic-specific failure signs (#128).

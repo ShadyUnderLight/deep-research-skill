@@ -68,3 +68,7 @@ Do not use `evals/` for:
 Keep evals organized by function rather than by recency alone.
 
 If a new eval does not clearly fit an existing subtype, choose the smallest reasonable category instead of creating unnecessary taxonomy.
+
+## Periodic audits
+
+Run `evals/meta/rule-trigger-audit.md` every 10 new eval cases or quarterly to track whether core disciplines are being triggered. When adding a new case eval, note which disciplines were applicable and whether they were triggered — this data feeds the audit.
