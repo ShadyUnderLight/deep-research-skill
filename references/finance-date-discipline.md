@@ -77,6 +77,87 @@ If this data cannot be obtained cleanly, note the limitation explicitly rather t
 
 Do not write a listed-company investment memo without current market context. Historical financials alone are insufficient for investment analysis.
 
+### Research-anchor block (研究锚定块)
+
+For listed-company / investment-style work, the report must begin with a **compact research-anchor block** before broad business or industry analysis starts.
+
+This block explicitly locks the time layers that govern the entire memo. Without it, readers cannot verify whether financial data is anchored on the newest reporting layers.
+
+**Required elements (all four must appear in one visible block):**
+
+1. **Latest full-year reported period (FY)** — e.g., `FY2025` or `2025年年报`
+2. **Latest quarterly / interim reported period** — e.g., `2026Q1` or `2026年一季报`
+3. **Latest current market snapshot date** — the date of price, valuation, and market data
+4. **Latest management / leadership state** — when decision-relevant
+
+**When is management state "decision-relevant"?**
+
+Include management state when any of the following occurred since the last reported period:
+- CEO, CFO, or board chair change
+- major restructuring, M&A, or asset injection
+- significant guidance update or business model shift
+- major litigation, regulatory action, or compliance event
+- leadership-related controversy affecting company reputation
+
+If none of the above occurred, write: `管理层：无重大变动` or `管理层：稳定`.
+
+**For non-listed company research:**
+
+The research-anchor block is optional but recommended. If included, adapt the elements:
+- Replace FY/quarter with: latest funding round, latest product launch, or latest operational milestone
+- Replace market snapshot with: latest valuation reference (if any) or latest user/traction metrics
+- Management state remains relevant for all company types
+
+**Placement rule:**
+
+The research-anchor block must appear before business description, competitive analysis, or financial review begins. It should be one of the first things a reader sees, not buried in section 4 or 9.
+
+**Format patterns:**
+
+Two formats are acceptable — choose based on report context:
+
+*Detailed format (for full reports):*
+```
+研究锚定：
+- 最新完整财年：FY2025（来源：年报）
+- 最新季度：2026Q1（来源：一季报）
+- 市场快照：2026-05-29 收盘价
+- 管理层：无重大变动 / [CEO Name] 于 YYYY-MM 接任
+```
+
+*Compact format (for executive summaries or tight layouts):*
+```
+研究锚定：最新FY：FY2025｜最新季度：2026Q1｜市场快照：2026-05-29｜管理层：[CEO Name]
+```
+
+**Why this matters:**
+
+- prevents stale anchors from silently governing the memo
+- forces the agent to verify freshness before broad synthesis
+- gives the reader immediate visibility into data timeliness
+- separates "what the company reported" from "what the market currently reflects"
+
+**Common failure patterns:**
+
+- anchor data scattered across multiple sections instead of centralized
+- no explicit lock — reader must infer the time layers from context
+- stale quarter used as "latest" without declaration
+- management state omitted when it materially affects the thesis
+
+**Degraded anchor handling:**
+
+If the latest period cannot be fully verified, downgrade visibly rather than hiding the gap:
+
+```
+研究锚定（已降级）：
+- 最新完整财年：FY2024（注：FY2025年报尚未发布）
+- 最新季度：2025Q3（注：2026Q1数据尚未获取）
+- 市场快照：2026-05-29 收盘价
+- 管理层：无重大变动
+```
+
+A degraded anchor is acceptable when the limitation is explicit. A hidden stale anchor is not.
+
 ### Freshness hard gate for listed-company work
 
 Before broad analysis, explicitly lock three time layers:

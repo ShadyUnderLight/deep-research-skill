@@ -11,10 +11,31 @@ The front page should help the reader grasp the report's main judgment quickly.
 For user-facing reports, the front page should usually prioritize:
 - title
 - report date / coverage period
+- **research-anchor block** (for listed-company / investment-style work — see below)
 - one-sentence bottom line or thesis
 - 3-5 executive bullets
 - key risks
 - key unknowns
+
+### Research-anchor block (mandatory for listed-company work)
+
+For listed-company / investment-style reports, a **research-anchor block** is mandatory. It must appear on the front page, before the thesis and executive bullets.
+
+This block locks the time layers that govern the entire memo:
+- latest full-year reported period (FY)
+- latest quarterly / interim reported period
+- latest current market snapshot date
+- latest management / leadership state (when decision-relevant)
+
+**Placement rule:** The research-anchor block goes **before** the evidence-tier legend, not after it. This prevents the first screen from being occupied by methodology notes instead of judgment.
+
+**Format example:**
+
+```
+研究锚定：最新FY：FY2025｜最新季度：2026Q1｜市场快照：2026-05-29｜管理层：[CEO Name]
+```
+
+For full definition and failure modes, see `references/finance-date-discipline.md` → "Research Anchor Block" section.
 
 Do not default to using the front page as the main location for:
 - full evidence-label explanations
