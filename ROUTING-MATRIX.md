@@ -199,14 +199,14 @@ Fail if the report:
 Use when the task is mainly about:
 
 - how a market will evolve
-- next 6–12 month outlook
+- next 6–24 month outlook
 - adoption trajectory
 - industry evolution
 - scenario memo
 
 **Choose this route when:** the task is to explain direction, evolution, trajectory, or structural change rather than pick a winner now.
 
-**Do not use this route when:** the task has a real recommendation, shortlist, or selection burden.
+**Do not use this route when:** the task has a real recommendation, shortlist, or selection burden. Specifically: ranking entities or options, predicting competition outcomes among defined participants, or choosing a provider/supplier. See `references/market-outlook-and-scenario-discipline.md` "When not to use this route" for boundary examples.
 
 **Often confused with:** provider selection or constrained choice.
 
@@ -225,6 +225,7 @@ Use when the task is mainly about:
 - sensitivity analysis when forecasts, market size estimates, or adoption projections materially affect the conclusion
 
 ### Audit
+- `checklists/market-outlook-audit.md`
 - `checklists/forward-looking-claims.md`
 - `checklists/source-traceability.md`
 - `checklists/final-audit.md`
@@ -236,8 +237,8 @@ The final report should visibly show:
 - key drivers of change
 - key blockers or friction points
 - base case
-- alternative scenarios
-- stakeholder implications
+- structured alternative scenarios (at minimum base + one alternative; three scenarios — optimistic / base / pessimistic — when uncertainty is material, which is the default for market-outlook tasks)
+- stakeholder implications covering at least 3 distinct stakeholder types
 - monitoring signals
 - what would change the conclusion
 
@@ -246,8 +247,10 @@ Fail if the report:
 
 - remains an industry overview instead of an outlook memo
 - mixes observed facts with scenario assumptions
-- gives forecasts without visible scenario structure
+- gives forecasts without visible scenario structure, or rests on a single base case with no alternative scenarios
 - hides stakeholder implications inside generic narrative
+- covers only investor stakeholder implications while ignoring technology developers, policymakers, enterprise buyers, or end users
+- uses Market Outlook for a task whose core output is ranking, prediction, or selection among defined options (wrong route — use Constrained Choice / Shortlist instead)
 
 ---
 

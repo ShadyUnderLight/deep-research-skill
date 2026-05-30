@@ -54,6 +54,19 @@ Use provider selection when the task is to choose.
 
 Use market outlook when the task is to understand market direction, industry evolution, or future structure rather than select an option.
 
+### Market outlook vs constrained choice
+Use market outlook when the task is to understand **direction, evolution, or trajectory** of a market, industry, or category.
+
+Use constrained choice when the task's core output is **ranking, prediction, or selection** among defined options — even if the topic sounds like a market or industry question.
+
+Key test: does the task ask "how will this market evolve?" (market outlook) or "which option will win?" (constrained choice)?
+
+Examples:
+- "人形机器人产业链未来 12 个月如何演化" → market outlook (direction/trajectory)
+- "哪支球队最可能夺冠" → constrained choice (ranking among defined options)
+- "世界杯足球产业链的商业前景" → market outlook (market evolution)
+- "AI 编程工具市场中哪家会领先" → constrained choice (selection/prediction)
+
 ### Regulatory / policy impact analysis vs market outlook
 Use regulatory analysis when the core question is understanding the regulatory environment, assessing policy risk, or judging compliance impact. The report structure is organized around current regulations → business impact → scenarios → implications.
 
@@ -99,6 +112,7 @@ Common failures include:
 - route chosen too late, after report shape has already drifted
 - route selected, but output still reads like generic overview
 - required secondary disciplines named but not actually visible
+- wrong route declared for the task type (e.g., Market Outlook used for ranking/prediction tasks; check "Do not use" clauses before committing)
 
 ## Scope
 

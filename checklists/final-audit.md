@@ -123,6 +123,9 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for market-outlook / industry-evolution tasks, a current market snapshot was verified before forward-looking sections
 - [ ] for market-outlook / industry-evolution tasks, drivers, blockers, scenarios, and stakeholder implications are explicit rather than implied
 - [ ] for market-outlook / industry-evolution tasks, all forward-looking claims have visible source role and time basis; derived, modeled, or load-bearing forecasts also show key assumptions and failure / reversal conditions
+- [ ] for market-outlook / industry-evolution tasks, structured multi-scenario analysis exists (at minimum base case + one alternative) with quantitative ranges and trigger conditions
+- [ ] for market-outlook / industry-evolution tasks, stakeholder implications cover at least 3 distinct stakeholder types, not only investors
+- [ ] for market-outlook / industry-evolution tasks, the task's core output is direction/evolution/trajectory — not ranking, prediction, or selection among defined options
 - [ ] for first-tier / top-tier / multidimensional positioning tasks, scope, metric, timeframe, and dimension-level conclusions are visible before any overall label
 - [ ] for first-tier / top-tier / multidimensional positioning tasks, the report does not collapse geography, current products, roadmap products, ecosystem strength, traction, and capital-markets signaling into one vague prestige tag without an explicit aggregation rule
 - [ ] for technical deep-dive / architecture analysis tasks, the report makes a technical judgment (not just a survey) and the judgment is supported by evidence
