@@ -50,11 +50,11 @@ Boundary examples:
 
 | Task | Correct route | Why |
 |------|--------------|-----|
-| "人形机器人产业链未来 12 个月如何演化" | Market Outlook ✓ | asks for market direction and trajectory |
-| "哪支球队最可能夺冠" | Constrained Choice ✗ | asks for ranking/prediction among defined options |
-| "应该选哪个 AI 模型供应商" | Provider Selection ✗ | asks for selection under constraints |
-| "世界杯足球产业链的商业前景" | Market Outlook ✓ | asks for market evolution, not team ranking |
-| "NAS vs 自建服务器怎么选" | Equipment Selection ✗ | asks for procurement recommendation |
+| "人形机器人产业链未来 12 个月如何演化" | → Market Outlook | asks for market direction and trajectory |
+| "哪支球队最可能夺冠" | → Constrained Choice | asks for ranking/prediction among defined options |
+| "应该选哪个 AI 模型供应商" | → Provider Selection | asks for selection under constraints |
+| "世界杯足球产业链的商业前景" | → Market Outlook | asks for market evolution, not team ranking |
+| "NAS vs 自建服务器怎么选" | → Equipment Selection | asks for procurement recommendation |
 
 If a task mixes market-evolution questions with selection/ranking questions, identify the **primary burden**. If the primary burden is selection or ranking, do not use Market Outlook as the primary route — use the selection route and attach market-outlook discipline as a secondary discipline if market-evolution context is needed.
 
@@ -278,6 +278,11 @@ The report covers only investor/operator implications but ignores technology dev
 The report uses Market Outlook for a task whose core output is ranking, prediction, or selection among defined options.
 
 **Fix:** Check the "When not to use this route" section and `ROUTING-MATRIX.md` "Do not use" clauses before committing to this route. Redirect to Constrained Choice / Shortlist when ranking/prediction burden is primary.
+
+### Failure mode 9: Probability precision illusion
+The report assigns precise probability percentages (e.g., "15-20%", "23%") to inherently uncertain outcomes where the evidence base cannot support that level of precision.
+
+**Fix:** Use directional labels (more likely / less likely / comparable likelihood) or bounded ranges with explicit uncertainty caveats. Precise probabilities are only justified when backed by robust quantitative models or large-sample statistical evidence.
 
 ---
 

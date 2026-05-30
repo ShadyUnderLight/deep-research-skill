@@ -199,7 +199,7 @@ Fail if the report:
 Use when the task is mainly about:
 
 - how a market will evolve
-- next 6–12 month outlook
+- next 6–24 month outlook
 - adoption trajectory
 - industry evolution
 - scenario memo
@@ -237,7 +237,7 @@ The final report should visibly show:
 - key drivers of change
 - key blockers or friction points
 - base case
-- structured alternative scenarios (optimistic / base / pessimistic with quantitative ranges and trigger conditions)
+- structured alternative scenarios (at minimum base + one alternative; three scenarios — optimistic / base / pessimistic — when uncertainty is material, which is the default for market-outlook tasks)
 - stakeholder implications covering at least 3 distinct stakeholder types
 - monitoring signals
 - what would change the conclusion
@@ -247,7 +247,7 @@ Fail if the report:
 
 - remains an industry overview instead of an outlook memo
 - mixes observed facts with scenario assumptions
-- gives forecasts without visible scenario structure
+- gives forecasts without visible scenario structure, or rests on a single base case with no alternative scenarios
 - hides stakeholder implications inside generic narrative
 - covers only investor stakeholder implications while ignoring technology developers, policymakers, enterprise buyers, or end users
 - uses Market Outlook for a task whose core output is ranking, prediction, or selection among defined options (wrong route — use Constrained Choice / Shortlist instead)
