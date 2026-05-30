@@ -67,6 +67,7 @@ Defines the shared research process that applies before any route-specific speci
 - unnecessary browsing loops
 - weak counter-evidence search
 - parallelism used without enough structure
+- structural requirement (e.g. evidence grading boilerplate) displaces judgment from first-screen position
 
 ### First place to change
 - `SKILL.md` if the shared workflow itself is weak
@@ -88,6 +89,7 @@ Makes mature task families explicit so the right discipline set and delivery con
 - `checklists/route-activation-audit.md`
 - `checklists/startup-company-report.md` (for private company route)
 - `checklists/regulatory-analysis-audit.md` (for regulatory route)
+- `checklists/market-outlook-audit.md` (for market outlook route)
 
 ### Supported mature routes
 - provider / vendor selection
@@ -113,6 +115,10 @@ Makes mature task families explicit so the right discipline set and delivery con
 - a regulatory analysis confuses regulatory text with media interpretation
 - an academic review treats preprints as peer-reviewed without labeling
 - an academic review cherry-picks papers to support pre-determined conclusions
+- a secondary route is attached but its hard-fail conditions are not checked before delivery
+- a route is actively declared but violates its own "Do not use" / "Often confused with" clauses for the task type
+- a market-outlook report has only one scenario with no structured alternative paths
+- a market-outlook report covers only investor stakeholder implications
 
 ### First place to change
 - `ROUTING-MATRIX.md` when route selection or attached discipline mapping is wrong
@@ -148,12 +154,18 @@ Protects fast-moving research from stale facts, frozen time layers, and blurred 
 - `evals/cases/intel-current-state-freshness-case.md`
 - `evals/cases/cnooc-judgment-shape-improved-but-freshness-still-leaked-case.md`
 - `evals/cases/reporting-period-and-ttm-confusion-case.md`
+- `evals/cases/amat-listed-company-anchor-and-label-execution-case.md`
+- `evals/cases/evergrande-property-listed-company-execution-case.md`
+- `evals/cases/humanoid-robot-market-outlook-dual-route-case.md`
+- `evals/cases/storage-chip-listed-company-deep-dive-pass-case.md`
 
 ### Typical failure signs
 - stale product or model generation presented as current
 - listing state frozen at an earlier stage
 - present-tense ranking without a time basis
 - reported financials, market snapshot, and estimates blended together
+- research anchor block missing entirely (no explicit time-layer lock before broad analysis)
+- market snapshot absent (share price, multiples, snapshot date) despite route hard requirement
 
 ### First place to change
 - routing layer if current-state-sensitive tasks are not activating the right gates
@@ -183,6 +195,9 @@ Makes load-bearing claims auditable, separates primary evidence from inference-h
 - `evals/cases/apple-product-roadmap-and-investment-case.md`
 - `evals/cases/minimax-company-report-case.md`
 - `evals/cases/cambricon-evidence-weighting-and-traceability-case.md`
+- `evals/cases/amat-listed-company-anchor-and-label-execution-case.md`
+- `evals/cases/innolight-listed-company-execution-case.md`
+- `evals/cases/storage-chip-listed-company-deep-dive-pass-case.md`
 - `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md`
 
 ### Typical failure signs
@@ -192,6 +207,7 @@ Makes load-bearing claims auditable, separates primary evidence from inference-h
 - mixed-evidence positioning judgments hide which claims are load-bearing
 - conflicting data from different sources is silently resolved without explanation
 - Chinese-language and English-language sources coexist but cross-language conflicts are not handled
+- evidence-label inflation — labels exist but overstate claim certainty (e.g. third-party ranking labeled as "confirmed fact")
 
 ### First place to change
 - references when evidence structure itself is weak
@@ -272,6 +288,7 @@ Controls forecasts, roadmap statements, target dates, and estimate-heavy claims 
 - `evals/cases/byd-report-format-discipline-case.md`
 - `evals/cases/hnb-industry-report-table-design-case.md`
 - `evals/cases/consensus-and-forward-pe-misuse-case.md`
+- `evals/cases/humanoid-robot-market-outlook-dual-route-case.md`
 - `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md`
 
 ### Typical failure signs
@@ -279,6 +296,8 @@ Controls forecasts, roadmap statements, target dates, and estimate-heavy claims 
 - roadmap claims without announced vs rumored separation
 - consensus numbers without source or date
 - estimate language without assumption chain
+- missing structured alternative scenarios in market-outlook tasks
+- stakeholder implications limited to a single type (e.g. investors only)
 
 ### First place to change
 - checklists when forecasts leak through at delivery time
@@ -308,6 +327,8 @@ Supports tasks where the output must help choose among options rather than merel
 - `evals/comparative-distillation/sea-market-entry-gpt-vs-minimax-comparative-distillation.md`
 - `evals/comparative-distillation/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md`
 - `evals/cases/cambricon-first-tier-positioning-case.md`
+- `evals/cases/champions-league-constrained-choice-activation-case.md`
+- `evals/cases/world-cup-constrained-choice-wrong-route-case.md`
 - `evals/comparative-distillation/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md`
 - `evals/templates/decision-utility-rubric.md`
 
@@ -318,6 +339,8 @@ Supports tasks where the output must help choose among options rather than merel
 - ranking memo collapses multiple dimensions into prestige language
 - shortlist recommendation appears without shortlist-construction logic
 - selection recommendation without post-decision execution branching when uncertainty is high
+- wrong route declared (Market Outlook used for ranking/recommendation task despite "Do not use" clause)
+- probability precision illusion (precise percentages for inherently uncertain predictions)
 
 ### First place to change
 - `ROUTING-MATRIX.md` when a mature task family is misrouted or under-specified
