@@ -67,6 +67,12 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] if a route-specific section were removed, the report would materially lose decision logic rather than only lose formatting variety
 - [ ] generic background, company history, market history, or option blurbs do not occupy the strongest early-report positions unless the route truly requires them
 
+## Route label visibility (non-blocker)
+
+- [ ] route-specific labels or structural markers declared in the route contract appear explicitly in the body text (e.g. "短名单"/"反转条件"/"底限判断"/"情景分析", "shortlist"/"reversal condition"/"floor judgment"/"scenario analysis"), not only implicitly in content
+- [ ] this is a non-blocker check: implicit structure without explicit labels is a quality signal, not a hard fail
+- [ ] this complements `checklists/route-activation-audit.md`'s Visible label check — route-activation-audit verifies at activation time, this re-verifies at delivery for defense-in-depth
+
 ## Company-report judgment audit
 
 - [ ] the report reads like a judgment memo rather than only a strong descriptive overview
@@ -108,7 +114,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] source traceability was applied for structured or investment-relevant outputs
 - [ ] scope completeness was checked when the report claims global, comprehensive, or industry-wide scope
 - [ ] decision utility was checked when the report carries a recommendation, choice, judgment, or investment-style decision burden
-- [ ] if multiple routes are declared (primary + secondary), the hard-fail conditions of each declared route are verified; secondary route hard-fail conditions are not skipped because the route is "secondary" (see ROUTING-MATRIX.md "Secondary route hard-fail requirement")
+- [ ] if multiple routes are declared (primary + secondary), the hard-fail conditions of each declared route are verified; secondary route hard-fail conditions are not skipped because the route is "secondary"; if a condition is genuinely inapplicable, the reason is documented rather than skipped silently (see ROUTING-MATRIX.md "Secondary route hard-fail requirement")
 - [ ] option-selection final audit was run for shortlist, ranking, or constrained-choice outputs
 - [ ] for model/API/provider selection tasks, a current provider snapshot was verified before ranking or recommendation
 - [ ] for China-mainland deployment decisions, accessibility, compliance, data residency, and SLA were treated as part of ranking logic when relevant
@@ -141,8 +147,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 ## Precision and estimate sourcing
 
-- [ ] every "预计 / 估计 / 预期" in the report has a named source attribution (who expects this?)
-- [ ] bare "预计" without source = fail; go back and add "[据公司指引/据分析师/据媒体]预计"
+- [ ] every "预计 / 估计 / 预期 / 有望" in the report has a named source attribution (who expects this?)
+- [ ] bare "预计" or bare "有望" without source = fail; go back and add "[据公司指引/据分析师/据媒体]预计" or "[据行业趋势/据管理层/据第三方]有望"
 - [ ] exact figures are used when source provides them; "约" only when source itself rounds
 - [ ] quantitative outlook numbers are labeled as observed / inferred / scenario assumption / illustrative calculation when the distinction matters
 - [ ] for constrained-choice / shortlist reports that use composite scoring, important quantitative inputs are labeled as observed fact / proxy / assumption / model output when the distinction affects trust in the recommendation
@@ -159,7 +165,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 ## Valuation inference transparency (non-blocker)
 
-- [ ] if a valuation range or target price is labeled as inference, the report states the multiple range, comparable selection logic, and key assumptions
+- [ ] if a valuation range or target price is labeled as inference, the report states the multiple range, comparable selection logic, and scenario parameters (optimistic / base / pessimistic) and key assumptions
 - [ ] metric selection justification is present when the chosen metric is not the obvious default for the company type
 - [ ] these are non-blocker checks: failures indicate areas for improvement but do not block delivery
 - [ ] this check complements the metric-scope audit above: metric-scope checks focus on data quality and precision, while this check focuses on methodology transparency
