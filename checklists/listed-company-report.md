@@ -43,7 +43,8 @@ Run through every item before delivering the final report.
 
 ## Stale-anchor hard-fail gate
 
-- [ ] stale-anchor hard gate: a stale or mis-timed research-anchor layer — latest full-year, quarterly / interim, or current market snapshot — invalidates the memo unless synthesis was stopped, the anchor was re-checked, and the anchor was corrected or visibly downgraded before continuing — per SKILL.md fail-fast rule
+- [ ] stale-anchor hard gate: a missing, stale, or mis-timed research-anchor layer — latest full-year, quarterly / interim, or current market snapshot — invalidates the memo unless synthesis was stopped, the anchor was re-checked, and the anchor was corrected or visibly downgraded before continuing — per SKILL.md fail-fast rule
+- [ ] this gate applies regardless of whether listed-company is the primary route or a secondary/sub-route (per ROUTING-MATRIX.md "Secondary route hard-fail requirement")
 
 ## Current product lineup
 

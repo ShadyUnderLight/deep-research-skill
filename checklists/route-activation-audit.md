@@ -46,6 +46,7 @@ It audits whether route activation was explicit and whether the route actually s
 
 - [ ] route-specific hard-fail conditions from the routing matrix were checked before delivery
 - [ ] the report does not exhibit any of the named hard-fail patterns for its primary route
+- [ ] if multiple routes are declared (primary + secondary), the hard-fail conditions of **all** declared routes are verified; a secondary route's hard-fail conditions are not skipped because it is "secondary"; if a condition is genuinely inapplicable, the reason is documented rather than skipped silently
 
 ## Contract item-by-item verification
 

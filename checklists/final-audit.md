@@ -57,7 +57,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] the selected primary route is inferable from the final artifact without relying on internal notes
 - [ ] the report visibly satisfies that route's artifact contract
 - [ ] if a close alternative route existed, the chosen route's logic is visible rather than merely asserted
-- [ ] the required secondary disciplines for the selected route are visibly executed
+- [ ] the required secondary disciplines for the selected route are visibly executed (note: "secondary disciplines" such as current-state verification differ from "secondary routes" — secondary routes have their own hard-fail verification requirement checked in the Recall discipline section)
 - [ ] the report does not collapse back into generic overview mode despite route selection
 - [ ] if the route implies recommendation, ranking, gating, or sequencing burden, the report actually carries that burden
 - [ ] if scope completeness was required, the report's coverage boundaries are explicit; load-bearing geographies or segments are present; omissions are named rather than silent
@@ -108,6 +108,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] source traceability was applied for structured or investment-relevant outputs
 - [ ] scope completeness was checked when the report claims global, comprehensive, or industry-wide scope
 - [ ] decision utility was checked when the report carries a recommendation, choice, judgment, or investment-style decision burden
+- [ ] if multiple routes are declared (primary + secondary), the hard-fail conditions of each declared route are verified; secondary route hard-fail conditions are not skipped because the route is "secondary" (see ROUTING-MATRIX.md "Secondary route hard-fail requirement")
 - [ ] option-selection final audit was run for shortlist, ranking, or constrained-choice outputs
 - [ ] for model/API/provider selection tasks, a current provider snapshot was verified before ranking or recommendation
 - [ ] for China-mainland deployment decisions, accessibility, compliance, data residency, and SLA were treated as part of ranking logic when relevant

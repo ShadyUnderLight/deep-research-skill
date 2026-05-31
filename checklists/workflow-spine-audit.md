@@ -53,7 +53,7 @@ Run this checklist before every delivery. It is a Tier-1 gate that audits whethe
 ## Final discipline
 
 - [ ] if a specialized route was selected: the required audits for that route were run and pass
-- [ ] if a specialized route was selected: the report satisfies the visible artifact contract of its primary route
+- [ ] if a specialized route was selected: the report satisfies the visible artifact contract of its primary route (and of any declared secondary route, if applicable; secondary-route hard-fail conditions are checked separately — see ROUTING-MATRIX.md "Secondary route hard-fail requirement")
 - [ ] if no mature specialized route was triggered: the report follows the shared workflow spine and does not drift into generic overview mode
 
 ## Quality bar

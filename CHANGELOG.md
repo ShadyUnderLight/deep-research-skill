@@ -35,6 +35,11 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `ROUTING-MATRIX.md`: added listed-company route hard-fail conditions — missing research-anchor block (absent entirely, not just stale) and incomplete market snapshot (missing ≥3 of share price/cap/PE/PB/PS/52w range/date) (#149).
 - `ROUTING-MATRIX.md`: added constrained-choice route hard-fail condition — background-first drift (>5 lines of pure background immediately after judgment summary) (#149).
 - `ROUTING-MATRIX.md`: strengthened Market Outlook route hard-fail and "Do not use" section — added concrete boundary examples distinguishing Market Outlook vs Constrained Choice vs Provider Selection vs trajectory questions; expanded "which one wins" hard-fail wording (#149).
+- `checklists/route-activation-audit.md`: added secondary route hard-fail verification checkbox — when multiple routes are declared, all declared routes' hard-fail conditions must be verified (#149).
+- `checklists/listed-company-report.md`: expanded stale-anchor hard gate to also catch "missing entirely" (not just stale/mis-timed); added sub-route applicability note (#149).
+- `checklists/option-selection-final-audit.md`: added Background-first drift check section with 2 verification items matching new constrained-choice hard-fail (#149).
+- `checklists/final-audit.md`: added secondary route hard-fail verification recall entry; clarified "secondary disciplines" vs "secondary routes" distinction (#149).
+- `checklists/workflow-spine-audit.md`: extended artifact contract check to cover secondary declared routes (#149).
 
 ### Why
 - Per issue #127, the current eval framework only tests current-state verification against the agent's own stale knowledge (neutral prompts). This injection test adds adversarial testing — deliberately feeding stale product data as input context to verify whether the defense mechanism works when stale data comes from external sources. This complements existing freshness evals like `freshness-xiaomi-case.md` and helps identify whether current-state verification is truly robust or only effective against internal knowledge gaps.
