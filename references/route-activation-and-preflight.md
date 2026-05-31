@@ -37,6 +37,46 @@ Choose the route that most strongly determines:
 
 If one route mainly changes wording while another changes structure and audit expectations, choose the latter.
 
+## Preflight steps
+
+After identifying candidate routes and before finalizing route selection, execute these verification steps.
+
+If no specialized route applies to this task (shared-workflow path), skip these steps — the workflow-spine audit replaces route-specific preflight.
+
+### Step 1: "Do not use" / "Often confused with" clause check
+
+Before committing to a route, check the route's **"Do not use"** and **"Often confused with"** clauses in `ROUTING-MATRIX.md`.
+
+- If the task matches a "Do not use" condition → do not use this route. Reconsider route selection.
+- If the boundary is ambiguous (the task partially overlaps with "Often confused with" routes) → document the boundary judgment: why this route still wins despite the overlap, or switch to the more appropriate route.
+- Do not skip this check because the route "feels right" for the topic — topic label is not the same as decision burden.
+
+### Step 2: Secondary-route hard-fail verification
+
+A secondary route is present when one of the "Secondary disciplines" identified in the Preflight questions above is itself a specialized route (e.g., Listed Company attached to a Market Outlook primary) rather than a cross-cutting discipline like source traceability.
+
+If the preflight identifies a secondary route, its hard-fail conditions must be verified **at selection time**, not deferred to delivery.
+
+- Read the secondary route's hard-fail conditions from `ROUTING-MATRIX.md`.
+- If a condition is genuinely inapplicable to the task (e.g., "market snapshot hard-fail does not apply because the secondary route is listed-company but the task does not involve company-level market data"), document the inapplicability reason explicitly.
+- Do not skip this step because the secondary route is "secondary" — the hard-fail conditions of all declared routes apply equally.
+
+### Step 3: Execution contract
+
+Before deep collection begins, write a compact execution contract that the final artifact must satisfy. This contract operationalizes the "Required artifact contract" field from the Minimal internal shape below.
+
+This contract must include at minimum:
+- **opening mandate** — what the opening 20-30% of the report must accomplish
+- **mandatory sections** — which sections are non-negotiable because the route would fail without them
+- **hard-fail conditions** — which route-specific failure patterns must be checked before delivery
+- **minimize / move later** — which tempting generic sections should be compressed or placed after the primary decision logic
+
+For tasks where the option set is small or obvious (e.g., binary choice), still state the selection boundary explicitly: "only these options are credible because…" rather than leaving it implicit.
+
+The full contract format (including "visible proof the route fired") is defined in `ROUTING-MATRIX.md` under "Route execution contract."
+
+The contract belongs in the research plan, not only in the final audit. A route is not fully selected until this contract exists in operational form.
+
 ## Common route confusions
 
 ### Market entry vs constrained choice
