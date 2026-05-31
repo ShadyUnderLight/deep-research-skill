@@ -88,6 +88,11 @@ Run this checklist before delivery.
 - [ ] the next step is clear
 - [ ] narrative weight is not distributed so evenly that the winning option, runner-up, and rejected options all feel equally plausible by reading time alone
 
+## Background-first drift check
+
+- [ ] the executive summary or judgment-first opening flows directly into the decision architecture or comparison framework, not into >5 lines of pure background description (venue context, event history, category overview, or similar)
+- [ ] removing background paragraphs that immediately follow the opening judgment would sharpen rather than weaken the report
+
 ## Quality bar
 
 A selection report that fails this checklist may still be informative, but it is not yet strong decision support.
