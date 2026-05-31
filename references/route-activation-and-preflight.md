@@ -37,6 +37,39 @@ Choose the route that most strongly determines:
 
 If one route mainly changes wording while another changes structure and audit expectations, choose the latter.
 
+## Preflight steps
+
+After identifying candidate routes and before finalizing route selection, execute these verification steps.
+
+### Step 1: Exclusion clause check
+
+Before committing to a route, check the route's **"Do not use"** and **"Often confused with"** clauses in `ROUTING-MATRIX.md`.
+
+- If the task matches a "Do not use" condition → do not use this route. Reconsider route selection.
+- If the boundary is ambiguous (the task partially overlaps with "Often confused with" routes) → document the boundary judgment: why this route still wins despite the overlap, or switch to the more appropriate route.
+- Do not skip this check because the route "feels right" for the topic — topic label is not the same as decision burden.
+
+### Step 2: Secondary-route hard-fail verification
+
+If the preflight identifies a secondary route (in addition to the primary route), its hard-fail conditions must be verified **at selection time**, not deferred to delivery.
+
+- Read the secondary route's hard-fail conditions from `ROUTING-MATRIX.md`.
+- If a condition is genuinely inapplicable to the task (e.g., "market snapshot hard-fail does not apply because the secondary route is listed-company but the task does not involve company-level market data"), document the inapplicability reason explicitly.
+- Do not skip this step because the secondary route is "secondary" — the hard-fail conditions of all declared routes apply equally.
+
+### Step 3: Execution contract
+
+Before deep collection begins, write a compact execution contract that the final artifact must satisfy.
+
+This contract must include at minimum:
+- **mandatory sections** — which sections are non-negotiable because the route would fail without them
+- **hard-fail conditions** — which route-specific failure patterns must be checked before delivery
+- **minimize / move-later items** — which tempting generic sections should be compressed or placed after the primary decision logic
+
+For tasks where the option set is small or obvious (e.g., binary choice), still state the selection boundary explicitly: "only these options are credible because…" rather than leaving it implicit.
+
+The contract belongs in the research plan, not only in the final audit. A route is not fully selected until this contract exists in operational form.
+
 ## Common route confusions
 
 ### Market entry vs constrained choice

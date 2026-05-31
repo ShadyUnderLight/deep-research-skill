@@ -8,7 +8,9 @@ It audits whether route activation was explicit and whether the route actually s
 
 - [ ] the primary route was consciously chosen before deep collection began, not retrofitted during writing
 - [ ] the closest alternative route was identified and a reason exists for why the chosen route wins
-- [ ] a compact execution contract exists before synthesis: opening mandate, mandatory sections, hard-fail conditions
+- [ ] the selected route's "Do not use" / "Often confused with" clauses from `ROUTING-MATRIX.md` were checked before finalizing; if the task matched a disqualifying condition, the route was reconsidered or the boundary judgment was documented
+- [ ] if a secondary route is declared, its hard-fail conditions were verified at selection time (not deferred to delivery); if a condition is inapplicable, the reason is documented
+- [ ] a compact execution contract exists before synthesis: opening mandate, mandatory sections, hard-fail conditions, minimize/move-later items
 - [ ] all required audits for this route (from `ROUTING-MATRIX.md` `### Audit` section) are identified and confirmed executed before delivery (results visible in the artifact or process log); if any required audit is missing, it is run before the report is considered ready; if any required audit was intentionally skipped, the reason is documented
 
 ## Route selection visibility
