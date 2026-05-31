@@ -23,8 +23,8 @@ Run through every item before delivering the final report.
 - [ ] financial figures are labeled by type: audited annual / interim / earnings release / analyst consensus / inferred
 - [ ] historical reported facts are separated from current market snapshot
 - [ ] forward-looking targets or estimates are clearly labeled as such, not presented as confirmed facts
-- [ ] **evidence labels do not inflate claim strength** — inferred or third-party claims are not labeled as "confirmed facts"; the highest label tier per claim matches the actual source strength; if a claim carries [Confirmed] / 已确认事实 label, the source must support that tier (primary filing, company disclosure, or directly observed event); labels that overstate certainty relative to the evidence are downgraded before delivery
-- [ ] inline source citation format is consistent throughout the document — all `[SN]`/`[IN]`/`[UN]` tags use the same bracket style and spacing; mixing formats (e.g. `[SN]` in some sections and unformatted references in others) is flagged and aligned before delivery
+- [ ] evidence labels do not inflate claim strength — inferred or third-party claims are not labeled as "confirmed facts"; the highest label tier per claim matches the actual source strength; if a claim carries [Confirmed] / 已确认事实 label, the source must support that tier (primary filing, company disclosure, or directly observed event); labels that overstate certainty relative to the evidence are downgraded before delivery (see `references/source-quality.md` for source-tier definitions)
+- [ ] inline source citation format is consistent throughout the document — all `[SN]`/`[IN]`/`[UN]` tags use the same bracket style and spacing; mixing formats (e.g. `[SN]` in some sections and unformatted references in others) is flagged and aligned before delivery (see `checklists/source-traceability.md` for citation format requirements)
 - [ ] older but still useful numbers are visibly labeled as historical background / older snapshot rather than treated as current-state anchors
 
 ## Valuation methodology
