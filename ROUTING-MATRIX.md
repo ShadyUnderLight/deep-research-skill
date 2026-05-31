@@ -46,6 +46,10 @@ Use the smallest complete set:
 
 Do not activate everything. Activate the smallest set that produces a decision-useful, auditable, current, and clean final artifact.
 
+### Secondary route hard-fail requirement
+
+When a report declares multiple routes (primary + secondary), the hard-fail conditions of **all** declared routes must be verified. A secondary route's hard-fail conditions may not be skipped because it is "secondary." If a hard-fail condition is genuinely inapplicable to the task, document the inapplicability reason rather than skipping the check silently.
+
 ## Route execution contract
 
 Before synthesis, convert the selected route into a compact execution contract.
@@ -208,6 +212,12 @@ Use when the task is mainly about:
 
 **Do not use this route when:** the task has a real recommendation, shortlist, or selection burden. Specifically: ranking entities or options, predicting competition outcomes among defined participants, or choosing a provider/supplier. See `references/market-outlook-and-scenario-discipline.md` "When not to use this route" for boundary examples.
 
+Concrete boundary examples:
+- "哪支球队最可能夺冠" → Constrained Choice (ranking burden)
+- "世界杯足球产业链的商业前景" → Market Outlook (market evolution without ranking)
+- "人形机器人产业链未来 12 个月如何演化" → Market Outlook (trajectory question)
+- "应该选哪个 AI 模型供应商" → Provider Selection (selection burden)
+
 **Often confused with:** provider selection or constrained choice.
 
 ### Read
@@ -250,7 +260,7 @@ Fail if the report:
 - gives forecasts without visible scenario structure, or rests on a single base case with no alternative scenarios
 - hides stakeholder implications inside generic narrative
 - covers only investor stakeholder implications while ignoring technology developers, policymakers, enterprise buyers, or end users
-- uses Market Outlook for a task whose core output is ranking, prediction, or selection among defined options (wrong route — use Constrained Choice / Shortlist instead)
+- uses Market Outlook for a task whose core output carries recommendation, ranking, selection, or winner-prediction burden among defined options — including team ranking, supplier shortlist, investment pick, or any "which one wins" framing (wrong route — use Constrained Choice / Shortlist instead)
 
 ---
 
@@ -360,6 +370,7 @@ Fail if the report:
 - gives a recommendation without showing how the shortlist was built
 - uses numbers without labeling observed fact / proxy / assumption / model output
 - turns the task into descriptive option blurbs instead of a true choice memo
+- exhibits background-first drift — the executive summary or judgment-first opening is immediately followed by >5 lines of pure background description (venue context, event history, category overview, halftime-show information, or similar) before the decision architecture or comparison framework begins
 
 ---
 
@@ -663,7 +674,8 @@ Fail if the report:
 
 - mixes reported metrics and forward estimates without clear labels
 - uses undated financial numbers
-- names a stale or mis-timed research-anchor layer — latest full-year, quarterly / interim, or current market snapshot — and still proceeds as if the memo were current
+- research-anchor block is missing entirely, or names a stale or mis-timed time layer — latest full-year, quarterly / interim period, or current market snapshot — and still proceeds as if the memo were current
+- lacks a complete market snapshot — missing at least three of: share price with date, market capitalization, PE (TTM/Forward), PB/PS, 52-week range, snapshot date
 - makes market-position claims without scope
 - lets valuation narrative substitute for business evidence
 - treats A-share uniqueness as supply-side monopoly or industry exclusivity

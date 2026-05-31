@@ -30,6 +30,12 @@ This file is intentionally lightweight. Use concise entries that explain:
 ### Changed
 - `ROUTING-MATRIX.md`: updated routing priority from 10 to 11 routes — academic / literature review added as experimental route at position 11 (after constrained choice) (#128).
 
+### Added
+- `ROUTING-MATRIX.md`: added secondary route hard-fail requirement — when a report declares multiple routes, all declared routes' hard-fail conditions must be verified; none may be skipped because a route is "secondary" (#149).
+- `ROUTING-MATRIX.md`: added listed-company route hard-fail conditions — missing research-anchor block (absent entirely, not just stale) and incomplete market snapshot (missing ≥3 of share price/cap/PE/PB/PS/52w range/date) (#149).
+- `ROUTING-MATRIX.md`: added constrained-choice route hard-fail condition — background-first drift (>5 lines of pure background immediately after judgment summary) (#149).
+- `ROUTING-MATRIX.md`: strengthened Market Outlook route hard-fail and "Do not use" section — added concrete boundary examples distinguishing Market Outlook vs Constrained Choice vs Provider Selection vs trajectory questions; expanded "which one wins" hard-fail wording (#149).
+
 ### Why
 - Per issue #127, the current eval framework only tests current-state verification against the agent's own stale knowledge (neutral prompts). This injection test adds adversarial testing — deliberately feeding stale product data as input context to verify whether the defense mechanism works when stale data comes from external sources. This complements existing freshness evals like `freshness-xiaomi-case.md` and helps identify whether current-state verification is truly robust or only effective against internal knowledge gaps.
 - Per issue #128, academic research tasks (literature review, field progress analysis, paper comparison) lacked a dedicated route. These tasks were being routed to technical deep-dive or generic research, producing reports that did not properly distinguish evidence tiers, label publication types, or apply academic methodology. The new academic route provides explicit trigger conditions, artifact contract (evidence hierarchy, search strategy, publication type labeling), and hard-fail conditions for academic research tasks. Route is marked as experimental pending real-world validation.
