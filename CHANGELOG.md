@@ -14,6 +14,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `checklists/listed-company-report.md`: added evidence-label inflation check (inferred/third-party claims not labeled as confirmed facts; highest label tier must match source strength) and inline citation format consistency check (unified `[SN]`/`[IN]`/`[UN]` bracket style) — closes remaining gaps from issue #151 after #144/#153, #148, #149.
 
 ### Added
+- `SKILL.md`: added reference to `references/route-activation-and-preflight.md` in the routing rule section — provides explicit preflight steps for "Do not use" clause checking, secondary-route hard-fail verification, and execution contract formation at selection time rather than only at final audit (#152).
+- `evals/meta/rule-activation-and-execution-discipline.md`: added Failure Mode 4 (Partial activation with negative quality) — covers scenarios where a rule was triggered and traces are visible, but the execution quality is so poor that the output is worse than if the rule had not fired at all (e.g., confidence labels exist but inferences are mislabeled as confirmed facts, creating false trust) (#152).
+
+### Added
 - `evals/cases/injection-stale-product-data-case.md`: new adversarial injection test for current-state verification — deliberately feeds stale Apple product data (iPhone 14 as current flagship, A16 Bionic as latest chip) and checks whether the defense mechanism detects and corrects it (#127).
 - `ROUTING-MATRIX.md`: added Academic / Literature Review as an experimental first-class route with trigger, artifact contract, hard-fail conditions, and routing priority (#128).
 - `references/academic-evidence-hierarchy.md`: new discipline file for academic research tasks — covers evidence hierarchy (meta-analysis → RCT → peer-reviewed → preprint → conference → weak evidence), source labeling requirements, statistical assessment, literature search methodology, and hard-fail conditions (#128).

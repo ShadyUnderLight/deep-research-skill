@@ -57,6 +57,19 @@ Examples:
 - risks section exists, but counter-evidence is weak or ceremonial
 - "what matters most" section exists, but contains background instead of load-bearing variables
 
+### Failure Mode 4: Partial activation with negative quality
+
+The rule was triggered and execution traces are visible, but the quality of execution is so poor that the output is worse than if the rule had not been triggered at all.
+
+Examples:
+- confidence labels exist (Confirmed / Likely / Open), but inferences are labeled as confirmed facts — readers see labels and assume evidence-backed rigor, yet trust is actually being misused
+- evidence format is present but inconsistent across sections — some paragraphs use it, others do not
+- the rule creates a false sense of structural rigor without delivering actual discipline
+
+Why this is more dangerous than "no activation": a reader who sees labels assumes a structural guarantee exists. When the labels are wrong, the trust premium is spent on unreliable signals.
+
+Fix direction: not "add more rules" but "tighten the quality threshold for existing rules" — raise the bar for when a label can be used, add hard-fail conditions for mislabeled claims, and verify consistency during the final audit.
+
 ---
 
 ## Pass criteria

@@ -48,6 +48,8 @@ Read `ROUTING-MATRIX.md` to select:
 - required audits
 - visible output structure
 
+Read `references/route-activation-and-preflight.md` when a specialized route is being considered — it provides explicit preflight steps for "Do not use" clause checking, secondary-route hard-fail verification, and execution contract formation.
+
 Before deep collection, explicitly select one primary route. If no mature specialized route applies, treat the task as a shared-workflow task (the delivery-time final discipline handles audit selection: see step 3 and 6 below).
 
 Use one primary route plus only the smallest necessary supporting set.
