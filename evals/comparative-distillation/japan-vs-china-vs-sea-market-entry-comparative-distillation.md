@@ -115,9 +115,9 @@ This case shows that reports can partially distinguish facts from inference whil
 The output should distinguish:
 
 **Evidence layer**
-- 已确认事实
+- 确认事实
 - 推断
-- 未知事项
+- 未知
 
 **Modeling layer**
 - 观察值
@@ -133,9 +133,9 @@ The output should distinguish:
 If the final report is in Chinese, section anchors, evidence buckets, callout labels, and other load-bearing structural labels should default to Chinese unless bilingual output is explicitly requested.
 
 Preferred labels for Chinese reports include:
-- 已确认事实
+- 确认事实
 - 推断
-- 未知事项
+- 未知
 - 观察值
 - 代理指标
 - 假设

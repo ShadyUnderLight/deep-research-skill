@@ -295,9 +295,9 @@ Do not compress these three layers into one smooth sentence such as:
 - `重组完成后成长确定性提升`
 
 Better pattern:
-- `已确认事实：公司已完成某项融资 / 注入 / 重组。`
+- `确认事实：公司已完成某项融资 / 注入 / 重组。`
 - `可能影响：若按当前披露口径顺利并表或协同兑现，可能带来产能、储量、收入结构或成本结构变化。`
-- `未知事项：兑现节奏、协同质量、盈利质量、资本开支压力、整合摩擦仍待后续披露验证。`
+- `未知：兑现节奏、协同质量、盈利质量、资本开支压力、整合摩擦仍待后续披露验证。`
 
 This guard matters because corporate actions often create a false sense of precision:
 - the transaction fact is real

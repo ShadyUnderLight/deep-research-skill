@@ -134,10 +134,10 @@ A good executive summary should already reveal:
 - what would change the conclusion
 
 Suggested bullet roles:
-- `[已确认事实]` strongest support
-- `[已确认事实]` another load-bearing support
+- `[确认事实]` strongest support
+- `[确认事实]` another load-bearing support
 - `[推断]` strongest weakening evidence
-- `[未知事项]` key unresolved variable
+- `[未知]` key unresolved variable
 - `[推断]` what would change the conclusion
 
 ### 5. Key risks and key unknowns block
@@ -294,7 +294,7 @@ Good pattern:
 
 If financing, M&A, restructuring, asset injection, major approvals, or strategic transactions matter, explicitly split:
 
-#### 15.1 已确认事实
+#### 15.1 确认事实
 #### 15.2 可能影响
 #### 15.3 仍然未知
 

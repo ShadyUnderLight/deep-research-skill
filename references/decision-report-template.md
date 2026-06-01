@@ -259,9 +259,9 @@ Write competition as threat-window analysis rather than a peer directory. Prefer
 - narrative competitor vs real execution pressure
 
 Bull, base, and bear cases should distinguish clearly among:
-- confirmed support
-- likely inference
-- open uncertainty
+- 确认事实
+- 推断
+- 未知
 
 Do not treat uncertainty disclosure as sufficient. Open uncertainty should constrain the strength, scope, timing, or confidence of the final judgment.
 

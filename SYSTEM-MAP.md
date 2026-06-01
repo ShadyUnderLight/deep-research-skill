@@ -119,6 +119,7 @@ Makes mature task families explicit so the right discipline set and delivery con
 - a route is actively declared but violates its own "Do not use" / "Often confused with" clauses for the task type
 - a market-outlook report has only one scenario with no structured alternative paths
 - a market-outlook report covers only investor stakeholder implications
+- route declaration inflation: declaring 3+ secondary routes without checking any of their hard-fail conditions; the output behaves as a shared-workflow survey rather than a focused route execution
 
 ### First place to change
 - `ROUTING-MATRIX.md` when route selection or attached discipline mapping is wrong
@@ -198,6 +199,9 @@ Makes load-bearing claims auditable, separates primary evidence from inference-h
 - `evals/cases/amat-listed-company-anchor-and-label-execution-case.md`
 - `evals/cases/innolight-listed-company-execution-case.md`
 - `evals/cases/storage-chip-listed-company-deep-dive-pass-case.md`
+- `evals/cases/pop-mart-listed-company-traceability-hard-fail-case.md`
+- `evals/cases/xiaohongshu-startup-evaluation-traceability-benchmark-case.md`
+- `evals/cases/fertility-academic-literature-review-format-boundary-case.md`
 - `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md`
 
 ### Typical failure signs
@@ -289,6 +293,7 @@ Controls forecasts, roadmap statements, target dates, and estimate-heavy claims 
 - `evals/cases/hnb-industry-report-table-design-case.md`
 - `evals/cases/consensus-and-forward-pe-misuse-case.md`
 - `evals/cases/humanoid-robot-market-outlook-dual-route-case.md`
+- `evals/cases/ai-cost-control-market-outlook-full-pass-benchmark.md`
 - `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md`
 
 ### Typical failure signs
