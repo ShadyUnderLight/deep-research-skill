@@ -57,18 +57,24 @@ Examples:
 - risks section exists, but counter-evidence is weak or ceremonial
 - "what matters most" section exists, but contains background instead of load-bearing variables
 
-### Failure Mode 4: Partial activation with negative quality
+### Failure Mode 4: Misleading execution (label inflation / evidence-label contradiction)
 
-The rule was triggered and execution traces are visible, but the quality of execution is so poor that the output is worse than if the rule had not been triggered at all.
+The rule was triggered and execution traces are visible, but the traces are inaccurate or contradict the content they accompany. Unlike partial activation (FM2, where traces are incomplete) or cosmetic compliance (FM3, where structure lacks substance), FM4 describes traces that are actively misleading — they signal a quality that the content does not deliver.
+
+**Key distinction:** FM4 is about the **accuracy** of execution traces, not their completeness (FM2) or authenticity (FM3).
 
 Examples:
-- confidence labels exist (Confirmed / Likely / Open), but inferences are labeled as confirmed facts — readers see labels and assume evidence-backed rigor, yet trust is actually being misused
-- evidence format is present but inconsistent across sections — some paragraphs use it, others do not
-- the rule creates a false sense of structural rigor without delivering actual discipline
+- confidence labels exist (Confirmed / Likely / Open), but inferences are labeled as confirmed facts — readers see labels and assume evidence-backed rigor, yet the labels misrepresent the actual evidence strength
+- an evidence format (citation style, source register) exists, but load-bearing claims carry citations that do not actually support the attributed claim (citation-content mismatch)
+- an explicit evidence grading system is present, but the grade assigned to a claim contradicts the underlying source quality (e.g., a weak secondary source is graded "strong")
 
-Why this is more dangerous than "no activation": a reader who sees labels assumes a structural guarantee exists. When the labels are wrong, the trust premium is spent on unreliable signals.
+Why this is more dangerous than FM2 or FM3: a reader who sees structural markers (labels, citations, grades) assumes a quality guarantee. When those markers are wrong, the trust premium is spent on unreliable signals — the report is harder to evaluate correctly than if no markers existed.
 
-Fix direction: not "add more rules" but "tighten the quality threshold for existing rules" — raise the bar for when a label can be used, add hard-fail conditions for mislabeled claims, and verify consistency during the final audit.
+Key diagnostic question: "Are the execution traces factually accurate for the content they accompany, or do they misrepresent the underlying evidence?"
+
+Fix direction: not "add more rules" but "tighten the quality threshold for existing rules" — raise the bar for when a label or grade can be used, add hard-fail conditions for mislabeled claims (label inflation), and verify that citations actually support the claims they are attached to during the final audit.
+
+See also: `evals/cases/amat-listed-company-anchor-and-label-execution-case.md` for a concrete example of label inflation (Confirmed label applied to an inferential claim).
 
 ---
 
@@ -122,6 +128,8 @@ When using this eval, ask:
 - Was there evidence that the route was converted into a section-level execution contract before drafting?
 - Did the opening 20-30% of the report already reveal the chosen route, or could it have belonged to a generic overview?
 - Is the right fix a new rule, a stronger trigger, a stronger execution contract, or a stronger final-audit gate?
+- If execution traces exist, are they factually accurate for the content they accompany, or do they misrepresent the underlying evidence?
+- Are labels, citation links, and evidence grades consistent with the actual strength of the evidence they are attached to?
 
 ---
 
@@ -134,7 +142,7 @@ When you apply this eval, summarize the result as:
 - **Visible signs of activation:**
 - **Where execution held:**
 - **Where execution leaked:**
-- **Diagnosis:** missing rule / missing trigger / execution failure
+- **Diagnosis:** missing rule / missing trigger / execution failure / misleading execution
 - **Best next fix:** reference update / checklist update / SKILL routing update / execution-contract hardening / final-audit update / new eval only
 
 ---
