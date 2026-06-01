@@ -220,9 +220,9 @@ Prefer this front structure:
 11. Only then: business background, segment detail, products, roadmap, customers, and competitors
 
 For asset injection, restructuring, major financing, or M&A-heavy cases, force a three-way split:
-- confirmed transaction facts
+- 确认的交易事实
 - likely operating or financial implications
-- open uncertainty about timing, realization, synergy quality, or dependency on external variables such as commodity prices, approvals, customer uptake, or integration pace
+- 关于时机、实现、协同质量或对外部变量（如大宗商品价格、审批、客户接受度、整合速度）依赖的未知
 
 Do not compress these into one bullish or bearish sentence.
 Do not let a real transaction fact silently upgrade a still-conditional thesis into a high-confidence conclusion.
@@ -259,11 +259,11 @@ Write competition as threat-window analysis rather than a peer directory. Prefer
 - narrative competitor vs real execution pressure
 
 Bull, base, and bear cases should distinguish clearly among:
-- confirmed support
-- likely inference
-- open uncertainty
+- 确认事实
+- 推断
+- 未知
 
-Do not treat uncertainty disclosure as sufficient. Open uncertainty should constrain the strength, scope, timing, or confidence of the final judgment.
+Do not treat uncertainty disclosure as sufficient. 未知应约束最终判断的强度、范围、时间或置信度。
 
 Do not confuse a structurally complete company overview with a completed judgment memo.
 

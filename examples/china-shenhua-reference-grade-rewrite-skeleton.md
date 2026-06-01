@@ -27,7 +27,7 @@ Cover at least:
 - bear logic
 - opportunities and risks over the next 1-3 years
 
-The report should use multiple sources, distinguish confirmed facts / inference / open uncertainty, and be suitable for PDF delivery.
+The report should use multiple sources, distinguish 确认事实 / 推断 / 未知, and be suitable for PDF delivery.
 
 ---
 
@@ -130,10 +130,10 @@ Bad thesis behavior:
 Use 4-6 short bullets. One idea per bullet.
 
 Suggested pattern:
-- `[已确认事实]` strongest current support
-- `[已确认事实]` another load-bearing support
+- `[确认事实]` strongest current support
+- `[确认事实]` another load-bearing support
 - `[推断]` current weakening evidence or pressure
-- `[未知事项]` key unresolved variable
+- `[未知]` key unresolved variable
 - `[推断]` what would change the conclusion
 
 For this case, a good executive summary should already show:
@@ -318,7 +318,7 @@ Important: pair scale and profitability signals together when they diverge.
 
 This section should explicitly use the three-way split:
 
-#### 15.1 已确认事实
+#### 15.1 确认事实
 - what was approved / completed / financed / injected
 
 #### 15.2 可能影响

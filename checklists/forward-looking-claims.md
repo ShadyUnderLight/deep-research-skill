@@ -22,7 +22,7 @@ Run through every item before delivering the final report.
 
 ## Evidence quality
 
-- [ ] predictions are not presented as confirmed facts
+- [ ] predictions are not presented as 确认事实
 - [ ] announcements are clearly distinguished from shipped or commercially available products
 - [ ] pricing projections are labeled as sourced, estimated, or assumed
 - [ ] historical accuracy of similar predictions is noted where relevant

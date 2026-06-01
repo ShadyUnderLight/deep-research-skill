@@ -13,11 +13,11 @@ Research is not just collecting information. First identify what decision, judgm
 
 Always distinguish:
 
-- confirmed facts
-- likely inference
-- open uncertainty
+- 确认事实
+- 推断
+- 未知
 
-Never present inference as confirmed fact.
+永远不要将推断呈现为确认事实。
 
 ## Workflow
 
@@ -363,7 +363,7 @@ When parallelizing:
 - keep each track narrow
 - require structured findings, not polished prose
 - require explicit source URLs
-- require separation of confirmed facts vs inference
+- require separation of 确认事实 vs 推断
 - reserve final synthesis for the parent agent
 
 Read `references/parallel-research.md` when the task clearly benefits from multi-track work. Keep rate-limit risk in mind and prefer small batches over naive full parallelism.
@@ -401,7 +401,7 @@ A strong final answer should:
 
 - answer the actual question, not just summarize the topic
 - show how the conclusion was formed
-- separate fact from inference
+- 区分事实与推断
 - surface counter-evidence
 - state confidence clearly
 - explain what is still missing

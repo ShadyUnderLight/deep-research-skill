@@ -11,11 +11,11 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
-- `checklists/listed-company-report.md`: added evidence-label inflation check (inferred/third-party claims not labeled as confirmed facts; highest label tier must match source strength) and inline citation format consistency check (unified `[SN]`/`[IN]`/`[UN]` bracket style) — closes remaining gaps from issue #151 after #144/#153, #148, #149.
+- `checklists/listed-company-report.md`: added evidence-label inflation check (inferred/third-party claims not labeled as 确认事实; highest label tier must match source strength) and inline citation format consistency check (unified `[SN]`/`[IN]`/`[UN]` bracket style) — closes remaining gaps from issue #151 after #144/#153, #148, #149.
 
 ### Added
 - `SKILL.md`: added imperative preflight step reference to `references/route-activation-and-preflight.md` in the routing rule section — requires completing "Do not use" clause check, secondary-route hard-fail verification, and execution contract formation before finalizing route selection, rather than deferring these checks to final audit (#152).
-- `evals/meta/rule-activation-and-execution-discipline.md`: added Failure Mode 4 (Misleading execution — label inflation / evidence-label contradiction) — covers scenarios where a rule was triggered and traces are visible, but the traces are inaccurate or contradict the content they accompany (e.g., confidence labels exist but inferences are mislabeled as confirmed facts, creating false trust) (#152).
+- `evals/meta/rule-activation-and-execution-discipline.md`: added Failure Mode 4 (Misleading execution — label inflation / evidence-label contradiction) — covers scenarios where a rule was triggered and traces are visible, but the traces are inaccurate or contradict the content they accompany (e.g., confidence labels exist but inferences are mislabeled as 确认事实, creating false trust) (#152).
 
 ### Added
 - `evals/cases/injection-stale-product-data-case.md`: new adversarial injection test for current-state verification — deliberately feeds stale Apple product data (iPhone 14 as current flagship, A16 Bionic as latest chip) and checks whether the defense mechanism detects and corrects it (#127).

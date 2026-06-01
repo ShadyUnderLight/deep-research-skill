@@ -220,7 +220,7 @@ When using these, indicate clearly whether the number is:
 - market expectation
 - reasoned inference
 
-Do not label these as confirmed facts.
+Do not label these as 确认事实.
 
 Example phrasing:
 
@@ -270,7 +270,7 @@ Avoid these mistakes:
 - using live valuation ratios without snapshot date
 - quoting market-share or shipment numbers without period definition
 - blending company disclosures and third-party estimates into one table without labels
-- compressing a confirmed corporate action directly into an operating or valuation conclusion without separating what is fact vs implication vs open uncertainty
+- compressing a confirmed corporate action directly into an operating or valuation conclusion without separating what is fact vs implication vs 未知
 
 ## Corporate-action compression guard
 
@@ -287,7 +287,7 @@ When these events matter to the thesis, split them explicitly into three layers:
 
 1. confirmed transaction or event facts
 2. likely operating / financial implications
-3. open uncertainty about timing, realization, integration quality, or scenario dependence
+3. 关于时机、实现、整合质量或情景依赖的未知
 
 Do not compress these three layers into one smooth sentence such as:
 - `配套融资完成，打开中期成长空间`
@@ -295,9 +295,9 @@ Do not compress these three layers into one smooth sentence such as:
 - `重组完成后成长确定性提升`
 
 Better pattern:
-- `已确认事实：公司已完成某项融资 / 注入 / 重组。`
+- `确认事实：公司已完成某项融资 / 注入 / 重组。`
 - `可能影响：若按当前披露口径顺利并表或协同兑现，可能带来产能、储量、收入结构或成本结构变化。`
-- `未知事项：兑现节奏、协同质量、盈利质量、资本开支压力、整合摩擦仍待后续披露验证。`
+- `未知：兑现节奏、协同质量、盈利质量、资本开支压力、整合摩擦仍待后续披露验证。`
 
 This guard matters because corporate actions often create a false sense of precision:
 - the transaction fact is real

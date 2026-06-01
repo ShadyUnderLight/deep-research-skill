@@ -50,5 +50,5 @@ A compact first-tier positioning memo often includes:
 - dimension-by-dimension conclusions
 - overall-label gate
 - what weakens the label
-- open uncertainty
+- 未知
 - sources

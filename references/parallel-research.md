@@ -54,7 +54,7 @@ When spawning sub-agents, give each one:
 3. the preferred source types
 4. the research mode
 5. an instruction to return structured findings only
-6. an instruction to separate confirmed facts from inference
+6. an instruction to separate 确认事实 from 推断
 7. an instruction to include source URLs
 
 Keep sub-agent tasks narrow. Narrow tasks merge better.

@@ -139,6 +139,6 @@ Always identify:
 
 Always separate:
 
-- confirmed facts
-- likely inference
-- open uncertainty
+- 确认事实
+- 推断
+- 未知

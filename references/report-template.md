@@ -120,7 +120,7 @@ Recommended three-column structure for both sides:
 
 | 事实依据 | 推断依据 | 不确定性/限制条件 |
 |----------|----------|-------------------|
-| confirmed facts supporting this case | inferences or assumptions | what could invalidate this case |
+| 支持该判断的确认事实 | 推断或假设 | 什么会推翻该判断 |
 
 Rules:
 - both bull and bear sections use the same column breakdown
@@ -134,7 +134,7 @@ This symmetry matters because asymmetric structure signals to the reader that on
 
 ### 6. Uncertainty and missing evidence
 
-- if confidence depends on assumptions or modeled numbers, make that dependency visible instead of letting the numbers read like confirmed facts
+- if confidence depends on assumptions or modeled numbers, make that dependency visible instead of letting the numbers read like 确认事实
 - say what could not be verified
 - say what would most improve confidence
 
@@ -236,9 +236,9 @@ Preferred Chinese format:
 
 ```
 证据分级：
-[已确认事实] = 来自监管披露 / 年报 / 官方发布
+[确认事实] = 来自监管披露 / 年报 / 官方发布
 [推断] = 来自权威机构或媒体，或基于多项证据的合理归纳
-[未知事项] = 行业缺乏统一口径，或公开信息暂时无法验证
+[未知] = 行业缺乏统一口径，或公开信息暂时无法验证
 ```
 
 If the report also needs number-role labeling, add a second compact legend such as:
@@ -259,7 +259,7 @@ When the report makes a high-level classification from mixed evidence types — 
 
 Use a compact pattern like:
 
-> "证据说明：关于[技术/商业化/生态/资本市场]的判断，直接证据主要来自[官方披露/产品页/监管文件]；关于[更强结论]的部分仍依赖[第三方数据/厂商自测/媒体报道/推断]，因此该结论应视为[有条件判断/推断]，不应与已确认事实等同。"
+> "证据说明：关于[技术/商业化/生态/资本市场]的判断，直接证据主要来自[官方披露/产品页/监管文件]；关于[更强结论]的部分仍依赖[第三方数据/厂商自测/媒体报道/推断]，因此该结论应视为[有条件判断/推断]，不应与确认事实等同。"
 
 This note is not filler. It forces the report to show which part of the conclusion is directly supported and which part is inference-heavy.
 
