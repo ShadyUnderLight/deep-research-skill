@@ -311,7 +311,7 @@ Use only if it clarifies judgment.
 If used, each case should separate:
 - confirmed support
 - inference-heavy logic
-- 未知
+- open uncertainty
 
 ### 17. Bottom line
 

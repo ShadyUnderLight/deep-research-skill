@@ -49,7 +49,7 @@ Run through every item before delivering the final report.
 ## Source quality and traceability
 
 - [ ] sources are classified by reliability level (primary / secondary / promotional / social)
-- [ ] founder-sourced claims are labeled as issuer-sourced, not 确认事实
+- [ ] founder-sourced claims are labeled as issuer-sourced, not confirmed facts
 - [ ] media coverage is treated as discovery, not as evidence for claims
 - [ ] Crunchbase / PitchBook data is labeled as aggregator data, not primary source
 - [ ] social media (Twitter, LinkedIn, Reddit) is labeled as weak supplemental signal
@@ -62,12 +62,12 @@ Run through every item before delivering the final report.
 - [ ] what currently supports the thesis, what weakens it, and what remains unknown are separated
 - [ ] the report avoids writing as if it were a mini listed-company analysis
 - [ ] no PE / DCF / public-market valuation framing is used without explicit justification
-- [ ] founder claims and marketing language are not elevated to 确认事实
+- [ ] founder claims and marketing language are not elevated to confirmed facts
 
 ## Hard-fail gate
 
 - [ ] the report does not use listed-company valuation methods (PE, PB, PS, DCF) as primary framing for a private company without explicit justification
-- [ ] the report does not treat unverified founder claims as 确认事实
+- [ ] the report does not treat unverified founder claims as confirmed facts
 - [ ] the report does not present weak or absent financial data as if it were comparable to audited public-company disclosures
 - [ ] the report labels source reliability levels rather than treating all sources as equal
 - [ ] the report does not write as a mini listed-company analysis with private company data gaps hidden

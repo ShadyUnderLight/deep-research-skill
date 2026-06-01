@@ -110,7 +110,7 @@ Makes mature task families explicit so the right discipline set and delivery con
 - the route is implicit in reasoning but invisible in the final artifact
 - a task drifts from choice memo into overview memo
 - a private company evaluation uses listed-company valuation methods (PE, PB, DCF)
-- founder-sourced claims are treated as 确认事实 without labeling
+- founder-sourced claims are treated as confirmed facts without labeling
 - a regulatory analysis lists regulations without business impact analysis
 - a regulatory analysis confuses regulatory text with media interpretation
 - an academic review treats preprints as peer-reviewed without labeling
@@ -473,7 +473,7 @@ Change first:
 Examples:
 - claims are not auditable
 - stale facts treated as current
-- estimates blur into 确认事实
+- estimates blur into confirmed facts
 
 Change first:
 - relevant `references/`

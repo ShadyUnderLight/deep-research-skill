@@ -131,7 +131,7 @@ Required audits:
 | "every forward-looking claim is identified and clearly labeled" | ❌ Failed | Some forward claims not labeled |
 | "each prediction has at least one documented key assumption" | ⚠️ Partial | Some have, some don't |
 | "each prediction has at least one stated condition under which it would not hold" | ✅ Passed | |
-| "predictions are not presented as 确认事实" | ✅ Passed | |
+| "predictions are not presented as confirmed facts" | ✅ Passed | |
 | "consensus estimates checked against latest data" | ⚠️ Partial | |
 | "all predictions listed with confidence label, assumption, failure condition" | ⚠️ Partial | |
 

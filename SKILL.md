@@ -363,7 +363,7 @@ When parallelizing:
 - keep each track narrow
 - require structured findings, not polished prose
 - require explicit source URLs
-- require separation of 确认事实 vs 推断
+- require separation of confirmed facts vs inference
 - reserve final synthesis for the parent agent
 
 Read `references/parallel-research.md` when the task clearly benefits from multi-track work. Keep rate-limit risk in mind and prefer small batches over naive full parallelism.

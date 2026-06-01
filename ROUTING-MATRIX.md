@@ -690,7 +690,7 @@ Fail if the report:
 For this route, be especially strict about:
 
 - whether the report avoids listed-company valuation methods (PE, PB, DCF) when the company has no public market data
-- whether founder-sourced claims are labeled as issuer-sourced rather than 确认事实
+- whether founder-sourced claims are labeled as issuer-sourced rather than confirmed facts
 - whether PMF signals are grounded in available evidence rather than assumed from marketing language
 - whether source reliability levels are explicit rather than treating all sources as equal
 - whether funding and financial data are labeled by source type (company-disclosed / estimated / inferred)
@@ -752,7 +752,7 @@ The final report should visibly show:
 Fail if the report:
 
 - uses PE / PB / PS / DCF as primary valuation framing for a private company without explicit justification
-- treats unverified founder claims as 确认事实
+- treats unverified founder claims as confirmed facts
 - presents weak or absent financial data as if it were comparable to audited public-company disclosures
 - does not label source reliability levels
 - writes the report as a mini listed-company analysis with private company data gaps hidden

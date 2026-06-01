@@ -220,9 +220,9 @@ Prefer this front structure:
 11. Only then: business background, segment detail, products, roadmap, customers, and competitors
 
 For asset injection, restructuring, major financing, or M&A-heavy cases, force a three-way split:
-- 确认的交易事实
+- confirmed transaction facts
 - likely operating or financial implications
-- 关于时机、实现、协同质量或对外部变量（如大宗商品价格、审批、客户接受度、整合速度）依赖的未知
+- open uncertainty about timing, realization, synergy quality, or dependency on external variables such as commodity prices, approvals, customer uptake, or integration pace
 
 Do not compress these into one bullish or bearish sentence.
 Do not let a real transaction fact silently upgrade a still-conditional thesis into a high-confidence conclusion.
@@ -263,7 +263,7 @@ Bull, base, and bear cases should distinguish clearly among:
 - 推断
 - 未知
 
-Do not treat uncertainty disclosure as sufficient. 未知应约束最终判断的强度、范围、时间或置信度。
+Do not treat uncertainty disclosure as sufficient. Open uncertainty should constrain the strength, scope, timing, or confidence of the final judgment.
 
 Do not confuse a structurally complete company overview with a completed judgment memo.
 

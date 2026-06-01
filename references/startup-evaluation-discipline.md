@@ -186,7 +186,7 @@ Do not force listed-company sections (current market snapshot, PE/PB, analyst co
 Fail if the report:
 
 - uses PE / PB / PS / DCF as primary valuation framing for a private company without explicit justification
-- treats unverified founder claims as 确认事实
+- treats unverified founder claims as confirmed facts
 - presents weak or absent financial data as if it were comparable to audited public-company disclosures
 - does not label source reliability levels
 - writes the report as a mini listed-company analysis with private company data gaps hidden

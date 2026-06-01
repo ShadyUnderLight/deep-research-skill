@@ -22,8 +22,8 @@ Run through every item before delivering the final report.
 - [ ] if the research-anchor block originally contained a stale or mis-timed quarter / interim period, synthesis was stopped and the anchor was corrected or explicitly downgraded before delivery
 - [ ] financial figures are labeled by type: audited annual / interim / earnings release / analyst consensus / inferred
 - [ ] historical reported facts are separated from current market snapshot
-- [ ] forward-looking targets or estimates are clearly labeled as such, not presented as 确认事实
-- [ ] evidence labels do not inflate claim strength — inferred or third-party claims are not labeled as "确认事实"; the highest label tier per claim matches the actual source strength; if a claim carries [Confirmed] / 确认事实 label, the source must support that tier (primary filing, company disclosure, or directly observed event); labels that overstate certainty relative to the evidence are downgraded before delivery (see `references/source-quality.md` for source-tier definitions)
+- [ ] forward-looking targets or estimates are clearly labeled as such, not presented as confirmed facts
+- [ ] evidence labels do not inflate claim strength — inferred or third-party claims are not labeled as "confirmed facts"; the highest label tier per claim matches the actual source strength; if a claim carries [Confirmed] / confirmed facts label, the source must support that tier (primary filing, company disclosure, or directly observed event); labels that overstate certainty relative to the evidence are downgraded before delivery (see `references/source-quality.md` for source-tier definitions)
 - [ ] inline source citation format is consistent throughout the document — all `[SN]`/`[IN]`/`[UN]` tags use the same bracket style and spacing; mixing formats (e.g. `[SN]` in some sections and unformatted references in others) is flagged and aligned before delivery (see `checklists/source-traceability.md` for citation format requirements)
 - [ ] older but still useful numbers are visibly labeled as historical background / older snapshot rather than treated as current-state anchors
 
@@ -82,7 +82,7 @@ Run through every item before delivering the final report.
 - [ ] competition is written as actual thesis pressure or threat-window analysis rather than mostly a peer directory
 - [ ] valuation, growth, market position, and strategic narrative are not blended into one undifferentiated bullish or bearish mood
 - [ ] if the view is positive but not valuation-grade, timing-grade, or precision-grade, the downgrade boundary is explicit
-- [ ] asset injection, restructuring, one-off financing, M&A, or other major corporate actions are split into: 确认的交易事实 / 可能的运营影响 / 关于实现、时机、协同质量或对外部变量依赖的未知
+- [ ] asset injection, restructuring, one-off financing, M&A, or other major corporate actions are split into: confirmed transaction facts / likely operating impact / open uncertainty about realization, timing, synergy quality, or dependency on external variables
 
 ## Monopoly / moat / scarcity discipline
 

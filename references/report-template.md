@@ -134,7 +134,7 @@ This symmetry matters because asymmetric structure signals to the reader that on
 
 ### 6. Uncertainty and missing evidence
 
-- if confidence depends on assumptions or modeled numbers, make that dependency visible instead of letting the numbers read like 确认事实
+- if confidence depends on assumptions or modeled numbers, make that dependency visible instead of letting the numbers read like confirmed facts
 - say what could not be verified
 - say what would most improve confidence
 

@@ -27,7 +27,7 @@ Cover at least:
 - bear logic
 - opportunities and risks over the next 1-3 years
 
-The report should use multiple sources, distinguish 确认事实 / 推断 / 未知, and be suitable for PDF delivery.
+The report should use multiple sources, distinguish confirmed facts / inference / open uncertainty, and be suitable for PDF delivery.
 
 ---
 
