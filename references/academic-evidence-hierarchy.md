@@ -148,26 +148,45 @@ When evaluating quantitative research, check:
 - Selection bias: non-representative samples
 - Publication bias: positive results more likely published
 
-## Literature search methodology
+## 检索策略文档化
 
-When conducting literature search, document:
+当报告涉及文献检索时（尤其是自称"系统化综述"或"有限范围系统化综述"时），必须按以下要求文档化检索策略。此要求参考 PRISMA 2020 指南（简化版）。
 
-### Search strategy
-- Databases searched: Google Scholar, Semantic Scholar, arXiv, PubMed, IEEE Xplore, etc.
-- Search terms: exact queries used
-- Date range: publication years covered
-- Language: English only / multilingual
+### 必须包含（Mandatory）
 
-### Inclusion/exclusion criteria
-- Publication type: journal / conference / preprint / all
-- Study design: RCT / observational / all
-- Sample size: minimum threshold if relevant
-- Recency: how recent must the sources be?
+- **检索数据库列表**：列出所有检索的数据库（如 PubMed, Web of Science, Google Scholar, Semantic Scholar, arXiv, IEEE Xplore, CNKI, Scopus 等），注明各数据库的覆盖范围和检索时间
+- **检索词组合**：包含关键词 + 布尔运算符（AND/OR/NOT），以及所使用的字段标签（title/abstract/keywords）和任何限制条件（如 MeSH terms）
+- **纳入/排除标准**：时间范围、语言、研究类型（RCT / 观察性研究 / 系统综述 / 综述 / 灰色文献）、发表日期范围、样本量阈值（如适用）
+- **筛选流程数量**：初筛结果数 → 再审结果数 → 最终纳入数；如适用说明排除原因
+- **检索日期**：明确记录检索执行日期
 
-### Search completeness
-- Number of results screened
-- Number included in final analysis
-- PRISMA flow diagram if systematic review
+### 推荐但不强制（Recommended）
+
+- **PRISMA 流程图**：适用于系统性综述报告，直观展示筛选流程各阶段的文献数量
+- **文献管理工具**：如 Zotero, EndNote, Mendeley，便于追踪筛选过程和管理引用
+
+### 筛选流程完整性
+
+当报告使用"有限范围"限定词时，仍应在能力范围内完整记录检索策略；"有限范围"不应成为跳过检索策略文档化的借口。
+
+## 发表偏倚讨论
+
+### 触发条件
+
+当话题属于以下类别之一时，报告**必须**包含发表偏倚讨论：
+
+- **争议度话题**：学术领域存在明显对立的研究立场或相互矛盾的发现
+- **多因素归因研究**：null result（"因素 X 无显著影响"）与 positive result 具有同等信息价值。仅呈现正面结果会产生系统性的发表偏倚
+
+### 最低要求
+
+至少 2-3 句，涵盖：
+1. **偏倚方向判断**：本报告所引用的文献集是否更可能包含正面结果？是否存在"抽屉问题"（file drawer problem）的系统性偏差？
+2. **结论调整建议**：如果发表偏倚可能存在，报告的结论应如何调整（方向、幅度、置信度）？
+
+### 非争议性话题
+
+对于无明显争议或不存在明显发表偏倚倾向的话题（如成熟的、共识度高的领域），可注明"本话题发表偏倚风险较低"，但仍建议简要记录判断理由。
 
 ## Hard fail conditions
 
@@ -176,7 +195,7 @@ Fail the report if:
 - **Preprints treated as peer-reviewed**: preprints must be explicitly labeled as not peer-reviewed
 - **Cherry-picking**: using single papers to support pre-determined conclusions
 - **Correlation ≠ causation**: inferring causation from observational studies without proper caveats
-- **Ignoring publication bias**: presenting only positive results without noting the "file drawer problem"
+- **Ignoring publication bias**: presenting only positive results without noting the "file drawer problem" or without completing the publication bias discussion requirements (see「发表偏倚讨论」section)
 - **Stale sources**: using outdated research when newer evidence exists (field-dependent: 2-5 years for fast-moving fields, 10+ years for established methods)
 - **Missing venue information**: citing papers without noting where they were published
 - **Statistical claims without context**: reporting p-values without effect sizes, or claiming significance without noting sample size limitations

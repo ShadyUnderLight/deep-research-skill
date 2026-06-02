@@ -27,6 +27,14 @@ This checklist verifies that the academic route was executed correctly and the f
 - [ ] date range is specified
 - [ ] inclusion/exclusion criteria are stated
 - [ ] search completeness is noted (number of results screened, number included)
+- [ ] 检索策略已完整文档化（含数据库列表、检索词组合、纳入/排除标准、筛选数量、检索日期）
+- [ ] 如果报告声明了"系统化综述"或"有限范围系统化综述"，检索流程符合 PRISMA 简化标准
+
+## 发表偏倚讨论
+
+检查报告是否充分讨论了发表偏倚。
+
+- [ ] 发表偏倚已讨论（至少 2-3 句，涵盖偏倚方向判断和结论调整建议）
 
 ## Statistical assessment (if applicable)
 
