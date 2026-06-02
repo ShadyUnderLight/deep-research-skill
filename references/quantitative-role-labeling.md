@@ -194,6 +194,32 @@ The assumption is named ("assume 15% growth"), but the conditions that must hold
 
 - `references/forward-looking-discipline.md` has an "Assumption chains" section for forward-looking numbers (revenue projections, market size forecasts, adoption timelines). The template here is the general-purpose version. For forward-looking claims, that file's lighter pattern may be sufficient; for complex or high-sensitivity assumptions, the full template here applies.
 
+## 厂商声明与媒体估计的特殊标注规则
+
+当数据的来源属于以下两类时，必须在正文中显式标注其角色，不能仅依赖 Source Register 的 metadata：
+
+### 厂商自述（manufacturer self-reported）
+
+数据来自公司官网、新闻稿、官方社交媒体、合作伙伴声明等未经过独立第三方验证的来源。
+
+- 正文引用时必须附加内联说明，如 `(来源：厂商自述，非独立验证)`
+- 不得单独标注为 `[已确认事实]`
+
+### 媒体估计（media estimate）
+
+数据来自彭博、券商研究报告等第三方推断性来源（register 类型 `SECONDARY_MEDIA`、`SECONDARY_ANALYST`）。
+
+- 不得标注为 `[已确认事实]`
+- 应使用 `[推断]` 或具体来源角色如 `[彭博 estimate]`
+
+### 何时需要标注
+
+判断标准：如果删除这行内说明后，读者无法区分"独立验证的事实"和"来源主动声称但未独立验证的数字"，就需要标注。
+
+### 与 Source Register 的关系
+
+参见 `references/source-traceability-and-claim-citation.md` 的「来源标注一致性」章节，其中定义了 register 与正文标签强度的一致性原则。
+
 ## Route-specific notes
 
 ### Market entry / regional expansion

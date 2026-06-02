@@ -25,6 +25,8 @@ This checklist verifies that the technical analysis route was executed correctly
 - [ ] vendor claims are distinguished from independently verified technical facts
 - [ ] benchmarks cite methodology, environment, and date
 - [ ] patent claims cite patent numbers or specific filings, not just counts
+- [ ] （非阻塞）厂商自述在正文中明确标注了来源角色（如 `(厂商自述)` 或 `(来源：厂商自述，非独立验证)`），见 `references/source-traceability-and-claim-citation.md` §来源标注一致性
+- [ ] （非阻塞）涉及厂商自述的行内引用附加了标准格式 caveat `(来源：厂商自述，非独立验证)` 或等效说明
 
 ## Comparison structure (for architecture comparison)
 
