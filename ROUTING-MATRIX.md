@@ -57,11 +57,13 @@ Declaring 2+ secondary routes without verifying their hard-fail conditions const
 Rules to prevent route inflation:
 
 - The declared route list must reflect **actual delivery scope**, not the most comprehensive coverage set. If the output behaves as a shared-workflow survey, declare it as shared-workflow rather than inflating the route list.
-- When 2+ secondary routes are declared, each secondary route's hard-fail conditions must be verifiably checked before delivery. Untested secondary route declarations are considered route inflation.
-- If secondary route content (tools, compliance, ROI, market outlook, etc.) exceeds roughly 25% of body text when paired with a primary route that requires minimizing those sections, consider using Shared-Workflow or simplifying the route declaration set.
+- When 2+ secondary routes are declared, the hard-fail check status of each must be explicitly verifiable in the process log or artifact (not assumed covered by the primary route's checks). Absent evidence of per-route verification, the declarations constitute route inflation.
+- If the share of body text consumed by secondary-route content (tools, compliance, ROI, market outlook, etc.) exceeds roughly 25% — especially when the primary route requires minimizing those sections (e.g., Technical Deep-dive minimizes tools-overview sections) — consider using Shared-Workflow or simplifying the route declaration set.
 - If the total route count (primary + secondary) exceeds 3, re-examine scope focus — the task may be better served by a narrower primary route or a shared-workflow path.
 
 When in doubt, declare fewer routes with verified hard-fails rather than more routes with unchecked assumptions.
+
+> **Note on terms:** "Secondary routes" in this section refers only to specialized routes used as secondary disciplines (e.g., Provider Selection attached to a Market Outlook primary), not to cross-cutting disciplines like source traceability or current-state verification. The distinction is defined in `references/route-activation-and-preflight.md` Step 2.
 
 ## Route execution contract
 

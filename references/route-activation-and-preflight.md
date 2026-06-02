@@ -68,9 +68,9 @@ If the preflight identifies a secondary route, its hard-fail conditions must be 
 After verifying secondary-route hard-fail conditions (Step 2), review the overall route declaration scale:
 
 - Count the total declared routes (primary + secondary). If the count exceeds 3, re-examine scope focus. A task that needs 4+ specialized routes may be better served by a shared-workflow path with clear emphasis notes rather than an inflated route list.
-- Estimate the combined body-space share of secondary-route content (tools comparison, compliance, market outlook, ROI, etc.). If this share exceeds roughly 25% of body text and the primary route requires minimizing those sections (e.g., Technical Deep-dive requires minimizing tools-overview sections), consider:
+- Estimate the combined share of body text consumed by secondary-route content (tools comparison, compliance, market outlook, ROI, etc.). If this share exceeds roughly 25% of body text and the primary route requires minimizing those sections (e.g., Technical Deep-dive requires minimizing tools-overview sections), consider:
   - simplifying the secondary route set to only the routes whose hard-fail conditions can be meaningfully verified
-  - or declaring the task as shared-workflow with technical-analysis emphasis rather than inflating the route list
+  - or declaring the task as shared-workflow rather than inflating the route list (a shared-workflow path with [primary route] emphasis is more honest than four declarable but unchecked routes)
 - Document the decision: if the total route count is >3 or secondary content exceeds 25%, explain why the current route set is still the smallest complete set that produces a decision-useful, auditable output.
 
 Treat this step as a **scope-focus gate**, not a hard rejection. The goal is to surface scope diffusion early so the route list can be narrowed or the primary route re-evaluated, rather than discovering at delivery time that declared routes were not executable.
