@@ -122,6 +122,8 @@ Classify each key assumption by its impact on the conclusion. This determines th
 | **Medium sensitivity** | Conclusion direction unchanged but strength changes within ±20% | ±20%, ±50% | Conclusion holds conditionally; label the tipping point |
 | **High sensitivity** | Conclusion reverses within ±20% deviation | ±20%, ±50%, extreme scenario | Conclusion is assumption-dependent; reduce confidence or provide scenario analysis |
 
+**情景分析 ≠ 敏感性分析**：情景分析同时变动多个假设（如乐观/基准/悲观三情景），读者无法看到单一关键假设变化对结论的独立影响。敏感性分析每次只变一个假设，揭示哪个变量是结论的转折点。当报告提供多情景分析时，仍需对高敏感性假设提供独立敏感性表（±20%、±50%）。两者互补而非替代。
+
 **Test amplitude selection**:
 
 - **Routine assumptions** (e.g., market growth rate, cost assumptions): test ±20% and ±50%
@@ -139,7 +141,7 @@ Classify each key assumption by its impact on the conclusion. This determines th
 
 - 敏感度等级: [低/中/高]
 - 临界点: [结论翻转的阈值]
-- 建议: [降低 confidence / 提供情景分析 / 维持现有结论]
+- 建议: [降低 confidence / 补充敏感性分析 / 维持现有结论]
 ```
 
 **When to apply this classification**:
