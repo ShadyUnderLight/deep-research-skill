@@ -147,3 +147,7 @@ If a counter-argument is rated "strong", the corresponding conclusion must eithe
 3. have a visible reversal condition recorded
 
 Do not leave a "strong" counter-argument without visible impact on the conclusion.
+
+## Shared-workflow activation
+
+For high-controversy shared-workflow tasks, or when the report contains strong claims such as "不可逆" / "唯一", the counter-evidence section must use the structured counter-evidence template (see §Structured counter-evidence template above) and explicitly address falsifiability conditions (time window, exclusivity verification, applicability conditions) for these claims.

@@ -101,6 +101,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] secondary, aggregator, social, or retail-investor sources are not doing load-bearing work for monopoly-style final claims
 - [ ] if the report screens or ranks companies by scarcity / monopoly / irreplaceability, the final ranking shows category boundaries rather than one undifferentiated defensibility scale
 - [ ] a skeptical reader would not be able to point to multiple obvious overclaims in the final text
+- [ ] （非阻塞）强定性声明（"不可逆"/"永久"/"结构性转变"）指明了时间范围或适用条件
+- [ ] （非阻塞）"唯一"/"首家"/"only"声明具有排他性验证或已降级为"领先"/"头部之一"
 
 ## Completeness
 
