@@ -120,7 +120,7 @@ Classify each key assumption by its impact on the conclusion. This determines th
 |----------------|------------|-----------------|-------------------|
 | **Low sensitivity** | Conclusion unchanged within ±20% deviation | ±20% | Conclusion is robust; label the sensitive variable |
 | **Medium sensitivity** | Conclusion direction unchanged but strength changes within ±20% | ±20%, ±50% | Conclusion holds conditionally; label the tipping point |
-| **High sensitivity** | Conclusion reverses within ±20% deviation | ±20%, ±50%, extreme scenario | Conclusion is assumption-dependent; reduce confidence or provide scenario analysis |
+| **High sensitivity** | Conclusion reverses within ±20% deviation | ±20%, ±50%, extreme scenario | Conclusion is assumption-dependent; reduce confidence. Both sensitivity table and scenario analysis required. |
 
 **情景分析 ≠ 敏感性分析**：情景分析同时变动多个假设（如乐观/基准/悲观三情景），读者无法看到单一关键假设变化对结论的独立影响。敏感性分析每次只变一个假设，揭示哪个变量是结论的转折点。当报告提供多情景分析时，仍需对高敏感性假设提供独立敏感性表（±20%、±50%）。两者互补而非替代。
 
