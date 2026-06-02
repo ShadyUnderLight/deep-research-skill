@@ -147,3 +147,7 @@ If a counter-argument is rated "strong", the corresponding conclusion must eithe
 3. have a visible reversal condition recorded
 
 Do not leave a "strong" counter-argument without visible impact on the conclusion.
+
+## Shared-workflow 激活条件
+
+对高争议度的 shared-workflow 任务，或报告中包含"不可逆"/"唯一"等强主张时，反论章节应使用结构化反论模板，并专门处理这些主张的可证伪条件（时间范围、排他性验证、适用条件）。

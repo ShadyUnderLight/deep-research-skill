@@ -93,6 +93,8 @@ Run through every item before delivering the final report.
 - [ ] load-bearing market-share, ranking, or exclusivity claims include time window, scope, and denominator when relevant
 - [ ] issuer-sourced or media-mediated positioning claims are not upgraded into confirmed industry facts too easily
 - [ ] if the report screens for scarce or monopolistic companies, category boundaries are visible in the final ranking rather than hidden in caveats
+- [ ] （非阻塞）绝对化声明（"唯一"/"首家"/"最大"）标注了范围口径（按收入/按用户/按地域）和验证来源
+- [ ] （非阻塞）如果排他性验证不可行，措辞已降级为"领先"/"头部之一"
 
 ## Flags
 
