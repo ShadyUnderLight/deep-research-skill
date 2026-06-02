@@ -51,6 +51,7 @@ Read `ROUTING-MATRIX.md` to select:
 Read `references/route-activation-and-preflight.md` when a specialized route is being considered, and complete its preflight steps before finalizing route selection:
 - "Do not use" / "Often confused with" clause check
 - secondary-route hard-fail verification
+- route declaration scale check
 - execution contract formation
 
 Before deep collection, explicitly select one primary route. If no mature specialized route applies, treat the task as a shared-workflow task (the delivery-time final discipline handles audit selection: see step 3 and 6 below).

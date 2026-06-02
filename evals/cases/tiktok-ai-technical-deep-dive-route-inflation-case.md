@@ -70,7 +70,7 @@ A good answer should:
 2. **Feasibility conclusion present** — technical deep-dive must end with a clear "feasible / conditionally feasible / not feasible" summary
 3. **Vendor claim labeling consistent** — if Source Register says "manufacturer self-reported", body text must also say so (inline caveat, not just register metadata)
 4. **Forward-looking dependency conditions** — each predicted timeline must state the assumption ("if X reaches Y") and the failure trigger ("if Z does not happen by date W")
-5. **Minimize discipline** — secondary-route content (tools, compliance, ROI) does not exceed 20% of body text when primary route is Technical Deep-dive
+5. **Minimize discipline** — secondary-route content (tools, compliance, ROI) does not exceed roughly 25% of body text when primary route is Technical Deep-dive (matching the global rule in `ROUTING-MATRIX.md` Route inflation warning; Technical Deep-dive's tighter minimize discipline may justify a stricter local target in future eval updates)
 
 ## Failure signs
 
