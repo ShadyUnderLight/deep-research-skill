@@ -11,7 +11,50 @@ Every important claim needs to be traceable to a specific source and labeled by 
 - Layer 1: inline claim-level citations in the body text
 - Layer 2: a source register at the end mapping each source id to a specific source with type and relevance
 
-**Hard rule: A source list or bibliography appendix does NOT satisfy the traceability requirement.** If the body text has no `[SN]` inline citations but the report has an appendix source list, the traceability discipline is not yet satisfied. The appendix is supplementary; inline citations are mandatory. A report with a bibliography but zero body-level `[SN]` references is a hard-fail.
+**Hard rule: A source list or bibliography appendix does NOT satisfy the traceability requirement.** If the body text has no inline citations but the report has an appendix source list, the traceability discipline is not yet satisfied. The appendix is supplementary; inline citations are mandatory. A report with a bibliography but zero body-level references is a hard-fail. See the format equivalence exemption below for inline citation formats that satisfy this requirement.
+
+## Format equivalence exemption
+
+### Core principle
+
+Traceability > Format consistency. The goal is functional auditability — a human reader must be able to trace every key claim to a specific source. When a non-`[SN]` format provides equivalent or better traceability, it should be accepted.
+
+The hard-fail gate uses a ternary severity (reflected in `checklists/source-traceability.md`):
+
+| Level | Condition | Action |
+|-------|-----------|--------|
+| 🔴 Hard-fail | 正文无任何形式的行内引用（既无 `[SN]` 也无功能等价格式）| 不可追溯，不交付 |
+| 🟡 Conditional pass | 正文有功能等价的非 `[SN]` 格式引用 + 附录有结构化 register | 通过，建议补充 `[SN]` |
+| 🟢 Full pass | 正文使用结构化 `[SN]` 行内引用 + 附录有完整 register | 通过 |
+
+**Key distinction:** If the body has zero inline references of any kind — regardless of whether a structured register or bibliography exists in the appendix — it is a hard-fail. A register without body citations does not enable claim-level traceability. The register must be accompanied by body-level references (in any functionally equivalent format) to reach at least conditional pass.
+
+### Route-specific exemptions
+
+#### Academic / Literature Review route
+`(Author, Year, Journal/Blog)` format satisfies the inline traceability requirement. This format is the universal standard in academic publishing and is more informative than `[SN]` — a reader can identify the source immediately without cross-referencing an appendix. `[SN]` numbering is recommended for full pass, but functionally equivalent `(Author, Year, Journal)` format alone is sufficient to pass the hard-fail gate (conditional pass; see the ternary severity table above). The source register should still cross-reference these citations with structured entries.
+
+#### Technical Deep-dive route
+arXiv ID (e.g., `arXiv:1911.00927`) or DOI (with version) satisfies the inline traceability requirement, provided the appendix source list indexes these IDs under structured entries. These identifiers are globally unique and permanently resolvable.
+
+#### Listed Company / Investment Memo route
+Natural language attribution that uniquely identifies a source ("据 FY2025 年报", "招股书披露", "彭博信用卡数据") satisfies the inline traceability requirement, but the source register must still contain structured entries cross-referencing these citations. The natural language text must be specific enough that a reader can locate the exact source entry without ambiguity. To evaluate this: check whether the natural language attribution maps to exactly one register entry. If the register lists multiple annual reports and the body says "据年报" without specifying the year, it is ambiguous and does not qualify. If the register has one annual report and the body says "据 FY2025 年报," it is unambiguous and qualifies.
+
+### What does NOT qualify as equivalent
+
+The following do NOT satisfy the traceability requirement:
+- generic section-level bibliography (one source list per section with no per-claim mapping)
+- broad attribution ("据市场研究" without naming the specific report or firm)
+- bare URLs in the body text without a source register entry
+- vague "据公开资料" or "据悉" — these do not enable unique source identification
+
+### Shared-Workflow route coverage
+
+Shared-Workflow reports are not limited to the three route-specific exemptions listed above. The general conditional pass rule applies: any functionally equivalent non-`[SN]` format (Author-Year, arXiv ID, DOI, natural language that uniquely identifies the source) paired with a structured register qualifies for conditional pass. The three route-specific exemptions are explicit examples; Shared-Workflow reports are evaluated against the general functional traceability standard.
+
+### Multi-route reports
+
+When a report declares multiple routes (primary + secondary), a format that matches **any** declared route's exemption qualifies for conditional pass. For example, a report with primary route "Listed Company" and secondary route "Academic / Literature Review" that uses `(Author, Year, Journal)` citations qualifies under the Academic route exemption. A format that does not match any declared route but is still functionally traceable should also be evaluated under the general conditional pass rule.
 
 ## Why this matters
 
@@ -34,7 +77,7 @@ With proper traceability:
 
 ### Layer 1: Inline claim citations
 
-Use a simple `[SN]` format in the body text, where `N` is a source number.
+Use a simple `[SN]` format in the body text, where `N` is a source number. (See the [Format equivalence exemption](#format-equivalence-exemption) section above for route-specific alternatives that satisfy the traceability requirement without using `[SN]` numbering.)
 
 Examples:
 
@@ -77,6 +120,16 @@ Example format:
 | I01 | Analyst inference based on S01 and S02 | Inferred | 2026-03-31 | Assessment of core business model | Explicit reasoning documented |
 | U01 | Unconfirmed; no primary source found | Unconfirmed | 2026-03-31 | GLM-5 compatibility claim | Requires further verification |
 ```
+
+## Register completeness
+
+Every source register entry must satisfy two additional rules beyond basic metadata:
+
+1. **Every entry must be cited in the body.** Each `[S#]` in the register must have at least one inline reference in the body text. Uncited entries should be removed or a body reference added. A reader who sees an entry in the register will assume it was cited somewhere; uncited entries create false audit expectations.
+
+2. **Every entry should include a URL or DOI where available.** For primary filings, company disclosures, news articles, and analyst reports, a resolvable link enables readers to independently verify the source. For offline sources (printed books, internal data), note the limitation explicitly. For high-reliability government or academic sources where a specific URL cannot be provided, the entry should include enough retrieval information (institution, publication, date, archive location) for a reader to locate the source.
+
+These rules prevent the "register theatre" problem where a source list looks comprehensive but contains dead or unreferenced entries.
 
 ## Source type classification
 
@@ -211,7 +264,10 @@ The report lists many sources at the bottom but does not use inline citations. R
 
 **Fix:** Use inline `[SN]` citations for every important claim and map them in the source register.
 
-**Hard-fail: A bibliography appendix with zero body-level `[SN]` references is not acceptable. Do not deliver.**
+**Ternary severity (see Format equivalence exemption above):**
+- **Hard-fail:** bibliography appendix + zero body-level references of any kind → not deliverable
+- **Conditional pass:** bibliography + functionally equivalent non-`[SN]` inline format (Author-Year, arXiv ID, natural language) + structured register → pass, recommend adding `[SN]`
+- **Full pass:** structured `[SN]` inline citations + complete register
 
 ### Pattern 2: Source-type blur
 
@@ -281,7 +337,7 @@ Slow down and add more traceability when:
 - a strong conclusion does not have a corresponding primary source in the register
 - an inferred claim is presented without `[IN]` notation or reasoning chain
 - a source is listed but never actually cited in the body
-- the report has a long sources list but no inline citations
+- the report has a long sources list but no inline citations in the body of any kind (neither `[SN]` nor functionally equivalent format)
 - a current-state claim is sourced to an old filing with no indication of supersession
 - the report's most thesis-bearing sentence would become hard to defend if a reviewer asked `which exact source supports this line?`
 - a strong comparative claim is visible in the body, but only a generic section bibliography exists beneath it
@@ -290,7 +346,7 @@ Slow down and add more traceability when:
 
 Before finalizing, ask:
 
-- Can I trace every key claim to a specific source id in the body?
+- Can I trace every key claim to a specific source entry in the body (via `[SN]` id or functionally equivalent format)?
 - Does the source register classify each source by type and date?
 - Are inferred claims clearly labeled with reasoning chains?
 - Are unconfirmable claims flagged in an uncertainty register?

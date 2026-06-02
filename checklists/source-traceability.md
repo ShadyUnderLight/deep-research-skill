@@ -6,17 +6,20 @@ Run through every item before delivering the final report.
 
 ## Inline citations
 
-- [ ] every important claim in the body text has a source id in `[SN]` format
+- [ ] every important claim in the body text has a source id in `[SN]` format (or functionally equivalent non-`[SN]` format — see format equivalence exemption in `references/source-traceability-and-claim-citation.md`)
 - [ ] each `[SN]` maps to a single specific source, not a generic "multiple sources"
 - [ ] inferred claims use `[IN]` with a documented reasoning chain in the register
 - [ ] unconfirmable claims use `[UN]` and are listed in the uncertainty register
-- [ ] **hard-fail gate**: if the report has an appendix source list or bibliography but zero body-level `[SN]` inline citations, the traceability discipline is not satisfied — do not deliver
+- [ ] **hard-fail gate**: see ternary severity below; a report with a bibliography but zero body-level references of any kind is not deliverable
+- [ ] **conditional pass**: functionally equivalent non-`[SN]` inline format (Author-Year / arXiv ID / DOI / natural language uniquely identifying the source) + structured register exists → pass with recommendation to add `[SN]` references
+- [ ] **full pass**: structured `[SN]` inline citations + complete register
 
 ## Source register
 
 - [ ] source register is present and structured (not a loose bibliography)
 - [ ] every source id in the register has: title/description, source type, date/version, relevance, reliability notes
 - [ ] no source id is listed but never cited in the body
+- [ ] every register entry includes a URL or DOI where available; for offline sources, the limitation is noted explicitly
 
 ## Source type discipline
 
@@ -30,7 +33,6 @@ Run through every item before delivering the final report.
 
 - [ ] no key claim is left without a traceable source
 - [ ] the report reads as auditable — a reader can follow any claim back to a specific source entry
-- [ ] the register does not contain sources that are not actually cited
 - [ ] if a reviewer highlighted the 3-5 sentences doing the most thesis work, each of those sentences would still be defendable without additional hidden notes
 
 ## Flags
