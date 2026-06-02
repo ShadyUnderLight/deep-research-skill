@@ -47,6 +47,8 @@ Examples:
 - report has source register, but body claims still lack citations
 - exec summary uses bullets, but each bullet still contains multiple insights
 
+**Note on format equivalence:** Not all format noncompliance is an execution failure. When the body uses a functionally equivalent non-`[SN]` citation format (Author-Year, arXiv ID/DOI, natural language that uniquely identifies the source) and the appendix contains a structured source register, this should be scored as **conditional pass** rather than partial activation. The format-equivalence exception is documented in `references/source-traceability-and-claim-citation.md` and the ternary severity is encoded in `checklists/source-traceability.md`. When diagnosing, check: "Is the format noncompliant AND functionally untraceable (hard-fail), or format noncompliant BUT functionally traceable (conditional pass)?"
+
 ### Failure Mode 3: Cosmetic compliance
 
 The report imitates the shape of compliance without achieving real discipline.
@@ -111,6 +113,7 @@ Use a simple 0-2 scale.
 
 ### 1 = partial activation / unstable execution
 - some rule traces exist, but important output areas still violate the discipline
+- **Exception:** if the "violation" is purely format-based (non-`[SN]` citation format that is functionally equivalent), reclassify as **conditional pass** rather than partial activation. See the format equivalence exemption in `references/source-traceability-and-claim-citation.md`.
 
 ### 2 = stable activation and execution
 - the correct gates appear to have fired and the final report shows consistent compliance in the places that matter most
@@ -130,6 +133,7 @@ When using this eval, ask:
 - Is the right fix a new rule, a stronger trigger, a stronger execution contract, or a stronger final-audit gate?
 - If execution traces exist, are they factually accurate for the content they accompany, or do they misrepresent the underlying evidence?
 - Are labels, citation links, and evidence grades consistent with the actual strength of the evidence they are attached to?
+- If the report uses a non-`[SN]` citation format (Author-Year, arXiv ID, natural language), is it functionally equivalent to `[SN]`? If so, reclassify as conditional pass rather than execution failure per the format equivalence exemption.
 
 ---
 
@@ -142,7 +146,7 @@ When you apply this eval, summarize the result as:
 - **Visible signs of activation:**
 - **Where execution held:**
 - **Where execution leaked:**
-- **Diagnosis:** missing rule / missing trigger / execution failure / misleading execution
+- **Diagnosis:** missing rule / missing trigger / execution failure / misleading execution / format equivalence (conditional pass)
 - **Best next fix:** reference update / checklist update / SKILL routing update / execution-contract hardening / final-audit update / new eval only
 
 ---
