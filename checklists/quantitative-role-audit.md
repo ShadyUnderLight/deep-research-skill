@@ -24,6 +24,7 @@ If load-bearing numbers materially affect the conclusion, their roles should be 
 
 - [BLOCKER] Has each load-bearing numerical assumption been classified by sensitivity level (low / medium / high) per `references/quantitative-role-labeling.md`?
 - [BLOCKER] High-sensitivity assumptions have a visible sensitivity table with at least ±20% and one wider amplitude (±50% or extreme scenario).
+- [NON-BLOCKER] If the report includes scenario analysis (optimistic / base / pessimistic), verify that key assumptions also have independent sensitivity tables. Multi-variable scenario changes do not satisfy the sensitivity table requirement — scenario analysis and sensitivity analysis are complementary, not substitutes.
 - [NON-BLOCKER] Medium-sensitivity assumptions have at least the tipping point documented (the deviation at which the conclusion would change direction).
 - [NON-BLOCKER] The report states which assumptions are most load-bearing and what would change the conclusion.
 
