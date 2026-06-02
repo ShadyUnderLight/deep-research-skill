@@ -196,7 +196,7 @@ The assumption is named ("assume 15% growth"), but the conditions that must hold
 
 ## 厂商声明与媒体估计的特殊标注规则
 
-当定量数字的来源属于以下两类时，必须在正文中显式标注其角色，不能仅依赖 Source Register 的 metadata：
+当数据的来源属于以下两类时，必须在正文中显式标注其角色，不能仅依赖 Source Register 的 metadata：
 
 ### 厂商自述（manufacturer self-reported）
 
@@ -207,7 +207,7 @@ The assumption is named ("assume 15% growth"), but the conditions that must hold
 
 ### 媒体估计（media estimate）
 
-数据来自彭博、T2/T3 媒体等第三方推断性来源。
+数据来自彭博、券商研究报告等第三方推断性来源（register 类型 `SECONDARY_MEDIA`、`SECONDARY_ANALYST`）。
 
 - 不得标注为 `[已确认事实]`
 - 应使用 `[推断]` 或具体来源角色如 `[彭博 estimate]`
