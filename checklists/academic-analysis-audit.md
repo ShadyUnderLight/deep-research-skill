@@ -27,6 +27,12 @@ This checklist verifies that the academic route was executed correctly and the f
 - [ ] date range is specified
 - [ ] inclusion/exclusion criteria are stated
 - [ ] search completeness is noted (number of results screened, number included)
+- [ ] search strategy is fully documented (database list, search terms with Boolean operators, inclusion/exclusion criteria, screening counts, search date) — required when the report claims "系统化综述" or "有限范围系统化综述"; for non-systematic reviews, document what is feasible
+- [ ] if the report claims "系统化综述" or "有限范围系统化综述", the search flow follows PRISMA simplified standards (at minimum: screening counts from initial hits to final inclusion)
+
+## Publication bias discussion (发表偏倚)
+
+- [ ] publication bias is discussed (at least 2-3 sentences covering: direction judgment — whether the evidence set skews toward positive results; conclusion adjustment — how conclusions should be modified if publication bias is likely)
 
 ## Statistical assessment (if applicable)
 
@@ -39,9 +45,9 @@ This checklist verifies that the academic route was executed correctly and the f
 ## Cherry-picking detection
 
 - [ ] negative or conflicting findings are included alongside positive results
-- [ ] publication bias is acknowledged
 - [ ] the report does not selectively cite papers to support a pre-determined conclusion
 - [ ] both supporting and contradicting evidence is presented
+- [ ] publication bias is discussed (see「Publication bias discussion」section above for detailed requirements)
 
 ## Source labeling
 
@@ -63,4 +69,4 @@ This checklist verifies that the academic route was executed correctly and the f
 - [ ] no correlation ≠ causation errors
 - [ ] no missing venue information for cited papers
 - [ ] no conflation of study design and venue prestige dimensions
-- [ ] no ignoring publication bias or the "file drawer problem"
+- [ ] no ignoring publication bias or the "file drawer problem" — 发表偏倚讨论已按规定完成（至少 2-3 句，涵盖偏倚方向判断和结论调整建议；参见 `references/academic-evidence-hierarchy.md`「发表偏倚讨论」节）
