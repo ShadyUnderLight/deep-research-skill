@@ -154,6 +154,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for constrained-choice / shortlist reports that use composite scoring, important quantitative inputs are labeled as observed fact / proxy / assumption / model output when the distinction affects trust in the recommendation
 - [ ] when evidence buckets are used, the report does not stop at `confirmed / inference / unknown` if important numbers still function as proxy / assumption / planning-model output
 - [ ] heuristic timing, cost, payback, or ROI-style claims are not written as if they were directly observed facts when they are closer to assumptions or planning-model outputs
+- [ ] Source Register 标注 "厂商自述" 的来源在正文引用时附加了内联说明（如 "(厂商自述，非独立验证)"）
+- [ ] 媒体估计数据未在正文中标注为 [已确认事实]（使用 [推断] 或具体来源角色替代）
 
 ## Metric-scope audit
 

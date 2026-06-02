@@ -203,6 +203,18 @@ Good pattern:
 
 If a thesis-bearing claim cannot be made auditable in the body without awkwardness, that is usually a sign the claim should be narrowed, split, or downgraded.
 
+## 来源标注一致性 — Register-to-body label consistency
+
+使用 Source Register 时，register 对某个来源的可靠性/角色标注必须 ≥ 正文引用该来源时使用的标签强度。
+
+具体规则：
+
+- 当 register 标注某来源为 **厂商自述 / manufacturer self-reported**（如 `PRIMARY_COMPANY`、`PRIMARY_PARTNER`、或 register Notes 列注明"厂商自述"），正文引用该来源的数据时必须附加内联说明，如 `(来源：厂商自述，非独立验证)`，不得单独使用 `[已确认事实]`
+- 当来源为 **媒体估计**（彭博、T2/T3 媒体推断），正文不得标注为 `[已确认事实]`；应使用 `[推断]` 或具体角色如 `[彭博 estimate]`
+- 核心原则：**正文标签强度 ≤ register 标签强度**。register 标注弱于正文时触 blocker
+
+例外：如果 register 本身将某个来源明确标为 `PRIMARY_FILING` 或等效高可靠性类型，且正文标签与之匹配，则无需额外 caveat。
+
 ## Common failure patterns
 
 ### Pattern 1: Bibliography theater
