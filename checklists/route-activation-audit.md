@@ -10,6 +10,8 @@ It audits whether route activation was explicit and whether the route actually s
 - [ ] the closest alternative route was identified and a reason exists for why the chosen route wins
 - [ ] the selected route's "Do not use" / "Often confused with" clauses from `ROUTING-MATRIX.md` were checked before finalizing; if the task matched a disqualifying condition, the route was reconsidered or the boundary judgment was documented
 - [ ] if a secondary route is declared, its hard-fail conditions from `ROUTING-MATRIX.md` were verified at selection time (not deferred to delivery); if a condition is inapplicable, the reason is documented
+- [ ] when 2+ secondary routes are declared, each secondary route's hard-fail check status is explicitly listed (not assumed covered by the primary route's checks)
+- [ ] secondary route body-space ratio is reasonable (secondary-route content does not exceed ~25% of body text when the primary route requires minimizing those sections; if it does, consider shared-workflow declaration or route simplification)
 - [ ] a compact execution contract exists before synthesis: opening mandate, mandatory sections, hard-fail conditions, minimize / move later
 - [ ] all required audits for this route (from `ROUTING-MATRIX.md` `### Audit` section) are identified and confirmed executed before delivery (results visible in the artifact or process log); if any required audit is missing, it is run before the report is considered ready; if any required audit was intentionally skipped, the reason is documented
 

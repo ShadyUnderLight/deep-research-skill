@@ -50,6 +50,19 @@ Do not activate everything. Activate the smallest set that produces a decision-u
 
 When a report declares multiple routes (primary + secondary), the hard-fail conditions of **all** declared routes must be verified. A secondary route's hard-fail conditions may not be skipped because it is "secondary." If a hard-fail condition is genuinely inapplicable to the task, document the inapplicability reason rather than skipping the check silently.
 
+### Route inflation warning
+
+Declaring 2+ secondary routes without verifying their hard-fail conditions constitutes **route inflation** — the route list suggests structured methodology, but the unchecked hard-fails create a quality-control blind spot.
+
+Rules to prevent route inflation:
+
+- The declared route list must reflect **actual delivery scope**, not the most comprehensive coverage set. If the output behaves as a shared-workflow survey, declare it as shared-workflow rather than inflating the route list.
+- When 2+ secondary routes are declared, each secondary route's hard-fail conditions must be verifiably checked before delivery. Untested secondary route declarations are considered route inflation.
+- If secondary route content (tools, compliance, ROI, market outlook, etc.) exceeds roughly 25% of body text when paired with a primary route that requires minimizing those sections, consider using Shared-Workflow or simplifying the route declaration set.
+- If the total route count (primary + secondary) exceeds 3, re-examine scope focus — the task may be better served by a narrower primary route or a shared-workflow path.
+
+When in doubt, declare fewer routes with verified hard-fails rather than more routes with unchecked assumptions.
+
 ## Route execution contract
 
 Before synthesis, convert the selected route into a compact execution contract.
