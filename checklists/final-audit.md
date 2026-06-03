@@ -146,6 +146,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for academic / literature review tasks, evidence is assessed on two dimensions: study design quality AND publication venue prestige
 - [ ] for academic / literature review tasks, publication type and peer-review status are labeled for each source
 - [ ] for academic / literature review tasks, preprints are explicitly distinguished from peer-reviewed publications
+- [ ] for academic / literature review tasks, search strategy is documented (databases, search terms with Boolean operators, inclusion/exclusion criteria, screening counts, search date) — required when the report claims "系统化综述" or "有限范围系统化综述"
+- [ ] for academic / literature review tasks, publication bias discussion exists (≥2 sentences covering direction judgment and conclusion adjustment)
 
 ## Precision and estimate sourcing
 
