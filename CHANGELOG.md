@@ -136,6 +136,15 @@ This file is intentionally lightweight. Use concise entries that explain:
 - Per issue #96 (P1), 11 comparative distillation cases existed but lacked a cross-case candidate rule registry. The registry confirms all PROMOTE_NOW candidates are already covered by existing checklists and references; no new promotion is needed. The main gap has shifted from missing rules to execution/activation discipline.
 - Per issue #124 (P2), selection tasks with major execution uncertainty lacked structured post-decision branch planning. The existing scenario logic (Step 7) and change-the-conclusion sections handle pre-decision ranking changes, but do not cover post-decision execution branching (success / blocked / all-blocked paths with trigger conditions and monitoring signals). Added a focused reference file and wired it into option-selection discipline and audit checklist.
 
+### Changed
+- `SKILL.md`: strengthened Step 6 — audit verification now requires explicit tri-state run status per audit (**已通过（附证据）** / **已跳过（附理由）** / **未运行（附理由）**) rather than a binary "run or not" check (#176).
+- `checklists/final-audit.md`: added two non-blocker checks — cross-chapter label consistency (same data, same label across chapters) and required audits run-status visibility in artifact or process log (#176).
+- `checklists/route-activation-audit.md`: hardened Preflight audit-status item — each required audit must carry an explicit tri-state run-status marker with evidence or documented skip/inapplicability reason (#176).
+- `ROUTING-MATRIX.md`: synced Final check section to tri-state wording, matching SKILL.md Step 6 (#176).
+
+### Why
+Round 3 execution revealed that audit checklists were sometimes skipped or their run status was not recoverable. Three eval cases confirmed the pattern (Tencent vs Meituan label consistency gap, Meituan near-zero inline citations, Dark Matter required audits not run). No new audit checklist files were added — the fix hardens existing rules with explicit tri-state status recording and synchronizes ROUTING-MATRIX.md with SKILL.md's updated workflow, targeting execution drift rather than missing rules (#176).
+
 ## 0.4.0 - 2026-03-31
 
 ### Added

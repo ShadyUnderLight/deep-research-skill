@@ -380,10 +380,11 @@ Before delivery:
 5. confirm that the required artifact contract is visibly satisfied:
    - if a specialized route was selected, confirm the route's artifact contract is visibly executed in the final artifact
    - if no specialized route applies (shared-workflow path), confirm the shared workflow spine is visibly executed instead
-6. verify that all required audits for the task have been executed:
-   - if a specialized route was selected, confirm all audits listed in its `### Audit` section in `ROUTING-MATRIX.md` were run
-   - if no specialized route applies (shared-workflow path), confirm at least `workflow-spine-audit.md` and `final-audit.md` were run
-   - if a required audit is missing, run it before proceeding
+6. verify that all required audits for the task have been executed, with each audit's run status recorded:
+   - if a specialized route was selected, list all audits listed in its `### Audit` section in `ROUTING-MATRIX.md`
+   - if no specialized route applies (shared-workflow path), list at least `workflow-spine-audit.md` and `final-audit.md`
+   - for each listed audit, confirm one of these statuses: **已通过** (passed, with evidence visible in the artifact or process log), **已跳过（附理由）** (skipped, with documented reason), or **未运行（附理由）** (not run, with documented reason)
+   - if any required audit is missing or not run, run it before proceeding, or document the reason (skipped / not run / not applicable)
 
 A report that sounds informed but does not visibly satisfy its required artifact contract (route-specific or shared-workflow) is not ready.
 
