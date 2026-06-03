@@ -33,7 +33,7 @@ Run this checklist before delivery.
 ## Structured multi-scenario analysis
 
 - [ ] at minimum a base case and one credible alternative scenario exist
-- [ ] each scenario has a quantitative range for the load-bearing metric
+- [ ] all scenarios share the same load-bearing metric as their quantitative axis — no mixing different metrics
 - [ ] each scenario has explicitly stated key assumptions
 - [ ] each scenario has observable trigger conditions that would signal it is becoming more or less likely
 - [ ] when uncertainty is material, three scenarios (optimistic / base / pessimistic) are present

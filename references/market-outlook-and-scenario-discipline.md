@@ -144,7 +144,14 @@ For each scenario:
 - state the key assumptions that must hold for this scenario to materialize
 - state the observable trigger conditions that would signal this scenario is becoming more or less likely
 
-Probability weight annotation is recommended when evidence supports it, but not required. Do not assign precise probabilities when the evidence base cannot support that precision — use directional labels (more likely / less likely) instead.
+### Scenario quantitative axis consistency
+
+All scenarios must share the **same load-bearing metric** as their quantitative axis. Do not use different metrics across scenarios — the reader must be able to compare all paths on one dimension.
+
+✅ Correct: base "30-40% penetration" / upside "50-60%" / downside "15-25%"
+❌ Incorrect: base "user decline 30-50%" / upside "70%+" / downside no equivalent metric
+
+Probability weight annotation is recommended when evidence supports it, but not required. Do not assign precise probabilities when the evidence base cannot support that precision — use directional labels (most likely / upside / downside) or bounded ranges with explicit uncertainty caveats instead of numerical percentages. Precise probabilities are only justified when backed by robust quantitative models or large-sample statistical evidence.
 
 A market-outlook report with only one scenario is not an outlook memo. It is a forecast with no uncertainty structure.
 
@@ -282,7 +289,7 @@ The report uses Market Outlook for a task whose core output is ranking, predicti
 ### Failure mode 9: Probability precision illusion
 The report assigns precise probability percentages (e.g., "15-20%", "23%") to inherently uncertain outcomes where the evidence base cannot support that level of precision.
 
-**Fix:** Use directional labels (more likely / less likely / comparable likelihood) or bounded ranges with explicit uncertainty caveats. Precise probabilities are only justified when backed by robust quantitative models or large-sample statistical evidence.
+**Fix:** Use directional labels (most likely / upside / downside) or bounded ranges with explicit uncertainty caveats. Precise probabilities are only justified when backed by robust quantitative models or large-sample statistical evidence.
 
 ---
 
