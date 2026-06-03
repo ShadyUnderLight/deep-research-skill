@@ -14,7 +14,7 @@ It audits whether route activation was explicit and whether the route actually s
 - [ ] the total route count (primary + secondary) was reviewed: if it exceeds 3, scope focus was re-examined and the decision to keep the current route set is documented
 - [ ] secondary body-text share is reasonable (secondary-route content does not exceed roughly 25% of body text when the primary route requires minimizing those sections; if it does, consider shared-workflow declaration or route simplification)
 - [ ] a compact execution contract exists before synthesis: opening mandate, mandatory sections, hard-fail conditions, minimize / move later
-- [ ] all required audits for this route (from `ROUTING-MATRIX.md` `### Audit` section) are identified and each has an explicit run status: **已通过** (passed, with evidence visible in the artifact or process log), **已跳过+理由** (skipped, with documented reason), or **未运行+理由** (not run, with documented reason); if any required audit is missing, it is run before the report is considered ready
+- [ ] all required audits for this route (from `ROUTING-MATRIX.md` `### Audit` section) are identified and each has an explicit run status: **已通过** (passed, with evidence visible in the artifact or process log), **已跳过（附理由）** (skipped, with documented reason), or **未运行（附理由）** (not run, with documented reason); if any required audit is missing, it is run before the report is considered ready
 
 ## Route selection visibility
 
