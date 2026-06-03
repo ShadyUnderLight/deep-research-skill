@@ -78,6 +78,27 @@ When evaluating a source, combine both dimensions:
 
 **Important**: Do not conflate the two dimensions. A preprint of an RCT (high design quality, low venue prestige) is not the same as a published case report (low design quality, moderate venue prestige).
 
+### 双维证据强度评估表（推荐格式）
+
+在评估每个来源时，使用以下表格同时标注两个维度。此表应在报告的「证据质量评估」或「来源分析」章节中呈现。
+
+| 来源 | 研究设计质量 (Level) | 发表场所声誉 (Level) | 综合评估 |
+|------|---------------------|---------------------|---------|
+| [S1] | Level 3: RCT | Level 1: NEJM | 强 |
+| [S2] | Level 4: 队列研究 | Level 3: 同行评议期刊 | 中等 |
+| [S3] | Level 6: 横断面研究 | Level 1: 顶级期刊 | 中等 |
+| [S4] | Level 3: RCT (预印本) | Level 5: 预印本 | 中等 |
+| [S5] | Level 7: 案例报告 | Level 2: 领域顶刊 | 弱 |
+
+**说明**：
+- 研究设计质量等级见上文「Dimension 1: Study design quality」表格
+- 发表场所声誉等级见上文「Dimension 2: Publication venue prestige」表格
+- **综合评估规则**：
+  - **强**：研究设计 Level 1-3 **且** 发表场所声誉 Level 1-2（高质量研究在顶级/领域顶级期刊）
+  - **弱**：研究设计 Level 7-8 **或** 发表场所声誉 Level 6-8（案例报告/论文/预印本/技术报告，或工作在极低声誉场所发表）
+  - **中等**：以上两者之外的其余组合
+- 此表格是报告证据分级的一部分，不替代正文中的 `[确认事实]/[推断]` 标签——两者是互补关系：表格展示来源级评估，标签是声明级置信度
+
 ### Discipline-specific venue prestige
 
 The venue prestige hierarchy varies by discipline:
@@ -112,17 +133,33 @@ The venue prestige hierarchy varies by discipline:
 
 When citing academic sources, **always label**:
 
-1. **Publication type**: published / preprint / conference / working paper / unpublished
-2. **Peer-review status**: peer-reviewed / not peer-reviewed / unknown
-3. **Publication venue**: journal name, conference name, or repository
-4. **Publication date**: year (and month if available for fast-moving fields)
-5. **DOI or URL**: when available
+1. **Title**: paper title (e.g., "Attention Is All You Need")
+2. **Publication type**: published / preprint / conference / working paper / unpublished
+3. **Peer-review status**: peer-reviewed / not peer-reviewed / unknown
+4. **Publication venue**: journal name, conference name, or repository
+5. **Publication date**: year (and month if available for fast-moving fields)
+6. **DOI or URL**: when available
 
 Example labeling:
 ```
 - [Published, Peer-reviewed] Vaswani et al. (2017). "Attention Is All You Need." NeurIPS 2017. DOI: xxx
 - [Preprint, Not peer-reviewed] Smith et al. (2024). "Scaling Laws for LLMs." arXiv:2401.xxxxx
 ```
+
+### 每个 [S#] 条目必填字段
+
+报告中的每个来源条目（`[S#]`）必须包含以下字段：
+
+| 字段 | 说明 | 示例 |
+|------|------|------|
+| **标题** | 论文/报告标题 | "Attention Is All You Need" |
+| **Publication type** | 原始研究/综述/预印本/工作论文/会议论文/书籍章节/报告 | original research / review / preprint |
+| **Peer-review status** | 同行评审状态 | peer-reviewed / preprint / unknown |
+| **Venue** | 期刊名/会议名/出版商 | NeurIPS 2017 / arXiv |
+| **DOI or URL** | 永久标识符或可访问链接 | 10.xxxx/xxxxx 或 https://... |
+| **Date** | 发表日期（至少年份） | 2017 |
+
+此要求与 `references/source-traceability-and-claim-citation.md` 中的结构化 source register 要求一致，是学术路由来源标注的具体扩展。
 
 ## Statistical assessment
 
@@ -156,7 +193,7 @@ When evaluating quantitative research, check:
 
 - **检索数据库列表**：列出所有检索的数据库（如 PubMed, Web of Science, Google Scholar, Semantic Scholar, arXiv, IEEE Xplore, CNKI, Scopus 等），注明各数据库的覆盖范围和检索时间
 - **检索词组合**：包含关键词 + 布尔运算符（AND/OR/NOT），以及所使用的字段标签（title/abstract/keywords）和任何限制条件（如 MeSH terms）
-- **纳入/排除标准**：时间范围、语言、研究类型（RCT / 观察性研究 / 系统综述 / 综述 / 灰色文献）、发表日期范围、样本量阈值（如适用）
+- **纳入/排除标准**：时间范围、语言、研究类型（RCT / 观察性研究 / 系统化综述 / 综述 / 灰色文献）、发表日期范围、样本量阈值（如适用）
 - **筛选流程数量**：初筛结果数 → 再审结果数 → 最终纳入数；如适用说明排除原因
 - **检索日期**：明确记录检索执行日期
 
@@ -169,6 +206,21 @@ When evaluating quantitative research, check:
 
 当报告使用"有限范围"限定词时，仍应在能力范围内完整记录检索策略；"有限范围"不应成为跳过检索策略文档化的借口。
 
+### 检索策略模板
+
+当报告涉及文献检索时，请直接填充此模板（参考 PRISMA 2020 简化版）：
+
+```markdown
+## 检索方法
+- 检索数据库：PubMed / Web of Science / Google Scholar / CNKI / …
+- 检索词组合：(keyword1 AND keyword2) OR (keyword3 AND keyword4)
+- 检索日期：YYYY-MM-DD
+- 纳入标准：语言、时间范围、研究类型
+- 排除标准：…
+- 筛选流程：初筛 ___ 篇 → 再审 ___ 篇 → 纳入 ___ 篇
+```
+
+填充后的检索策略应放在报告正文的「检索方法」或「方法论」章节中。此模板适用于系统化综述和有限范围系统化综述；对于非系统化综述，填写可用的字段即可。
 ## 发表偏倚讨论
 
 ### 触发条件
@@ -191,6 +243,21 @@ When evaluating quantitative research, check:
 - **可接受的替代形式**：注明"本话题发表偏倚风险较低，理由如下：[简要阐述为什么该领域不太受抽屉问题影响]"
 - 此简要备注**满足**本研究方法论文档对发表偏倚讨论的最低要求（即可通过 checklist 检查），前提是理由判断合理
 - **不推荐完全省略**：即使话题看似无争议，简要记录理由也展示了方法论透明度
+
+### 发表偏倚讨论模板
+
+当话题满足触发条件（见上文「触发条件」）时，请直接填充此模板：
+
+```markdown
+**发表偏倚讨论**：本研究涵盖的主题存在[正/负/不确定]方向发表偏倚的可能——[说明偏倚方向及对结论的影响]。因此本报告的核心结论应被视为[方向性/需谨慎]。
+```
+
+**填充指引**：
+- 如果偏倚方向可以判断（正/负）：在第一个 `[...]` 中说明方向判断的依据，在第二个 `[...]` 中说明该方向偏差对结论的具体影响（夸大效应？低估风险？）
+- 如果偏倚方向无法判断（不确定）：在第二个 `[...]` 中写明"现有文献不足以判断偏倚方向，结论应视为方向性而非定量判断"
+- 模板中两个 `[...]` 各至少填充一句，总计至少 2 句
+
+对于非争议性话题，可使用上文"可接受的替代形式"的简化说明。
 
 ## Hard fail conditions
 

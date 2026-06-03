@@ -102,7 +102,7 @@ Makes mature task families explicit so the right discipline set and delivery con
 - constrained choice / shortlist
 - listed-company / investment-style research
 - private company / startup evaluation
-- academic / literature review (⚠️ experimental)
+- academic / literature review
 
 ### Typical failure signs
 - the correct rule exists but does not activate

@@ -14,7 +14,7 @@ This checklist verifies that the academic route was executed correctly and the f
 
 ## Evidence hierarchy compliance
 
-- [ ] evidence is assessed on two dimensions: study design quality AND publication venue prestige
+- [ ] （Tier-1）证据分级同时评估研究设计质量和发表场所声誉（双维）：evidence is assessed on two dimensions — study design quality AND publication venue prestige
 - [ ] publication type is labeled for each source (published / preprint / conference / working paper / unpublished)
 - [ ] peer-review status is labeled for each source (peer-reviewed / not peer-reviewed / unknown)
 - [ ] publication venue is specified for each source (journal name, conference name, or repository)
@@ -27,12 +27,12 @@ This checklist verifies that the academic route was executed correctly and the f
 - [ ] date range is specified
 - [ ] inclusion/exclusion criteria are stated
 - [ ] search completeness is noted (number of results screened, number included)
-- [ ] search strategy is fully documented (database list, search terms with Boolean operators, inclusion/exclusion criteria, screening counts, search date) — required when the report claims "系统化综述" or "有限范围系统化综述"; for non-systematic reviews, document what is feasible
+- [ ] （Tier-1）检索策略已文档化：search strategy is fully documented (database list, search terms with Boolean operators, inclusion/exclusion criteria, screening counts, search date) — required when the report claims "系统化综述" or "有限范围系统化综述"; for non-systematic reviews, document what is feasible
 - [ ] if the report claims "系统化综述" or "有限范围系统化综述", the search flow follows PRISMA simplified standards (at minimum: screening counts from initial hits to final inclusion)
 
 ## Publication bias discussion (发表偏倚)
 
-- [ ] publication bias is discussed (at least 2-3 sentences covering: direction judgment — whether the evidence set skews toward positive results; conclusion adjustment — how conclusions should be modified if publication bias is likely)
+- [ ] （Tier-1）发表偏倚讨论存在（≥2 句，说明偏倚方向与结论调整）：publication bias is discussed (at least 2-3 sentences covering: direction judgment — whether the evidence set skews toward positive results; conclusion adjustment — how conclusions should be modified if publication bias is likely)
 
 ## Statistical assessment (if applicable)
 
@@ -47,12 +47,13 @@ This checklist verifies that the academic route was executed correctly and the f
 - [ ] negative or conflicting findings are included alongside positive results
 - [ ] the report does not selectively cite papers to support a pre-determined conclusion
 - [ ] both supporting and contradicting evidence is presented
-- [ ] publication bias is discussed (see「Publication bias discussion」section above for detailed requirements)
+- [ ] publication bias is discussed (see「Publication bias discussion (发表偏倚)」section above for detailed requirements)
 
 ## Source labeling
 
+- [ ] （Tier-1）来源表逐项包含：title + publication type + peer-review status + venue + DOI/URL + date — per-source academic metadata is complete (see `references/academic-evidence-hierarchy.md`「每个 [S#] 条目必填字段」)
 - [ ] all sources have venue information
-- [ ] preprints are explicitly labeled as "not peer-reviewed"
+- [ ] （Tier-1）预印本/工作论文标注 "未同行评审"：preprints are explicitly labeled as "not peer-reviewed"
 - [ ] the report does not conflate study design quality with publication venue prestige
 - [ ] the report distinguishes between original research and secondary sources
 
