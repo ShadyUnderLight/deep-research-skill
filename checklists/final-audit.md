@@ -50,6 +50,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] meaningful uncertainties are recorded rather than only implied
 - [ ] where the task warrants it, counter-evidence handling is recoverable from the process artifact
 - [ ] required audits are named and statused rather than merely assumed
+- [ ] (非阻塞) each declared route's required audits have a visible run status (passed / skipped+reason / not run+reason) in the artifact or process log
+- [ ] (非阻塞) cross-chapter label consistency: the same data point uses the same evidence label across all chapters; if the uncertainty register lists an item, bull/bear sections that reference it should cross-reference or maintain a consistent confidence level
 - [ ] if the task used a specialized route, there is visible evidence that the route was turned into an execution contract before full drafting
 
 ## Route execution integrity
