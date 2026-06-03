@@ -777,7 +777,7 @@ Fail if the report:
 
 ## Route: Academic / Literature Review
 
-> ⚠️ **Experimental route**: This route is defined but not yet validated against real use cases. Accumulate 2-3 real academic research cases before making a formal evaluation. This route may produce lower-quality outputs for complex systematic reviews until validated.
+> ✅ **Hardened route** (Round 3): This route has been validated against 3 real academic research cases and hardened with fillable templates (search strategy, publication bias, source metadata, dual-dimension evidence matrix) and Tier-1 checklist gate (see #175). Reports should now satisfy the academic route's methodology transparency requirements.
 
 ### Micro-audit focus
 For this route, be especially strict about:
@@ -963,7 +963,7 @@ If multiple primary-looking routes apply, use this order:
 8. equipment selection / procurement / home-server planning
 9. market outlook / industry evolution
 10. constrained choice / shortlist
-11. academic / literature review (⚠️ experimental)
+11. academic / literature review
 
 Choose the route that most strongly determines report structure and audit burden.
 

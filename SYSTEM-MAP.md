@@ -102,7 +102,7 @@ Makes mature task families explicit so the right discipline set and delivery con
 - constrained choice / shortlist
 - listed-company / investment-style research
 - private company / startup evaluation
-- academic / literature review (⚠️ experimental)
+- academic / literature review
 
 ### Typical failure signs
 - the correct rule exists but does not activate
@@ -157,6 +157,9 @@ Protects fast-moving research from stale facts, frozen time layers, and blurred 
 - `evals/cases/reporting-period-and-ttm-confusion-case.md`
 - `evals/cases/amat-listed-company-anchor-and-label-execution-case.md`
 - `evals/cases/evergrande-property-listed-company-execution-case.md`
+- `evals/cases/tencent-listed-company-label-consistency-case.md`
+- `evals/cases/meituan-listed-company-traceability-gap-case.md`
+- `evals/cases/gigadevice-listed-company-inline-format-consistency-case.md`
 - `evals/cases/humanoid-robot-market-outlook-dual-route-case.md`
 - `evals/cases/storage-chip-listed-company-deep-dive-pass-case.md`
 
@@ -294,6 +297,8 @@ Controls forecasts, roadmap statements, target dates, and estimate-heavy claims 
 - `evals/cases/consensus-and-forward-pe-misuse-case.md`
 - `evals/cases/humanoid-robot-market-outlook-dual-route-case.md`
 - `evals/cases/ai-cost-control-market-outlook-full-pass-benchmark.md`
+- `evals/cases/ai-data-center-market-outlook-register-completeness-case.md`
+- `evals/cases/app-vs-agent-market-outlook-register-scenario-case.md`
 - `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md`
 
 ### Typical failure signs
