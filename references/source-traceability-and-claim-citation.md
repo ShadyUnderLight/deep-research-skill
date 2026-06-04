@@ -97,14 +97,15 @@ Guidelines for inline citations:
 
 ### Layer 2: Source register
 
-At the end of the report, include a structured source register with at minimum:
+At the end of the report, include a structured source register with at minimum (see the Structured Source Register Template below for the required 7-column format):
 
-- source id
-- source title or description
-- source type
-- date or version
-- relevance to the report
-- any notes on reliability or limitations
+- source id matching inline `[S#]` body citations
+- source name or title
+- source type (simplified 5-class or granular 8-class)
+- date in `YYYY-MM-DD` format
+- DOI or URL (when available)
+- reliability rating (`high` / `medium` / `low`)
+- claims supported (§ section references for reverse traceability)
 
 Example format:
 
@@ -123,7 +124,7 @@ Example format:
 
 ### Structured Source Register Template
 
-Beginning from this version, the source register appendix must use the following 7-column structure. This template makes source traceability part of the writing process rather than a post-audit fix: the author fills the register while drafting, inline `[S#]` references point to register rows, and the `Claims Supported` column links each entry back to the body section.
+The source register appendix must use the following 7-column structure. This template makes source traceability part of the writing process rather than a post-audit fix: the author fills the register while drafting, inline `[S#]` references point to register rows, and the `Claims Supported` column links each entry back to the body section.
 
 ```
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
@@ -143,7 +144,7 @@ Beginning from this version, the source register appendix must use the following
 | Reliability | One of: `high` (独立可验证官方源), `medium` (可靠第三方), `low` (厂商自述/推断/未确认) |
 | Claims Supported | Body section references (e.g. `§3.2, §4.1`) that this entry supports — establishes reverse traceability from register to body |
 
-**Cross-reference rule:** Body `[S#]` citations point to the ID column; the `Claims Supported` column points back to body sections. A register entry should be removed if none of its listed sections actually cite it, or a body citation should be added.
+**Cross-reference rule:** Body `[S#]` citations point to the ID column; the `Claims Supported` column points back to body sections. This creates bidirectional traceability between register entries and body claims.
 
 **Source Type notes:**
 - `primary` — official regulatory filings, annual reports, company press releases, government data
@@ -151,6 +152,8 @@ Beginning from this version, the source register appendix must use the following
 - `inferred` — report's own reasoning chain (must include inference documentation — see §Inference documentation below)
 - `vendor-claim` — manufacturer self-reported data without independent verification
 - `unconfirmed` — found in one or more sources but cannot be independently verified
+
+**Reliability consistency rule:** If Source Type is `vendor-claim`, `inferred`, or `unconfirmed`, Reliability must be `low`. These source types are inherently non-independent or unverified; marking them `medium` or `high` would misrepresent the evidence strength.
 
 If the existing granular classification (`PRIMARY_FILING`, `SECONDARY_MEDIA`, etc. — see §Source type classification below) better suits a specific entry, use it instead; the template can accommodate either level of detail.
 
@@ -295,7 +298,7 @@ If a thesis-bearing claim cannot be made auditable in the body without awkwardne
 
 具体规则：
 
-- 当 register 标注某来源为 **厂商自述 / manufacturer self-reported**（如 `PRIMARY_COMPANY`、`PRIMARY_PARTNER`、或 register Notes 列注明"厂商自述"），正文引用该来源的数据时必须附加内联说明，如 `(来源：厂商自述，非独立验证)`，不得单独使用 `[已确认事实]`
+- 当 register 标注某来源为 **厂商自述 / manufacturer self-reported**（如 `PRIMARY_COMPANY`、`PRIMARY_PARTNER`、简化类型的 `vendor-claim`、或 register Notes 列注明"厂商自述"），正文引用该来源的数据时必须附加内联说明，如 `(来源：厂商自述，非独立验证)`，不得单独使用 `[已确认事实]`
 - 当来源为 **媒体估计**（SECONDARY_MEDIA 类型，如彭博、券商研究报告等第三方推断），正文不得标注为 `[已确认事实]`；应使用 `[推断]` 或具体角色如 `[彭博 estimate]`
 - 核心原则：**正文标签强度 ≤ register 标签强度**。register 标注弱于正文时视为标签通胀，应修正
 

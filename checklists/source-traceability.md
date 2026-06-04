@@ -17,9 +17,12 @@ Run through every item before delivering the final report.
 ## Source register
 
 - [ ] source register is present and structured (not a loose bibliography)
-- [ ] every source id in the register has: title/description, source type, date/version, relevance, reliability notes
+- [ ] source register uses the 7-column template: ID / Source Name / Source Type / Date / DOI/URL / Reliability / Claims Supported
+- [ ] every register entry has a DOI/URL where available; for offline sources, the limitation is noted explicitly
+- [ ] every register entry has a `Claims Supported` column with § section references that match body citations
+- [ ] Source Type is one of the simplified 5-class system (`primary` / `secondary` / `inferred` / `vendor-claim` / `unconfirmed`) or a compatible granular type (see `references/source-traceability-and-claim-citation.md`)
+- [ ] Reliability consistency: if Source Type is `vendor-claim`, `inferred`, or `unconfirmed`, Reliability must be `low`
 - [ ] no source id is listed but never cited in the body
-- [ ] every register entry includes a URL or DOI where available; for offline sources, the limitation is noted explicitly
 
 ## Source type discipline
 

@@ -167,7 +167,7 @@ Appendix example (7-column structured template):
 ```
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|-----------------|
-| S01 | Samsung Semiconductor HBM4 press release | primary | 2026-03-18 | https://semiconductor.samsung.com/news/... | high | §3.2, §4.1 |
+| S01 | Samsung 2025 Annual Report (KRX filing) | primary | 2026-02-15 | https://dart.fss.or.kr/... | high | §3.2, §4.1 |
 | S02 | TrendForce HBM4 yield comparison note | secondary | 2026-04 | https://www.trendforce.com/... | medium | §3.2, §5.3 |
 | I01 | Analyst inference based on S01 and S02 | inferred | 2026-04-15 | — | low | §4.2 |
 ```
