@@ -176,7 +176,38 @@ This symmetry matters because asymmetric structure signals to the reader that on
 - include what to do next when useful
 - include what could change the conclusion
 
-### 8. Sources
+### 8. 路由与审计状态（mandatory）
+
+在来源注册表之前，包含一个标准化的路由与审计状态区块，让评审者无需查看 process log 即可确认哪些审计已运行。
+
+**格式模板：**
+
+```
+## 路由与审计状态
+
+**主路由**：Provider / Vendor Selection
+**次级路由**：Regulatory / Policy Impact Analysis
+
+| Audit | Status | Notes |
+|-------|--------|-------|
+| route-activation-audit | ✅ 已通过 | 路由选择正确，无违反 Do-not-use 条件 |
+| option-selection-final-audit | ✅ 已通过 | 排名短名单、反转条件、runner-up 均执行 |
+| source-traceability | ✅ 已通过 | Source Register 结构化，正文有 [SN] 引用 |
+| final-audit | ✅ 已通过 | 核心关卡 7/7 |
+| regulatory secondary hard-fail | ⚠️ 已跳过 | 合规影响已在正文中覆盖，未作为独立次级路由执行 |
+```
+
+**规则：**
+
+- 列出该路由在 `ROUTING-MATRIX.md` `### Audit` 节中声明的所有 required audits
+- 每个 audit 一行，状态三选一：
+  - **已通过** — 审计已运行且通过
+  - **已跳过（附理由）** — 审计适用但决定跳过，理由需明确
+  - **未运行（附理由）** — 审计因故未运行，理由需明确
+- 该区块不追求详尽审计记录，只追求评审者可见——证明审计已运行
+- 如果路由未选择（shared-workflow 路径），说明"未选择专用路由，工作流脊柱审计已运行"并引用 `checklists/workflow-spine-audit.md` 的运行状态
+
+### 9. Sources
 
 - list the most important sources
 - **must** include a structured Source Register appendix using the 7-column template defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template) — a loose bibliography does not satisfy traceability

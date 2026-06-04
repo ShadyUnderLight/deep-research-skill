@@ -91,6 +91,18 @@ The full contract format (including "visible proof the route fired") is defined 
 
 The contract belongs in the research plan, not only in the final audit. A route is not fully selected until this contract exists in operational form.
 
+### Step 5: Delivery output — route and audit status block
+
+Before deep collection concludes, add the following requirement to the execution contract: the final deliverable must include a standardized route-and-audit-status block (template defined in `references/report-template.md` §路由与审计状态).
+
+This block makes the route selection and audit run status visible to anyone reading the final report, without requiring access to the process log.
+
+- list all required audits for the declared route(s) from `ROUTING-MATRIX.md` `### Audit` sections
+- for each audit, record one of: **已通过** (passed), **已跳过（附理由）** (skipped, with documented reason), **未运行（附理由）** (not run, with documented reason)
+- if no specialized route applies (shared-workflow path), state that the workflow-spine audit was run instead
+
+Do not treat this block as optional or as a process-log-only concern. If the reader cannot see which audits ran, the audit framework has not been delivered.
+
 ## Common route confusions
 
 ### Market entry vs constrained choice
