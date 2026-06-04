@@ -162,6 +162,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] heuristic timing, cost, payback, or ROI-style claims are not written as if they were directly observed facts when they are closer to assumptions or planning-model outputs
 - [ ] （非阻塞）Source Register 中类型为 PRIMARY_COMPANY/PRIMARY_PARTNER/简化类型的 vendor-claim，或 Notes 标注"厂商自述"的来源，在正文引用时附加了内联说明 `(来源：厂商自述，非独立验证)`（见 `references/source-traceability-and-claim-citation.md` §来源标注一致性）
 - [ ] （非阻塞）SECONDARY_MEDIA / SECONDARY_ANALYST 类型来源（媒体估计、券商研报）未在正文中标注为 [已确认事实]（使用 [推断] 或具体来源角色替代）
+- [ ] （非阻塞）所有比较表、评分表、估算表包含数字角色列（或等效的表头角色行/表注），读者无需回正文即可从表格行判断数字性质（观察值/代理指标/假设/模型输出）。单角色表可以在表注声明；多角色表必须有独立列或表头角色行。见 `references/quantitative-role-labeling.md` §表格中的角色标签
 
 ## Metric-scope audit
 

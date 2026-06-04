@@ -247,6 +247,53 @@ Quantitative role may be shown through:
 The format may vary.
 Role visibility may not.
 
+## 表格中的角色标签
+
+When numbers appear in comparison tables, scoring tables, or estimation tables, the role label must be visible **at the table level** — not only in the surrounding prose.
+
+### Correct: role column as part of table structure
+
+Include a dedicated column that labels each row's number role. This is the recommended pattern:
+
+```
+| 维度 | 方案A | 方案B | 方案C | 数字角色 |
+|------|-------|-------|-------|---------|
+| 年营收 | $50M | $30M | $20M | 观察值（年报披露） |
+| 市场增长率 | 15% | 12% | 10% | 代理指标（基于第三方行业预测推算） |
+| 实施成本 | $5M | $3M | $2M | 模型输出（基于项目规模和同类产品定价） |
+| ROI | 3.2x | 2.5x | 1.8x | 模型输出（基于前述成本和营收假设） |
+```
+
+Placement note: put the role column as the last or second-to-last column in the table. Use the last position by default; reserve the second-to-last spot when a confidence indicator or source-reference column logically follows the role column.
+
+### Acceptable alternative: role header row
+
+When the same role applies to all values in a column, a header row between column headers and data rows can be used:
+
+```
+| 维度 | 方案A | 方案B | 方案C |
+|------|-------|-------|-------|
+| 角色 | 观察值 | 代理指标 | 模型输出 |
+| 年营收 | $50M | $30M | $20M |
+| 市场份额 | 25% | 15% | 10% |
+```
+
+### Acceptable alternative: table-level note
+
+If all numbers in a table share the same epistemic role, a single table note suffices:
+
+```
+> 注：本表所有数字均为模型输出，基于行业公开数据和所述假设计算，不应视为已确认事实。
+```
+
+### What is not acceptable
+
+- A statement in the surrounding prose that "all numbers in this report are estimated" without a role indicator at the table level
+- A single inline disclaimer in the introduction applied to every table without per-table annotation
+- Mixing observed facts and model outputs in the same table without distinguishing them
+
+The rule is: **the reader should not need to leave the table to determine the epistemic role of the numbers inside it.**
+
 ## Hard fail signs
 
 - A load-bearing number has no visible role.
