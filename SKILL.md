@@ -25,7 +25,7 @@ Always distinguish:
 2. classify the task
 3. produce a compact research plan
 4. define evidence standards and stop conditions
-5. if live search, source fetching, browser access, or parallel agents may be needed, run tooling preflight to confirm what is available; if a needed capability is missing, note it and adjust the search strategy before starting collection
+5. if live search, source fetching, browser access, or parallel agents may be needed, run tooling preflight to confirm what is available; if a needed capability is missing, note it and adjust the search strategy before starting collection. When the environment has a local Research API (e.g. Agent-Reach), read `references/external-channel-preflight.md` for channel-specific preflight rules.
 6. collect and compare sources
 7. run a mid-research review
    - read `references/mid-research-review.md` once the first meaningful evidence batch is in hand
@@ -146,6 +146,17 @@ When a research task needs live web search:
 
 If the selected provider path is unavailable, do not silently fall back to another provider without explicit justification. Only add another provider when degradation, low yield, or query-fit mismatch is explicitly identified.
 
+### Local Research API (first-class channel)
+
+If the environment has a local Research API (e.g. Agent-Reach running on `127.0.0.1:8765`), it may be available as a non-degraded first-class channel providing:
+- channel preflight (`GET /health`, `GET /channels`)
+- discovery search (`POST /search`)
+- content fetch (`POST /fetch`)
+
+Run preflight (see `references/external-channel-preflight.md`) before treating it as an available channel. When the API is available, prefer it over degraded-search fallbacks for the capabilities it provides.
+
+### Degraded-search fallback policy
+
 If degraded search is needed, use this fallback policy:
 
 1. first distinguish temporary rate-limit / quota issues from broader provider unavailability
@@ -215,8 +226,9 @@ Different environments expose different tool names for the same capabilities. Ma
 
 | Capability | Typical tool names | Notes |
 |---|---|---|
-| Discovery search | `web_search`, `web_search_exa`, search API | |
-| Readable content fetch | `web_fetch`, MCP fetch, HTTP fetch when it captures final page content/status | Must return usable source text, not raw HTML/redirect page |
+| Discovery search | `web_search`, `web_search_exa`, search API, Agent-Reach `POST /search` | |
+| Readable content fetch | `web_fetch`, MCP fetch, HTTP fetch, Agent-Reach `POST /fetch` | Must return usable source text, not raw HTML/redirect page |
+| Channel preflight | Agent-Reach `GET /health`, `GET /channels` | Only when a local Research API is available; see `references/external-channel-preflight.md` |
 | Dynamic browser | `browser`, Playwright, headless Chrome | |
 | Parallel agent spawn | `spawn_agent`, `sessions_spawn`, agent/session spawn API | Generic parallel tool-call wrappers do not count — must create independent sub-agent/session per track |
 
