@@ -42,6 +42,7 @@ Use the following when relevant:
 - current-state snapshot
 - degraded-search log
 - counter-evidence log
+- channel availability snapshot
 
 ## Field intent
 
@@ -80,6 +81,11 @@ If fallback discovery was needed, record which provider path was attempted, why 
 
 ### Counter-evidence log
 What could weaken, delay, qualify, or overturn the answer.
+
+### Channel availability snapshot
+If the task depends on an external information channel (local Research API, search provider, content fetch service), record preflight results here. See `references/external-channel-preflight.md` for preflight rules and field definitions. Fields include: `api_available`, `api_version`, `checked_at`, `channels_ok`, `channels_total`, `selected_channels`, `degraded_channels`, `impact_on_research`.
+
+This snapshot is distinct from the degraded-search log — it captures channel availability before research begins, while the degraded-search log records provider fallback during research.
 
 ### Artifact contract
 What the final report must visibly contain.
@@ -127,6 +133,7 @@ A compact Research Pack may use this shape:
 - Stop condition
 - Current-state snapshot
 - Degraded-search log
+- Channel availability snapshot
 - Source register
 - Claim register
 - Uncertainty register

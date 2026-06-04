@@ -261,6 +261,16 @@ def run_strict_checks(cleaned: str) -> list[str]:
     errors.extend(sid_issues)
     errors.extend(uid_issues)
 
+    # DISCOVERY is not a valid Source Register source type.
+    # Scan the Source register body for any DISCOVERY reference.
+    source_body = _section_body(cleaned, "Source register")
+    if source_body:
+        for line in source_body.split("\n"):
+            if re.search(r"\bDISCOVERY\b", line, re.IGNORECASE):
+                errors.append(
+                    f"DISCOVERY in Source register: {line.strip()[:80]}"
+                )
+
     if not source_ids:
         errors.append(
             "No source IDs (Sxx or [Sxx]) found in Source register"

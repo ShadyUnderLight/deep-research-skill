@@ -174,11 +174,16 @@ Classify every source in the register by type. Use these types consistently:
 - `PRIMARY_FILING` — official regulatory filing (招股书, 年报, 季报, 交易所公告)
 - `PRIMARY_COMPANY` — official company website, press release, official social media, product documentation
 - `PRIMARY_PARTNER` — official statement from a named partner or customer
+- `PRIMARY_DEV` — official developer material: GitHub repository, issue, PR, release, API docs, changelog, commit log
 - `SECONDARY_MEDIA` — news article, industry report, analyst commentary
 - `SECONDARY_ANALYST` — analyst report, investment bank research
+- `SECONDARY_FEED` — RSS feed, newsletter, curated content stream
+- `TRANSCRIPT` — verbatim or near-verbatim transcript of an interview, press conference, earnings call, podcast, tutorial, or presentation
 - `INFERRED` — model inference with explicit reasoning chain documented
 - `UNCONFIRMED` — claim found in one or more sources but not independently verified
-- `WEAK_SIGNAL` — anecdotal, social media, unnamed sources
+- `WEAK_SIGNAL` — anecdotal, social media, unnamed sources, community forum speculation
+
+**`DISCOVERY` is not a valid Source Register source type.** Search-level discovery results (Exa search summaries, Agent-Reach `POST /search` output) are candidate sources only. They must be recorded in the source intake log (see `references/external-channel-preflight.md`) and may only enter the Source Register after content fetch and reclassification into one of the types above. Body citations of the form `[Sxx]` must never reference raw discovery output.
 
 ## Claim classification
 

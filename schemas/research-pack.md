@@ -23,6 +23,22 @@ Include these when the task requires them:
 
 - Current-state snapshot
 - Counter-evidence log
+- Channel availability snapshot
+
+### Channel availability snapshot fields
+
+When this section is used, include all 8 fields:
+
+- `api_available` — whether the API responded (true / false / not-checked)
+- `api_version` — version string from health response
+- `checked_at` — ISO-8601 timestamp of the preflight
+- `channels_ok` — count of healthy channels
+- `channels_total` — total defined channels
+- `selected_channels` — channels selected for the current task
+- `degraded_channels` — channels degraded (or `none`)
+- `impact_on_research` — how degraded/unavailable channels affect scope or confidence
+
+See `references/external-channel-preflight.md` for preflight rules.
 
 ## Field guidance
 
@@ -95,6 +111,16 @@ Mark pass, partial, or fail with a short reason.
 ## Uncertainty register
 - Uncertainty:
 - Why it matters:
+
+## Channel availability snapshot
+- api_available:
+- api_version:
+- checked_at:
+- channels_ok:
+- channels_total:
+- selected_channels:
+- degraded_channels:
+- impact_on_research:
 
 ## Artifact contract
 ...

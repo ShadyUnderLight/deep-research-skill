@@ -244,3 +244,20 @@ If a competitive claim depends on a number, make the number's role explicit:
 - third-party estimate
 
 Do not let precise quantitative wording create false evidentiary precision.
+
+## External API source type mapping
+
+When consuming results from a local Research API (e.g. Agent-Reach), map the API's returned `source_type` to deep-research source quality rules as follows. This mapping only applies **after** a candidate URL has been fetched and its content evaluated — raw discovery results (e.g. Exa search summaries or `POST /search` output) must never directly support body claims.
+
+| API source_type | deep-research quality tier | Supports load-bearing claim? | Notes |
+|---|---|---|---|
+| `PRIMARY_COMPANY` / `PRIMARY_DOCS` | Tier 1 (official primary) | Yes, after verifying URL, date, and claim specificity | Register as `PRIMARY_COMPANY` (company docs, product docs, whitepapers) or `PRIMARY_DEV` (API docs, developer guides, changelogs) depending on content type |
+| `PRIMARY_DEV` (GitHub, docs) | Tier 1–2 (primary technical) | Yes, for code, project status, release/version claims | Register as `PRIMARY_DEV` |
+| `TRANSCRIPT` (interview, earnings call, press conference, podcast, tutorial) | Tier 1–2 (if verbatim); Tier 4 (if summarized) | Conditionally; must annotate transcript source and limitations | Register as `TRANSCRIPT`; Tier depends on whether original speech is captured verbatim or reconstructed |
+| `SECONDARY_MEDIA` / `SECONDARY_FEED` | Tier 5 (media summary) | No for load-bearing; yes for context/background | Register as `SECONDARY_MEDIA` or `SECONDARY_FEED` |
+| `WEAK_SIGNAL` | Tier 6 (weak) | No — supplemental only | Register as `WEAK_SIGNAL`; enters uncertainty / counter-evidence sections |
+| `UNKNOWN` | Low confidence | No — requires manual judgment | Register as `UNCONFIRMED` or `WEAK_SIGNAL` per judgment |
+
+> **Hard rule:** Search-level `DISCOVERY` results (unfetched search summaries) are not a valid source type for the Source Register. They live in the source intake log (see `references/external-channel-preflight.md`) and only enter the Source Register after content fetch and reclassification.
+
+**Weak-signal guard:** Social media, community discussion, and search discovery consensus must not be presented as evidence for headline conclusions. If a conclusion depends on weak signals, either downgrade the conclusion strength or supplement with a hard source (official, regulatory, primary documentation). See also `references/source-traceability-and-claim-citation.md` §Source type classification for `WEAK_SIGNAL` handling.
