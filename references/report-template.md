@@ -71,7 +71,9 @@ By default, a useful table should include:
 
 When a table carries numbers that affect ranking, recommendation, timing, or confidence — especially in comparison tables, scoring tables, or estimation tables — include a **数字角色 (number role) column** as the last or second-to-last column. This makes the epistemic status of each number visible to the reader without requiring them to cross-reference back to the body text.
 
-The role column identifies each number as one of: observed metric, proxy, assumption, model output, or illustrative calculation (see `references/quantitative-role-labeling.md` for definitions).
+Use the last column for the role label by default. Reserve the second-to-last position when the table also has a confidence or source-reference column that should appear after the role column (e.g., [数字角色 → 置信度] or [数字角色 → 来源]).
+
+The role column identifies each number as one of: observed metric, proxy, assumption, model output, or illustrative calculation (see `references/quantitative-role-labeling.md` §Core roles for definitions).
 
 Example template:
 
@@ -81,14 +83,21 @@ Example template:
 | 成本 | $100M | $80M | $60M | 代理指标（基于行业报告推算） |
 | 市场增速 | 40% | 30% | 20% | 模型输出（基于假设增长率） |
 | 补贴比例 | 15%  | 10%  | 5%   | 假设（政策方向已知，具体比例未定） |
+| 潜在市场规模 | 500亿 | 300亿 | 200亿 | 说明性计算（基于Top-Down市场拆分） |
 ```
 
 If a per-row role column makes the table too wide or repetitive, acceptable alternatives include:
 
 - a role **header row** (a row between the column headers and the data that labels each column's epistemic role)
-- a **table-level note** stating the role of all numbers in the table (e.g., "本表所有成本数字均为估算，基于公开财务数据的推算")
+- a **table-level note** stating the role of all numbers in the table (e.g., "本表所有数字均为模型输出，基于公开财务数据的推算，不应视为已确认事实")
 
-What is **not** acceptable: a statement in the surrounding prose that "all numbers in this paper are estimates" while the table itself carries no role indicator. The role must be visible at the table level — either per row, per column in a header role row, or in an explicit table note.
+What is **not** acceptable:
+
+- A statement in the surrounding prose that "all numbers in this report are estimates" while the table itself carries no role indicator
+- A single inline disclaimer in the introduction applied to every table without per-table annotation
+- Mixing observed facts and model outputs in the same table without distinguishing them
+
+For the full description of each pattern with examples, see `references/quantitative-role-labeling.md` §表格中的角色标签. The role must be visible at the table level — either per row, per column in a header role row, or in an explicit table note.
 
 ## Default structure
 

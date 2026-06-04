@@ -260,9 +260,11 @@ Include a dedicated column that labels each row's number role. This is the recom
 |------|-------|-------|-------|---------|
 | 年营收 | $50M | $30M | $20M | 观察值（年报披露） |
 | 市场增长率 | 15% | 12% | 10% | 代理指标（基于第三方行业预测推算） |
-| 实施成本 | $5M | $3M | $2M | 估算（基于项目规模和同类产品定价） |
+| 实施成本 | $5M | $3M | $2M | 模型输出（基于项目规模和同类产品定价） |
 | ROI | 3.2x | 2.5x | 1.8x | 模型输出（基于前述成本和营收假设） |
 ```
+
+Placement note: put the role column as the last or second-to-last column in the table. Use the last position by default; reserve the second-to-last spot when a confidence indicator or source-reference column logically follows the role column.
 
 ### Acceptable alternative: role header row
 
