@@ -121,6 +121,39 @@ Example format:
 | U01 | Unconfirmed; no primary source found | Unconfirmed | 2026-03-31 | GLM-5 compatibility claim | Requires further verification |
 ```
 
+### Structured Source Register Template
+
+Beginning from this version, the source register appendix must use the following 7-column structure. This template makes source traceability part of the writing process rather than a post-audit fix: the author fills the register while drafting, inline `[S#]` references point to register rows, and the `Claims Supported` column links each entry back to the body section.
+
+```
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|-----------------|
+| S01 | [来源名/标题] | primary | YYYY-MM-DD | [URL 或 DOI] | high | § 相关章节 |
+```
+
+**Column definitions:**
+
+| Column | Content |
+|--------|---------|
+| ID | `S#` identifier (S01, S02, …) matching inline `[S#]` body citations |
+| Source Name | Source title, document name, or descriptive label |
+| Source Type | One of: `primary` (官方/监管文件/公司公告), `secondary` (媒体/分析师/第三方), `inferred` (报告自身推断), `vendor-claim` (厂商自述，非独立验证), `unconfirmed` (无法独立验证) |
+| Date | Source publication date or retrieval date in `YYYY-MM-DD` format |
+| DOI/URL | Resolvable link where available; for offline sources, note the limitation |
+| Reliability | One of: `high` (独立可验证官方源), `medium` (可靠第三方), `low` (厂商自述/推断/未确认) |
+| Claims Supported | Body section references (e.g. `§3.2, §4.1`) that this entry supports — establishes reverse traceability from register to body |
+
+**Cross-reference rule:** Body `[S#]` citations point to the ID column; the `Claims Supported` column points back to body sections. A register entry should be removed if none of its listed sections actually cite it, or a body citation should be added.
+
+**Source Type notes:**
+- `primary` — official regulatory filings, annual reports, company press releases, government data
+- `secondary` — media articles, analyst reports, third-party research
+- `inferred` — report's own reasoning chain (must include inference documentation — see §Inference documentation below)
+- `vendor-claim` — manufacturer self-reported data without independent verification
+- `unconfirmed` — found in one or more sources but cannot be independently verified
+
+If the existing granular classification (`PRIMARY_FILING`, `SECONDARY_MEDIA`, etc. — see §Source type classification below) better suits a specific entry, use it instead; the template can accommodate either level of detail.
+
 ## Register completeness
 
 Every source register entry must satisfy two additional rules beyond basic metadata:

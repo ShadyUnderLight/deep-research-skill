@@ -147,7 +147,7 @@ This symmetry matters because asymmetric structure signals to the reader that on
 ### 8. Sources
 
 - list the most important sources
-- when applicable, use a structured source register rather than a loose bibliography
+- **must** include a structured Source Register appendix using the 7-column template defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template) — a loose bibliography does not satisfy traceability
 - a bibliography appendix without body-level `[SN]` inline citations does not satisfy source traceability — see `references/source-traceability-and-claim-citation.md`
 
 #### Inline citation format
@@ -163,13 +163,16 @@ Body text example:
 三星已量产HBM4 [CONF][S3]，但良率仍低于美光 [INFER][S5]。
 ```
 
-Appendix example:
+Appendix example (7-column structured template):
 ```
-| ID  | Source | Type | Date | Relevance |
-|-----|--------|------|------|-----------|
-| S3  | Samsung Semiconductor press release | Primary company | 2026-03-18 | HBM4 mass production announcement |
-| S5  | TrendForce analyst note | Secondary analyst | 2026-04 | HBM4 yield comparison across vendors |
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|-----------------|
+| S01 | Samsung Semiconductor HBM4 press release | primary | 2026-03-18 | https://semiconductor.samsung.com/news/... | high | §3.2, §4.1 |
+| S02 | TrendForce HBM4 yield comparison note | secondary | 2026-04 | https://www.trendforce.com/... | medium | §3.2, §5.3 |
+| I01 | Analyst inference based on S01 and S02 | inferred | 2026-04-15 | — | low | §4.2 |
 ```
+
+See `references/source-traceability-and-claim-citation.md` for the full template definition, column rules, and Source Type classification.
 
 For forward-looking claims, the inline citation must also include the source role:
 ```
