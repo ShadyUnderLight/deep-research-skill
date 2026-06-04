@@ -67,6 +67,29 @@ By default, a useful table should include:
 - consistent number formatting
 - a short interpretation below the table explaining what the table shows and why it matters
 
+### Number role column in comparison / scoring / estimation tables
+
+When a table carries numbers that affect ranking, recommendation, timing, or confidence — especially in comparison tables, scoring tables, or estimation tables — include a **数字角色 (number role) column** as the last or second-to-last column. This makes the epistemic status of each number visible to the reader without requiring them to cross-reference back to the body text.
+
+The role column identifies each number as one of: observed metric, proxy, assumption, model output, or illustrative calculation (see `references/quantitative-role-labeling.md` for definitions).
+
+Example template:
+
+```
+| 维度 | 国家A | 国家B | 国家C | 数字角色 |
+|------|-------|-------|-------|---------|
+| 成本 | $100M | $80M | $60M | 代理指标（基于行业报告推算） |
+| 市场增速 | 40% | 30% | 20% | 模型输出（基于假设增长率） |
+| 补贴比例 | 15%  | 10%  | 5%   | 假设（政策方向已知，具体比例未定） |
+```
+
+If a per-row role column makes the table too wide or repetitive, acceptable alternatives include:
+
+- a role **header row** (a row between the column headers and the data that labels each column's epistemic role)
+- a **table-level note** stating the role of all numbers in the table (e.g., "本表所有成本数字均为估算，基于公开财务数据的推算")
+
+What is **not** acceptable: a statement in the surrounding prose that "all numbers in this paper are estimates" while the table itself carries no role indicator. The role must be visible at the table level — either per row, per column in a header role row, or in an explicit table note.
+
 ## Default structure
 
 ### 1. Executive summary
