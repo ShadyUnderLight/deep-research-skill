@@ -176,7 +176,54 @@ This symmetry matters because asymmetric structure signals to the reader that on
 - include what to do next when useful
 - include what could change the conclusion
 
-### 8. Sources
+### 8. Route and audit status (mandatory)
+
+在来源注册表之前，包含一个标准化的路由与审计状态区块，让评审者无需查看 process log 即可确认哪些审计已运行。
+
+**格式模板（路由已选择时）：**
+
+```
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+**Secondary route**: Regulatory / Policy Impact Analysis
+
+| Audit | Status | Notes |
+|-------|--------|-------|
+| route-activation-audit | ✅ Passed | Route selection correct, no Do-not-use violation |
+| option-selection-final-audit | ✅ Passed | Shortlist, reversal conditions, runner-up all executed |
+| source-traceability | ✅ Passed | Source Register structured, body has [SN] citations |
+| final-audit | ✅ Passed | Core gates 7/7 |
+| regulatory secondary hard-fail | ⚠️ Skipped | Compliance impact already covered in body, not executed as standalone secondary route |
+```
+
+**格式模板（shared-workflow 路径）：**
+
+```
+## Route and audit status
+
+**Route**: Shared-workflow (no specialized route selected)
+
+| Audit | Status | Notes |
+|-------|--------|-------|
+| workflow-spine-audit | ✅ Passed | Workflow spine audit complete, spine gates 5/5 |
+| final-audit | ✅ Passed | Final audit passed, core gates 7/7 |
+```
+
+**规则：**
+
+- 列出该次任务运行或应运行的所有审计，包括：
+  - route-specific audits（来自 `ROUTING-MATRIX.md` 各路由的 `### Audit` 节）
+  - `route-activation-audit` 的运行状态
+  - 如果声明了次级路由（secondary route），次级路由的 hard-fail 验证状态
+- 每个 audit 一行，状态三选一：
+  - **已通过** — 审计已运行且通过
+  - **已跳过（附理由）** — 审计适用但决定跳过，理由需明确
+  - **未运行（附理由）** — 审计因故未运行，理由需明确
+- 该区块不追求详尽审计记录，只追求评审者可见——证明审计已运行
+- 如果路由未选择（shared-workflow 路径），列出 `workflow-spine-audit.md` 和 `final-audit.md` 的运行状态
+
+### 9. Sources
 
 - list the most important sources
 - **must** include a structured Source Register appendix using the 7-column template defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template) — a loose bibliography does not satisfy traceability

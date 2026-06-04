@@ -91,6 +91,18 @@ The full contract format (including "visible proof the route fired") is defined 
 
 The contract belongs in the research plan, not only in the final audit. A route is not fully selected until this contract exists in operational form.
 
+### Step 5: Delivery output — route and audit status block
+
+In the execution contract (Step 4), add the following requirement: the final deliverable must include a standardized route-and-audit-status block (template defined in `references/report-template.md` §Route and audit status).
+
+This block makes the route selection and audit run status visible to anyone reading the final report, without requiring access to the process log.
+
+- list all required audits for the declared route(s) from `ROUTING-MATRIX.md` `### Audit` sections, along with `route-activation-audit` status and (if a secondary route is declared) the secondary route's hard-fail verification status
+- for each audit, record one of: **已通过** (passed), **已跳过（附理由）** (skipped, with documented reason), **未运行（附理由）** (not run, with documented reason)
+- if no specialized route applies (shared-workflow path), list at least `workflow-spine-audit.md` and `final-audit.md` with their run statuses
+
+Do not treat this block as optional or as a process-log-only concern. If the reader cannot see which audits ran, the audit framework has not been delivered.
+
 ## Common route confusions
 
 ### Market entry vs constrained choice
