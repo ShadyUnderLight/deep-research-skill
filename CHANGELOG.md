@@ -11,6 +11,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `references/report-template.md`: added mandatory Market snapshot table (9-column template with share price, snapshot date, market cap, PE TTM/Forward, PB, PS, 52-week range, dividend yield, each with source column) and Valuation method + scenario analysis template (primary/secondary metrics, comparable company logic, multiple range, 3-scenario table with EPS/PE/target price/trigger) — closes market snapshot gaps and non-recomputable valuation failures from issue #190 eval cases.
+- `checklists/listed-company-report.md`: migrated market snapshot section from 6 English field-level items to 3 Chinese items referencing the new template; added 2 non-blocking valuation checklist items (multiple range + comparable logic, scenario parameters).
+
+### Added
 - `checklists/listed-company-report.md`: added evidence-label inflation check (inferred/third-party claims not labeled as confirmed facts; highest label tier must match source strength) and inline citation format consistency check (unified `[SN]`/`[IN]`/`[UN]` bracket style) — closes remaining gaps from issue #151 after #144/#153, #148, #149.
 
 ### Added

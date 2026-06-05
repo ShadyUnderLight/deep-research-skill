@@ -44,6 +44,24 @@ Do not default to using the front page as the main location for:
 
 Method transparency should remain visible, but detailed label explanations and process notes should usually move to a later methods note, page-2 opening block, or appendix.
 
+## Market snapshot table (mandatory for listed-company work)
+
+For listed-company reports, a completed market snapshot table is mandatory. It must appear on the front page, immediately after the research-anchor block, before the thesis and executive bullets.
+
+| 指标 | 值 | 来源 |
+|------|-----|------|
+| 当前股价 | $__ | [数据源](URL) |
+| 快照日期 | YYYY-MM-DD | — |
+| 市值 | $__ | [数据源](URL) |
+| PE (TTM) | __x | [数据源](URL) |
+| PE (Forward) | __x | [数据源](URL) |
+| PB | __x | [数据源](URL) |
+| PS | __x | [数据源](URL) |
+| 52周区间 | $__ - $__ | [数据源](URL) |
+| 股息率 | __% | [数据源](URL) |
+
+> 注：PB 须注明净资产所属报告期，PS 须注明营收口径（TTM / FY2025 等）。
+
 ## Scanability and paragraph discipline
 
 Final reports should support scan reading, not only sequential reading.
@@ -138,6 +156,24 @@ Organize by task type. Examples:
 - market: size, growth, structure, competition, bottlenecks
 - technical: feasibility, constraints, trade-offs, implementation needs
 - policy: rules, scope, timing, compliance impact, edge cases
+
+### Valuation method and scenario analysis (mandatory for listed-company work)
+
+For listed-company reports, a **valuation method and scenario analysis** section is mandatory. It must appear in or immediately after the financial analysis portion of the report, with enough detail for a reviewer to recompute the target prices from the disclosed assumptions.
+
+**估值方法**
+- 主要估值指标：__（理由：__）
+- 补充指标：PB（说明：__）, PS（说明：__）, EV/EBITDA（说明：__）
+- 其他指标：__（说明：__）
+- 可比公司：__（选择逻辑：__）
+- 倍数区间历史范围：__x - __x
+
+**情景分析**
+| 情景 | EPS假设 | PE倍数 | 目标价 | 触发条件 |
+|------|---------|--------|--------|---------|
+| 乐观 | $__ | __x | $__ | __ |
+| 基准 | $__ | __x | $__ | __ |
+| 悲观 | $__ | __x | $__ | __ |
 
 ### 5. Risks and counter-evidence
 
