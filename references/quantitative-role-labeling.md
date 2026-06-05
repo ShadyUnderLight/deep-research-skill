@@ -222,6 +222,39 @@ The assumption is named ("assume 15% growth"), but the conditions that must hold
 
 参见 `references/source-traceability-and-claim-citation.md` 的「来源标注一致性」章节，其中定义了 register 与正文标签强度的一致性原则。
 
+## 来源类型到证据标签的校准规则
+
+### 核心原则
+
+**标签强度 ≤ 来源类型允许的最大强度。** 二级/推断性来源承载的主张不可仅标注 `[已确认事实]` 而不附加来源角色说明。例外必须记录理由到 process log 或审计状态区块。
+
+### 来源类型 → 允许标签映射表
+
+| 来源类型（granular） | 可标注的最高标签 | 必须附加的说明 |
+|---|---|---|
+| `PRIMARY_FILING`（监管/年报/交易所公告） | `[已确认事实]` | 无需额外说明，但需标注期间 |
+| `PRIMARY_COMPANY`（官网/新闻稿/股东信） | `[已确认事实]` + 来源角色 | 必须标注"（据公司[文件类型]）"如 `[已确认事实]（据公司官网）` |
+| `PRIMARY_PARTNER`（合作伙伴公告） | `[已确认事实]` + 来源角色 | 必须标注"（据[合作伙伴]声明）"如 `[已确认事实]（据客户公告）` |
+| `PRIMARY_DEV`（GitHub 仓库/API 文档/changelog） | `[已确认事实]` | 需标注版本号或 commit ref |
+| `SECONDARY_MEDIA`（媒体/行业报告） | `[推断]` | 必须标注"（据XX报道）"如 `[推断]（据路透社报道）` |
+| `SECONDARY_ANALYST`（券商研报） | `[推断]` | 必须标注"（据XX分析师）"如 `[推断]（据高盛分析师）` |
+| `SECONDARY_FEED`（RSS 摘要/聚合内容流） | `[推断]` | 必须标注来源名称 |
+| `TRANSCRIPT`（转录/访谈/电话会） | `[已确认事实]` 或 `[推断]` | 视 transcript 是否 verbatim 而定；必须标注来源场景（"据公司年报电话会"） |
+| `INFERRED`（报告自身推断） | `[推断]` | 必须附推理链（见 `references/source-traceability-and-claim-citation.md` §Inference documentation） |
+| `UNCONFIRMED`（无法独立验证） | `[未知]` | 必须标注"未经独立验证" |
+| `WEAK_SIGNAL`（社交/论坛/匿名来源） | `[未知]` | 仅用于补充上下文，不得承载 load-bearing claim |
+
+### 映射表使用规则
+
+1. **register 优先**：上述映射适用于 register 中已正确分类的来源。如果 register 本身的类型标注错误，先修正 register 再应用映射规则。
+2. **例外机制**：当 register 将某个 SECONDARY 来源明确标为 `high` reliability（例如权威第三方基准测试报告），且来源质量经审计员确认，可酌情升级至 `[已确认事实]`。例外必须记录理由。
+3. **简化类型兼容**：使用简化 5 类（primary / secondary / vendor-claim / inferred / unconfirmed）时，`vendor-claim` 的规则同 `PRIMARY_COMPANY`/`PRIMARY_PARTNER`；`secondary` 的规则同 `SECONDARY_MEDIA`/`SECONDARY_ANALYST`/`SECONDARY_FEED`。
+4. **标签强度一致性**：本映射表与 `references/source-traceability-and-claim-citation.md` §来源标注一致性 的关系——该章节定义 register 与正文间的标签强度约束（register ≥ body）；本映射表定义给定 register 类型时正文的**上限**。两者互补：register ≥ body 且 body ≤ 本表上限。
+
+### 与现有规则的关系
+
+本映射表不替代 `references/source-traceability-and-claim-citation.md` §来源标注一致性 中的双边一致性规则（register 标签 ≥ 正文标签），而是在 register 到正文的映射方向提供更精确的上限约束。
+
 ## Route-specific notes
 
 ### Market entry / regional expansion
