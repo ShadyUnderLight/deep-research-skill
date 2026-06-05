@@ -17,8 +17,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] key numbers are sourced and dated
 - [ ] load-bearing claims are traceable in the body text, not only recoverable from a source appendix or bibliography
 - [ ] strong-sounding comparative or forecast claims have explicit scope and source role, or were visibly downgraded
-- [ ] PRIMARY_COMPANY / PRIMARY_PARTNER / 简化类型的 vendor-claim 来源在正文引用时附加了内联说明 `(来源：厂商自述，非独立验证)`，未将厂商自述作为独立确认事实（见 `references/source-traceability-and-claim-citation.md` §来源标注一致性）
-- [ ] SECONDARY_MEDIA / SECONDARY_ANALYST 类型来源（媒体估计、券商研报）未在正文中标注为 [已确认事实]（已使用 [推断] 或具体来源角色替代）
+- [ ] PRIMARY_COMPANY / PRIMARY_PARTNER / 简化类型的 vendor-claim 来源（或 register Notes 列标注"厂商自述"的来源），在正文引用时附加了内联说明 `(来源：厂商自述，非独立验证)`，不得在缺少该限定的情况下标注为 [已确认事实]（见 `references/source-traceability-and-claim-citation.md` §来源标注一致性）
+- [ ] SECONDARY_MEDIA / SECONDARY_ANALYST 类型来源（媒体估计、券商研报）未在正文中标注为 [已确认事实]（已使用 [推断] 或具体来源角色替代）；例外（指 register 标为 high reliability 且经审计确认）已在 process log 或审计状态区块中记录理由（见 `references/quantitative-role-labeling.md` §映射表使用规则）
 - [ ] 每条正文证据标签不超过 `references/quantitative-role-labeling.md` §来源类型到证据标签的校准规则 中对应来源类型允许的最大标签强度；例外已记录理由
 
 ## Counter-evidence
