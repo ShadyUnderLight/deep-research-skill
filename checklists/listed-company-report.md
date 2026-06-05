@@ -4,14 +4,11 @@ Use this checklist when the research is about a publicly listed company.
 
 Run through every item before delivering the final report.
 
-## Market snapshot
+## Market snapshot (对照 references/report-template.md §Market snapshot table)
 
-- [ ] current stock price with date and source
-- [ ] approximate market capitalization
-- [ ] PE (TTM or forward) with basis and date
-- [ ] PB with basis and date
-- [ ] PS with basis and date
-- [ ] 52-week high/low range with source
+- [ ] 市场快照表已填入完整数据（对照模板必填列：当前股价/快照日期/市值/PE (TTM)/PE (Forward)/PB/PS/52周区间/股息率）
+- [ ] 每项指标都标注了具体数据来源和快照日期
+- [ ] 数据来源优先使用实时金融数据平台或交易所披露，而非过时或间接来源
 
 ## Reporting discipline
 
@@ -35,6 +32,8 @@ Run through every item before delivering the final report.
 - [ ] high-growth companies have forward metrics clearly labeled as estimate-based
 - [ ] consensus target prices are presented with source, date, and analyst count when available (never inferred); target prices are not treated as fair value
 - [ ] consensus data timing is checked against latest earnings releases; stale consensus is noted
+- [ ] （非阻塞）估值方法包含倍数区间范围，以及可比公司选择逻辑或估值指标选择理由说明（对照 `references/report-template.md` §Valuation method and scenario analysis）
+- [ ] （非阻塞）情景分析包含乐观/基准/悲观三档，每档有明确的 EPS 假设、PE 倍数和触发条件
 
 ## Reporting-period discipline
 
