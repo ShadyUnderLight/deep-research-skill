@@ -216,7 +216,7 @@ This symmetry matters because asymmetric structure signals to the reader that on
 
 在来源注册表之前，**必须包含**一个标准化的路由与审计状态区块，让评审者无需查看 process log 即可确认哪些审计已运行。
 
-该区块内的自评状态（✅ Passed / ⚠️ Skipped / ❌ Not run）必须与报告正文的实际检查结果一致。不一致的区块（如声称 "source-traceability ✅ Passed" 但正文缺少 `[Sxx]` 引用）将被 final-audit 门控拦截。
+该区块内的自评状态（✅ Passed / ⚠️ Skipped / ❌ Not run）必须与报告正文的实际检查结果一致。不一致的区块（如声称 "source-traceability ✅ Passed" 但正文缺少 `[SN]` 引用或 Source Register 条目不完整）将被 final-audit 门控拦截。
 
 **格式模板（路由已选择时）：**
 
@@ -259,7 +259,7 @@ This symmetry matters because asymmetric structure signals to the reader that on
   - **已跳过（附理由）** — 审计适用但决定跳过，理由需明确
   - **未运行（附理由）** — 审计因故未运行，理由需明确
 - 该区块不追求详尽审计记录，只追求评审者可见——证明审计已运行
-- **一致性要求**：区块中标记为 ✅ Passed 的审计必须在正文中有对应的执行证据（如 source-traceability ✅ 需要正文存在 `[Sxx]` 引用）；无对应执行证据的 ✅ Passed 视为自评不准确，由 final-audit 门控标记为未通过
+- **一致性要求**：区块中每个声称已通过的审计（✅ Passed 或等效表达/emoji）必须在正文或交付物结构中有对应的执行证据（如 source-traceability ✅ 需要正文存在 `[SN]` 引用，workflow-spine-audit ✅ 需要交付物有清晰的工作流结构）；无对应执行证据的 ✅ Passed 视为自评不准确，由 final-audit 门控标记为未通过
 - 如果路由未选择（shared-workflow 路径），列出 `workflow-spine-audit.md` 和 `final-audit.md` 的运行状态
 
 ### 9. Sources

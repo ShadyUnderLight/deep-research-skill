@@ -54,7 +54,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] where the task warrants it, counter-evidence handling is recoverable from the process artifact
 - [ ] required audits are named and statused rather than merely assumed
 - [ ] the artifact includes a standardized route-and-audit-status block (via `references/report-template.md` §Route and audit status), with audit run status visible in the artifact itself (not only in a process log)
-- [ ] the audit status block matches the actual report body: each "✅ Passed" self-assessment in the block has corresponding visible execution evidence in the report text; if the body shows missing citations, missing market snapshot fields, missing valuation method, or other hard-fail conditions, the block must reflect that status rather than claiming full passage
+- [ ] the audit status block matches the actual report body: each self-assessment claiming passage (✅ Passed or equivalent phrasing or emoji) in the block has corresponding visible execution evidence in the artifact body or structure; if the body shows missing citations, incomplete source register entries, missing route-required sections, or other hard-fail conditions, the block must reflect that status rather than claiming full passage
 - [ ] (非阻塞) cross-chapter label consistency: the same data point uses the same evidence label across all chapters; if the uncertainty register lists an item, bull/bear sections that reference it should cross-reference or maintain a consistent confidence level
 - [ ] if the task used a specialized route, there is visible evidence that the route was turned into an execution contract before full drafting
 
