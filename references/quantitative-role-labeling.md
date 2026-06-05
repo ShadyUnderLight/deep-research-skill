@@ -222,6 +222,41 @@ The assumption is named ("assume 15% growth"), but the conditions that must hold
 
 参见 `references/source-traceability-and-claim-citation.md` 的「来源标注一致性」章节，其中定义了 register 与正文标签强度的一致性原则。
 
+## 来源类型到证据标签的校准规则
+
+### 核心原则
+
+**标签强度 ≤ 来源类型允许的最大强度。** 二级/推断性来源承载的主张不可仅标注 `[已确认事实]` 而不附加来源角色说明。例外必须记录理由到 process log 或审计状态区块。
+
+### 来源类型 → 允许标签映射表
+
+| 来源类型（granular） | 可标注的最高标签 | 必须附加的说明 |
+|---|---|---|
+| `PRIMARY_FILING`（监管/年报/交易所公告） | `[已确认事实]` | 无需额外说明，但需标注期间 |
+| `PRIMARY_COMPANY`（官网/新闻稿/股东信） | `[已确认事实]` + 来源角色 | 必须附加内联说明 `(来源：厂商自述，非独立验证)`（见 `references/source-traceability-and-claim-citation.md` §来源标注一致性）；可补充来源角色如"（据公司官网）" |
+| `PRIMARY_PARTNER`（合作伙伴公告） | `[已确认事实]` + 来源角色 | 必须附加内联说明 `(来源：厂商自述，非独立验证)`（见 `references/source-traceability-and-claim-citation.md` §来源标注一致性）；可补充来源角色如"（据[合作伙伴]声明）" |
+| `PRIMARY_DEV`（GitHub 仓库/API 文档/changelog） | `[已确认事实]` | 需标注版本号或 commit ref。Pre-merge PR 默认使用 `[推断]`，除非审计员确认可升级 |
+| `SECONDARY_MEDIA`（媒体/行业报告） | `[推断]` | 必须标注"（据XX报道）"如 `[推断]（据路透社报道）` |
+| `SECONDARY_ANALYST`（券商研报） | `[推断]` | 必须标注"（据XX分析师）"如 `[推断]（据高盛分析师）` |
+| `SECONDARY_FEED`（RSS 摘要/聚合内容流） | `[推断]` | 必须标注来源名称 |
+| `TRANSCRIPT`（转录/访谈/电话会） | `[已确认事实]` 或 `[推断]` | verbatim（逐字记录，经录音核对）→ `[已确认事实]`；summary/paraphrase → `[推断]`。无论哪种情况，必须标注来源场景（"据公司年报电话会"） |
+| `INFERRED`（报告自身推断） | `[推断]` | 必须附推理链（见 `references/source-traceability-and-claim-citation.md` §Inference documentation） |
+| `UNCONFIRMED`（无法独立验证） | `[未知]` | 必须标注"未经独立验证" |
+| `WEAK_SIGNAL`（社交/论坛/匿名来源） | `[未知]` | 仅用于补充上下文，不得承载 load-bearing claim |
+
+### 映射表使用规则
+
+1. **register 优先**：上述映射适用于 register 中已正确分类的来源。如果 register 本身的类型标注错误，先修正 register 再应用映射规则。
+2. **例外机制**：当 register 将某个 `SECONDARY_MEDIA` 或 `SECONDARY_ANALYST` 来源明确标为 `high` reliability（例如权威第三方基准测试报告），且来源质量经审计员确认，可酌情升级至 `[已确认事实]`。此例外不适用于 `SECONDARY_FEED`。例外必须记录理由。
+3. **简化类型兼容**：使用简化 5 类（primary / secondary / vendor-claim / inferred / unconfirmed）时，`vendor-claim` 的规则同 `PRIMARY_COMPANY`/`PRIMARY_PARTNER`；`secondary` 的规则同 `SECONDARY_MEDIA`/`SECONDARY_ANALYST`/`SECONDARY_FEED`。
+4. **标签强度一致性**：本映射表与 `references/source-traceability-and-claim-citation.md` §来源标注一致性 的关系——该章节定义 register 与正文间的标签强度约束（register ≥ body）；本映射表定义给定 register 类型时正文的**上限**。两者互补：register ≥ body 且 body ≤ 本表上限。
+
+### 与现有规则的关系
+
+本映射表不替代 `references/source-traceability-and-claim-citation.md` §来源标注一致性 中的双边一致性规则（register 标签 ≥ 正文标签），而是在 register 到正文的映射方向提供更精确的上限约束。
+
+本映射表与 §厂商声明与媒体估计的特殊标注规则 的关系——该节（`quantitative-role-labeling.md` §厂商声明与媒体估计的特殊标注规则）定义了厂商自述和媒体估计这两类来源的特殊标注要求（不得单独标为 `[已确认事实]`）；本映射表将同一原则扩展为对所有 11 种 granular 来源类型的系统性覆盖，并提供统一的例外机制。两者在重叠区域语义一致：本映射表表中 `PRIMARY_COMPANY`/`PRIMARY_PARTNER` 的注释要求与 §厂商声明中的"不得单独标注为 `[已确认事实]`"一致，`SECONDARY_MEDIA`/`SECONDARY_ANALYST` 的注释要求与 §媒体估计中的"不得标注为 `[已确认事实]`"一致。
+
 ## Route-specific notes
 
 ### Market entry / regional expansion
