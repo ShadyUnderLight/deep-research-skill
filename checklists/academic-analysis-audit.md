@@ -56,7 +56,7 @@ This checklist verifies that the academic route was executed correctly and the f
 - [ ] （Tier-1）预印本/工作论文标注 "未同行评审"：preprints are explicitly labeled as "not peer-reviewed"
 - [ ] the report does not conflate study design quality with publication venue prestige
 - [ ] the report distinguishes between original research and secondary sources
-- [ ] Source Register uses the 7-column template (ID / Source Name / Source Type / Date / DOI or URL / Reliability / Claims Supported) defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template). 来源注册表必须使用该 7 列模板。
+- [ ] source register must use the 7-column template (ID / Source Name / Source Type / Date / DOI or URL / Reliability / Claims Supported) defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template). 来源注册表必须使用该 7 列模板。
 
 ## Artifact contract verification
 

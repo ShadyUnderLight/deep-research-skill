@@ -68,7 +68,7 @@ Run this checklist before delivery.
 - [ ] medium-stability attributes are not presented with the same certainty as official hard constraints
 - [ ] model synthesis / recommendation is distinguishable from raw source claims
 - [ ] strong negative or positive reputation claims are scoped and not treated as hard facts by default
-- [ ] Source Register uses the 7-column template (ID / Source Name / Source Type / Date / DOI or URL / Reliability / Claims Supported) defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template). 来源注册表必须使用该 7 列模板。
+- [ ] source register must use the 7-column template (ID / Source Name / Source Type / Date / DOI or URL / Reliability / Claims Supported) defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template). 来源注册表必须使用该 7 列模板。
 
 ## Scenario logic and change conditions
 

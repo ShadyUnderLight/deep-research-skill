@@ -54,7 +54,7 @@ Run through every item before delivering the final report.
 - [ ] Crunchbase / PitchBook data is labeled as aggregator data, not primary source
 - [ ] social media (Twitter, LinkedIn, Reddit) is labeled as weak supplemental signal
 - [ ] load-bearing claims have identifiable sources in the body, not just bibliography
-- [ ] Source Register uses the 7-column template (ID / Source Name / Source Type / Date / DOI or URL / Reliability / Claims Supported) defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template). 来源注册表必须使用该 7 列模板。
+- [ ] source register must use the 7-column template (ID / Source Name / Source Type / Date / DOI or URL / Reliability / Claims Supported) defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template). 来源注册表必须使用该 7 列模板。
 
 ## Judgment-shape micro-audit
 
