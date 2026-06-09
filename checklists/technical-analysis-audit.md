@@ -36,6 +36,7 @@ This checklist verifies that the technical analysis route was executed correctly
 - [ ] trade-offs are stated, not just advantages
 - [ ] the comparison covers at least: performance, cost, maturity, ecosystem (or justified subset)
 - [ ] the recommendation explains which dimensions are load-bearing
+- [ ] （非阻塞）所有比较表、评分表、估算表包含数字角色列（或等效的表头角色行/表注），见 `references/quantitative-role-labeling.md` §表格中的角色标签
 
 ## Feasibility assessment (for technical feasibility)
 

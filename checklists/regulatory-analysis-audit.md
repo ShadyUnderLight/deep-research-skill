@@ -33,6 +33,7 @@ This checklist verifies that the regulatory analysis route was executed correctl
 - [ ] impact is analyzed at business level (revenue, cost, operations, market access)
 - [ ] quantified impact is provided where possible, with explicit assumptions
 - [ ] impact timeline is stated (when will the regulation take effect?)
+- [ ] （非阻塞）所有比较表、评分表、估算表包含数字角色列（或等效的表头角色行/表注），见 `references/quantitative-role-labeling.md` §表格中的角色标签
 
 ## Uncertainty and scenarios
 

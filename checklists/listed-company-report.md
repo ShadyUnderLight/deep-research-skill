@@ -67,6 +67,7 @@ Run through every item before delivering the final report.
 - [ ] operating cash flow direction noted
 - [ ] segment breakdown if multi-segment business
 - [ ] the report makes visible which numbers belong to the latest reported annual period, which belong to the latest reported quarter/interim period, and which belong only to older historical context
+- [ ] （非阻塞）所有比较表、评分表、估算表包含数字角色列（或等效的表头角色行/表注），见 `references/quantitative-role-labeling.md` §表格中的角色标签
 
 ## Judgment-shape micro-audit
 
