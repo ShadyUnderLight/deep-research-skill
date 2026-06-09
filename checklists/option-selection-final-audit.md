@@ -69,6 +69,7 @@ Run this checklist before delivery.
 - [ ] model synthesis / recommendation is distinguishable from raw source claims
 - [ ] strong negative or positive reputation claims are scoped and not treated as hard facts by default
 - [ ] source register must use the 7-column template (ID / Source Name / Source Type / Date / DOI or URL / Reliability / Claims Supported) defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template). 来源注册表必须使用该 7 列模板。
+- [ ] （非阻塞）所有比较表、评分表、估算表包含数字角色列（或等效的表头角色行/表注），见 `references/quantitative-role-labeling.md` §表格中的角色标签
 
 ## Scenario logic and change conditions
 
