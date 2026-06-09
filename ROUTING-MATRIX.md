@@ -980,7 +980,7 @@ Before delivery:
 - run `checklists/route-activation-audit.md` when a specialized route was selected
 - run `checklists/workflow-spine-audit.md`
 - run `checklists/final-audit.md`
-- verify that all required audits for the task have been executed, with each audit's run status recorded in the standardized route-and-audit-status block (see `references/report-template.md` §Route and audit status):
+- verify that all required audits for the task have been executed, with each audit's run status recorded in the standardized route-and-audit-status block (see `references/report-template.md` §Route and audit status), and each audit's 「证据」column populated with specific section references or register entries per the template's evidence column rules:
   - if a specialized route was selected: for each audit listed in that route's `### Audit` section, confirm its run status: **已通过** (passed), **已跳过（附理由）** (skipped, with documented reason), or **未运行（附理由）** (not run, with documented reason)
   - if no specialized route applies (shared-workflow path): confirm at least `workflow-spine-audit.md` and `final-audit.md` were run, with run status recorded
 
