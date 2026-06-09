@@ -55,6 +55,13 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] required audits are named and statused rather than merely assumed
 - [ ] the artifact includes a standardized route-and-audit-status block (via `references/report-template.md` §Route and audit status), with audit run status visible in the artifact itself (not only in a process log)
 - [ ] the audit status block matches the actual report body: each self-assessment claiming passage (✅ Passed or equivalent phrasing or emoji) in the block has corresponding visible execution evidence in the artifact body or structure; if the body shows missing citations, incomplete source register entries, missing route-required sections, or other hard-fail conditions, the block must reflect that status rather than claiming full passage
+
+  > Tier-2 说明：深度验证检查，不通过需记录理由但不必然阻断交付。区别于 Tier-1（阻断级，不通过不可交付）和 (非阻塞)（质量信号，不通过属于改进项）。
+
+- [ ] （Tier-2）每项审计的「证据」列附有与状态对应的具体引用，不可为空：
+  - ✅ Passed → 执行证据位置（章节号、检查项编号或 register 条目）
+  - ⚠️ Skipped / ❌ Not run → 决定理由在正文中的位置
+- [ ] （Tier-2）自称通过项的证据列引用的章节/条目确实存在且满足对应审计要求：引用的章节号/标题在正文中真实存在（非虚构引用）；引用内容与审计要求实质匹配——如 source-traceability ✅ 引用"正文使用 [S01]-[SN] 引用，附录为 7 列 Source Register"，则需验证正文确有 `[SN]` 引用且 register 满足 7 列模板格式
 - [ ] (非阻塞) cross-chapter label consistency: the same data point uses the same evidence label across all chapters; if the uncertainty register lists an item, bull/bear sections that reference it should cross-reference or maintain a consistent confidence level
 - [ ] if the task used a specialized route, there is visible evidence that the route was turned into an execution contract before full drafting
 
