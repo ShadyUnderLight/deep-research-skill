@@ -25,6 +25,7 @@ This checklist verifies that the regulatory analysis route was executed correctl
 - [ ] media interpretation is distinguished from regulatory text
 - [ ] analyst speculation is labeled as such, not presented as regulatory fact
 - [ ] conflicting regulatory interpretations are handled explicitly
+- [ ] Source Register uses the 7-column template (ID / Source Name / Source Type / Date / DOI or URL / Reliability / Claims Supported) defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template). 来源注册表必须使用该 7 列模板。
 
 ## Business impact analysis
 
