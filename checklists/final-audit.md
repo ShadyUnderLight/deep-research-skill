@@ -230,6 +230,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] the front page mainly helps the reader grasp the report's judgment rather than the process behind it
 - [ ] the thesis, key risks, and key unknowns are easy to identify within 10-15 seconds of scanning
 - [ ] methodology detail does not displace judgment visibility on the front page
+- [ ] the front page does not prioritize process metadata over core judgment (metadata-first drift check)
+- [ ] if the first screen displays evidence grading, audit status, route metadata, or process notes before the thesis, verify that an explicit exception applies (e.g., academic review method statement is the core output)
 - [ ] the front page feels like a report opening rather than a process note or metadata dump
 
 ## Judgment visibility in layout

@@ -48,6 +48,16 @@ Run this checklist before delivery.
 - [ ] for each stakeholder type: who should act now, what they should do, what they should avoid overcommitting to, and what they should monitor next
 - [ ] stakeholder implications are not collapsed into a single generic paragraph
 
+### Stakeholder coverage hard-fail
+
+❌ HARD FAIL: 报告覆盖的不同 stakeholder 类型少于 3 类
+- 且缺失的 stakeholder 类型会改变结论（评估标准：如果该 stakeholder 的 perspective 加入后结论可能不同）
+- 示例中最小三类：买家/用户、供应商/平台、投资者/监管
+
+不触发条件：
+- 报告 scope 已声明聚焦单一 stakeholder（标题或开头写"给 X 的决策参考"）
+- 且未以全球/行业全景报告自居
+
 ## Quantitative role labeling
 
 - [ ] important numbers are labeled as observed current metric / inferred estimate / scenario assumption / illustrative calculation
