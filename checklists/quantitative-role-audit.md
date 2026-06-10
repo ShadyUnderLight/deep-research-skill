@@ -20,6 +20,40 @@ If load-bearing numbers materially affect the conclusion, their roles should be 
 - The dependency conditions in each assumption chain are reasonable for the context.
 - The failure signals in each assumption chain are observable and actionable (not generic disclaimers).
 
+## Route-specific checks
+
+> **例外说明（所有路线）**：辅助性描述数字（如"约 5 年"、"数万用户"、"少量"、"~3-5 人"）不强制要求逐项标注角色标签。如果已标注角色标签（如 ASSUMPTION）则正常通过。此例外不适用于评分/排名表格中直接影响排序的 load-bearing 数字。"关键数字"定义参见 `references/quantitative-role-labeling.md` §What should be labeled（materially affect recommendation / ranking / shortlist / sequencing / timing / valuation / confidence）。
+
+### Constrained Choice / Shortlist / Option Selection
+
+- [BLOCKER] Key numbers in scoring/ranking systems (star ratings, weight scores, cost estimates, growth rates, plugin/ecosystem counts) must carry role labels (observed / proxy / assumption / model-output).
+- [BLOCKER] If >3 critical scoring/ranking numbers lack role labels ("critical" per `references/quantitative-role-labeling.md` §What should be labeled) → hard-fail (see ROUTING-MATRIX.md §Constrained Choice hard-fail).
+- [NON-BLOCKER] Composite score breakdown — which dimensions are observed vs. modeled — should be visible in the table or a note.
+
+### Market Outlook / Industry Evolution
+
+- [BLOCKER] Load-bearing numbers (market size, growth rates, scenario probabilities, adoption projections) must carry role labels (observed / estimate / scenario-assumption / model-output).
+- [NON-BLOCKER] Scenario probabilities (e.g., "20-25%") should include estimation method or source basis, not bare qualitative judgment.
+- [NON-BLOCKER] This route already has a "mixes observed facts with scenario assumptions" hard-fail (ROUTING-MATRIX.md §Market Outlook, enforced by `checklists/market-outlook-audit.md`). These role-label checks serve as defense-in-depth.
+
+### Listed Company / Investment-style Research
+
+- [NON-BLOCKER] Forward-looking numbers (industry forecasts, market-share probabilities, "提升 X%" claims) should carry source-role labels (analyst estimate / model-output / assumption / company-guidance).
+- [NON-BLOCKER] Valuation multiples, PE historical midpoints, industry-average PE — if no explicit source role, at least distinguish observed (annual-report / filing) vs. inferred (calculation / estimate).
+- [NON-BLOCKER] Input parameters in valuation sensitivity analysis should carry role labels.
+
+### Startup / Private Company Evaluation
+
+- [NON-BLOCKER] ARR/MRR source type must be explicit: company-reported / estimated / inferred (see `checklists/startup-company-report.md` §Funding and financials). This is complementary to the core role labels (observed / proxy / assumption / model-output) — use both.
+- [NON-BLOCKER] Valuation multiples (e.g., PS 100x) require boundary conditions: private-company premium context and comparable-transaction range source role.
+- [NON-BLOCKER] "预计 X" / "估测 Y" / "约 Z" claims must include method note or source role — bare hedge wording insufficient.
+
+### Market Entry / Regional Expansion
+
+- [NON-BLOCKER] Scoring/weighting matrices used for country or site ranking must label per-score role (observed / proxy / model-output).
+- [NON-BLOCKER] Load-bearing numbers (market size, payback period, localization cost, sequencing thresholds) must carry role labels (observed / estimate / assumption / model-output).
+- [NON-BLOCKER] When a secondary Constrained Choice route is declared, the CC route's quantitative role BLOCKER checks apply (see `ROUTING-MATRIX.md` §Secondary route hard-fail requirement).
+
 ## Sensitivity analysis checks
 
 - [BLOCKER] Has each load-bearing numerical assumption been classified by sensitivity level (low / medium / high) per `references/quantitative-role-labeling.md`?

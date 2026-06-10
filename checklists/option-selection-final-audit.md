@@ -69,7 +69,8 @@ Run this checklist before delivery.
 - [ ] model synthesis / recommendation is distinguishable from raw source claims
 - [ ] strong negative or positive reputation claims are scoped and not treated as hard facts by default
 - [ ] source register must use the 7-column template (ID / Source Name / Source Type / Date / DOI or URL / Reliability / Claims Supported) defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template). 来源注册表必须使用该 7 列模板。
-- [ ] （非阻塞）所有比较表、评分表、估算表包含数字角色列（或等效的表头角色行/表注），见 `references/quantitative-role-labeling.md` §表格中的角色标签
+- [ ] [BLOCKER] All comparison, scoring, and estimation tables must include a numeric role column (or equivalent header row / table note), per `references/quantitative-role-labeling.md` §表格中的角色标签。所有比较表、评分表、估算表必须包含数字角色列（或等效的表头角色行/表注）。
+- [ ] [BLOCKER] If >3 critical numbers in a scoring/ranking system lack role labels (observed / proxy / assumption / model-output) → hard-fail (see ROUTING-MATRIX.md §Constrained Choice hard-fail: `uses numbers without labeling observed fact / proxy / assumption / model output`). "关键数字"定义见 `references/quantitative-role-labeling.md` §What should be labeled（materially affect ranking / recommendation / sequencing / timing / valuation / confidence）。注意：辅助性描述数字（如"约 5 年"、"数万用户"）不受此规则限制。
 
 ## Scenario logic and change conditions
 

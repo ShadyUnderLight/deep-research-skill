@@ -180,7 +180,7 @@ Use when the task is mainly about:
 - current-state verification
 - source traceability
 - decision utility
-- quantitative role labeling when market size, payback, cost assumptions, sequencing thresholds, or scenario-style numbers materially affect the recommendation
+- quantitative role labeling when market size, payback, cost assumptions, sequencing thresholds, or scenario-style numbers materially affect the recommendation — see `checklists/quantitative-role-audit.md` §Route-specific checks (Market Entry)
 - sensitivity analysis when the recommendation depends on load-bearing numerical assumptions (growth rates, market size, payback periods)
 
 ### Audit
@@ -246,7 +246,7 @@ Concrete boundary examples:
 - forward-looking claims discipline
 - source traceability
 - scope completeness when the report claims global or broad market scope
-- quantitative role labeling when forecasts or scenario math appear
+- quantitative role labeling when forecasts or scenario math appear — see `checklists/quantitative-role-audit.md` §Route-specific checks (Market Outlook)
 - sensitivity analysis when forecasts, market size estimates, or adoption projections materially affect the conclusion
 
 ### Audit
@@ -361,7 +361,7 @@ Use when the task is mainly about:
 
 ### Attach
 - decision utility
-- quantitative role labeling when scoring, weighting, burden proxies, cost comparisons, or scenario comparisons materially affect ranking or recommendation
+- quantitative role labeling when scoring, weighting, burden proxies, cost comparisons, or scenario comparisons materially affect ranking or recommendation — see `checklists/quantitative-role-audit.md` §Route-specific checks (Constrained Choice)
 
 ### Audit
 - `checklists/option-selection-final-audit.md`
@@ -646,6 +646,7 @@ Use when the task is mainly about:
 - scope completeness when the report makes global market-position or global competitive claims
 - decision utility
 - sensitivity analysis when valuation, growth assumptions, or financial projections materially affect the investment thesis
+- quantitative role labeling when valuation ranges, industry forecasts, or scenario estimates materially affect the investment thesis — see `checklists/quantitative-role-audit.md` §Route-specific checks (Listed Company)
 
 For this route, current-state verification must explicitly lock:
 
@@ -744,6 +745,7 @@ Use when the task is mainly about:
 - current-state verification (funding status, product stage, team composition)
 - source traceability (especially for unverified founder claims)
 - forward-looking claims discipline (PMF signals, growth projections, runway estimates)
+- quantitative role labeling when ARR/MRR estimates, valuation multiples, or growth projections materially affect the assessment — see `checklists/quantitative-role-audit.md` §Route-specific checks (Startup)
 - decision utility when the task carries investment or partnership judgment
 
 ### Audit
@@ -898,6 +900,7 @@ Fail if:
 
 ### Quantitative role labeling
 Attach when the task uses proxies, scorecards, market sizing, scenario math, or composite scoring.
+See `checklists/quantitative-role-audit.md` §Route-specific checks for route-specific BLOCKER/NON-BLOCKER checks.
 
 Visible sign:
 - important numbers are labeled as observed fact / proxy / assumption / model output / illustrative calculation
