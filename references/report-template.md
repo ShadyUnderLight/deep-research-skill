@@ -11,15 +11,15 @@ The front page should help the reader grasp the report's main judgment quickly.
 For user-facing reports, the front page should usually prioritize:
 - title
 - report date / coverage period
-- **research-anchor block** (for listed-company / investment-style work — see below)
 - one-sentence bottom line or thesis
 - 3-5 executive bullets
+- **research-anchor block** (for listed-company / investment-style work — see below)
 - key risks
 - key unknowns
 
 ### Research-anchor block (mandatory for listed-company work)
 
-For listed-company / investment-style reports, a **research-anchor block** is mandatory. It must appear on the front page, before the thesis and executive bullets.
+For listed-company / investment-style reports, a **research-anchor block** is mandatory. It must appear on the front page, after the one-sentence thesis and executive bullets, but before methodology notes or evidence-grading legends.
 
 This block locks the time layers that govern the entire memo:
 - latest full-year reported period (FY)
@@ -28,6 +28,8 @@ This block locks the time layers that govern the entire memo:
 - latest management / leadership state (when decision-relevant)
 
 **Placement rule:** The research-anchor block goes **before** the evidence-tier legend, not after it. This prevents the first screen from being occupied by methodology notes instead of judgment.
+
+> This placement rule was updated to resolve a conflict between the existing template (which placed anchor block before thesis) and the metadata-first drift discipline introduced in Round 6 P2 (#211). The thesis must now come first; anchor block follows. See `references/decision-report-template.md` §Metadata-first drift warning.
 
 **Format example:**
 
@@ -46,7 +48,7 @@ Method transparency should remain visible, but detailed label explanations and p
 
 ## Market snapshot table (mandatory for listed-company work)
 
-For listed-company reports, a completed market snapshot table is mandatory. It must appear on the front page, immediately after the research-anchor block, before the thesis and executive bullets.
+For listed-company reports, a completed market snapshot table is mandatory. It must appear on the front page, immediately after the research-anchor block and thesis/executive bullets.
 
 | 指标 | 值 | 来源 |
 |------|-----|------|

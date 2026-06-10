@@ -340,6 +340,26 @@ A useful self-check:
 - if the report becomes clearer rather than weaker, that section should not have led
 - if the route disappears once headers are removed, the route was never visible enough in the artifact
 
+### Metadata-first drift warning
+
+A specific variant of opening-shape failure is **metadata-first drift**: the opening prioritizes process metadata (research anchor block, market snapshot table, evidence grading legend, route and audit status table) over the core judgment.
+
+This is different from background-first drift (generic industry/company overview before the thesis). The information is useful, but its placement steals the opening's judgment impact.
+
+Apply the following order priority for the opening section:
+
+1. **核心判断（执行摘要/Thesis）— 必须在前 20%**
+2. 研究锚定/关键假设（锚定块、研究范围、数据日期）
+3. 证据分级说明/方法论（如果需要）
+4. 详细展开
+
+原则：
+- 证据分级说明和过程元数据应跟随判断而非前置
+- 如果读者在第一屏看到的是研究方法而非结论，说明 opening 顺序需要调整
+- 例外：方法本身是核心输出（如学术综述的检索策略），此时方法论可前置（参见 ROUTING-MATRIX.md §Academic / Literature Review）
+
+> **Note for listed-company work:** The research-anchor block and market snapshot table remain mandatory on the front page, but they follow the thesis/executive bullets rather than preceding them. The `report-template.md` §Research-anchor block and §Market snapshot table have been updated accordingly.
+
 ## Executive summary
 
 State:

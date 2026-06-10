@@ -227,9 +227,9 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 ## Front-page readability
 
-- [ ] the front page mainly helps the reader grasp the report's judgment rather than the process behind it
+- [ ] the front page mainly helps the reader grasp the report's judgment rather than the process behind it; check for metadata-first drift (evidence grading, audit status, route metadata, or process notes displacing core judgment) (see `references/decision-report-template.md` §Metadata-first drift warning)
 - [ ] the thesis, key risks, and key unknowns are easy to identify within 10-15 seconds of scanning
-- [ ] methodology detail does not displace judgment visibility on the front page
+- [ ] methodology detail does not displace judgment visibility on the front page; if the first screen displays evidence grading, audit status, route metadata, or process notes before the thesis, verify that an explicit exception applies (e.g., academic review method statement is the core output)
 - [ ] the front page feels like a report opening rather than a process note or metadata dump
 
 ## Judgment visibility in layout
