@@ -39,6 +39,7 @@ jobs:
       - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md --strict
       - run: python3 scripts/test_validator_regression.py
       - run: python3 scripts/test_forward_looking_label_lint.py
+      - run: python3 scripts/test_declared_execution.py
       - run: python3 scripts/test_md_to_pdf_preflight.py
 
   smoke:

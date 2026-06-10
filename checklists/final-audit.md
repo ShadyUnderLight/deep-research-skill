@@ -61,6 +61,12 @@ This is the last gate before the report goes to the user. If any item fails, rev
   - 即使报告内容质量高，虚假的质量信号本身就是不可交付的状态——触发此 hard-fail gate 时报告视为未通过 final-audit，无论其他所有检查项通过与否
   - 此 gate 独立于其他所有检查项，是 final-audit 的最后防线
 
+- [ ] （阻断级）Declared-not-executed gate: if the report declares a discipline in methodology, metadata, a legend, or an audit block, verify that the discipline is visibly executed in the body where it applies. Methodology declarations do not count as execution.
+  - 数字角色标签体系（O/P/A/M or equivalent）→ key tables and load-bearing numbers must apply role labels at row, column, or table-note level. Declared but 0% applied to applicable body numbers → hard-fail. Declared but <50% applied → may not be marked ✅ Passed; conditional-pass ceiling.
+  - 证据层级/评估框架（dual-dimension, multi-level, study design × venue prestige, etc.）→ body must include a source-level evidence mapping table covering at least the major or load-bearing sources. Declared but no source-level mapping → hard-fail when systematic; conditional-pass ceiling when partial.
+  - Source Register → body must contain matching inline `[Sxx]` references or functionally equivalent claim-level citations. A register appendix with zero body citations → hard-fail. A register with substantial uncited inflation should be marked and cannot be used as proof of source-traceability pass.
+  - 判断标准：部分执行 = declared framework with >50% of applicable body locations visibly applying it; 声明未执行 = <50%; 声明零执行 = 0% or no body-level mapping/citations.
+
 - [ ] （Tier-2）每项审计的「证据」列附有与状态对应的具体引用，不可为空：
   - ✅ Passed → 执行证据位置（章节号、检查项编号或 register 条目）
   - ⚠️ Skipped / ❌ Not run → 决定理由在正文中的位置
