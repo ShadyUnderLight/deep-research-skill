@@ -10,7 +10,13 @@ Run through every item before delivering the final report.
 - [ ] each `[SN]` maps to a single specific source, not a generic "multiple sources"
 - [ ] inferred claims use `[IN]` with a documented reasoning chain in the register
 - [ ] unconfirmable claims use `[UN]` and are listed in the uncertainty register
-- [ ] **hard-fail gate**: see ternary severity below; a report with a bibliography but zero body-level references of any kind is not deliverable
+
+- [ ] **hard-fail gate（阻断级）**: 正文关键主张缺少内联来源引用，满足以下任一条件即**不可交付**：
+  - 零正文内联引用——文末有来源列表但正文没有任何 `[Sxx]` 或功能等价格式
+  - >3 个 load-bearing claims 在正文中没有 `[Sxx]` 或等效引用；仅使用 `[CONF]/[INFER]` 等置信/角色标签不满足追溯要求（注：`[IN]` / `[UN]` 是 traceability 标注，附有 register 推理链，与 `[INFER]` 置信标签不同，是合规格式）——读者无法从主张追踪到具体来源
+  - 例外：等效格式（Author-Year / arXiv ID / DOI / 自然语言唯一标识引用 + 完整 Source Register）通过 conditional pass 等级
+  - 另见 `references/source-traceability-and-claim-citation.md` §Source ID format consistency
+
 - [ ] **conditional pass**: functionally equivalent non-`[SN]` inline format (Author-Year / arXiv ID / DOI / natural language uniquely identifying the source) + structured register exists → pass with recommendation to add `[SN]` references
 - [ ] **full pass**: structured `[SN]` inline citations + complete register
 
