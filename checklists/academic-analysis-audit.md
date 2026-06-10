@@ -19,7 +19,7 @@ This checklist verifies that the academic route was executed correctly and the f
 - [ ] peer-review status is labeled for each source (peer-reviewed / not peer-reviewed / unknown)
 - [ ] publication venue is specified for each source (journal name, conference name, or repository)
 - [ ] discipline-specific venue prestige is respected (e.g., CS conferences are top-tier venues)
-- [ ] （阻断级）证据框架执行检查：如果方法论中声明了双维/多级证据评估框架（如研究设计质量 × 发表场所声誉），正文必须包含逐 source 的 evidence mapping table（至少覆盖主要来源或负载结论的核心来源）。方法论描述了框架但正文未逐 source 落地 → 条件通过上限不可标 ✅；系统性缺失（多数来源无 mapping）→ 阻断。
+- [ ] （Tier-1）证据框架执行检查：如果方法论中声明了双维/多级证据评估框架（如研究设计质量 × 发表场所声誉），正文必须包含逐 source 的 evidence mapping table（至少覆盖主要来源或负载结论的核心来源）。方法论描述了框架但正文未逐 source 落地 → 条件通过上限不可标 ✅；系统性缺失（多数来源无 mapping）→ hard-fail。
 
 ## Search strategy documentation
 
@@ -30,7 +30,7 @@ This checklist verifies that the academic route was executed correctly and the f
 - [ ] search completeness is noted (number of results screened, number included)
 - [ ] （Tier-1）检索策略已文档化：search strategy is fully documented (database list, search terms with Boolean operators, inclusion/exclusion criteria, screening counts, search date) — required when the report claims "系统化综述" or "有限范围系统化综述"; for non-systematic reviews, document what is feasible
 - [ ] if the report claims "系统化综述" or "有限范围系统化综述", the search flow follows PRISMA simplified standards (at minimum: screening counts from initial hits to final inclusion)
-- [ ] （阻断级）检索策略措辞纪律：如果报告使用"系统评述""系统化综述""systematic review"或类似措辞（含"系统性回顾""系统性文献综述"），必须列明完整检索方法（数据库列表、检索日期、Boolean query、纳入/排除标准、screening counts）；缺少任一 → hard-fail。方法学达不到此标准时，应使用"文献回顾""narrative review""系统检索""范围综述"等与透明度匹配的替代措辞。
+- [ ] （Tier-1）检索策略措辞纪律：如果报告使用"系统评述"/"系统综述"/"系统化综述"/"systematic review"或类似措辞（含"系统性回顾"/"系统性文献综述"），必须列明完整检索方法（数据库列表、检索日期、Boolean query、纳入/排除标准、screening counts）；缺少任一 → hard-fail。方法学达不到此标准时，应使用"文献回顾"/"literature review"/"narrative review"/"系统检索"/"有限范围系统化综述"/"scoping review"等与透明度匹配的替代措辞。
 
 ## Publication bias discussion (发表偏倚)
 
