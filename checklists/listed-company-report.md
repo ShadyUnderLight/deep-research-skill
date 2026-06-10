@@ -95,7 +95,7 @@ Run through every item before delivering the final report.
 - [ ] if the report screens for scarce or monopolistic companies, category boundaries are visible in the final ranking rather than hidden in caveats
 - [ ] （非阻塞）绝对化声明（"唯一"/"首家"/"最大"）标注了范围口径（按收入/按用户/按地域）和验证来源
 - [ ] （非阻塞）如果缺少排他性验证，措辞已降级为"领先"/"头部之一"
-- [ ] （阻断级）即使 moat/scarcity 框架结构正确，正文措辞仍必须匹配框架；框架正确 ≠ 正文可以使用框架不允许的措辞级别。扫描全文的"唯一/最/第一/领先/不可复制"措辞并验证每个的证据基础
+- [ ] （阻断级）即使 moat/scarcity 框架结构正确，正文措辞仍必须匹配框架；框架正确 ≠ 正文可以使用框架不允许的措辞级别。扫描全文的绝对化措辞（列表参见 `references/moat-monopoly-screening.md` §Strong-claim wording discipline，含中文等价表述）并验证每个的证据基础
 
 ## Flags
 

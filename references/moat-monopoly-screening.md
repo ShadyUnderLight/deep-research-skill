@@ -49,6 +49,13 @@ Treat these as red-flag claims that require stronger backing than ordinary descr
 - over 90% share
 - absolute dominance
 - prohibited imitation
+- first / top / 第一 / 首家
+- lowest / highest / 最低 / 最高
+- global first / 全球第一 / 出货量第一
+- cannot be replicated / 不可复制
+- systematic review / 系统评述 / 系统化综述
+
+This list is non-exhaustive. Chinese equivalents of any listed English term are also red-flag claims.
 
 If the exact strength of the wording is not supported by sufficiently direct evidence, downgrade the wording.
 
@@ -60,8 +67,8 @@ If the exact strength of the wording is not supported by sufficiently direct evi
 - If policy or licensing structure is real but current exclusivity is not fully verified, downgrade to high-entry-barrier / tightly regulated structure rather than monopoly.
 - If market-share leadership is supported but exclusivity is not, downgrade from monopoly wording to leader / dominant player / strong moat.
 - If resource importance is clear but economic exclusivity is not, separate asset scarcity from full-company exclusivity.
-- 绝对化措辞（"唯一""最低""不可复制"）需要：a) 文档化的搜索范围（搜索引擎、数据库、时间窗、搜索词）；b) 否定证据搜索（是否找到了反例？如何排除的？）；c) 搜索范围未披露时措辞必须降级
-- 不可用"框架正确"来 justify 正文措辞违规
+- Absolute wording claims (see §Strong-claim wording discipline for the red-flag list, including Chinese equivalents and academic terms like "系统评述" / "systematic review") require: (a) documented search scope (search engine, database, time window, query terms); (b) negative evidence search (were counterexamples found, and how were they excluded); (c) if search scope is not disclosed, wording must be qualified.
+- A structurally correct moat/scarcity framework does not excuse body-text wording violations. Framework awareness ≠ execution compliance — verify body wording independently of framework structure.
 
 ## Source sufficiency for load-bearing claims
 
