@@ -61,6 +61,8 @@ Run this checklist before delivery.
 
 - [ ] important numbers are labeled as observed current metric / inferred estimate / scenario assumption / illustrative calculation
 - [ ] readers can tell which kind of number they are reading without guessing
+- [ ] （阻断级）Declared-not-executed check: if the report defines an O/P/A/M or equivalent role system for market-outlook numbers, the body must apply that system to scenario tables, market-size numbers, growth rates, adoption projections, probabilities, and other load-bearing numeric claims. A label legend without body/table application does not satisfy quantitative role labeling.
+- [ ] Declared role system but 0% body/table application → hard-fail. Declared role system but <50% application to applicable market-outlook numbers → conditional-pass ceiling and quantitative-role labeling may not be marked ✅ Passed.
 
 ## Forward-looking claims
 

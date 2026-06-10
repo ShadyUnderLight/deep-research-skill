@@ -20,6 +20,23 @@ Never present proxy, assumption, or model output as if it were an observed or di
 
 If a number materially affects ranking, recommendation, timing, sequencing, confidence, or valuation, its role should be visible.
 
+## Declared framework execution discipline
+
+If a report declares a quantitative role labeling system such as O/P/A/M, observed / proxy / assumption / model output, or an equivalent framework, the declaration must be executed in the body. A methodology note, legend, or front-page label definition does not substitute for applying the labels to the report's key tables and load-bearing numbers.
+
+Minimum execution requirements:
+
+- state where the declared system is used, such as "the scenario tables and key forecast numbers below use this role system"
+- apply the role labels at row, column, or table-note level for applicable numeric tables
+- apply the role labels inline for load-bearing numeric claims that are not in tables
+- do not use a single introductory disclaimer as a substitute for table-level or claim-level labels
+
+Audit interpretation:
+
+- declared and applied to >50% of applicable body locations → at most conditional pass unless remaining gaps are non-load-bearing
+- declared but applied to <50% of applicable body locations → mark declared-not-executed; do not mark quantitative role labeling as passed
+- declared but applied to 0% of applicable body locations → hard-fail under `checklists/final-audit.md` declared-not-executed gate
+
 ## Core roles
 
 ### Observed metric
