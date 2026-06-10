@@ -114,6 +114,26 @@ A simple average is often not enough for real selection problems.
 
 ---
 
+## Step 4.5: Per-persona recommendations
+
+When the report involves multiple user personas (e.g., different creator types, different team roles, different budget segments), each persona needs explicit treatment rather than a single generalized recommendation. This applies even if the report currently gives a single recommendation — the report must state which persona is being optimized and whether the recommendation holds for other personas.
+
+For each persona, the report should include:
+
+1. **Top pick + why** — which variable or combination of variables makes this option win for this specific persona
+2. **Runner-up + overtaking conditions** — under what weight shift, scenario, or constraint change would the runner-up overtake the top pick
+3. **Non-overtaking annotation** — if the runner-up can never overtake the top pick under any realistic scenario, state explicitly: "runner-up is only considered when top pick is unavailable"
+
+This prevents two common failure modes:
+- **Ceremonial runner-up**: a second option is named but the reader cannot tell whether it is a genuine alternative or narrative filler
+- **Silent persona mismatch**: the recommendation works for one persona type but the report does not surface which persona is being optimized and who is penalized
+
+When multiple personas share a common top pick but diverge on runner-up, the report should show where the divergence starts — which variable causes different personas to prefer different alternatives.
+
+> **Note:** This is distinct from Step 8's "best fallback" concept. Step 8 describes a scenario-relative fallback — the next best option when a key assumption breaks. Step 4.5's non-overtaking annotation describes a categorical case — the runner-up is never competitive under any realistic scenario, not even under a different assumption. If the runner-up could become competitive under a different assumption, that belongs in overtaking conditions (item 2 above), not in non-overtaking annotation.
+
+---
+
 ## Step 5: Separate evidence layers
 
 In option-selection tasks, different claim types often get mixed together. Separate them.
