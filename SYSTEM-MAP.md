@@ -294,10 +294,14 @@ Controls forecasts, roadmap statements, target dates, and estimate-heavy claims 
 - `evals/cases/consensus-and-forward-pe-misuse-case.md`
 - `evals/cases/humanoid-robot-market-outlook-dual-route-case.md`
 - `evals/cases/ai-cost-control-market-outlook-full-pass-benchmark.md`
+- `evals/cases/dc-power-market-outlook-forward-looking-label-gap-case.md`
+- `evals/cases/ai-video-market-outlook-label-and-probability-gap-case.md`
+- `evals/cases/embodied-ai-market-outlook-register-and-label-gap-case.md`
 - `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md`
 
 ### Typical failure signs
 - `预计` / `expected` / `likely` without source role
+- forward-looking numeric claims labeled `[确认]`, `[已确认事实]`, or `[CONF]`
 - roadmap claims without announced vs rumored separation
 - consensus numbers without source or date
 - estimate language without assumption chain

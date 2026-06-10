@@ -34,6 +34,13 @@ Run through every item before delivering the final report.
 - [ ] predictions from media synthesis or speculation are labeled as such
 - [ ] consensus estimates used for forward-looking claims are checked against latest earnings releases; stale consensus is noted with timing gap
 - [ ] every instance of "预计" / "expected" / "likely" in the report has a named source attribution (who expects this?); bare "预计" without "据XX" = fail — go back and add source role before delivery
+- [ ] every forward-looking number has the first two fields of the forward-looking minimum set: source role (estimate / scenario assumption / analyst estimate / inference / model output) and attribution (named institution / analyst / company guidance + publication date or time basis). If these cannot be supplied, rewrite the claim as directional prose rather than a precise number.
+
+## Confirmed-label prohibition
+
+- [ ] Hard-fail: a forward-looking numeric claim containing `预计` / `预测` / `预期` / `将达` / `有望` / `expected` / `forecast` / `projected` / `estimated to` / `will reach` / `by 20xx` is labeled `[确认]`, `[已确认事实]`, `[CONF]`, or `[Confirmed]`.
+- [ ] Official or analyst forecasts may confirm that the source made the forecast, but the forecast value itself must still carry a forward-looking role label such as analyst estimate, company guidance, scenario assumption, inference, or model output.
+- [ ] Already-realized observed data is exempt: e.g. audited FY2025 revenue may be `[确认]`; FY2028 revenue forecast may not.
 
 ## Completeness
 
