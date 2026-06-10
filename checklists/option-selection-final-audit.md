@@ -28,12 +28,22 @@ Run this checklist before delivery.
 ## Comparison unit and aggregation logic
 
 - [ ] the primary comparison unit is explicit (for example total access burden, usable leisure time, implementation cost, reliability-adjusted value)
+- [ ] [BLOCKER] If the selection criterion is a compound concept ("综合回报" / "最佳价值" / "整体最优" / "composite return" / "best overall value"), the compound criterion must be decomposed into:
+  a) sub-dimension definitions
+  b) weight or priority for each sub-dimension
+  c) trade-off rules (e.g., dimension A is twice as important as dimension B)
+  Undefined compound criterion → hard-fail
 - [ ] the aggregation logic is visible when multiple people, teams, or regions are involved
 - [ ] the report states whether it is optimizing for average outcome, fairness, worst-case burden, weighted priority user, or robustness
 - [ ] subgroup views are shown when one average would hide an important outlier or penalty
 - [ ] if quantitative or composite scoring is used, the report distinguishes observed facts, proxies, assumptions, and model outputs rather than presenting them as one evidence layer
 - [ ] if fairness is load-bearing, the report makes clear whether unfairness is being measured by worst-off participant, dispersion/variance, hidden subgroup penalties, or another explicit rule
 - [ ] hidden operational burden layers (for example transfer burden, cross-border friction, checkpoint/visa hassle, fragile first/last-mile routing) are surfaced when they materially affect the ranking
+- [ ] aggregation replicability: the ranking method should allow the reader to independently verify the result. At minimum:
+  a) per-dimension scoring rules
+  b) weights (explicit values or priority order)
+  c) at least 1 worked example calculation path
+  If scoring tables or star ratings are used, at least 2 exemplar scores should be traceable to specific evidence anchors
 
 ## Provider / vendor current-state gate
 
