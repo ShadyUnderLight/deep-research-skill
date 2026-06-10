@@ -84,6 +84,13 @@ Run this checklist before delivery.
 - [ ] monitoring signals are specific and observable
 - [ ] the report does not give a bottom line without explaining what would flip it
 
+### Monitoring signal actionability hard-fail gate
+
+- [ ] （阻断级）If more than 3 monitoring signals are only qualitative reversal-condition items, with no measurable threshold, observation cadence, data source, or trigger-to-action mapping, the monitoring section may not be marked as passed.
+- [ ] at least 3 monitoring signals should include all four actionability fields: measurable threshold, observation cadence, data source, and trigger-to-action mapping.
+- [ ] Remaining lower-priority signals may be simpler, but each should still name the reversal condition and observation source.
+- [ ] A fully qualitative list such as "watch costs, regulation, demand, and capex" is not enough for a market-outlook dashboard, even if it names plausible variables.
+
 ## Decision usefulness
 
 - [ ] the report functions as a decision memo about a changing market, not just an industry overview

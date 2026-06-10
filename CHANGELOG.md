@@ -11,6 +11,9 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `checklists/market-outlook-audit.md`, `checklists/final-audit.md`, and `references/decision-report-template.md`: strengthened market-outlook monitoring signals from qualitative reversal-condition lists into actionable dashboards with threshold, cadence, source, and trigger-to-action mapping requirements (#224).
+- `scripts/test_market_outlook_monitoring_contract.py` and `.github/workflows/ci.yml`: added a regression contract test so the market-outlook monitoring actionability rule stays wired into checklist, final-audit recall, and the decision template (#224).
+- `evals/cases/dc-power-market-outlook-forward-looking-label-gap-case.md` and `evals/cases/ai-video-market-outlook-label-and-probability-gap-case.md`: aligned Round 7 market-outlook eval descriptions with the new monitoring signal actionability failure mode (#224).
 - `checklists/market-outlook-audit.md`: added forward-looking label hard-fail gate — market-outlook numeric claims containing `预计` / `预测` / `expected` / `forecast` / `will reach` / `by 20xx` must not be labeled `[确认]` / `[CONF]`; separates confirmed source-event facts from future outcome claims (#222).
 - `checklists/forward-looking-claims.md` and `checklists/final-audit.md`: added confirmed-label prohibition and recall wording for forward-looking numeric claims, including official/analyst forecast boundary and already-realized observed-data exemption (#222).
 - `scripts/validate_forward_looking_labels.py` and `scripts/test_forward_looking_label_lint.py`: added lightweight fixture-scoped lint and regression tests for forward-looking numeric claims mislabeled as confirmed facts (#222).
