@@ -135,10 +135,10 @@ When citing academic sources, **always label**:
 
 1. **Title**: paper title (e.g., "Attention Is All You Need")
 2. **Publication type**: published / preprint / conference / working paper / unpublished
-3. **Peer-review status**: peer-reviewed / not peer-reviewed / unknown
+3. **Peer-review Status**: peer-reviewed / not peer-reviewed / unknown
 4. **Publication venue**: journal name, conference name, or repository
 5. **Publication date**: year (and month if available for fast-moving fields)
-6. **DOI or URL**: when available
+6. **DOI/URL**: when available
 
 Example labeling:
 ```
@@ -154,12 +154,46 @@ Example labeling:
 |------|------|------|
 | **标题** | 论文/报告标题 | "Attention Is All You Need" |
 | **Publication type** | 原始研究/综述/预印本/工作论文/会议论文/书籍章节/报告 | original research / review / preprint |
-| **Peer-review status** | 同行评审状态 | peer-reviewed / preprint / unknown |
+| **Peer-review Status** | 同行评审状态 | peer-reviewed / preprint / unknown |
 | **Venue** | 期刊名/会议名/出版商 | NeurIPS 2017 / arXiv |
-| **DOI or URL** | 永久标识符或可访问链接 | 10.xxxx/xxxxx 或 https://... |
+| **DOI/URL** | 永久标识符或可访问链接 | 10.xxxx/xxxxx 或 https://... |
 | **Date** | 发表日期（至少年份） | 2017 |
 
 此要求与 `references/source-traceability-and-claim-citation.md` 中的结构化 source register 要求一致，是学术路由来源标注的具体扩展。
+
+### Source Register 扩展模板（Academic 专用）
+
+Academic / Literature Review 路线的 Source Register 必须在 7 列基础模板之上增加 4 列学术附加元数据，形成 11 列扩展模板：
+
+| # | 列名 | 说明 | 示例 |
+|---|------|------|------|
+| 1 | **ID** | 来源编号 | S01 |
+| 2 | **Source Name** | 论文/报告标题 | "Attention Is All You Need" |
+| 3 | **Source Type** | 来源类型（5 类简化或 8 类粒度） | primary |
+| 4 | **Date** | 发表日期（至少年份） | 2017 |
+| 5 | **DOI/URL** | 永久标识符或可访问链接 | 10.xxxx/xxxxx |
+| 6 | **Reliability** | 可靠性评级 | high / medium / low |
+| 7 | **Claims Supported** | 正文引用章节 | §3.1, §4.3 |
+| 8 | **Publication Type** | 研究类型 | original research / survey / benchmark / position paper / review / case report |
+| 9 | **Peer-review Status** | 同行评审状态 | peer-reviewed / preprint / working paper / unpublished / unknown |
+| 10 | **Venue** | 发表场所 | NeurIPS 2017 / arXiv / Nature |
+| 11 | **Venue Prestige** | 场所声誉等级（如适用） | Tier 1 — Tier 7（见上文「Dimension 2: Publication venue prestige」） |
+
+**Register 表格示例：**
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported | Publication Type | Peer-review Status | Venue | Venue Prestige |
+|----|-------------|-------------|------|---------|-------------|-----------------|-----------------|-------------------|-------|---------------|
+| S01 | Attention Is All You Need | primary | 2017 | 10.xxxx/xxxxx | high | §2.1, §4.3 | original research | peer-reviewed | NeurIPS 2017 | Tier 2 |
+| S02 | Scaling Laws for LLMs | primary | 2024 | arXiv:2401.xxxxx | medium | §2.2 | original research | preprint | arXiv | Tier 5 |
+| S03 | LLM Safety Survey | secondary | 2025 | 10.xxxx/yyyyy | medium | §3.1 | survey | peer-reviewed | ACM Computing Surveys | Tier 3 |
+
+**规则说明：**
+- 此 11 列模板是 7 列基础模板的学术扩展，仅适用于 Academic / Literature Review 路线。非学术路由仍使用 7 列基础模板。
+- **Publication Type**（第 8 列）：标注研究设计性质，帮助读者区分原始研究与综述等次级文献。
+- **Peer-review Status**（第 9 列）：区分已同行评审发表、预印本、工作论文；预印本必须标注 `preprint`，不得标为 `peer-reviewed`。
+- **Venue**（第 10 列）：标注具体期刊/会议/仓库名称，不得仅写 "journal" 或 "conference"。
+- **Venue Prestige**（第 11 列）：当报告使用了证据层级框架（双维评估）时必填；否则可填 `N/A`。
+- 如果某个来源不适合标注全部 11 列（如灰色文献、技术报告），缺少的列应注明原因（如 "venue prestige: N/A — technical report"），不可直接省略。
 
 ## Statistical assessment
 

@@ -261,3 +261,21 @@ When consuming results from a local Research API (e.g. Agent-Reach), map the API
 > **Hard rule:** Search-level `DISCOVERY` results (unfetched search summaries) are not a valid source type for the Source Register. They live in the source intake log (see `references/external-channel-preflight.md`) and only enter the Source Register after content fetch and reclassification.
 
 **Weak-signal guard:** Social media, community discussion, and search discovery consensus must not be presented as evidence for headline conclusions. If a conclusion depends on weak signals, either downgrade the conclusion strength or supplement with a hard source (official, regulatory, primary documentation). See also `references/source-traceability-and-claim-citation.md` §Source type classification for `WEAK_SIGNAL` handling.
+
+## Tertiary encyclopedic sources (Wikipedia, Baidu Baike, etc.)
+
+Wikipedia, Baidu Baike, and similar crowd-sourced or collaboratively edited encyclopedias are **tertiary sources** — they aggregate, summarize, and interpret primary and secondary sources. They are **never** primary evidence.
+
+### Classification rules
+
+- **Not valid as `PRIMARY_COMPANY`, `PRIMARY_FILING`, or `PRIMARY_DEV`.** These types require official, direct-from-source documentation. Wikipedia is a tertiary aggregation with variable quality per article, editorial lag, and no institutional accountability.
+- **Recommended type:** `SECONDARY_MEDIA` for well-cited articles with stable consensus; `WEAK_SIGNAL` for controversial, poorly cited, or frequently edited topics.
+- **De facto fallback:** If a claim depends on a Wikipedia article as its best available source, the claim's evidence strength is inherently weak. Downgrade the conclusion strength rather than treating the citation as solid evidence.
+- **Load-bearing prohibition:** Wikipedia alone may not support any load-bearing claim (thesis-bearing, ranking, quantitative, or strong positioning). Use Wikipedia for background, discovery, and consensus summaries only. Every load-bearing claim must have a direct primary or secondary source as its evidentiary anchor.
+
+### Usage guidance
+
+- Wikipedia is useful for: discovery of primary sources (via the reference list at the bottom of each article), factual consensus on well-established topics (e.g., founding dates, historical events), and background context.
+- Wikipedia should not be used for: current financial data, current competitive positioning, product specifics, regulatory interpretation, or any claim where precision or timeliness matters.
+- When citing Wikipedia in the Source Register, include the URL of the specific page and the retrieval date. A generic "Wikipedia" entry without a page URL does not satisfy traceability.
+- If a more authoritative source is available (official document, regulatory filing, primary interview), prefer it over Wikipedia even if Wikipedia is more convenient.
