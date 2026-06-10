@@ -10,6 +10,7 @@ Run through every item before delivering the final report.
 - [ ] current stage identified: pre-seed / seed / Series A/B/C... / growth / pre-IPO
 - [ ] source confirming status is primary and current (not stale filing language)
 - [ ] if IPO process is underway, current stage is precise (filed / accepted / under review / approved)
+- [ ] （阻断级）公司已上市（listed + trading）后，评估路线必须从 startup-company 切换为 listed-company；IPO 不等同于旧数据缺口仍在——已发布的年报/业绩公告必须纳入；未及时切换路线并使用已公开数据 → 标记为路线执行失败（触发 ROUTING-MATRIX.md "Do not use this route when: the company is publicly listed and trading" 门禁，按 wrong route 处理）
 
 ## Team and founders
 
