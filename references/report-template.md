@@ -232,7 +232,7 @@ This symmetry matters because asymmetric structure signals to the reader that on
 | option-selection-final-audit | ✅ Passed | §4 短名单、反转条件、次优选项均已执行 |
 | source-traceability | ✅ Passed | 正文使用 [S01]-[S12] 引用，附录为 7 列 Source Register |
 | final-audit | ✅ Passed | 各核心关卡在正文可追溯（§2-§6, §8） |
-| regulatory secondary hard-fail | ⚠️ Skipped | §6 合规影响已在正文覆盖，未作为独立次级路由运行 |
+| regulatory secondary hard-fail | ✅ Passed | §6 逐项验证 4 项 hard-fail 条件：3 项不适用（非监管主题），1 项已验证（§6.2 合规影响分析） |
 ```
 
 **格式模板（shared-workflow 路径）：**

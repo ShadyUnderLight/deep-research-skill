@@ -48,7 +48,7 @@ If no specialized route applies to this task (shared-workflow path), skip these 
 Before committing to a route, check the route's **"Do not use"** and **"Often confused with"** clauses in `ROUTING-MATRIX.md`.
 
 - If the task matches a "Do not use" condition → do not use this route. Reconsider route selection.
-- If the boundary is ambiguous (the task partially overlaps with "Often confused with" routes) → document the boundary judgment: why this route still wins despite the overlap, or switch to the more appropriate route.
+- If the boundary is ambiguous (the task partially overlaps with "Often confused with" routes) → document the boundary judgment: why this route still wins despite the overlap, or switch to the more appropriate route. The documentation must follow the (a)(b)(c) requirement defined in `ROUTING-MATRIX.md`'s "Route boundary resolution requirement" section — which hard-fail conditions of the alternative route were checked, why they don't apply, and under what conditions the route should be switched.
 - Do not skip this check because the route "feels right" for the topic — topic label is not the same as decision burden.
 
 ### Step 2: Secondary-route hard-fail verification
