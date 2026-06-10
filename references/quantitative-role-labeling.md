@@ -260,21 +260,21 @@ The assumption is named ("assume 15% growth"), but the conditions that must hold
 ## Route-specific notes
 
 ### Market entry / regional expansion
-Market size, payback, localization cost, and sequencing thresholds are often assumptions or model outputs rather than direct facts. Scoring/weighting matrices used for country ranking must label per-score role (observed / proxy / model-output).
+Market size, payback, localization cost, and sequencing thresholds are often assumptions or model outputs rather than direct facts. Scoring/weighting matrices used for country ranking must label per-score role (observed / proxy / model-output). Route-specific checks at `checklists/quantitative-role-audit.md` §Market Entry / Regional Expansion.
 
 ### Constrained choice / shortlist
 Weighted scores, burden proxies, and comparison totals often depend on proxies, assumptions, or model outputs. Star ratings, price comparisons, plugin/ecosystem counts, and growth rates must carry role labels. Composite scoring must disclose which dimensions are observed vs. modeled.
 
-This route has a hard-fail in ROUTING-MATRIX.md: `uses numbers without labeling observed fact / proxy / assumption / model output` — the option-selection final audit (`checklists/option-selection-final-audit.md`) enforces this with a BLOCKER check.
+This route has a hard-fail in ROUTING-MATRIX.md (§Constrained Choice / Shortlist / Option Selection): `uses numbers without labeling observed fact / proxy / assumption / model output` — the option-selection final audit (`checklists/option-selection-final-audit.md`) and route-specific checks (`checklists/quantitative-role-audit.md` §Constrained Choice / Shortlist / Option Selection) enforce this with BLOCKER checks.
 
 ### Market outlook / industry evolution
-Growth ranges, projected adoption, and scenario paths should not read like observed current-state facts. Scenario probabilities (e.g., "20-25%") must be accompanied by estimation method or source basis, not bare qualitative judgment. Scenario assumptions must be visibly separated from current-state observations.
+Growth ranges, projected adoption, and scenario paths should not read like observed current-state facts. Scenario probabilities (e.g., "20-25%") must be accompanied by estimation method or source basis, not bare qualitative judgment. Scenario assumptions must be visibly separated from current-state observations. Route-specific checks at `checklists/quantitative-role-audit.md` §Market Outlook / Industry Evolution.
 
 ### Listed-company / investment-style research
-Valuation ranges, scenario cases, and estimated financial outcomes often require explicit model-status visibility. Industry forecasts, market-share probabilities, and "提升 X%" claims should be labeled as estimate / analyst-inference / model-output / assumption rather than presented as established facts.
+Valuation ranges, scenario cases, and estimated financial outcomes often require explicit model-status visibility. Industry forecasts, market-share probabilities, and "提升 X%" claims should be labeled as estimate / analyst-inference / model-output / assumption rather than presented as established facts. Route-specific checks at `checklists/quantitative-role-audit.md` §Listed Company / Investment-style Research.
 
 ### Startup / private company evaluation
-ARR/MRR figures must be labeled by source type (company-reported / estimated / inferred). Valuation multiples (e.g., PS 100x) require explicit boundary conditions (private-company premium context, comparable transaction range). "预计" / "估测" / "约" claims must include method note or source role — bare hedge wording is insufficient.
+ARR/MRR figures must be labeled by source type (company-reported / estimated / inferred) — this is complementary to the core role labels (observed / proxy / assumption / model-output); both should be applied where relevant. Valuation multiples (e.g., PS 100x) require explicit boundary conditions (private-company premium context, comparable transaction range). "预计" / "估测" / "约" claims must include method note or source role — bare hedge wording is insufficient. Route-specific checks at `checklists/quantitative-role-audit.md` §Startup / Private Company Evaluation.
 
 ## Minimal display patterns
 
