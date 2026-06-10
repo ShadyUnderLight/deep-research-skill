@@ -46,10 +46,10 @@ This is the tenth Round 6 case. It adds:
 ## Suggested intervention
 
 - `checklists/market-outlook-audit.md` — add hard-fail: "if report covers fewer than 3 distinct stakeholder types and the missing types would change the conclusion, mark as stakeholder-coverage hard-fail"
-- `ROUTING-MATRIX.md` — strengthen Do-not-use resolution requirement: "when a report identifies a close alternative route but stays in the current route, it must document which specific clauses of the alternative route's hard-fail conditions were checked and why they do not apply"
+- `ROUTING-MATRIX.md` — strengthen route boundary resolution requirement: "when a report identifies a close alternative route but stays in the current route, it must document which specific clauses of the alternative route's hard-fail conditions were checked and why they do not apply"
 - `references/source-traceability-and-claim-citation.md` — extend to market-outlook: "URL-only evidence without source type and role labels is insufficient for a passing self-assessment"
 
-> **Round 6 P2 update (#209):** ROUTING-MATRIX.md 已追加「Do-not-use 条款解决要求」段落，要求文档化替代路线的 hard-fail 检查结果。route-activation-audit.md 已追加副路由 hard-fail 跳过阻断级检查。
+> **Round 6 P2 update (#209):** ROUTING-MATRIX.md 已追加「Route boundary resolution requirement」段落，要求文档化替代路线的 hard-fail 检查结果、不适用理由、切换条件。route-activation-audit.md 已追加副路由 hard-fail 跳过阻断级检查。
 
 ## Related evals
 

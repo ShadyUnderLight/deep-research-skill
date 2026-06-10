@@ -53,7 +53,7 @@ The existing `academic-route-activation-transformer-origin-case.md` is a route a
 - `references/academic-evidence-hierarchy.md` — add explicit Source Register columns for academic route: publication type, peer-review status, venue; the Round 4 #182 7-column template is necessary but insufficient for academic review
 - `references/source-traceability-and-claim-citation.md` — add guidance: "excluded works in a literature review must include rationale; listing exclusions without justification is not scope completeness"
 
-> **Round 6 P2 update (#209):** `checklists/academic-analysis-audit.md` 已追加副路由 hard-fail 验证 Tier-1 检查项。`checklists/route-activation-audit.md` 已追加副路由 hard-fail 跳过阻断级检查。`ROUTING-MATRIX.md` 已追加 Do-not-use 条款解决要求。
+> **Round 6 P2 update (#209):** `checklists/academic-analysis-audit.md` 已追加副路由 hard-fail 验证 Tier-1 检查项。`checklists/route-activation-audit.md` 已追加副路由 hard-fail 跳过阻断级检查。`ROUTING-MATRIX.md` 已追加 Route boundary resolution requirement。
 
 ## Related evals
 

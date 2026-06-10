@@ -11,10 +11,10 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
-- `ROUTING-MATRIX.md`: added Do-not-use clause resolution requirement — when a report identifies a close alternative route but stays in the current route, must document which specific hard-fail conditions were checked and why they don't apply, plus route-switch conditions (#209).
-- `checklists/route-activation-audit.md`: added （阻断级）check for secondary route hard-fail verification skip — "covered elsewhere without independent run" constitutes hard-fail (#209).
+- `ROUTING-MATRIX.md`: added Route boundary resolution requirement — when a report identifies a close alternative route but stays in the current route, must document which specific hard-fail conditions were checked and why they don't apply, plus route-switch conditions (#209).
+- `checklists/route-activation-audit.md`: added （阻断级）check for secondary route hard-fail verification skip — "covered elsewhere without independent run" constitutes a hard-fail (#209).
 - `checklists/academic-analysis-audit.md`: added Tier-1 hard-fail for secondary route verification — when a secondary route is declared, its hard-fail verification must be itemized; "covered elsewhere without independent run" is a hard-fail (#209).
-- `references/report-template.md`: added mandatory Market snapshot table (9-column template with share price, snapshot date, market cap, PE TTM/Forward, PB, PS, 52-week range, dividend yield, each with source column) and Valuation method + scenario analysis template (primary/secondary metrics, comparable company logic, multiple range, 3-scenario table with EPS/PE/target price/trigger) — closes market snapshot gaps and non-recomposable valuation failures from issue #190 eval cases.
+- `references/report-template.md`: added mandatory Market snapshot table (9-column template with share price, snapshot date, market cap, PE TTM/Forward, PB, PS, 52-week range, dividend yield, each with source column) and Valuation method + scenario analysis template (primary/secondary metrics, comparable company logic, multiple range, 3-scenario table with EPS/PE/target price/trigger) — closes market snapshot gaps and non-recomputable valuation failures from issue #190 eval cases.
 - `checklists/listed-company-report.md`: migrated market snapshot section from 6 English field-level items to 3 Chinese items referencing the new template; added 2 non-blocking valuation checklist items (multiple range + comparable logic, scenario parameters).
 
 ### Added
