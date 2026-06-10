@@ -46,6 +46,7 @@ Run through every item before delivering the final report.
 
 - [ ] stale-anchor hard gate: a missing, stale, or mis-timed research-anchor layer — latest full-year, quarterly / interim, or current market snapshot — invalidates the memo unless synthesis was stopped, the anchor was re-checked, and the anchor was corrected or visibly downgraded before continuing — per SKILL.md fail-fast rule
 - [ ] this gate applies regardless of whether listed-company is the primary route or a secondary/sub-route (per ROUTING-MATRIX.md "Secondary route hard-fail requirement")
+- [ ] （阻断级）追加触发条件（适用于 primary 和 secondary route）— 存在以下任一情况则触发 stale-anchor hard-fail，无论 anchor block 形式是否完整：a) 报告日期晚于交易所/公司官网的公告披露日期，且已发布的年度/半年度/季度报告未被纳入（即使报告声称"未获取"）；b) 报告将已公开的关键财务数据（营收、利润、现金流）当作未知值处理；c) 自上市之日起不足 2 年的公司，最近的已发布业绩公告未纳入
 
 ## Current product lineup
 
