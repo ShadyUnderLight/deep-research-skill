@@ -13,6 +13,18 @@ Every important claim needs to be traceable to a specific source and labeled by 
 
 **Hard rule: A source list or bibliography appendix does NOT satisfy the traceability requirement.** If the body text has no inline citations but the report has an appendix source list, the traceability discipline is not yet satisfied. The appendix is supplementary; inline citations are mandatory. A report with a bibliography but zero body-level references is a hard-fail. See the format equivalence exemption below for inline citation formats that satisfy this requirement.
 
+## Source ID format consistency
+
+正文引用 ID 与 Source Register ID 必须完全一致。此规则适用于所有来源 ID 类型——包括 `S`（来源）、`I`/`IN`（推断主张）、`U`/`UN`（未确认主张）。
+
+- `[S1]`（正文方括号无前导零）和 `S01`（Register 前导零无方括号）是**不同格式**。选择一种并在全文中保持统一。
+- 同一规则适用于 `[I1]`/`I01` 和 `[U1]`/`U01`：选择一种格式并全文统一。
+- 交叉出现两种格式（如正文 `[S1]`、Register `S01`；正文 `[U01]`、Register `U1`）构成格式不一致，即使内容正确也被视为 traceability 纪律的瑕疵。审计时应标记为格式不一致并要求修正。
+- 推荐：正文用 `[S01]`、`[I01]`、`[U01]`，Register 用 `S01`、`I01`、`U01`（前导零 + 无方括号）。
+- 同一报告内，来源 ID 后缀（数字部分）在 body 和 register 间必须一一对应：register 中的 `S01` 对应 body 中的 `[S01]`，不允许 `S01` ↔ `[S1]` 的跨格式映射。
+
+此规则独立于格式等值豁免：即使使用 Author-Year 等豁免格式，`[SN]`/`[IN]`/`[UN]` 引用（如果存在）与 register ID 的格式也必须一致。
+
 ## Format equivalence exemption
 
 ### Core principle
@@ -23,11 +35,13 @@ The hard-fail gate uses a ternary severity (reflected in `checklists/source-trac
 
 | Level | Condition | Action |
 |-------|-----------|--------|
-| 🔴 Hard-fail | 正文无任何形式的行内引用（既无 `[SN]` 也无功能等价格式）| 不可追溯，不交付 |
-| 🟡 Conditional pass | 正文有功能等价的非 `[SN]` 格式引用 + 附录有结构化 register | 通过，建议补充 `[SN]` |
+| 🔴 Hard-fail | **条件 A：** 正文无任何形式的行内引用（既无 `[SN]` 也无功能等价格式）<br>**或 条件 B：** >3 个 load-bearing claims 在正文中没有 `[Sxx]` 或等效引用；仅使用 `[CONF]/[INFER]` 等角色标签不满足追溯要求——读者无法从主张追踪到具体来源 | 不可追溯，不交付 |
+| 🟡 Conditional pass | 正文有功能等价的非 `[SN]` 格式引用（Author-Year / arXiv ID / DOI / 自然语言唯一标识引用）+ 附录有结构化 register | 通过，建议补充 `[SN]` |
 | 🟢 Full pass | 正文使用结构化 `[SN]` 行内引用 + 附录有完整 register | 通过 |
 
-**Key distinction:** If the body has zero inline references of any kind — regardless of whether a structured register or bibliography exists in the appendix — it is a hard-fail. A register without body citations does not enable claim-level traceability. The register must be accompanied by body-level references (in any functionally equivalent format) to reach at least conditional pass.
+**Key distinction:**
+- 条件 A：正文零内联引用，无论附录是否有 register 或书目，均为 hard-fail。仅有 register 而无正文引用不满足 claim-level traceability。
+- 条件 B：正文有 `[CONF]/[INFER]/[UNKNOWN]` 等置信/角色标签，但 load-bearing claims 缺少 `[Sxx]` 或功能等价的来源级引用，同样为 hard-fail。注意：`[INFER]` 在此指 report-template 中的置信标签体系（`[CONF]/[INFER]/[UNKNOWN]`），**不是** traceability 中的推断标注 `[IN]`（后者附有 register 推理链，是合规的追溯格式）。`[INFER][Sxx]` 组合（置信标签 + 来源引用）为合格。
 
 ### Route-specific exemptions
 
@@ -84,7 +98,7 @@ Examples:
 - `MTT S5000 is positioned as the current flagship AI chip [S01][S03].`
 - `The company filed for STAR Market IPO in June 2025 [S01].`
 - `Qwen3.5 compatibility was announced via a press release [S04]; GLM-5 compatibility remains unconfirmed at the time of writing [U01].`
-- `三星已量产HBM4 [S3]` (body) → `[S3] Samsung Semiconductor, 2026-03-18, Press Release` (appendix)
+- `三星已量产HBM4 [S03]` (body) → `S03 Samsung Semiconductor, 2026-03-18, Press Release` (appendix)
 
 Guidelines for inline citations:
 
@@ -349,6 +363,12 @@ Every sentence ends with multiple source ids, obscuring which source is actually
 An old filing or news article is cited for a claim about the current state without noting that newer information may supersede it.
 
 **Fix:** For current-state claims, verify that the source is still the most recent authoritative evidence. Flag outdated sources explicitly.
+
+### Pattern 6: Source ID format mismatch between body and register
+
+正文引用 ID 格式与 Source Register ID 格式不一致。最常见的形式：正文使用 `[S1]`（方括号无前导零），Register 使用 `S01`（前导零无方括号）。当两篇无关报告（月之暗面、MiniMax）出现完全相同的格式不一致时，说明系统缺乏格式一致性约束。
+
+**Fix:** 正文引用 ID 与 Register ID 必须使用相同的数字格式（前导零一致）。推荐格式：正文 `[S01]`，Register `S01`。参见 §Source ID format consistency。
 
 ## Good citation patterns
 
