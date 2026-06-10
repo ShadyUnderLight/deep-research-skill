@@ -181,6 +181,22 @@ Every source register entry must satisfy two additional rules beyond basic metad
 
 These rules prevent the "register theatre" problem where a source list looks comprehensive but contains dead or unreferenced entries.
 
+### Register discipline and inflation
+
+The Source Register is not a bibliography-size contest. Each register entry should serve at least one load-bearing body claim, and the body should make that link visible through `[Sxx]` or a functionally equivalent claim-level citation.
+
+Use this severity scale when auditing a register against body citations:
+
+| Uncited register entries | Severity | Action |
+|--------------------------|----------|--------|
+| `<10%` | Pass | Accept as normal auxiliary sourcing, but remove entries that do not help the report. |
+| `10-25%` | Flag | Mark for cleanup; source-traceability can be conditional but should not be described as strong. |
+| `>25%` | Register inflation | Source-traceability may not be marked ✅ Passed. Remove unused entries, add real body citations, or move them to a separate extra-reading appendix. |
+
+Uncited entries are especially problematic when they also lack DOI/URL, a clear Source Type, or a plausible `Claims Supported` mapping. In that case, treat them as non-auditable decoration rather than auxiliary evidence; if the pattern is material or numerous, it is a hard-fail for source traceability.
+
+If a report genuinely needs background or extra-reading sources that do not support specific body claims, put them under a separate `Extra Reading` / `Extended Bibliography` heading. Do not count those entries as proof that Source Register traceability passed. A good drafting workflow is: write the body claim with its citation first, then fill the register row that maps back to that claim.
+
 ## Source type classification
 
 Classify every source in the register by type. Use these types consistently:

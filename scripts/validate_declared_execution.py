@@ -16,6 +16,7 @@ from pathlib import Path
 
 
 EXIT_ISSUES = 2
+REGISTER_INFLATION_FAIL_RATIO = 0.25
 
 FENCE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
@@ -169,6 +170,18 @@ def check_source_register_execution(text: str, path: Path) -> list[str]:
         return [
             f"{path}: Source Register declares {len(source_ids)} source ID(s), "
             "but the body contains no [Sxx] citations"
+        ]
+
+    uncited_source_ids = sorted(source_ids - body_refs)
+    uncited_ratio = len(uncited_source_ids) / len(source_ids)
+    if uncited_ratio > REGISTER_INFLATION_FAIL_RATIO:
+        uncited_preview = ", ".join(uncited_source_ids[:10])
+        if len(uncited_source_ids) > 10:
+            uncited_preview += ", ..."
+        return [
+            f"{path}: Source Register declares {len(source_ids)} source ID(s), "
+            f"but {len(uncited_source_ids)} are never cited in the body "
+            f"({uncited_ratio:.0%} uncited; register inflation): {uncited_preview}"
         ]
 
     return []
