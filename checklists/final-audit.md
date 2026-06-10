@@ -167,6 +167,8 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for academic / literature review tasks, search strategy is documented (databases, search terms with Boolean operators, inclusion/exclusion criteria, screening counts, search date) — required when the report claims "系统化综述" or "有限范围系统化综述"
 - [ ] for academic / literature review tasks, publication bias discussion exists (≥2 sentences covering direction judgment and conclusion adjustment)
 
+- [ ] （阻断级）RECALL: 强措辞审计。扫描全文的绝对化措辞（列表参见 `references/moat-monopoly-screening.md` §Strong-claim wording discipline，含中文等价表述及学术语境"系统评述"/"系统化综述"/"systematic review"）。每个出现位置必须有：a) 措辞已降级为范围化表述，或 b) 同时具备搜索范围/分母说明 AND 否定证据搜索记录。存在系统性多处违规（非偶发、非归因引语）→ 标记为不通过
+
 ## Precision and estimate sourcing
 
 - [ ] every "预计 / 估计 / 预期 / 有望" in the report has a named source attribution (who expects this?)
