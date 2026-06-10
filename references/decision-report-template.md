@@ -160,6 +160,13 @@ In these market-outlook cases:
 - separate observed current state from scenario logic and illustrative estimates
 - if quantitative outlook numbers are used, label them as observed / inferred / scenario assumption / illustrative calculation
 - ensure the report answers who should act now, how, and what to monitor
+- make the monitoring section a usable dashboard, not just a reversal-condition list
+
+Recommended monitoring dashboard shape:
+
+| Monitoring signal | Current value | Threshold | Source | Review cadence | Triggered action |
+|-------------------|---------------|-----------|--------|----------------|------------------|
+| Inference cost | $__ / unit | >50% drop vs baseline | vendor pricing / filings | monthly | raise adoption upside scenario weight |
 
 For model/API supplier or provider-selection tasks, prefer this stronger structure:
 

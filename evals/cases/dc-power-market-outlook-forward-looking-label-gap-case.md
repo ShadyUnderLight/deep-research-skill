@@ -8,7 +8,7 @@ Test whether a market-outlook / industry-evolution report with strong scenario a
 - **body-level source traceability absent** — no `[Sxx]` inline citations; Source Register only 5 columns, missing DOI/URL and Claims Supported
 - **process-integrity hard-fail** — audit status claims all `✅ 已通过` but source traceability, forward-looking label, and quantitative role are all noncompliant
 - **probability weights without method** — "20%→30%""20%→15%" assigned without estimation basis or named source
-- **monitoring signals not actionable** —更像 reversal condition list 而非 measurable dashboard with thresholds, frequency, sources
+- **monitoring signals not actionable** — more like a reversal-condition list than a measurable dashboard with thresholds, review cadence, sources, and trigger-to-action mapping (#224)
 
 This is the **ninth Round 7 case**.
 
@@ -31,7 +31,7 @@ A user-provided report "全球数据中心电力瓶颈对 AI 基础设施产业�
 - ❌ **Body-level source traceability absent** — no `[Sxx]` or equivalent inline citations for load-bearing claims. Source Register (§356-379) has only 5 columns, missing DOI/URL and Claims Supported per Round 4 #182 template.
 - ❌ **Process-integrity hard-fail** — §343-352 claims all `✅ 已通过`, but source traceability noncompliant, forward-looking labels misapplied, probability weights lack method.
 - ❌ **Probability weights without method** — §270 "20%→30%", §281 "20%→15%" assigned without calibration basis, named source, or scenario context. Bare percentages without derivation.
-- ❌ **Monitoring signals not actionable** — §334-339 lists "what would change the conclusion" items but lacks: measurable thresholds, observation frequency, data source, and trigger→action mapping. More of a reversal condition list than a monitoring dashboard.
+- ❌ **Monitoring signals not actionable** — §334-339 lists "what would change the conclusion" items but lacks: measurable thresholds, observation frequency, data source, and trigger-to-action mapping. More of a reversal condition list than a monitoring dashboard (#224).
 
 ## Why this case exists
 

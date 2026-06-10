@@ -10,6 +10,7 @@ Test whether a market-outlook / industry-evolution report with strong route-cont
 - **internal inconsistency** — Sora cost `$1500万/day` (exec summary) vs `$100万/day` (body) without reconciliation
 - **external verification failure** — Sora discontinuation date wrong (report says March 2026, actual web/app April 2026, API September 2026)
 - **vendor claims without caveat labels** — Runway revenue "超 $3 亿" without independent verification note
+- **monitoring signals not actionable** — signal categories are named, but threshold, cadence, source, and trigger-to-action mapping are not sufficient for a reusable monitoring dashboard (#224)
 
 This is the **seventh Round 7 case**, adding the **market-outlook route** with **label overuse** as the primary failure pattern.
 
@@ -23,7 +24,7 @@ A user-provided report "AI 视频生成市场未来 24 个月演化展望" dated
 - ✅ Drivers and blockers separated with clear structure
 - ✅ Three scenarios (optimistic/base/pessimistic) sharing market size as quantitative axis
 - ✅ Stakeholder implications ≥3 types: creators, enterprise buyers, investors/policymakers
-- ✅ Monitoring signals specific: inference cost, copyright rulings, user growth, capital markets, tech rankings
+- ✅ Monitoring variables named: inference cost, copyright rulings, user growth, capital markets, tech rankings
 - ✅ Counter-evidence present: pessimistic scenario, copyright crisis, cost bottleneck
 - ✅ Body has `[Sxx]` traceable citations (incomplete but present)
 - ✅ Uncertainty register with U01-U05 items
@@ -34,6 +35,7 @@ A user-provided report "AI 视频生成市场未来 24 个月演化展望" dated
 - ❌ **Process-integrity hard-fail** — audit status claims `Forward-looking ✅`, `Source Traceability ✅`, `Final Audit ✅`, but label overuse, forward-looking attribution gaps, and internal inconsistency all present.
 - ❌ **External verification failure** — Sora discontinuation date: report states "2026 年 3 月关停", but OpenAI Help Center shows web/app discontinued April 2026 and API September 2026. Report error not caught by current-state verification.
 - ❌ **Probability precision false** — `~60%`, `20-25%`, `15-20%` imply precision without documented derivation. Per forward-looking discipline, probabilities without calibration basis should use directional ranges.
+- ❌ **Monitoring signals not actionable** — the report names plausible things to watch, but does not turn at least 3 of them into a dashboard with threshold, review cadence, data source, and trigger-to-action mapping (#224).
 
 ## Why this case exists
 
