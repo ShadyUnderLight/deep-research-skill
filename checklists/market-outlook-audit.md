@@ -42,21 +42,20 @@ Run this checklist before delivery.
 
 ## Stakeholder implications
 
-- [ ] at least 3 distinct stakeholder types are covered
+- [ ] at least 3 distinct stakeholder types are covered (see hard-fail gate below; scope-focused reports targeting a single stakeholder type are exempt with explicit scope declaration)
 - [ ] investor-only coverage is not the sole stakeholder lens
 - [ ] each covered stakeholder type has a dedicated "what does this mean for them" subsection
 - [ ] for each stakeholder type: who should act now, what they should do, what they should avoid overcommitting to, and what they should monitor next
 - [ ] stakeholder implications are not collapsed into a single generic paragraph
 
-### Stakeholder coverage hard-fail
+### Stakeholder coverage hard-fail gate
 
-❌ HARD FAIL: 报告覆盖的不同 stakeholder 类型少于 3 类
-- 且缺失的 stakeholder 类型会改变结论（评估标准：如果该 stakeholder 的 perspective 加入后结论可能不同）
-- 示例中最小三类：买家/用户、供应商/平台、投资者/监管
+- [ ] （阻断级）报告覆盖的不同 stakeholder 类型少于 3 类（示例最小三类：买家/用户、供应商/平台、投资者/监管）
+- [ ] 本 hard-fail 独立于 ROUTING-MATRIX.md §Market Outlook 中的 stakeholder hard-fail（"covers only investor stakeholder implications"），两者需同时检查
 
-不触发条件：
-- 报告 scope 已声明聚焦单一 stakeholder（标题或开头写"给 X 的决策参考"）
-- 且未以全球/行业全景报告自居
+**不触发条件（同时满足）：**
+- 报告 scope 已明确声明聚焦单一 stakeholder 群体（标题暗示受众、开头声明 scope 如"面向 X 的决策参考"、"本文旨在为 X 提供参考"）
+- 且未以全球/行业全景报告自居（如标题含"市场全景"、"行业分析"、"全球展望"等措辞）
 
 ## Quantitative role labeling
 
