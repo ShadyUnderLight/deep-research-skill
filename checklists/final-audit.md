@@ -167,6 +167,10 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for academic / literature review tasks, search strategy is documented (databases, search terms with Boolean operators, inclusion/exclusion criteria, screening counts, search date) — required when the report claims "系统化综述" or "有限范围系统化综述"
 - [ ] for academic / literature review tasks, publication bias discussion exists (≥2 sentences covering direction judgment and conclusion adjustment)
 
+### Strong wording recall
+
+- [ ] （阻断级）RECALL: 强措辞审计。扫描全文的"唯一/最/第一/领先/不可复制/无人能及"出现位置，每个出现位置必须有：1) 搜索范围/分母说明；2) 否定证据搜索记录；3) 或措辞已降级为范围化表述。如 >2 处强措辞无上述三者之一 → 标记为不通过
+
 ## Precision and estimate sourcing
 
 - [ ] every "预计 / 估计 / 预期 / 有望" in the report has a named source attribution (who expects this?)

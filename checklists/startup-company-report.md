@@ -73,6 +73,7 @@ Run through every item before delivering the final report.
 - [ ] the report labels source reliability levels rather than treating all sources as equal
 - [ ] the report does not write as a mini listed-company analysis with private company data gaps hidden
 - [ ] the report does not use `唯一` / `only` / `first` / `领先` wording without evidence strong enough for that claim strength
+- [ ] （阻断级）私企语境下排他性 claims 需要更严格的验证：数据不公开，无法做公开数据交叉验证时应降级为范围化表述（示例："国内领先" → "在已调查的公开样本中处于前列"）
 
 ## Flags
 
