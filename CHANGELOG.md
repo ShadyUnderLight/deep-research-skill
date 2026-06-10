@@ -11,6 +11,11 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `checklists/market-outlook-audit.md`: added forward-looking label hard-fail gate — market-outlook numeric claims containing `预计` / `预测` / `expected` / `forecast` / `will reach` / `by 20xx` must not be labeled `[确认]` / `[CONF]`; separates confirmed source-event facts from future outcome claims (#222).
+- `checklists/forward-looking-claims.md` and `checklists/final-audit.md`: added confirmed-label prohibition and recall wording for forward-looking numeric claims, including official/analyst forecast boundary and already-realized observed-data exemption (#222).
+- `scripts/validate_forward_looking_labels.py` and `scripts/test_forward_looking_label_lint.py`: added lightweight fixture-scoped lint and regression tests for forward-looking numeric claims mislabeled as confirmed facts (#222).
+- `.github/workflows/ci.yml`: runs the new forward-looking label lint regression test and triggers CI for checklist/reference/eval changes (#222).
+- `evals/cases/dc-power-market-outlook-forward-looking-label-gap-case.md`, `evals/cases/ai-video-market-outlook-label-and-probability-gap-case.md`, and `evals/cases/embodied-ai-market-outlook-register-and-label-gap-case.md`: added Round 7 market-outlook eval cases covering forward-looking `[确认]` / `[CONF]` misuse, source-role gaps, and bare probability patterns (#222).
 - `ROUTING-MATRIX.md`: added Route boundary resolution requirement — when a report identifies a close alternative route but stays in the current route, must document which specific hard-fail conditions were checked and why they don't apply, plus route-switch conditions (#209).
 - `checklists/route-activation-audit.md`: added （阻断级）check for secondary route hard-fail verification skip — "covered elsewhere without independent run" constitutes a hard-fail (#209).
 - `checklists/academic-analysis-audit.md`: added Tier-1 hard-fail for secondary route verification — when a secondary route is declared, its hard-fail verification must be itemized; "covered elsewhere without independent run" is a hard-fail (#209).

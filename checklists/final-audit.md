@@ -150,6 +150,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for market-outlook / industry-evolution tasks, a current market snapshot was verified before forward-looking sections
 - [ ] for market-outlook / industry-evolution tasks, drivers, blockers, scenarios, and stakeholder implications are explicit rather than implied
 - [ ] for market-outlook / industry-evolution tasks, all forward-looking claims have visible source role and time basis; derived, modeled, or load-bearing forecasts also show key assumptions and failure / reversal conditions
+- [ ] for market-outlook / industry-evolution tasks, forward-looking numeric claims containing `预计` / `预测` / `预期` / `将达` / `有望` / `expected` / `forecast` / `projected` / `estimated to` / `will reach` / `by 20xx` are not labeled `[确认]`, `[已确认事实]`, `[CONF]`, or `[Confirmed]`; >3 violations or any load-bearing scenario assumption labeled confirmed facts triggers hard-fail
 - [ ] for market-outlook / industry-evolution tasks, structured multi-scenario analysis exists (at minimum base case + one alternative) with quantitative ranges on the same load-bearing metric and trigger conditions
 - [ ] for market-outlook / industry-evolution tasks, stakeholder implications cover at least 3 distinct stakeholder types, not only investors
 - [ ] for market-outlook / industry-evolution tasks, the task's core output is direction/evolution/trajectory — not ranking, prediction, or selection among defined options
@@ -173,6 +174,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 - [ ] every "预计 / 估计 / 预期 / 有望" in the report has a named source attribution (who expects this?)
 - [ ] bare "预计" or bare "有望" without source = fail; go back and add "[据公司指引/据分析师/据媒体]预计" or "[据行业趋势/据管理层/据第三方]有望"
+- [ ] forward-looking numbers are not upgraded to confirmed facts merely because the source is official or reputable; confirm the source event separately from the future outcome
 - [ ] exact figures are used when source provides them; "约" only when source itself rounds
 - [ ] quantitative outlook numbers are labeled as observed / inferred / scenario assumption / illustrative calculation when the distinction matters
 - [ ] for constrained-choice / shortlist reports that use composite scoring, important quantitative inputs are labeled as observed fact / proxy / assumption / model output when the distinction affects trust in the recommendation

@@ -68,6 +68,14 @@ Run this checklist before delivery.
 - [ ] `预计` / `expected` / `likely` has named source attribution (who expects this?)
 - [ ] forecasts show key assumptions and failure / reversal conditions
 
+### Forward-looking label hard-fail gate
+
+- [ ] （阻断级）扫描所有包含前瞻触发词的数字陈述：`预计`、`预测`、`预期`、`将达`、`有望`、`expected`、`forecast`、`projected`、`estimated to`、`will reach`、`by 20xx`。
+- [ ] 前瞻数字不得标为 `[确认]`、`[已确认事实]`、`[CONF]`、`[Confirmed]`，即使来源是权威机构、公司指引或分析师报告；可确认的是“某来源发布了该预测”，不是“未来数值会发生”。
+- [ ] 前瞻数字必须使用 estimate / scenario-assumption / analyst estimate / inference / model-output 等来源角色或数字角色标签，并给出归因来源和时间 basis。
+- [ ] 例外：已经发生并已被审计、披露或直接观测的 historical / current metric（如“2025 年实际营收”）可标为确认事实；仅描述“Gartner 于 2026-01 发布预测”且不把预测数值当事实时，也不触发。
+- [ ] 同一报告中出现 >3 处“前瞻数字标为确认事实”或任一 load-bearing scenario assumption 被标为确认事实 → hard-fail。
+
 ## Monitoring and change conditions
 
 - [ ] the report identifies what would change the conclusion
