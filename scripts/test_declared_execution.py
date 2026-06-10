@@ -97,6 +97,47 @@ The market is growing quickly and adoption is likely to accelerate.
     )
 
 
+def test_source_register_uncited_inflation_fails() -> None:
+    expect_fail(
+        "Source Register inflation fails when most entries are uncited",
+        """
+## Findings
+
+The market is growing quickly and adoption is likely to accelerate [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example market report | secondary | 2026-01-01 | https://example.com/1 | medium | § Findings |
+| S02 | Example filing | primary | 2026-02-01 | https://example.com/2 | high | § Findings |
+| S03 | Example benchmark | secondary | 2026-03-01 | https://example.com/3 | medium | § Findings |
+| S04 | Example interview | secondary | 2026-04-01 | https://example.com/4 | medium | § Findings |
+""",
+    )
+
+
+def test_source_register_fully_cited_passes() -> None:
+    expect_pass(
+        "Source Register entries cited in body pass",
+        """
+## Findings
+
+The market is growing quickly [S01][S02].
+Adoption is likely to accelerate [S03][S04].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example market report | secondary | 2026-01-01 | https://example.com/1 | medium | § Findings |
+| S02 | Example filing | primary | 2026-02-01 | https://example.com/2 | high | § Findings |
+| S03 | Example benchmark | secondary | 2026-03-01 | https://example.com/3 | medium | § Findings |
+| S04 | Example interview | secondary | 2026-04-01 | https://example.com/4 | medium | § Findings |
+""",
+    )
+
+
 def test_academic_framework_no_mapping_fails() -> None:
     expect_fail(
         "academic framework declared without mapping",
@@ -135,6 +176,8 @@ def main() -> int:
         test_opam_declared_zero_applied_fails,
         test_opam_declared_applied_passes,
         test_source_register_zero_body_refs_fails,
+        test_source_register_uncited_inflation_fails,
+        test_source_register_fully_cited_passes,
         test_academic_framework_no_mapping_fails,
         test_academic_framework_mapping_present_passes,
     ]

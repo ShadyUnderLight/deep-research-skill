@@ -30,6 +30,8 @@ Run through every item before delivering the final report.
 - [ ] Source Type is one of the simplified 5-class system (`primary` / `secondary` / `inferred` / `vendor-claim` / `unconfirmed`) or a compatible granular type (see `references/source-traceability-and-claim-citation.md`)
 - [ ] Reliability consistency: if Source Type is `vendor-claim`, `inferred`, or `unconfirmed`, Reliability must be `low`
 - [ ] no source id is listed but never cited in the body
+- [ ] **register inflation gate**: compare Source Register IDs against body `[Sxx]` references (or functionally equivalent claim-level citations). `<10%` uncited register entries can pass as normal auxiliary sourcing; `10-25%` uncited entries must be flagged for cleanup and may not be used as evidence of strong traceability; `>25%` uncited entries = register inflation and source-traceability may not be marked ✅ Passed.
+- [ ] **hard-fail escalation**: uncited register entries that also lack DOI/URL, clear Source Type, or a plausible `Claims Supported` mapping are not valid auxiliary sources; if they are material or numerous, the report is not deliverable until the register is cleaned up or moved to an explicit extra-reading appendix.
 
 ## Source type discipline
 

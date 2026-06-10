@@ -11,6 +11,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `checklists/source-traceability.md`, `references/source-traceability-and-claim-citation.md`, and `scripts/validate_declared_execution.py`: added Source Register inflation gate so registers with `>25%` uncited entries cannot be marked source-traceability passed; added regression coverage for partial body citations with mostly unused register entries (#225).
 - `checklists/market-outlook-audit.md`, `checklists/final-audit.md`, and `references/decision-report-template.md`: strengthened market-outlook monitoring signals from qualitative reversal-condition lists into actionable dashboards with threshold, cadence, source, and trigger-to-action mapping requirements (#224).
 - `scripts/test_market_outlook_monitoring_contract.py` and `.github/workflows/ci.yml`: added a regression contract test so the market-outlook monitoring actionability rule stays wired into checklist, final-audit recall, and the decision template (#224).
 - `evals/cases/dc-power-market-outlook-forward-looking-label-gap-case.md` and `evals/cases/ai-video-market-outlook-label-and-probability-gap-case.md`: aligned Round 7 market-outlook eval descriptions with the new monitoring signal actionability failure mode (#224).
