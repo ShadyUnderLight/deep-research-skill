@@ -135,10 +135,10 @@ When citing academic sources, **always label**:
 
 1. **Title**: paper title (e.g., "Attention Is All You Need")
 2. **Publication type**: published / preprint / conference / working paper / unpublished
-3. **Peer-review status**: peer-reviewed / not peer-reviewed / unknown
+3. **Peer-review Status**: peer-reviewed / not peer-reviewed / unknown
 4. **Publication venue**: journal name, conference name, or repository
 5. **Publication date**: year (and month if available for fast-moving fields)
-6. **DOI or URL**: when available
+6. **DOI/URL**: when available
 
 Example labeling:
 ```
