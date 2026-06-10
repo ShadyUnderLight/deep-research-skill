@@ -22,6 +22,7 @@ Run through every item before delivering the final report.
 
 ## Source register
 
+- [ ] **hard-fail gate（阻断级）**: Source Register 必须使用 7 列模板（ID / Source Name / Source Type / Date / DOI/URL / Reliability / Claims Supported），定义见 `references/source-traceability-and-claim-citation.md`（§Structured Source Register Template）。缺失 7 列中的任意 1 列 → **不可交付**
 - [ ] source register is present and structured (not a loose bibliography)
 - [ ] source register uses the 7-column template: ID / Source Name / Source Type / Date / DOI/URL / Reliability / Claims Supported
 - [ ] every register entry has a DOI/URL where available; for offline sources, the limitation is noted explicitly
