@@ -50,6 +50,18 @@ Do not activate everything. Activate the smallest set that produces a decision-u
 
 When a report declares multiple routes (primary + secondary), the hard-fail conditions of **all** declared routes must be verified. A secondary route's hard-fail conditions may not be skipped because it is "secondary." If a hard-fail condition is genuinely inapplicable to the task, document the inapplicability reason rather than skipping the check silently.
 
+### Do-not-use clause resolution requirement
+
+When a report identifies a close alternative route (i.e., one listed in ROUTING-MATRIX.md's "Often confused with" section for the chosen route) but decides to stay in the current route, the report or execution contract must document:
+
+a) which specific hard-fail conditions of the alternative route were checked
+b) why those conditions do not apply to this task
+c) under what conditions the route should be switched
+
+"It was considered" is not sufficient resolution. If more than one hard-fail condition of the alternative route is triggered during actual execution, the report should not remain in the current route without a documented override reason.
+
+This requirement applies whenever a route selection considers and rejects an alternative — whether at preflight time or during delivery review.
+
 ### Route inflation warning
 
 Declaring 2+ secondary routes without verifying their hard-fail conditions constitutes **route inflation** — the route list suggests structured methodology, but the unchecked hard-fails create a quality-control blind spot.

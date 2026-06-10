@@ -11,6 +11,7 @@ It audits whether route activation was explicit and whether the route actually s
 - [ ] the selected route's "Do not use" / "Often confused with" clauses from `ROUTING-MATRIX.md` were checked before finalizing; if the task matched a disqualifying condition, the route was reconsidered or the boundary judgment was documented
 - [ ] if a secondary route is declared, its hard-fail conditions from `ROUTING-MATRIX.md` were verified at selection time (not deferred to delivery); if a condition is inapplicable, the reason is documented
 - [ ] when 2+ secondary routes are declared, each secondary route's hard-fail check status is explicitly listed (not assumed covered by the primary route's checks)
+- [ ] （阻断级）副路由 hard-fail 验证不可跳过：声明副路由后，该路由的 hard-fail 条件必须逐项独立验证；"covered elsewhere without independent run" 不构成可接受的验证理由，不因内容已在主路由覆盖而豁免。若副路由特有的 hard-fail 条件无法独立运行，应放弃该副路由声明
 - [ ] the total route count (primary + secondary) was reviewed: if it exceeds 3, scope focus was re-examined and the decision to keep the current route set is documented
 - [ ] secondary body-text share is reasonable (secondary-route content does not exceed roughly 25% of body text when the primary route requires minimizing those sections; if it does, consider shared-workflow declaration or route simplification)
 - [ ] a compact execution contract exists before synthesis: opening mandate, mandatory sections, hard-fail conditions, minimize / move later
