@@ -3,7 +3,9 @@
 ## Case metadata
 
 - **Case type**: Route activation validation
-- **Route**: Academic / Literature Review (experimental)
+- **Route**: Academic / Literature Review
+- **Historical route status**: experimental at case creation
+- **Current route status: hardened** (see `ROUTING-MATRIX.md`)
 - **Task type**: Academic field progress analysis
 - **Date**: 2026-05-29
 - **Status**: Validation case
@@ -227,7 +229,7 @@ The route activation failed if:
 
 ## Recommendation
 
-**Route definition**: Adequate for experimental stage. The route correctly activates for field progress analysis and produces artifacts with clear evidence hierarchy.
+**Route definition**: This historical activation case helped validate the route during its experimental stage. The route now correctly activates for field progress analysis and produces artifacts with clear evidence hierarchy.
 
 **Next steps**:
 1. Validate with 1 more case (paper comparison)
