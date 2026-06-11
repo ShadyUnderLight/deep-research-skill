@@ -40,6 +40,29 @@ ROLE_VALUE_RE = re.compile(
 SOURCE_REGISTER_HEADING_RE = re.compile(r"^#{1,6}\s+Source Register\s*$", re.IGNORECASE)
 SOURCE_ID_RE = re.compile(r"(?<!\w)\[?(S\d{2})\]?(?!\w)")
 BODY_SOURCE_REF_RE = re.compile(r"\[S\d{2}\]")
+ARXIV_REF_RE = re.compile(
+    r"(?:arxiv\s*:\s*|arxiv\.org/(?:abs|pdf)/)(\d{4}\.\d{4,5})(?:v\d+)?",
+    re.IGNORECASE,
+)
+DOI_REF_RE = re.compile(
+    r"(?:doi\s*:\s*|https?://(?:dx\.)?doi\.org/)?"
+    r"(10\.\d{4,9}/[^\s\]\)\|,;\"'<>]+)",
+    re.IGNORECASE,
+)
+AUTHOR_YEAR_RE = re.compile(
+    r"\(([A-Z][A-Za-z'’-]+)(?:\s+et\s+al\.)?,\s*((?:19|20)\d{2})(?:,\s*[^)]{2,80})?\)"
+    r"|\b([A-Z][A-Za-z'’-]+)(?:\s+et\s+al\.)?\s+((?:19|20)\d{2})\b"
+)
+NATURAL_ATTR_RE = re.compile(
+    r"(?:据|根据|来自|引用|援引)\s*([^。；;，,\n]{0,60}?"
+    r"(?:FY\s*20\d{2}|20\d{2}\s*Q[1-4]|招股书|年报|季报|业绩公告|annual report|prospectus|earnings announcement)"
+    r"[^。；;，,\n]{0,60})"
+    r"|((?:FY\s*20\d{2}|20\d{2}\s*Q[1-4])[^。；;，,\n]{0,40}?"
+    r"(?:年报|季报|业绩公告|annual report|earnings announcement))"
+    r"|((?:招股书|prospectus)\s*(?:披露)?)",
+    re.IGNORECASE,
+)
+VAGUE_ATTR_RE = re.compile(r"(?:公开资料|据悉|市场研究|行业研究|公开信息)", re.IGNORECASE)
 
 ACADEMIC_FRAMEWORK_RE = re.compile(
     r"(?:study\s+design\s+quality.{0,80}venue\s+prestige|venue\s+prestige.{0,80}study\s+design\s+quality|研究设计.{0,80}发表场所声誉|发表场所声誉.{0,80}研究设计|双维.{0,40}证据|多级.{0,40}证据)",
@@ -120,6 +143,158 @@ def table_lines(text: str) -> list[str]:
     return rows
 
 
+def split_markdown_table_row(row: str) -> list[str]:
+    stripped = row.strip()
+    if stripped.startswith("|"):
+        stripped = stripped[1:]
+    if stripped.endswith("|"):
+        stripped = stripped[:-1]
+    return [cell.strip() for cell in stripped.split("|")]
+
+
+def normalize_compact(text: str) -> str:
+    return re.sub(r"\s+", "", text.lower())
+
+
+def register_entries(register_text: str) -> list[dict[str, str]]:
+    entries: list[dict[str, str]] = []
+    for row in table_lines(register_text):
+        cells = split_markdown_table_row(row)
+        if not cells or cells[0].strip().lower() == "id":
+            continue
+        source_id = SOURCE_ID_RE.search(cells[0])
+        if not source_id:
+            continue
+        entries.append(
+            {
+                "id": source_id.group(1),
+                "text": " ".join(cells),
+                "source_name": cells[1] if len(cells) > 1 else "",
+                "doi_url": cells[4] if len(cells) > 4 else "",
+            }
+        )
+    return entries
+
+
+def normalize_doi(doi: str) -> str:
+    cleaned = doi.strip().lower()
+    cleaned = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", cleaned)
+    cleaned = re.sub(r"^doi\s*:\s*", "", cleaned)
+    return cleaned.rstrip(".,;:)")
+
+
+def equivalent_id_matches(
+    body_values: set[str],
+    entries: list[dict[str, str]],
+    pattern: re.Pattern[str],
+    normalizer=lambda value: value.lower(),
+) -> set[str]:
+    cited: set[str] = set()
+    if not body_values:
+        return cited
+
+    for entry in entries:
+        entry_values = {normalizer(match) for match in pattern.findall(entry["text"])}
+        if body_values & entry_values:
+            cited.add(entry["id"])
+    return cited
+
+
+def author_year_refs(body_text: str, entries: list[dict[str, str]]) -> set[str]:
+    cited: set[str] = set()
+    for match in AUTHOR_YEAR_RE.finditer(body_text):
+        author = match.group(1) or match.group(3)
+        year = match.group(2) or match.group(4)
+        if not author or not year:
+            continue
+        hits = [
+            entry["id"]
+            for entry in entries
+            if author.lower() in entry["text"].lower() and year in entry["text"]
+        ]
+        if len(hits) == 1:
+            cited.add(hits[0])
+    return cited
+
+
+def natural_anchor_tokens(phrase: str) -> list[str]:
+    if VAGUE_ATTR_RE.search(phrase):
+        return []
+
+    compact = normalize_compact(phrase)
+    tokens: list[str] = []
+    tokens.extend(re.findall(r"fy20\d{2}", compact))
+    tokens.extend(re.findall(r"20\d{2}q[1-4]", compact))
+
+    if "annualreport" in compact or "年报" in compact:
+        tokens.append("annual_report")
+    if "earningsannouncement" in compact or "业绩公告" in compact:
+        tokens.append("earnings")
+    if "quarterly" in compact or "季报" in compact:
+        tokens.append("quarterly")
+    if "prospectus" in compact or "招股书" in compact:
+        tokens.append("prospectus")
+
+    return list(dict.fromkeys(tokens))
+
+
+def entry_matches_natural_tokens(entry: dict[str, str], tokens: list[str]) -> bool:
+    compact = normalize_compact(entry["text"])
+    for token in tokens:
+        if token == "annual_report":
+            if "annualreport" not in compact and "年报" not in compact:
+                return False
+            continue
+        if token == "earnings":
+            if (
+                "earnings" not in compact
+                and "results" not in compact
+                and "业绩公告" not in compact
+            ):
+                return False
+            continue
+        if token == "quarterly":
+            if "quarter" not in compact and "季报" not in compact:
+                return False
+            continue
+        if token == "prospectus":
+            if "prospectus" not in compact and "招股书" not in compact:
+                return False
+            continue
+        if token not in compact:
+            return False
+    return True
+
+
+def natural_language_refs(body_text: str, entries: list[dict[str, str]]) -> set[str]:
+    cited: set[str] = set()
+    for match in NATURAL_ATTR_RE.finditer(body_text):
+        phrase = next((group for group in match.groups() if group), "")
+        tokens = natural_anchor_tokens(phrase)
+        if not tokens:
+            continue
+        hits = [
+            entry["id"]
+            for entry in entries
+            if entry_matches_natural_tokens(entry, tokens)
+        ]
+        if len(hits) == 1:
+            cited.add(hits[0])
+    return cited
+
+
+def equivalent_body_source_refs(body_text: str, entries: list[dict[str, str]]) -> set[str]:
+    arxiv_values = {match.lower() for match in ARXIV_REF_RE.findall(body_text)}
+    doi_values = {normalize_doi(match) for match in DOI_REF_RE.findall(body_text)}
+
+    cited: set[str] = set()
+    cited.update(equivalent_id_matches(arxiv_values, entries, ARXIV_REF_RE))
+    cited.update(equivalent_id_matches(doi_values, entries, DOI_REF_RE, normalize_doi))
+    cited.update(author_year_refs(body_text, entries))
+    cited.update(natural_language_refs(body_text, entries))
+    return cited
+
+
 def check_opam_execution(text: str, path: Path) -> list[str]:
     if not OPAM_DECL_RE.search(text):
         return []
@@ -166,10 +341,11 @@ def check_source_register_execution(text: str, path: Path) -> list[str]:
 
     body_text = remove_section(text, SOURCE_REGISTER_HEADING_RE)
     body_refs = set(ref.strip("[]") for ref in BODY_SOURCE_REF_RE.findall(body_text))
+    body_refs.update(equivalent_body_source_refs(body_text, register_entries(register_text)))
     if not body_refs:
         return [
             f"{path}: Source Register declares {len(source_ids)} source ID(s), "
-            "but the body contains no [Sxx] citations"
+            "but the body contains no [Sxx] or equivalent citations"
         ]
 
     uncited_source_ids = sorted(source_ids - body_refs)

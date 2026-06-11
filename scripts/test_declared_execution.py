@@ -138,6 +138,117 @@ Adoption is likely to accelerate [S03][S04].
     )
 
 
+def test_source_register_arxiv_equivalent_refs_pass() -> None:
+    expect_pass(
+        "Source Register entries cited by arXiv IDs pass",
+        """
+## Findings
+
+The base detector follows the YOLOv3 formulation (Redmon, 2018, arXiv:1804.02767).
+The transformer baseline follows the original attention paper (Vaswani et al. 2017, arXiv:1706.03762).
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | YOLOv3: An Incremental Improvement | primary | 2018-04-08 | https://arxiv.org/abs/1804.02767 | high | § Findings |
+| S02 | Attention Is All You Need | primary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | § Findings |
+""",
+    )
+
+
+def test_source_register_doi_equivalent_refs_pass() -> None:
+    expect_pass(
+        "Source Register entries cited by DOI pass",
+        """
+## Findings
+
+The intervention effect is taken from the Nature study doi:10.1038/nature14539.
+The follow-up mechanism is described in https://doi.org/10.1145/3366423.3380295.
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Nature intervention study | primary | 2015-05-01 | https://doi.org/10.1038/nature14539 | high | § Findings |
+| S02 | Systems follow-up paper | primary | 2020-04-01 | 10.1145/3366423.3380295 | high | § Findings |
+""",
+    )
+
+
+def test_source_register_author_year_equivalent_refs_pass() -> None:
+    expect_pass(
+        "Source Register entries cited by Author-Year pass",
+        """
+## Findings
+
+The first cohort evidence comes from (Smith, 2025, Nature Medicine).
+The robustness check follows Lee et al. 2024.
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Smith 2025 Nature Medicine cohort study | primary | 2025-02-01 | https://doi.org/10.1000/smith2025 | high | § Findings |
+| S02 | Lee et al. 2024 robustness analysis | primary | 2024-08-01 | https://doi.org/10.1000/lee2024 | high | § Findings |
+""",
+    )
+
+
+def test_source_register_unique_natural_language_refs_pass() -> None:
+    expect_pass(
+        "Source Register entries cited by unique natural-language attribution pass",
+        """
+## Findings
+
+据 FY2025 年报，公司海外收入占比继续提升。
+2026Q1 业绩公告披露，同店销售恢复到正增长区间。
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | ExampleCo FY2025 Annual Report | primary | 2026-03-31 | https://example.com/fy2025-annual-report | high | § Findings |
+| S02 | ExampleCo 2026Q1 Earnings Announcement | primary | 2026-04-30 | https://example.com/2026q1-results | high | § Findings |
+""",
+    )
+
+
+def test_source_register_vague_natural_language_refs_fail() -> None:
+    expect_fail(
+        "vague natural-language attribution does not count as equivalent citation",
+        """
+## Findings
+
+据公开资料，公司海外收入占比继续提升。
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | ExampleCo FY2025 Annual Report | primary | 2026-03-31 | https://example.com/fy2025-annual-report | high | § Findings |
+""",
+    )
+
+
+def test_source_register_ambiguous_natural_language_refs_fail() -> None:
+    expect_fail(
+        "ambiguous natural-language attribution does not count as equivalent citation",
+        """
+## Findings
+
+据年报，公司海外收入占比继续提升。
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | ExampleCo FY2024 Annual Report | primary | 2025-03-31 | https://example.com/fy2024-annual-report | high | § Findings |
+| S02 | ExampleCo FY2025 Annual Report | primary | 2026-03-31 | https://example.com/fy2025-annual-report | high | § Findings |
+""",
+    )
+
+
 def test_academic_framework_no_mapping_fails() -> None:
     expect_fail(
         "academic framework declared without mapping",
@@ -178,6 +289,12 @@ def main() -> int:
         test_source_register_zero_body_refs_fails,
         test_source_register_uncited_inflation_fails,
         test_source_register_fully_cited_passes,
+        test_source_register_arxiv_equivalent_refs_pass,
+        test_source_register_doi_equivalent_refs_pass,
+        test_source_register_author_year_equivalent_refs_pass,
+        test_source_register_unique_natural_language_refs_pass,
+        test_source_register_vague_natural_language_refs_fail,
+        test_source_register_ambiguous_natural_language_refs_fail,
         test_academic_framework_no_mapping_fails,
         test_academic_framework_mapping_present_passes,
     ]
