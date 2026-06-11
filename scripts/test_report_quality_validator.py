@@ -955,8 +955,6 @@ Body text with citation [S01].
 No citation in this section.
 """
     expect_fail("key section after register fails", text)
-
-
 # ── Main ─────────────────────────────────────────────────────────────────
 
 
