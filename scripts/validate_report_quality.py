@@ -61,6 +61,16 @@ NL_ATTR_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Role-label patterns (for quantitative-role self-assessment check)
+ROLE_HEADER_RE = re.compile(
+    r"(?:数字角色|number role|role|epistemic role)", re.IGNORECASE
+)
+ROLE_VALUE_RE = re.compile(
+    r"(?:\b[OPAM]\b|observed|proxy|assumption|model\s*output|estimate|"
+    r"scenario|inferred|illustrative)",
+    re.IGNORECASE,
+)
+
 ROUTE_IN_BLOCK = re.compile(
     r"\*\*(?:Primary\s+)?route\*\*", re.IGNORECASE
 )
@@ -408,6 +418,180 @@ def check_strict_warnings(cleaned: str) -> list[str]:
     return warnings
 
 
+# ── Audit self-assessment consistency check ───────────────────────────────
+
+
+def _split_cells(row: str) -> list[str]:
+    """Split a markdown table row into individual cells, preserving escaped pipes."""
+    guarded = row.replace("\\|", "\x00PIPE\x00")
+    return [
+        c.strip().replace("\x00PIPE\x00", "|")
+        for c in guarded.strip("|").split("|")
+    ]
+
+
+def _body_has_role_labels(scan_text: str) -> bool:
+    """Check if body tables have role labels (header column or cell values).
+
+    Detection rules:
+    1. Header row matches ROLE_HEADER_RE \u2192 table has role structure (C3: header only)
+    2. Multi-word role value (observed/proxy/assumption etc.) in any data cell
+    3. Single-letter role value (O/P/A/M) ONLY if in a role-column (C2: avoids 'a' as article)
+    """
+    lines = scan_text.splitlines()
+    i = 0
+    while i < len(lines):
+        if not TABLE_ROW_RE.match(lines[i]):
+            i += 1
+            continue
+
+        # Collect all rows of this table
+        table_lines: list[str] = []
+        while i < len(lines) and (
+            TABLE_ROW_RE.match(lines[i]) or TABLE_DELIMITER_RE.match(lines[i])
+        ):
+            table_lines.append(lines[i])
+            i += 1
+
+        if len(table_lines) < 2:
+            continue
+
+        # Split into cells, skip delimiter rows
+        parsed: list[list[str]] = []
+        for line in table_lines:
+            if TABLE_DELIMITER_RE.match(line):
+                continue
+            parsed.append(_split_cells(line))
+        if len(parsed) < 2:
+            continue
+
+        header = parsed[0]
+        data_rows = parsed[1:]
+
+        # (C3) Check header row only for role column name
+        header_has_role = any(ROLE_HEADER_RE.search(c) for c in header)
+        role_col_indices = [i for i, c in enumerate(header) if ROLE_HEADER_RE.search(c)]
+
+        # Multi-word role values in any column (distinctive enough)
+        for row in data_rows:
+            for cell in row:
+                if re.search(
+                    r"observed|proxy|assumption|model\s*output|estimate|"
+                    r"scenario|inferred|illustrative",
+                    cell,
+                    re.IGNORECASE,
+                ):
+                    return True
+
+        # (C2) Single-letter role values only count in role-column cells
+        if role_col_indices:
+            for row in data_rows:
+                for idx in role_col_indices:
+                    if idx < len(row):
+                        cell = row[idx].strip()
+                        if cell:
+                            return True
+
+        # Header with role column name counts as role structure
+        if header_has_role:
+            return True
+
+    return False
+
+
+def check_audit_self_assessment_consistency(cleaned: str) -> list[str]:
+    """Check that audit block self-assessments match actual body execution.
+
+    Warnings-level: if the audit block claims a discipline passed but the
+    body does not meet the corresponding structural requirement, a warning
+    is issued. Unknown discipline names are silently skipped.
+    """
+    sec = section_text(cleaned, ROUTE_AUDIT_HEADING)
+    if sec is None:
+        return []
+
+    table = parse_table(sec)
+    if table is None:
+        return []
+
+    header = table[0]
+    audit_idx = find_col_index(header, [AUDIT_COL_RE])
+    status_idx = find_col_index(header, [STATUS_COL_RE])
+
+    if audit_idx == -1 or status_idx == -1:
+        return []
+
+    # Build scan_text once: body text excluding audit status section
+    # and Source Register section, to avoid false positives from:
+    # - [Sxx] in audit evidence column (C1 fix)
+    # - [Sxx] in register "Claims Supported" column
+    audit_bounds = section_bounds(cleaned, ROUTE_AUDIT_HEADING)
+    register_bounds = section_bounds(cleaned, SOURCE_REGISTER_HEADING)
+    raw_lines = cleaned.splitlines()
+
+    if audit_bounds:
+        _, audit_end = audit_bounds
+        scan_lines = raw_lines[audit_end:]
+        if register_bounds:
+            reg_start, _ = register_bounds
+            # Guard against negative slice (register before audit) — I1 fix
+            offset = reg_start - audit_end
+            if 0 < offset < len(scan_lines):
+                scan_lines = scan_lines[:offset]
+    elif register_bounds:
+        reg_start, _ = register_bounds
+        scan_lines = raw_lines[:reg_start]
+    else:
+        scan_lines = raw_lines
+
+    scan_text = "\n".join(scan_lines)
+
+    # Precompute role-label status for quantitative-role check
+    body_has_role_labels = _body_has_role_labels(scan_text)
+
+    warnings: list[str] = []
+
+    for row in table[1:]:
+        if len(row) <= max(audit_idx, status_idx):
+            continue
+        discipline = row[audit_idx].strip()
+        status = row[status_idx].strip()
+
+        if not AUDIT_PASSED_RE.match(status):
+            continue
+
+        disc_lower = discipline.lower()
+
+        # source-traceability: body must have [Sxx] or equivalent citations
+        if 'source-traceability' in disc_lower or 'source traceability' in disc_lower:
+            has_refs = bool(BODY_SXX_RE.search(scan_text))
+            if not has_refs:
+                has_equiv = bool(
+                    AUTHOR_YEAR_RE.search(scan_text)
+                    or ARXIV_RE.search(scan_text)
+                    or DOI_RE.search(scan_text)
+                    or NL_ATTR_RE.search(scan_text)
+                )
+                if not has_equiv:
+                    warnings.append(
+                        f"Audit self-assessment mismatch: '{discipline}' is marked "
+                        "✅ Passed, but the body has no [Sxx] or equivalent source citations"
+                    )
+
+        # quantitative-role: body tables should have role label columns
+        if ('quantitative-role' in disc_lower
+                or 'quantitative role' in disc_lower
+                or '数字角色' in disc_lower):
+            if not body_has_role_labels:
+                warnings.append(
+                    f"Audit self-assessment mismatch: '{discipline}' is marked "
+                    "✅ Passed, but no quantitative role labels "
+                    "(O/P/A/M or equivalent) found in body tables"
+                )
+
+    return warnings
+
+
 # ── Main ──────────────────────────────────────────────────────────────────
 
 
@@ -434,23 +618,27 @@ def validate_file(path: Path, strict: bool = False) -> int:
     # 3. Body references
     errors.extend(check_body_references(cleaned))
 
-    # 4. Strict mode warnings
+    # 4. Audit self-assessment consistency (warnings only)
+    warnings.extend(check_audit_self_assessment_consistency(cleaned))
+
+    # 5. Strict mode warnings
     if strict:
         warnings.extend(check_strict_warnings(cleaned))
 
-    # Report
+    # Print warnings regardless of errors (all issues visible at once)
+    if warnings:
+        label = "warnings" if errors else "passed with warnings"
+        print(f"Report quality validation {label} for {path}:")
+        for w in warnings:
+            print(f"  ⚠ {w}")
+
     if errors:
         print(f"Report quality validation failed for {path}:")
         for e in errors:
             print(f"  ✗ {e}")
-        # Determine exit code
         return EXIT_STRUCTURE
 
-    if warnings:
-        print(f"Report quality validation passed with warnings for {path}:")
-        for w in warnings:
-            print(f"  ⚠ {w}")
-    else:
+    if not warnings:
         print(f"Report quality validation passed for {path}.")
 
     return EXIT_PASS
