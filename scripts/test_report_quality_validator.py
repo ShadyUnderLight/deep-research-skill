@@ -451,6 +451,193 @@ Regulatory compliance is mandatory for all options [S03].
     expect_pass("all checks together passes", text)
 
 
+# ── Audit self-assessment consistency tests ──────────────────────────────
+
+
+def test_audit_source_traceability_mismatch_warns() -> None:
+    """source-traceability marked ✅ Passed but body has zero refs → warn.
+    
+    The warning is additive: the existing hard error (exit 2) from
+    check_body_references still fires, AND the self-assessment warning
+    appears. We verify both the warning text AND the exit code.
+    """
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 已验证 |
+| final-audit | ✅ Passed | §2 已验证 |
+
+## Findings
+
+No source references in the actual body text.
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    result = run_validator(text)
+    # Hard error from check_body_references still fires
+    assert result.returncode == 2, (
+        f"expected exit 2 (hard error), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    # Self-assessment warning is additive
+    assert "self-assessment mismatch" in result.stdout.lower(), (
+        f"expected warning about self-assessment mismatch in:\n{result.stdout}"
+    )
+    print("  PASS  audit source-traceability mismatch warns")
+
+
+def test_audit_quantitative_role_mismatch_warns() -> None:
+    """quantitative-role marked ✅ Passed but tables have no role labels."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| quantitative-role | ✅ Passed | §4 已验证 |
+| source-traceability | ✅ Passed | 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 已验证 |
+
+## Findings
+
+Body text with citation [S01].
+
+| Metric | Base | Upside |
+|--------|------|--------|
+| Market size | $10B | $15B |
+| Adoption | 25% | 35% |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "self-assessment mismatch" in result.stdout.lower(), (
+        f"expected warning about self-assessment mismatch in:\n{result.stdout}"
+    )
+    print("  PASS  audit quantitative-role mismatch warns")
+
+
+def test_audit_self_assessment_consistent_no_warn() -> None:
+    """Audit claims match body execution → no self-assessment warnings."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3-§5 正文使用 [S01] 引用 |
+| quantitative-role | ✅ Passed | §4 表格含角色列 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01].
+
+| Metric | Base | Upside | Role |
+|--------|------|--------|------|
+| Market size | $10B | $15B | A |
+| Adoption | 25% | 35% | M |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "self-assessment mismatch" not in result.stdout.lower(), (
+        f"unexpected self-assessment mismatch warning in:\n{result.stdout}"
+    )
+    print("  PASS  audit self-assessment consistent")
+
+
+def test_audit_self_assessment_author_year_consistent() -> None:
+    """Author-Year citation satisfies source-traceability, no warning."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Academic / Literature Review
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | 正文使用 Author-Year 引用 |
+| final-audit | ✅ Passed | §2 可追溯 |
+
+## Findings
+
+The transformer architecture revolutionized NLP (Vaswani et al., 2017, NeurIPS).
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 |
+"""
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "self-assessment mismatch" not in result.stdout.lower(), (
+        f"unexpected warning in:\n{result.stdout}"
+    )
+    print("  PASS  audit self-assessment author-year consistent")
+
+
+def test_audit_self_assessment_doi_consistent() -> None:
+    """DOI citation satisfies source-traceability, no warning."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | 正文使用 DOI 引用 |
+| final-audit | ✅ Passed | §2 可追溯 |
+
+## Findings
+
+The findings are documented (doi:10.1038/s41586-023-06747-5).
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Nature paper 2023 | secondary | 2023-11-01 | https://doi.org/10.1038/s41586-023-06747-5 | high | §2 |
+"""
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "self-assessment mismatch" not in result.stdout.lower(), (
+        f"unexpected warning in:\n{result.stdout}"
+    )
+    print("  PASS  audit self-assessment doi consistent")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────
 
 
@@ -473,6 +660,11 @@ def main() -> int:
         ("natural language unique ref passes", test_natural_language_unique_ref_passes),
         ("strict mode warning only", test_strict_mode_warning_only_no_hard_fail),
         ("all checks together passes", test_all_checks_together_passes),
+        ("audit source-traceability mismatch warns", test_audit_source_traceability_mismatch_warns),
+        ("audit quantitative-role mismatch warns", test_audit_quantitative_role_mismatch_warns),
+        ("audit self-assessment consistent", test_audit_self_assessment_consistent_no_warn),
+        ("audit self-assessment author-year consistent", test_audit_self_assessment_author_year_consistent),
+        ("audit self-assessment doi consistent", test_audit_self_assessment_doi_consistent),
     ]
     failures = []
     for name, fn in tests:
