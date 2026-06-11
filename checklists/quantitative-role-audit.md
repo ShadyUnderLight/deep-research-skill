@@ -28,12 +28,14 @@ If load-bearing numbers materially affect the conclusion, their roles should be 
 
 - [BLOCKER] Key numbers in scoring/ranking systems (star ratings, weight scores, cost estimates, growth rates, plugin/ecosystem counts) must carry role labels (observed / proxy / assumption / model-output).
 - [BLOCKER] If >3 critical scoring/ranking numbers lack role labels ("critical" per `references/quantitative-role-labeling.md` §What should be labeled) → hard-fail (see ROUTING-MATRIX.md §Constrained Choice hard-fail).
+- [NON-BLOCKER] All `~X%` or `X%-Y%` precise numbers must carry a role annotation or an explicit "based on assumption / scenario / model output" qualifier. See also Market Outlook subsection below for the same rule.
 - [NON-BLOCKER] Composite score breakdown — which dimensions are observed vs. modeled — should be visible in the table or a note.
 
 ### Market Outlook / Industry Evolution
 
 - [BLOCKER] Load-bearing numbers (market size, growth rates, scenario probabilities, adoption projections) must carry role labels (observed / estimate / scenario-assumption / model-output).
 - [NON-BLOCKER] Scenario probabilities (e.g., "20-25%") should include estimation method or source basis, not bare qualitative judgment.
+- [NON-BLOCKER] All `~X%` or `X%-Y%` precise numbers must carry a role annotation or an explicit "based on assumption / scenario / model output" qualifier. See `references/quantitative-role-labeling.md` §表格中的角色标签 for acceptable display patterns.
 - [NON-BLOCKER] This route already has a "mixes observed facts with scenario assumptions" hard-fail (ROUTING-MATRIX.md §Market Outlook, enforced by `checklists/market-outlook-audit.md`). These role-label checks serve as defense-in-depth.
 
 ### Listed Company / Investment-style Research
