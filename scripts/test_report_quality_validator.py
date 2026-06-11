@@ -638,6 +638,323 @@ The findings are documented (doi:10.1038/s41586-023-06747-5).
     print("  PASS  audit self-assessment doi consistent")
 
 
+# ── Source Register row-level checks ──────────────────────────────────────
+
+
+def test_register_row_missing_id_fails() -> None:
+    """Register entry with empty ID should fail."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+|  | Empty ID entry | secondary | 2026-02-01 | https://example.com/2 | low | §3 |
+"""
+    expect_fail("register row missing ID fails", text)
+
+
+def test_register_rows_all_valid_passes() -> None:
+    """All register rows have non-empty IDs → pass."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Findings
+
+Body text with citations [S01][S02].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | First source | secondary | 2026-01-01 | https://example.com/1 | medium | §2 |
+| S02 | Second source | primary | 2026-02-01 | https://example.com/2 | high | §2 |
+"""
+    expect_pass("register rows all valid pass", text)
+
+
+def test_register_doi_systematically_missing_warns() -> None:
+    """>50% of register rows missing DOI/URL → warning, not hard fail."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | First source | secondary | 2026-01-01 |  | medium | §2 |
+| S02 | Second source | primary | 2026-02-01 |  | high | §2 |
+| S03 | Third source | secondary | 2026-03-01 | https://example.com | medium | §3 |
+"""
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass with warning (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "DOI/URL" in result.stdout, (
+        f"expected warning about DOI/URL in:\n{result.stdout}"
+    )
+    print("  PASS  register DOI systematically missing warns")
+
+
+# ── Key section citation coverage checks ──────────────────────────────────
+
+
+def test_exec_summary_no_ref_fails() -> None:
+    """Executive summary section without [Sxx] should fail."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## 执行摘要
+
+The market is undergoing rapid transformation.
+New entrants are disrupting traditional business models.
+No source citations in this section.
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_fail("exec summary no ref fails", text)
+
+
+def test_all_key_sections_have_refs_passes() -> None:
+    """All recognized key sections with [Sxx] should pass without warnings."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## 执行摘要
+
+The market is growing [S01].
+
+## Findings
+
+Body text with citation [S01].
+
+## 综合结论
+
+The recommendation is clear [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "key section" not in result.stdout.lower(), (
+        f"unexpected warning in:\n{result.stdout}"
+    )
+    print("  PASS  all key sections have refs")
+
+
+def test_key_section_author_year_instead_of_sxx_passes() -> None:
+    """Equivalent format (Author-Year) in key section should satisfy check."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Academic / Literature Review
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 Author-Year 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Executive Summary
+
+The transformer architecture revolutionized NLP (Vaswani et al., 2017, NeurIPS).
+
+## Findings
+
+Body text with citation [S01].
+
+## Conclusion
+
+This analysis supports continued development [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Vaswani et al. 2017 | primary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 |
+"""
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "key section" not in result.stdout.lower(), (
+        f"unexpected warning in:\n{result.stdout}"
+    )
+    print("  PASS  key section with Author-Year instead of [Sxx]")
+
+
+def test_no_key_sections_detected_no_warn() -> None:
+    """Report without any recognized key section heading should pass."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Custom Analysis Section
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "key section" not in result.stdout.lower(), (
+        f"unexpected warning in:\n{result.stdout}"
+    )
+    print("  PASS  no key sections detected")
+
+
+def test_body_ref_not_in_register_fails() -> None:
+    """Body references [S99] which doesn't exist in register → fail."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01][S99] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01][S99].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_fail("body ref not in register fails", text)
+
+
+def test_register_duplicate_id_fails() -> None:
+    """Duplicate ID in Source Register should fail."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | First entry | secondary | 2026-01-01 | https://example.com/1 | medium | §2 |
+| S01 | Duplicate ID | primary | 2026-02-01 | https://example.com/2 | high | §2 |
+"""
+    expect_fail("register duplicate ID fails", text)
+
+
+def test_key_section_after_register_still_checked() -> None:
+    """Key section after Source Register should still be checked for citations."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+
+## 综合结论
+
+No citation in this section.
+"""
+    expect_fail("key section after register fails", text)
 # ── Main ─────────────────────────────────────────────────────────────────
 
 
@@ -665,6 +982,16 @@ def main() -> int:
         ("audit self-assessment consistent", test_audit_self_assessment_consistent_no_warn),
         ("audit self-assessment author-year consistent", test_audit_self_assessment_author_year_consistent),
         ("audit self-assessment doi consistent", test_audit_self_assessment_doi_consistent),
+        ("register row missing ID fails", test_register_row_missing_id_fails),
+        ("register rows all valid pass", test_register_rows_all_valid_passes),
+        ("register DOI systematically missing warns", test_register_doi_systematically_missing_warns),
+        ("exec summary no ref fails", test_exec_summary_no_ref_fails),
+        ("all key sections have refs passes", test_all_key_sections_have_refs_passes),
+        ("key section with Author-Year passes", test_key_section_author_year_instead_of_sxx_passes),
+        ("no key sections detected no warn", test_no_key_sections_detected_no_warn),
+        ("body ref not in register fails", test_body_ref_not_in_register_fails),
+        ("register duplicate ID fails", test_register_duplicate_id_fails),
+        ("key section after register fails", test_key_section_after_register_still_checked),
     ]
     failures = []
     for name, fn in tests:

@@ -138,6 +138,84 @@ Adoption is likely to accelerate [S03][S04].
     )
 
 
+def test_source_register_inflation_warn_at_28_percent() -> None:
+    """28.6% uncited (5/7 cited) should warn, not fail."""
+    text = """
+## Findings
+
+Reference [S01][S02][S03][S04][S05] are all used here.
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Report one | secondary | 2026-01-01 | https://example.com/1 | medium | § Findings |
+| S02 | Report two | secondary | 2026-02-01 | https://example.com/2 | medium | § Findings |
+| S03 | Report three | secondary | 2026-03-01 | https://example.com/3 | medium | § Findings |
+| S04 | Report four | secondary | 2026-04-01 | https://example.com/4 | medium | § Findings |
+| S05 | Report five | secondary | 2026-05-01 | https://example.com/5 | medium | § Findings |
+| S06 | Report six | secondary | 2026-06-01 | https://example.com/6 | medium | § Findings |
+| S07 | Report seven | secondary | 2026-07-01 | https://example.com/7 | medium | § Findings |
+"""
+    result = run_lint(text)
+    assert result.returncode == 0, (
+        f"expected warn (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "inflation" in result.stdout.lower(), (
+        f"expected inflation warning in:\n{result.stdout}"
+    )
+    print("  PASS  28% inflation warns")
+
+
+def test_source_register_inflation_over_40_percent_fails() -> None:
+    """42.9% uncited (4/7 cited) should fail."""
+    expect_fail(
+        "inflation >40% fails",
+        """
+## Findings
+
+Reference [S01][S02][S03][S04] are used here.
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Report one | secondary | 2026-01-01 | https://example.com/1 | medium | § Findings |
+| S02 | Report two | secondary | 2026-02-01 | https://example.com/2 | medium | § Findings |
+| S03 | Report three | secondary | 2026-03-01 | https://example.com/3 | medium | § Findings |
+| S04 | Report four | secondary | 2026-03-01 | https://example.com/4 | medium | § Findings |
+| S05 | Report five | secondary | 2026-03-01 | https://example.com/5 | medium | § Findings |
+| S06 | Report six | secondary | 2026-03-01 | https://example.com/6 | medium | § Findings |
+| S07 | Report seven | secondary | 2026-03-01 | https://example.com/7 | medium | § Findings |
+""",
+    )
+
+
+def test_source_register_orphan_body_ref_warns() -> None:
+    """Body references [S99] not in register → warning."""
+    text = """
+## Findings
+
+Reference [S01][S99] used here.
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Report one | secondary | 2026-01-01 | https://example.com/1 | medium | § Findings |
+"""
+    result = run_lint(text)
+    assert result.returncode == 0, (
+        f"expected warn (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "not found" in result.stdout.lower() or "not exist" in result.stdout.lower(), (
+        f"expected orphan ref warning in:\n{result.stdout}"
+    )
+    print("  PASS  orphan body ref warns")
+
+
 def test_source_register_arxiv_equivalent_refs_pass() -> None:
     expect_pass(
         "Source Register entries cited by arXiv IDs pass",
@@ -289,6 +367,9 @@ def main() -> int:
         test_source_register_zero_body_refs_fails,
         test_source_register_uncited_inflation_fails,
         test_source_register_fully_cited_passes,
+        test_source_register_inflation_warn_at_28_percent,
+        test_source_register_inflation_over_40_percent_fails,
+        test_source_register_orphan_body_ref_warns,
         test_source_register_arxiv_equivalent_refs_pass,
         test_source_register_doi_equivalent_refs_pass,
         test_source_register_author_year_equivalent_refs_pass,

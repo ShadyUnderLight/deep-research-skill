@@ -61,6 +61,15 @@ NL_ATTR_RE = re.compile(
     re.IGNORECASE,
 )
 
+# ── Key section patterns (for section-level citation coverage check) ──────
+
+KEY_SECTION_PATTERNS: list[re.Pattern[str]] = [
+    re.compile(r"(?:执行\s*摘要|Executive\s*Summary)", re.IGNORECASE),
+    re.compile(r"(?:综合\s*结论|^结论$|Conclusion\s*$)", re.IGNORECASE),
+    re.compile(r"(?:维度\s*结论|维度\s*评估|Dimension\s+Conclusion)", re.IGNORECASE),
+    re.compile(r"(?:推荐\s*排序|推荐\s*建议|Recommendation)", re.IGNORECASE),
+]
+
 # Role-label patterns (for quantitative-role self-assessment check)
 ROLE_HEADER_RE = re.compile(
     r"(?:数字角色|number role|role|epistemic role)", re.IGNORECASE
@@ -314,6 +323,171 @@ def check_source_register_columns(cleaned: str) -> list[str]:
     return []
 
 
+def check_source_register_missing_ids(cleaned: str) -> list[str]:
+    """Verify every Source Register entry has a non-empty ID.
+
+    Entries without an ID cannot be body-referenced, breaking traceability.
+    Returns error list (non-empty → hard fail).
+    """
+    sec = section_text(cleaned, SOURCE_REGISTER_HEADING)
+    if sec is None:
+        return []
+    table = parse_table(sec)
+    if table is None or len(table) < 2:
+        return []
+
+    header = table[0]
+    data_rows = table[1:]
+
+    id_col = find_col_index(header, [re.compile(r'\bID\b', re.IGNORECASE)])
+    if id_col == -1:
+        return []  # No ID column found (caught by column check already)
+
+    missing: list[int] = []
+    for i, row in enumerate(data_rows, start=2):  # +2 for 0-index + header + delimiter
+        if len(row) <= id_col:
+            missing.append(i)
+            continue
+        id_val = row[id_col].strip()
+        if not id_val or id_val == "-":
+            missing.append(i)
+
+    if missing:
+        line_nums = ", ".join(str(l) for l in missing[:5])
+        if len(missing) > 5:
+            line_nums += ", ..."
+        return [
+            f"Source Register has {len(missing)} entry/entries with missing ID "
+            f"(table rows {line_nums})"
+        ]
+    return []
+
+
+def check_source_register_doi_coverage(cleaned: str) -> list[str]:
+    """Warn if >50% of Source Register entries lack DOI/URL.
+
+    Missing DOI/URL reduces verifiability; warn but do not hard-block.
+    Returns warning list (non-empty → warning only).
+    """
+    sec = section_text(cleaned, SOURCE_REGISTER_HEADING)
+    if sec is None:
+        return []
+    table = parse_table(sec)
+    if table is None or len(table) < 2:
+        return []
+
+    header = table[0]
+    data_rows = table[1:]
+
+    doi_col = find_col_index(header, [re.compile(r"DOI\s*/\s*URL", re.IGNORECASE)])
+    if doi_col == -1:
+        return []
+
+    empty_count = 0
+    for row in data_rows:
+        if len(row) <= doi_col:
+            empty_count += 1
+            continue
+        doi_val = row[doi_col].strip()
+        if not doi_val or doi_val == "-":
+            empty_count += 1
+
+    if data_rows and empty_count / len(data_rows) > 0.5:
+        return [
+            f"Source Register: {empty_count}/{len(data_rows)} entries "
+            f"({empty_count/len(data_rows):.0%}) lack DOI/URL"
+        ]
+    return []
+
+
+def check_source_register_mapping(cleaned: str) -> list[str]:
+    """Cross-compare body [Sxx] IDs against register ID column.
+
+    Body references to IDs not present in the register are mapping errors.
+    This catches structural mapping failures where the body cites a source
+    ID that does not exist in the Source Register.
+    Returns error list (non-empty → hard fail).
+    """
+    sec = section_text(cleaned, SOURCE_REGISTER_HEADING)
+    if sec is None:
+        return []
+    table = parse_table(sec)
+    if table is None or len(table) < 2:
+        return []
+
+    header = table[0]
+    data_rows = table[1:]
+
+    id_col = find_col_index(header, [re.compile(r"\bID\b", re.IGNORECASE)])
+    if id_col == -1:
+        return []
+
+    register_ids: set[str] = set()
+    for row in data_rows:
+        if len(row) > id_col:
+            val = row[id_col].strip()
+            if val:
+                register_ids.add(val)
+
+    body = body_before_source_register(cleaned)
+    body_ids = set(BODY_SXX_RE.findall(body))  # e.g. {"[S01]", "[S05]"}
+    body_id_values = {ref.strip("[]") for ref in body_ids}
+
+    missing = sorted(body_id_values - register_ids)
+    if missing:
+        preview = ", ".join(missing[:10])
+        if len(missing) > 10:
+            preview += ", ..."
+        return [
+            f"Body references source ID(s) {preview} "
+            f"not found in Source Register"
+        ]
+    return []
+
+
+def check_source_register_duplicate_ids(cleaned: str) -> list[str]:
+    """Check for duplicate IDs in Source Register.
+
+    Duplicate IDs corrupt traceability — a body [Sxx] reference cannot
+    unambiguously identify a single source.
+    Returns error list (non-empty → hard fail).
+    """
+    sec = section_text(cleaned, SOURCE_REGISTER_HEADING)
+    if sec is None:
+        return []
+    table = parse_table(sec)
+    if table is None or len(table) < 2:
+        return []
+
+    header = table[0]
+    data_rows = table[1:]
+
+    id_col = find_col_index(header, [re.compile(r"\bID\b", re.IGNORECASE)])
+    if id_col == -1:
+        return []
+
+    seen: dict[str, int] = {}
+    duplicates: list[str] = []
+    for i, row in enumerate(data_rows, start=2):
+        if len(row) <= id_col:
+            continue
+        id_val = row[id_col].strip()
+        if not id_val or id_val == "-":
+            continue
+        if id_val in seen:
+            duplicates.append(f"'{id_val}' (rows {seen[id_val]} and {i})")
+        seen[id_val] = i
+
+    if duplicates:
+        preview = "; ".join(duplicates[:5])
+        if len(duplicates) > 5:
+            preview += "; ..."
+        return [
+            f"Source Register has duplicate ID(s): {preview}"
+        ]
+    return []
+
+
 # ── Body reference checks ────────────────────────────────────────────────
 
 
@@ -373,6 +547,92 @@ def check_body_references(cleaned: str) -> list[str]:
         "format (Author-Year, arXiv ID, DOI, or unique natural language "
         "attribution)"
     ]
+
+
+def _section_has_citation(text: str) -> bool:
+    """Check if a text block has [Sxx] or equivalent inline citations.
+
+    Uses the same format equivalence rules as check_body_references.
+    """
+    if BODY_SXX_RE.search(text):
+        return True
+    if AUTHOR_YEAR_RE.search(text):
+        return True
+    if ARXIV_RE.search(text):
+        return True
+    if DOI_RE.search(text):
+        return True
+    if NL_ATTR_RE.search(text):
+        return True
+    return False
+
+
+def check_key_section_citation_coverage(cleaned: str) -> list[str]:
+    """Check that key sections (exec summary, conclusion, etc.) have citations.
+
+    A key section without any [Sxx] or equivalent inline citation is a
+    traceability gap.  This is a hard fail because evidence-based reports
+    must be auditable in every key section.
+
+    Only checks sections at heading level <= 2 (## or #).
+    Source Register section content is excluded — key sections within
+    the register block are not scanned.
+    Returns error list (non-empty → hard fail).
+    """
+    errors: list[str] = []
+
+    # Build section boundaries: list of (heading_text, start_line, level)
+    lines = cleaned.splitlines()
+    sections: list[tuple[str, int, int]] = []
+    for i, line in enumerate(lines):
+        m = HEADING_RE.match(line.rstrip())
+        if not m:
+            continue
+        level = len(m.group(1))
+        if level > 2:
+            continue  # only check major sections (h1/h2)
+        heading_text = m.group(2)
+        for pattern in KEY_SECTION_PATTERNS:
+            if pattern.search(heading_text):
+                sections.append((heading_text, i, level))
+                break
+
+    if not sections:
+        return []  # no key sections found → nothing to check
+
+    # Locate Source Register heading so we can exclude its content
+    register_start: int | None = None
+    for i, line in enumerate(lines):
+        m = HEADING_RE.match(line.rstrip())
+        if m and len(m.group(1)) <= 2 and SOURCE_REGISTER_HEADING.search(m.group(2)):
+            register_start = i
+            break
+
+    for name, start, level in sections:
+        # Find section end: next heading at same or higher level
+        end = len(lines)
+        for j in range(start + 1, len(lines)):
+            m = HEADING_RE.match(lines[j].rstrip())
+            if m and len(m.group(1)) <= level:
+                end = j
+                break
+
+        # If section starts before the register, clip to register boundary
+        # to avoid scanning register table content for body citations.
+        if register_start is not None and start < register_start:
+            end = min(end, register_start)
+
+        body = "\n".join(lines[start + 1 : end]).strip()
+        if not body:
+            continue  # empty section body, skip
+
+        if not _section_has_citation(body):
+            errors.append(
+                f"Key section '{name}' has no [Sxx] or equivalent "
+                f"inline citations"
+            )
+
+    return errors
 
 
 def get_route_name(cleaned: str) -> str | None:
@@ -614,14 +874,21 @@ def validate_file(path: Path, strict: bool = False) -> int:
     # 2. Source Register
     errors.extend(check_source_register_exists(cleaned))
     errors.extend(check_source_register_columns(cleaned))
+    errors.extend(check_source_register_missing_ids(cleaned))
+    errors.extend(check_source_register_mapping(cleaned))
+    errors.extend(check_source_register_duplicate_ids(cleaned))
+    warnings.extend(check_source_register_doi_coverage(cleaned))
 
     # 3. Body references
     errors.extend(check_body_references(cleaned))
 
-    # 4. Audit self-assessment consistency (warnings only)
+    # 4. Key section citation coverage (hard fail)
+    errors.extend(check_key_section_citation_coverage(cleaned))
+
+    # 5. Audit self-assessment consistency (warnings only)
     warnings.extend(check_audit_self_assessment_consistency(cleaned))
 
-    # 5. Strict mode warnings
+    # 6. Strict mode warnings
     if strict:
         warnings.extend(check_strict_warnings(cleaned))
 
