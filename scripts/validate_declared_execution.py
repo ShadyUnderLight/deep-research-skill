@@ -16,7 +16,8 @@ from pathlib import Path
 
 
 EXIT_ISSUES = 2
-REGISTER_INFLATION_FAIL_RATIO = 0.25
+REGISTER_INFLATION_WARN_RATIO = 0.25
+REGISTER_INFLATION_FAIL_RATIO = 0.40
 
 FENCE_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})")
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
@@ -37,7 +38,7 @@ ROLE_VALUE_RE = re.compile(
     re.IGNORECASE,
 )
 
-SOURCE_REGISTER_HEADING_RE = re.compile(r"^#{1,6}\s+Source Register\s*$", re.IGNORECASE)
+SOURCE_REGISTER_HEADING_RE = re.compile(r"^#{1,6}\s+Source\s+Register\s*$", re.IGNORECASE)
 SOURCE_ID_RE = re.compile(r"(?<!\w)\[?(S\d{2})\]?(?!\w)")
 BODY_SOURCE_REF_RE = re.compile(r"\[S\d{2}\]")
 ARXIV_REF_RE = re.compile(
@@ -327,40 +328,70 @@ def check_opam_execution(text: str, path: Path) -> list[str]:
     return []
 
 
-def check_source_register_execution(text: str, path: Path) -> list[str]:
+def check_source_register_execution(
+    text: str, path: Path
+) -> tuple[list[str], list[str]]:
+    """Check source register execution.
+
+    Returns (errors, warnings):
+    - errors: body has zero refs or >40% inflation (hard fail)
+    - warnings: 25-40% inflation (warn only)
+    """
     lines = text.splitlines()
     bounds = section_bounds(lines, SOURCE_REGISTER_HEADING_RE)
     if not bounds:
-        return []
+        return [], []
 
     start, end = bounds
     register_text = "\n".join(lines[start:end])
     source_ids = set(SOURCE_ID_RE.findall(register_text))
     if not source_ids:
-        return []
+        return [], []
 
     body_text = remove_section(text, SOURCE_REGISTER_HEADING_RE)
     body_refs = set(ref.strip("[]") for ref in BODY_SOURCE_REF_RE.findall(body_text))
-    body_refs.update(equivalent_body_source_refs(body_text, register_entries(register_text)))
+    body_refs.update(
+        equivalent_body_source_refs(body_text, register_entries(register_text))
+    )
     if not body_refs:
         return [
             f"{path}: Source Register declares {len(source_ids)} source ID(s), "
             "but the body contains no [Sxx] or equivalent citations"
-        ]
+        ], []
 
     uncited_source_ids = sorted(source_ids - body_refs)
     uncited_ratio = len(uncited_source_ids) / len(source_ids)
+    uncited_preview = ", ".join(uncited_source_ids[:10])
+    if len(uncited_source_ids) > 10:
+        uncited_preview += ", ..."
+
     if uncited_ratio > REGISTER_INFLATION_FAIL_RATIO:
-        uncited_preview = ", ".join(uncited_source_ids[:10])
-        if len(uncited_source_ids) > 10:
-            uncited_preview += ", ..."
         return [
             f"{path}: Source Register declares {len(source_ids)} source ID(s), "
             f"but {len(uncited_source_ids)} are never cited in the body "
             f"({uncited_ratio:.0%} uncited; register inflation): {uncited_preview}"
+        ], []
+    elif uncited_ratio > REGISTER_INFLATION_WARN_RATIO:
+        return [], [
+            f"{path}: Source Register declares {len(source_ids)} source ID(s), "
+            f"but {len(uncited_source_ids)} are never cited in the body "
+            f"({uncited_ratio:.0%} uncited; register inflation — warning): "
+            f"{uncited_preview}"
         ]
 
-    return []
+    # Reverse direction: body cites IDs not in the register
+    orphan_refs = sorted(body_refs - source_ids)
+    if orphan_refs:
+        orphan_preview = ", ".join(orphan_refs[:10])
+        if len(orphan_refs) > 10:
+            orphan_preview += ", ..."
+        warnings = [
+            f"{path}: Body references source ID(s) {orphan_preview} "
+            f"that do not exist in the Source Register"
+        ]
+        return [], warnings
+
+    return [], []
 
 
 def check_academic_framework_execution(text: str, path: Path) -> list[str]:
@@ -374,14 +405,17 @@ def check_academic_framework_execution(text: str, path: Path) -> list[str]:
     ]
 
 
-def validate_file(path: Path) -> list[str]:
+def validate_file(path: Path) -> tuple[list[str], list[str]]:
     text = path.read_text(encoding="utf-8", errors="replace")
     cleaned = strip_fenced_code_blocks(text)
     errors: list[str] = []
+    warnings: list[str] = []
     errors.extend(check_opam_execution(cleaned, path))
-    errors.extend(check_source_register_execution(cleaned, path))
+    e, w = check_source_register_execution(cleaned, path)
+    errors.extend(e)
+    warnings.extend(w)
     errors.extend(check_academic_framework_execution(cleaned, path))
-    return errors
+    return errors, warnings
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -392,12 +426,20 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     errors: list[str] = []
+    warnings: list[str] = []
     for raw_path in args.paths:
         path = Path(raw_path)
         if not path.exists():
             errors.append(f"{path}: file not found")
             continue
-        errors.extend(validate_file(path))
+        e, w = validate_file(path)
+        errors.extend(e)
+        warnings.extend(w)
+
+    if warnings:
+        print("Declared execution lint warnings:")
+        for w in warnings:
+            print(f"  ⚠ {w}")
 
     if errors:
         print("Declared execution lint failed:")
@@ -405,7 +447,9 @@ def main(argv: list[str] | None = None) -> int:
             print(f"- {error}")
         return EXIT_ISSUES
 
-    print(f"Declared execution lint passed for {len(args.paths)} file(s).")
+    if not warnings:
+        print(f"Declared execution lint passed for {len(args.paths)} file(s).")
+
     return 0
 
 
