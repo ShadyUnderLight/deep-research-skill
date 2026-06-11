@@ -11,6 +11,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `scripts/validate_declared_execution.py` and `scripts/test_declared_execution.py`: Source Register inflation lint now counts functionally equivalent body citations when they map uniquely to register entries, covering arXiv IDs, DOI references, Author-Year citations, and specific natural-language source attribution while keeping vague or ambiguous attribution failing (#230).
 - `checklists/source-traceability.md`, `references/source-traceability-and-claim-citation.md`, and `scripts/validate_declared_execution.py`: added Source Register inflation gate so registers with `>25%` uncited entries cannot be marked source-traceability passed; added regression coverage for partial body citations with mostly unused register entries (#225).
 - `checklists/market-outlook-audit.md`, `checklists/final-audit.md`, and `references/decision-report-template.md`: strengthened market-outlook monitoring signals from qualitative reversal-condition lists into actionable dashboards with threshold, cadence, source, and trigger-to-action mapping requirements (#224).
 - `scripts/test_market_outlook_monitoring_contract.py` and `.github/workflows/ci.yml`: added a regression contract test so the market-outlook monitoring actionability rule stays wired into checklist, final-audit recall, and the decision template (#224).
