@@ -46,6 +46,7 @@ jobs:
       - run: python3 scripts/test_eval_index.py
       - run: python3 scripts/test_rule_trigger_rate_audit.py
       - run: python3 scripts/test_md_to_pdf_preflight.py
+      - run: python3 scripts/test_quantitative_role_audit.py
 
   smoke:
     runs-on: ubuntu-latest
