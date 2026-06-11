@@ -3,7 +3,9 @@
 ## Case metadata
 
 - **Case type**: Route activation validation
-- **Route**: Academic / Literature Review (experimental)
+- **Route**: Academic / Literature Review
+- **Historical route status**: experimental at case creation
+- **Current route status: hardened** (see `ROUTING-MATRIX.md`)
 - **Task type**: Paper comparison and methodological evaluation
 - **Date**: 2026-05-29
 - **Status**: Validation case
@@ -242,7 +244,7 @@ The route activation failed if:
 
 ## Recommendation
 
-**Route definition**: Adequate for experimental stage. The route correctly activates for paper comparison tasks and produces artifacts with clear comparison dimensions.
+**Route definition**: This historical activation case helped validate the route during its experimental stage. The route now correctly activates for paper comparison tasks and produces artifacts with clear comparison dimensions.
 
 **Next steps**:
 1. Consider adding comparison table template

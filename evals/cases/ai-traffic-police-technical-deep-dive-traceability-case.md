@@ -1,15 +1,16 @@
-# Eval: AI Traffic Police Technical Deep-Dive Source Traceability Hard-Fail Case
+# Eval: AI Traffic Police Technical Deep-Dive Source Traceability Format-Boundary Case
 
 ## Goal
 
-Test whether a Technical Deep-dive / Architecture Analysis report with complete appendix source list (S01-S27) can still trigger the source-traceability hard-fail gate by using non-standard inline citation formats (arXiv IDs, paper names) instead of structured `[SN]` inline references.
+Test whether a Technical Deep-dive / Architecture Analysis report with complete appendix source list (S01-S27) handles non-standard inline citation formats (arXiv IDs, paper names) under the current source-traceability format-equivalence rule.
 
 This eval targets a failure mode where:
 
 - the report has a **complete, well-structured source list** in the appendix
 - the body uses **partial inline references** (arXiv IDs, paper names) — which is better than nothing
-- but these references **do not follow the `[SN]` structured format** required by `checklists/source-traceability.md`
-- the hard-fail gate is triggered: "appendix source list exists but zero [SN] inline citations in body = undeliverable"
+- **Historical verdict**: this was originally treated as a source-traceability hard-fail because the body did not use the appendix `[SN]` IDs
+- **Current rule verdict**: arXiv IDs or DOI references can be a conditional pass if they uniquely map to structured Source Register entries; they fail only when the mapping is absent or ambiguous
+- **Current eval target**: distinguish format-boundary conditional pass from true zero-body-traceability failures
 
 This is distinct from previous source-traceability cases:
 
@@ -18,7 +19,7 @@ This is distinct from previous source-traceability cases:
 | Moore Threads | No sourcing at all |
 | 中际旭创 | Inconsistent inline citations |
 | 人形机器人 | Bibliography exists but zero body traceability |
-| **This case** | Body has partial citations (arXiv IDs) but not `[SN]` format — hard-fail triggered despite having better-than-nothing traceability |
+| **This case** | Body has partial citations (arXiv IDs) but not `[SN]` format — conditional pass if those citations map to structured register entries |
 
 ## Real case pattern
 
@@ -37,8 +38,8 @@ A user-provided AI Traffic Police report (AI 在交警电子警察违章图片�
 - ✅ Clear multi-timescale judgment (short/medium/long term, §10)
 - ✅ Judgment-first opening (6 core conclusions in executive summary, no background-first drift)
 
-**What triggered the hard-fail:**
-- ❌ **Source traceability hard-fail triggered** — body uses arXiv IDs (e.g., `arXiv:1911.00927`) and paper names instead of `[S01]`-format structured inline references. The S01-S27 IDs from the appendix source list are never referenced in the body text. Per `checklists/source-traceability.md`, this is a hard-fail: "appendix source list exists but zero [SN] inline citations in body = undeliverable."
+**Historical source-traceability concern:**
+- ⚠️ **Format-boundary concern** — body uses arXiv IDs (e.g., `arXiv:1911.00927`) and paper names instead of `[S01]`-format structured inline references. Under the current rule, this is not automatically a hard-fail: it is conditional pass if the identifiers uniquely map to Source Register entries, and fail only if the mapping is missing or ambiguous.
 
 **What has minor gaps:**
 - ⚠️ **Route planning (announced vs shipped)** — LLM integration cited from FT report (§4.3) describes an announced product integration, but is not explicitly labeled as "announced / not yet deployed at scale"
@@ -46,13 +47,13 @@ A user-provided AI Traffic Police report (AI 在交警电子警察违章图片�
 
 ## What this eval is testing
 
-### Failure Mode 1: Non-standard inline citations triggering hard-fail
+### Failure Mode 1: Non-standard inline citations as a format boundary
 
-The report uses arXiv IDs and paper names as inline references — this is a legitimate form of citation in academic contexts. However, the project's `source-traceability.md` checklist requires `[SN]`-format structured inline references. The report has a complete S01-S27 list in the appendix, but these IDs are never used in the body.
+The report uses arXiv IDs and paper names as inline references — this is a legitimate form of citation in academic contexts. The current `source-traceability.md` checklist treats arXiv IDs / DOI references as functionally equivalent inline citations when they uniquely map to structured register entries.
 
-This is a **format compliance failure**: the content is there, the traceability exists in principle, but the format doesn't match the project's structural requirement.
+This is a **format-boundary case**: the content is there, the traceability exists in principle, but reviewers must verify that the non-`[SN]` citations map cleanly to the appendix source entries.
 
-The lesson: **having source information in the body (arXiv IDs, paper names) is better than nothing, but it does not satisfy the `[SN]` inline citation requirement if the appendix IDs are not referenced from the body.**
+The lesson: **having source information in the body (arXiv IDs, paper names) can satisfy the hard-fail gate conditionally, but full pass still requires structured `[SN]` citations or an equally unambiguous register mapping.**
 
 ### Failure Mode 2: Announced vs shipped separation in Technical Deep-dive
 
@@ -66,7 +67,7 @@ The report covers three route types (Technical Deep-dive primary + Provider Sele
 
 A good answer should:
 
-1. **Structured inline citations in `[SN]` format** — body text references appendix source IDs (S01-S27), not just arXiv IDs or paper names
+1. **Structured inline citations in `[SN]` format for full pass** — body text references appendix source IDs (S01-S27), or non-`[SN]` citations uniquely map to register entries for conditional pass
 2. **Announced vs shipped separated** — roadmap/route-planning claims explicitly labeled as "announced" vs "shipped/delivered" vs "rumored/speculative"
 3. **Data freshness annotations** — data older than 2 years from report date has a staleness notice
 4. **Multi-route content labeled** — if non-primary-route content is included (provider analysis, regulatory), it is explicitly labeled as belonging to a different route family
@@ -75,8 +76,8 @@ A good answer should:
 
 Mark this eval as failed if the answer:
 
-- has a complete appendix source list (S01-S27) but zero `[SN]` inline references in the body text
-- has arXiv IDs or paper names in the body but no structured `[SN]` citations pointing to the appendix
+- has a complete appendix source list (S01-S27) but no body-level source references of any kind
+- has arXiv IDs or paper names in the body that cannot be uniquely mapped to structured Source Register entries
 - fails to separate announced vs shipped in roadmap/route-planning sections
 - uses vendor or market data 2+ years old without a staleness annotation
 
@@ -90,16 +91,16 @@ This case adds coverage for a distinct source-traceability failure mode: **non-s
 | `innolight-listed-company-execution-case.md` | Inconsistent body citations | 🟡 |
 | `humanoid-robot-market-outlook-dual-route-case.md` | Bibliography but zero body traceability | 🔴 |
 | `storage-chip-listed-company-deep-dive-pass-case.md` | Pass-level: no inline citations but other quality high | ✅ |
-| **This case** | Body has arXiv citations but not `[SN]` format — hard-fail triggered despite having better traceability than some passing cases | ⚠️ |
+| **This case** | Body has arXiv citations but not `[SN]` format — conditional pass if mapped to structured register entries | ⚠️ |
 
-This case documents a **borderline**: the report's traceability is better than the 人形机器人 case (which had zero body citations), but worse than the 存储芯片 case (which at least had evidence labels in the body). Yet it triggers a hard-fail because the format doesn't match the project's structural requirement.
+This case documents a **borderline**: the report's traceability is better than the 人形机器人 case (which had zero body citations), but less structured than a clean `[SN]` implementation. It should now be judged by functional traceability rather than `[SN]` format alone.
 
-The case suggests that the `[SN]` format requirement may need to allow non-standard citations when they provide equivalent or better traceability (arXiv IDs are globally unique and permanently resolvable).
+The case records why the `[SN]` format requirement was refined to allow non-standard citations when they provide equivalent or better traceability (arXiv IDs are globally unique and permanently resolvable).
 
 ## Suggested intervention target
 
-- `references/source-traceability-and-claim-citation.md` — clarify whether non-standard inline citations (arXiv IDs, DOI, paper names with dates) satisfy the source-traceability requirement, or whether `[SN]` format is strictly required; if strict, provide explicit guidance for migrating from arXiv IDs to `[SN]` format
-- `checklists/source-traceability.md` — add clarifying note: "arXiv IDs in body text count as inline citations IF the appendix also lists them under a structured ID; otherwise they are partial compliance"
+- `references/source-traceability-and-claim-citation.md` — preserve the current format-equivalence rule for arXiv IDs / DOI / paper names with dates, while requiring unique mapping to structured register entries
+- `checklists/source-traceability.md` — keep the conditional-pass distinction between equivalent inline formats and true zero-body-traceability failures
 - `checklists/technical-analysis-audit.md` — add non-blocker: "announced vs shipped separation for roadmap claims"
 - `references/technical-analysis-discipline.md` — add guidance for multi-route labeling when non-primary content is included
 
@@ -114,8 +115,8 @@ The case suggests that the `[SN]` format requirement may need to allow non-stand
 ## Suggested scoring
 
 - **Full pass**: `[SN]` inline citations present, announced vs shipped separated, fresh data, multi-route labeled
-- **Conditional pass**: source list exists, body has partial citations (arXiv IDs) but not `[SN]` format; announced/shipped mostly separated (this case's level)
-- **Fail**: source traceability hard-fail triggered AND no mitigation annotation
+- **Conditional pass**: source list exists, body has equivalent citations (arXiv IDs) but not `[SN]` format; announced/shipped mostly separated (this case's level)
+- **Fail**: no body-level source references, or equivalent references cannot be mapped to the register
 
 ## Related evals
 

@@ -69,6 +69,12 @@ Keep evals organized by function rather than by recency alone.
 
 If a new eval does not clearly fit an existing subtype, choose the smallest reasonable category instead of creating unnecessary taxonomy.
 
+When rules evolve, historical evals may keep their original case background, but they must clearly separate historical observations from current acceptance rules. Use short fields when a prior verdict no longer matches the current contract:
+
+- **Historical verdict**: how the case was judged when the eval was created
+- **Current rule verdict**: how the same pattern should be judged under the current rule set
+- **Current eval target**: what the eval now primarily guards against
+
 ## Periodic audits
 
 Run `evals/meta/rule-trigger-audit.md` every 10 new eval cases or quarterly to track whether core disciplines are being triggered. When adding a new case eval, note which disciplines were applicable and whether they were triggered — this data feeds the audit.
