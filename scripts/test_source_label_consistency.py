@@ -162,6 +162,71 @@ def test_primary_filing_with_confirmed_passes() -> None:
     )
 
 
+def test_primary_partner_without_caveat_fails() -> None:
+    """PRIMARY_PARTNER source referenced without inline caveat fails."""
+    expect_fail(
+        "primary partner without caveat",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Partner Blog | PRIMARY_PARTNER | 2025-06 | https://partner.com "
+        "| Medium | Integration announcement |\n\n"
+        "[CONF] According to S01, the integration is complete.\n",
+    )
+
+
+def test_primary_partner_with_caveat_passes() -> None:
+    """PRIMARY_PARTNER source with inline caveat passes."""
+    expect_pass(
+        "primary partner with caveat",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Partner Blog | PRIMARY_PARTNER | 2025-06 | https://partner.com "
+        "| Medium | Integration announcement |\n\n"
+        "[CONF] According to S01（来源：厂商自述，非独立验证），the integration "
+        "is complete.\n",
+    )
+
+
+def test_infer_label_on_secondary_passes() -> None:
+    """[INFER] label on SECONDARY source passes."""
+    expect_pass(
+        "INFER label on secondary source",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Analyst Note | SECONDARY_ANALYST | 2025-03 | https://x.com "
+        "| Medium | Market estimate |\n\n"
+        "[INFER] According to S01, the market might reach $50B by 2028.\n",
+    )
+
+
+def test_secondary_source_in_english_sentence_passes() -> None:
+    """SECONDARY source and [CONF] in different English sentences passes.
+
+    Regression test for the '.' sentence-splitter fix.
+    """
+    expect_pass(
+        "secondary source in different English sentence",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Analyst Report | SECONDARY_MEDIA | 2025-01 | https://x.com "
+        "| Medium | Market forecast |\n\n"
+        "A separate claim that is confirmed. "
+        "S01 provides a different estimate.\n",
+    )
+
+
 def main() -> int:
     tests = [
         test_secondary_source_with_confirmed_label_fails,
@@ -172,6 +237,10 @@ def main() -> int:
         test_label_in_code_block_ignored,
         test_simplified_secondary_type_fails,
         test_primary_filing_with_confirmed_passes,
+        test_primary_partner_without_caveat_fails,
+        test_primary_partner_with_caveat_passes,
+        test_infer_label_on_secondary_passes,
+        test_secondary_source_in_english_sentence_passes,
     ]
     failures = []
     for test in tests:

@@ -60,18 +60,33 @@ _KEY_VALUE_PATTERNS: set[tuple[str, str]] = {
     ("指标", "说明"),
     ("参数", "说明"),
     ("item", "description"),
+    # Extended common patterns (reviewer #5)
+    ("name", "value"),
+    ("名称", "值"),
+    ("称号", "值"),
+    ("field", "value"),
+    ("字段", "值"),
+    ("property", "value"),
+    ("variable", "value"),
+    ("变量", "值"),
+    ("维度", "内容"),
+    ("dimension", "content"),
 }
 
 
 def strip_fenced_code_blocks(text: str) -> str:
-    """Remove content inside fenced code blocks (`` ``` `` and `` ~~~ ``)."""
+    """Replace content inside fenced code blocks with empty lines.
+
+    Preserves original line count so that ``line_no`` reporting
+    in the caller maps back to the original file.
+    """
     lines = text.splitlines()
-    out: list[str] = []
+    result = list(lines)  # start with a copy
     in_fence = False
     fence_char = ""
     fence_len = 0
 
-    for line in lines:
+    for i, line in enumerate(lines):
         stripped = line.rstrip()
         if not in_fence:
             m = re.match(r"^[ ]{0,3}(`{3,}|~{3,})", stripped)
@@ -79,17 +94,23 @@ def strip_fenced_code_blocks(text: str) -> str:
                 fence_char = m.group(1)[0]
                 fence_len = len(m.group(1))
                 in_fence = True
+                result[i] = ""
                 continue
-            out.append(line)
-            continue
+        else:
+            closing = re.compile(
+                r"^[ ]{0,3}"
+                + re.escape(fence_char)
+                + "{"
+                + str(fence_len)
+                + r",}\s*$"
+            )
+            if closing.match(stripped):
+                in_fence = False
+                result[i] = ""
+                continue
+            result[i] = ""
 
-        closing = re.compile(
-            r"^[ ]{0,3}" + re.escape(fence_char) + "{" + str(fence_len) + r",}\s*$"
-        )
-        if closing.match(stripped):
-            in_fence = False
-
-    return "\n".join(out)
+    return "\n".join(result)
 
 
 def get_cells(line: str) -> list[str]:
@@ -111,6 +132,24 @@ def is_delimiter_row(cells: list[str]) -> bool:
         return False
     # A delimiter row has cells that consist entirely of dashes, colons, and spaces.
     return all(re.fullmatch(r":?-{3,}:?\s*", cell) for cell in cells)
+
+
+def is_source_register_table(header_cells: list[str]) -> bool:
+    """Return True if the table is a Source Register / metadata table.
+
+    These tables have headers like ``ID | Source Name | Source Type | ...``
+    and should not be flagged for missing numeric role labels.
+    """
+    if len(header_cells) < 3:
+        return False
+    first = header_cells[0].lower().strip()
+    second = header_cells[1].lower().strip()
+    # Common metadata table patterns
+    if first == "id" and ("source" in second or "name" in second):
+        return True
+    if first in ("id", "编号") and second in ("source name", "来源名称"):
+        return True
+    return False
 
 
 def is_key_value_table(header_cells: list[str]) -> bool:
@@ -181,6 +220,10 @@ def validate_file(path: Path) -> list[str]:
 
         # Skip key-value tables
         if is_key_value_table(header_cells):
+            continue
+
+        # Skip Source Register / metadata tables
+        if is_source_register_table(header_cells):
             continue
 
         # Check if any row (header or data) contains role keywords

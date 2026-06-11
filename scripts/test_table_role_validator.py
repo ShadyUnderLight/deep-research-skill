@@ -140,6 +140,44 @@ def test_english_role_column_passes() -> None:
     )
 
 
+def test_source_register_not_flagged() -> None:
+    """Source Register (7-column metadata table) should not be flagged."""
+    expect_pass(
+        "source register not flagged",
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Filing | PRIMARY | 2025-01 | https://x.com | High | §3 |\n"
+        "| S02 | Report | SECONDARY | 2025-02 | https://y.com | Medium | §4 |\n"
+        "| S03 | Article | SECONDARY | 2025-03 | https://z.com | Medium | §5 |\n",
+    )
+
+
+def test_table_without_delimiter_row_fails() -> None:
+    """Table without delimiter row still gets detected (3+ rows, no role keywords)."""
+    expect_fail(
+        "table without delimiter row",
+        "| A | B | C |\n"
+        "| 1 | 2 | 3 |\n"
+        "| 4 | 5 | 6 |\n"
+        "| 7 | 8 | 9 |\n",
+    )
+
+
+def test_table_adjacent_to_fence_block_works() -> None:
+    """Tables adjacent to code blocks should still be checked."""
+    expect_fail(
+        "table adjacent to fence block",
+        "```\ncode block\n```\n"
+        "| 公司 | 营收 |\n"
+        "|------|------|\n"
+        "| Apple | $100B |\n"
+        "| Google | $80B |\n"
+        "| Meta | $50B |\n",
+    )
+
+
 def main() -> int:
     tests = [
         test_table_with_role_column_passes,
@@ -150,6 +188,9 @@ def main() -> int:
         test_small_table_without_role_passes,
         test_table_in_code_block_ignored,
         test_english_role_column_passes,
+        test_source_register_not_flagged,
+        test_table_without_delimiter_row_fails,
+        test_table_adjacent_to_fence_block_works,
     ]
     failures = []
     for test in tests:

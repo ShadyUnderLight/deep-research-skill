@@ -28,6 +28,7 @@ If load-bearing numbers materially affect the conclusion, their roles should be 
 
 - [BLOCKER] Key numbers in scoring/ranking systems (star ratings, weight scores, cost estimates, growth rates, plugin/ecosystem counts) must carry role labels (observed / proxy / assumption / model-output).
 - [BLOCKER] If >3 critical scoring/ranking numbers lack role labels ("critical" per `references/quantitative-role-labeling.md` §What should be labeled) → hard-fail (see ROUTING-MATRIX.md §Constrained Choice hard-fail).
+- [NON-BLOCKER] All `~X%` or `X%-Y%` precise numbers must carry a role annotation or an explicit "based on assumption / scenario / model output" qualifier. See also Market Outlook subsection below for the same rule.
 - [NON-BLOCKER] Composite score breakdown — which dimensions are observed vs. modeled — should be visible in the table or a note.
 
 ### Market Outlook / Industry Evolution

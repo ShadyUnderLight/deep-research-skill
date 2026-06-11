@@ -23,7 +23,9 @@ CONFIRMED_LABEL_RE = re.compile(
 )
 
 # Self-reporting caveat patterns required for primary company sources.
-CAVEAT_RE = re.compile(r"(?:来源：厂商自述，非独立验证|厂商自述)")
+CAVEAT_RE = re.compile(
+    r"(?:（来源：厂商自述，非独立验证）|\(来源：厂商自述，非独立验证\))"
+)
 
 # Heading patterns for Source Register section.
 HEADING_RE = re.compile(
@@ -43,18 +45,23 @@ _SECONDARY_TYPES: frozenset[str] = frozenset({
 _PRIMARY_COMPANY_TYPES: frozenset[str] = frozenset({
     "PRIMARY_COMPANY",
     "PRIMARY_PARTNER",
+    "PRIMARY",  # simplified 5-class system
 })
 
 
 def strip_fenced_code_blocks(text: str) -> str:
-    """Remove content inside fenced code blocks (`` ``` `` and `` ~~~ ``)."""
+    """Replace content inside fenced code blocks with empty lines.
+
+    Preserves original line count so that any line-number reporting
+    in the caller maps back to the original file.
+    """
     lines = text.splitlines()
-    out: list[str] = []
+    result = list(lines)  # start with a copy
     in_fence = False
     fence_char = ""
     fence_len = 0
 
-    for line in lines:
+    for i, line in enumerate(lines):
         stripped = line.rstrip()
         if not in_fence:
             m = re.match(r"^[ ]{0,3}(`{3,}|~{3,})", stripped)
@@ -62,21 +69,23 @@ def strip_fenced_code_blocks(text: str) -> str:
                 fence_char = m.group(1)[0]
                 fence_len = len(m.group(1))
                 in_fence = True
+                result[i] = ""
                 continue
-            out.append(line)
-            continue
+        else:
+            closing = re.compile(
+                r"^[ ]{0,3}"
+                + re.escape(fence_char)
+                + "{"
+                + str(fence_len)
+                + r",}\s*$"
+            )
+            if closing.match(stripped):
+                in_fence = False
+                result[i] = ""
+                continue
+            result[i] = ""
 
-        closing = re.compile(
-            r"^[ ]{0,3}"
-            + re.escape(fence_char)
-            + "{"
-            + str(fence_len)
-            + r",}\s*$"
-        )
-        if closing.match(stripped):
-            in_fence = False
-
-    return "\n".join(out)
+    return "\n".join(result)
 
 
 def get_cells(line: str) -> list[str]:
@@ -192,7 +201,7 @@ def _split_sentences(text: str) -> list[str]:
         line = line.strip()
         if not line:
             continue
-        chunks = re.split(r"(?<=[。！？!?；;])\s+", line)
+        chunks = re.split(r"(?<=[。！？!?；;．.])\s+", line)
         for chunk in chunks:
             chunk = chunk.strip()
             if chunk:
