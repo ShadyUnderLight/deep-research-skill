@@ -42,6 +42,7 @@ jobs:
       - run: python3 scripts/test_market_outlook_monitoring_contract.py
       - run: python3 scripts/test_declared_execution.py
       - run: python3 scripts/test_doc_eval_sync.py
+      - run: python3 scripts/test_eval_index.py
       - run: python3 scripts/test_rule_trigger_rate_audit.py
       - run: python3 scripts/test_md_to_pdf_preflight.py
 
