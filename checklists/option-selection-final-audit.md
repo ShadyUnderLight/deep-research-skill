@@ -64,6 +64,7 @@ Run this checklist before delivery.
 ## Shortlist structure
 
 - [ ] the shortlist or ranking appears before long option-by-option detail
+- [ ] [BLOCKER] the shortlist boundary is justified — why these options were selected and what was excluded are explained
 - [ ] the top option is named clearly
 - [ ] the runner-up or best alternative is named clearly
 - [ ] eliminated or weak-fit options are identified when useful

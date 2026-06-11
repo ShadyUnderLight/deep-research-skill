@@ -15,6 +15,7 @@ This checklist verifies that the technical analysis route was executed correctly
 ## Technical state verification
 
 - [ ] current technical state is verified (versions, capabilities, benchmarks)
+- [ ] the report's stated coverage date or assessment window is consistent with the source timeline it cites; if sources span a date range, the coverage window is explicit
 - [ ] stale technical claims are flagged and either updated or explicitly marked as historical
 - [ ] roadmap claims are separated into: announced / rumored / speculative
 - [ ] deprecated or superseded features are not presented as current
