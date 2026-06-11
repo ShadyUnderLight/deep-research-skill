@@ -20,6 +20,14 @@ This checklist verifies that the technical analysis route was executed correctly
 - [ ] roadmap claims are separated into: announced / rumored / speculative
 - [ ] deprecated or superseded features are not presented as current
 
+### Technical opening baseline
+
+These items verify that the report's front page provides a trustworthy temporal and decision anchor:
+
+- [ ] opening 明确默认受众与决策场景，不只是技术主题说明
+- [ ] report date / coverage / latest source date 三者不冲突（metadata date 与正文来源时间戳无矛盾）
+- [ ] stable baseline 与 forward-looking material 在 front page 或研究范围中分开：source baseline（规范版本、协议版本、当前实现基线）与 roadmap、实验扩展、前瞻分析使用不同的时间标注，避免读者混淆"已可用"与"规划中"
+
 ## Evidence quality
 
 - [ ] primary technical sources are used for load-bearing claims (documentation, specs, papers, patents)

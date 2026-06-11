@@ -119,10 +119,14 @@ Watch for these failure patterns:
 5. **Roadmap optimism**: treats announced features as shipped capabilities
 6. **Ignoring operational burden**: focuses on capabilities while ignoring deployment, maintenance, and scaling costs
 7. **Patent counting without analysis**: lists patents without understanding technical coverage or freedom-to-operate
+8. **Missing audience and decision scene**: technical analysis opening lacks audience definition, decision scenario, or version baseline — reader cannot tell who the report is for or what decision it supports
+9. **Baseline-date-source conflict**: the report's stated coverage date, technical version, or current-state anchor is inconsistent with its source timeline — the "current state" baseline is temporally broken
 
 ## Output structure
 
 A technical analysis report should visibly show:
+
+- **Opening structure**: the report's front page must define the target audience, decision scenario, and technical baseline (version, date anchor, stable vs. forward-looking boundary) before entering detailed analysis. See `references/report-template.md` §Technical deep-dive opening for the template.
 
 ### For principle analysis
 - Core mechanism explanation
