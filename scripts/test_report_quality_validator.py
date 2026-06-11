@@ -12,6 +12,29 @@ from pathlib import Path
 
 SCRIPT = str(Path(__file__).resolve().parent / "validate_report_quality.py")
 
+# ── Minimal valid report (all required elements present) ─────────────────
+
+MINIMAL_VALID = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+
 # ── Valid baseline (should pass all checks) ──────────────────────────────
 
 VALID_REPORT = """\
@@ -123,12 +146,23 @@ def test_missing_route_declaration_fails() -> None:
 | Audit | Status | 证据 |
 |-------|--------|------|
 | source-traceability | ✅ Passed | §3 |
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
 """
     expect_fail("missing route declaration fails", text)
 
 
 def test_passed_row_empty_evidence_fails() -> None:
-    """Passed audit row with empty evidence column should fail."""
+    """Passed audit row with empty evidence column should fail.
+    Uses a fixture with all required elements to isolate the evidence check."""
     text = """\
 ## Route and audit status
 
@@ -136,14 +170,25 @@ def test_passed_row_empty_evidence_fails() -> None:
 
 | Audit | Status | 证据 |
 |-------|--------|------|
-| source-traceability | ✅ Passed |
-| final-audit | ✅ Passed | §2-§6 |
+| source-traceability | ✅ Passed | |
+| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
 """
     expect_fail("passed row empty evidence fails", text)
 
 
 def test_passed_row_vague_evidence_fails() -> None:
-    """Passed audit row with vague evidence like '通过', '已检查', 'N/A', 'ok' should fail."""
+    """Passed audit row with vague evidence like '通过', '已检查', 'N/A', 'ok' should fail.
+    Uses fixtures with all required elements to isolate the evidence check."""
     vague_values = ["通过", "已检查", "N/A", "ok", "OK", "已通过"]
     for vague in vague_values:
         text = f"""\
@@ -155,6 +200,16 @@ def test_passed_row_vague_evidence_fails() -> None:
 |-------|--------|------|
 | source-traceability | ✅ Passed | {vague} |
 | final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
 """
         expect_fail(f"passed row vague evidence '{vague}' fails", text)
 
@@ -182,6 +237,57 @@ def test_zero_body_refs_fails() -> None:
     import re as _re
     text = _re.sub(r"\[S\d{2}\]", "(redacted)", VALID_REPORT)
     expect_fail("zero body refs fails", text)
+
+
+def test_body_refs_outside_register_only_fails() -> None:
+    """[Sxx] in Source Register 'Claims Supported' column must NOT count as body ref.
+    This prevents false negatives: body has zero citations but register table includes [Sxx]."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §2 已验证 |
+
+## Findings
+
+No source references in the actual body text.
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 [S01] |
+"""
+    expect_fail("body refs in register only (not body) fails", text)
+
+
+def test_passed_row_with_annotation_fails() -> None:
+    """Passed row with parenthetical annotation and empty evidence must fail.
+    AUDIT_PASSED_RE should not require $ anchor: '✅ Passed (via #3)' is still Passed."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed (via checklist #3) | |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_fail("annotated passed row with empty evidence fails", text)
 
 
 def test_author_year_ref_passes() -> None:
@@ -359,6 +465,8 @@ def main() -> int:
         ("missing source register fails", test_missing_source_register_fails),
         ("source register wrong columns fails", test_source_register_wrong_columns_fails),
         ("zero body refs fails", test_zero_body_refs_fails),
+        ("body refs in register table excluded", test_body_refs_outside_register_only_fails),
+        ("annotated passed row with empty evidence fails", test_passed_row_with_annotation_fails),
         ("author-year ref passes", test_author_year_ref_passes),
         ("arxiv id ref passes", test_arxiv_id_ref_passes),
         ("doi ref passes", test_doi_ref_passes),

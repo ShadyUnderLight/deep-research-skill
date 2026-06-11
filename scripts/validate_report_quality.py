@@ -22,7 +22,6 @@ from pathlib import Path
 
 EXIT_PASS = 0
 EXIT_STRUCTURE = 2
-EXIT_QUALITY = 3
 
 # ── Regex patterns ────────────────────────────────────────────────────────
 
@@ -40,7 +39,7 @@ SHARED_WORKFLOW_RE = re.compile(
     r"\*\*Route\*\*.*[Ss]hared[- ]?[Ww]orkflow"
 )
 
-AUDIT_PASSED_RE = re.compile(r"(✅\s*)?(Passed|已通过|通过)\s*$", re.IGNORECASE)
+AUDIT_PASSED_RE = re.compile(r"(✅\s*)?(Passed|已通过|通过)", re.IGNORECASE)
 VAGUE_EVIDENCE_RE = re.compile(
     r"^(通过|已检查|N/A|n/a|ok|OK|已通过|是|yes|Yes|YES)?\s*$"
 )
@@ -58,7 +57,7 @@ DOI_RE = re.compile(
     r"(?:doi|DOI):\s*10\.\d{4,}/|https://doi\.org/10\.\d{4,}/"
 )
 NL_ATTR_RE = re.compile(
-    r"据\s*(?:FY?\d{2,4}\s*)?(?:年报|招股书|公告|季报|半年报|官方报告|白皮书|研究)",
+    r"据\s*(?:FY?\d{2,4}\s*)?(?:年报|招股书|公告|季报|半年报|官方报告|白皮书|研究|财报|研报|行业报告|调查报告)",
     re.IGNORECASE,
 )
 
@@ -75,6 +74,7 @@ def strip_fenced_code_blocks(text: str) -> str:
     in_fence = False
     fence_char = ""
     fence_len = 0
+    fence_opener: str | None = None  # line content of unclosed fence opener
 
     for line in lines:
         stripped = line.rstrip()
@@ -84,18 +84,25 @@ def strip_fenced_code_blocks(text: str) -> str:
                 fence_char = m.group(1)[0]
                 fence_len = len(m.group(1))
                 in_fence = True
+                fence_opener = line
                 continue
             out.append(line)
             continue
-        closing = re.compile(
+        # Build closing pattern once per fence block, not per line
+        closing_re = re.compile(
             r"^[ ]{0,3}"
             + re.escape(fence_char)
             + "{"
             + str(fence_len)
             + r",}\s*$"
         )
-        if closing.match(stripped):
+        if closing_re.match(stripped):
             in_fence = False
+            fence_opener = None
+
+    # If fence never closed, put the opener back to avoid silent content loss
+    if fence_opener is not None:
+        out.append(fence_opener)
 
     return "\n".join(out)
 
@@ -149,10 +156,13 @@ def parse_table(text: str) -> list[list[str]] | None:
 
     Returns list of rows (each row = list of cell strings).
     First row is the header.  Returns None if no table found.
+    Handles escaped pipes (\\|) inside cells by masking them before splitting.
     """
     lines = text.splitlines()
     rows: list[list[str]] = []
     state = "before_header"
+    # Sentinel to protect escaped pipes from splitting
+    PIPE_SENTINEL = "\x00PIPE\x00"
 
     for line in lines:
         stripped = line.rstrip()
@@ -167,7 +177,12 @@ def parse_table(text: str) -> list[list[str]] | None:
             if state == "after_header":
                 state = "after_delimiter"
             continue
-        cells = [c.strip() for c in stripped.strip("|").split("|")]
+        # Protect escaped pipes before splitting, restore after
+        guarded = stripped.replace("\\|", PIPE_SENTINEL)
+        cells = [
+            c.strip().replace(PIPE_SENTINEL, "|")
+            for c in guarded.strip("|").split("|")
+        ]
         if state == "before_header":
             rows.append(cells)
             state = "after_header"
@@ -292,6 +307,25 @@ def check_source_register_columns(cleaned: str) -> list[str]:
 # ── Body reference checks ────────────────────────────────────────────────
 
 
+def body_before_source_register(text: str) -> str:
+    """Return body text excluding content under ## Source Register.
+
+    Uses body_text() on the portion before the Source Register heading,
+    so [Sxx] refs inside Source Register tables are not counted as body refs.
+    """
+    lines = text.splitlines()
+    register_at: int | None = None
+    for i, line in enumerate(lines):
+        m = HEADING_RE.match(line.rstrip())
+        if m and len(m.group(1)) <= 2 and SOURCE_REGISTER_HEADING.search(m.group(2)):
+            register_at = i
+            break
+    if register_at is None:
+        return body_text(text)
+    # Process only lines before Source Register
+    return body_text("\n".join(lines[:register_at]))
+
+
 def check_body_references(cleaned: str) -> list[str]:
     """Verify body contains [Sxx] or functionally equivalent citations.
 
@@ -300,8 +334,12 @@ def check_body_references(cleaned: str) -> list[str]:
     - arXiv ID: arXiv:XXXX.XXXXX
     - DOI: doi:10.XXX/... or https://doi.org/10.XXX/...
     - Natural language unique attribution: 据 FY2025 年报, etc.
+
+    NOTE: Source Register table content is excluded from body text so that
+    [Sxx] references in the register's "Claims Supported" column do not
+    produce false positives for the body-citation requirement.
     """
-    body = body_text(cleaned)
+    body = body_before_source_register(cleaned)
 
     if BODY_SXX_RE.search(body):
         return []
@@ -347,7 +385,7 @@ def check_strict_warnings(cleaned: str) -> list[str]:
     route = get_route_name(cleaned)
     if route:
         route_lower = route.lower()
-        body = body_text(cleaned)
+        body = body_before_source_register(cleaned)
 
         if "academic" in route_lower or "literature" in route_lower:
             if not AUTHOR_YEAR_RE.search(body) and not BODY_SXX_RE.search(body):
@@ -374,7 +412,11 @@ def check_strict_warnings(cleaned: str) -> list[str]:
 
 
 def validate_file(path: Path, strict: bool = False) -> int:
-    text = path.read_text(encoding="utf-8", errors="replace")
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        print(f"{path}: cannot read file — {exc}")
+        return EXIT_STRUCTURE
     cleaned = strip_fenced_code_blocks(text)
 
     errors: list[str] = []
@@ -427,8 +469,8 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     path = Path(args.path)
-    if not path.exists():
-        print(f"{path}: file not found")
+    if not path.is_file():
+        print(f"{path}: not a regular file")
         return EXIT_STRUCTURE
 
     return validate_file(path, strict=args.strict)
