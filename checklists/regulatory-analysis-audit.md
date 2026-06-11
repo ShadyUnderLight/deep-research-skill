@@ -41,6 +41,7 @@ This checklist verifies that the regulatory analysis route was executed correctl
 - [ ] scenario analysis covers optimistic / base / pessimistic outcomes
 - [ ] scenarios are grounded in evidence, not just speculation
 - [ ] the report does not give false precision on regulatory timing
+- [ ] [NON-BLOCKER] Scenario probabilities (e.g., `~25%`, `~50%`, `~25%`) must include the estimation method, assumptions, or source basis. If such justification cannot be provided, use qualitative directional labels (low / medium / high) instead of precise percentages. See also `checklists/market-outlook-audit.md` (§结构化多情景分析) and `checklists/quantitative-role-audit.md` (§Market Outlook) for related hard-fail gates.
 
 ## Business/industry implications
 

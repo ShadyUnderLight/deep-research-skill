@@ -34,6 +34,7 @@ If load-bearing numbers materially affect the conclusion, their roles should be 
 
 - [BLOCKER] Load-bearing numbers (market size, growth rates, scenario probabilities, adoption projections) must carry role labels (observed / estimate / scenario-assumption / model-output).
 - [NON-BLOCKER] Scenario probabilities (e.g., "20-25%") should include estimation method or source basis, not bare qualitative judgment.
+- [NON-BLOCKER] All `~X%` or `X%-Y%` precise numbers must carry a role annotation or an explicit "based on assumption / scenario / model output" qualifier. See `references/quantitative-role-labeling.md` §表格中的角色标签 for acceptable display patterns.
 - [NON-BLOCKER] This route already has a "mixes observed facts with scenario assumptions" hard-fail (ROUTING-MATRIX.md §Market Outlook, enforced by `checklists/market-outlook-audit.md`). These role-label checks serve as defense-in-depth.
 
 ### Listed Company / Investment-style Research

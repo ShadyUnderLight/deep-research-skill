@@ -36,6 +36,8 @@ Run through every item before delivering the final report.
 ## Source type discipline
 
 - [ ] primary sources (official filings, company disclosures, primary documents) are distinguished from secondary (media, analyst reports)
+- [ ] [BLOCKER] `SECONDARY_MEDIA` / `SECONDARY_ANALYST` / `SECONDARY_FEED` sources must not be labeled `[确认事实]` / `[CONF]` / `[Confirmed]` in the body. The upper bound for secondary-source labels is `[推断]` / `[INFER]`, per the source-type-to-label mapping table in `references/quantitative-role-labeling.md` (§来源类型到证据标签的校准规则). Exceptions for multi-source cross-validated claims must be explicitly documented.
+- [ ] [BLOCKER] `PRIMARY_COMPANY` / `PRIMARY_PARTNER` sources (company self-reports, partner announcements) must carry an inline caveat `(来源：厂商自述，非独立验证)` — they cannot be silently labeled `[确认事实]` without the caveat.
 - [ ] inferred claims are labeled `[IN]` and not presented as confirmed facts
 - [ ] no source is given higher weight than its type warrants
 - [ ] for load-bearing tier / positioning judgments, the body text makes visible which key claims are direct-evidence-backed vs inference-heavy rather than hiding the weighting inside a bibliography or source register
