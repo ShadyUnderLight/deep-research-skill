@@ -10,9 +10,12 @@ This file tracks likely next improvements and helps keep repo evolution intentio
   - `evals/meta/decision-utility-discipline.md` (diagnosis, distinct from existing rubric)
   - `references/scope-completeness-discipline.md` (reusable minimum-coverage rule)
   - Wired into execution chain: SKILL.md, ROUTING-MATRIX.md route Attach, route-activation-audit.md, final-audit.md
+- **First rule-trigger-rate audit baseline** ✅
+  - `evals/meta/rule-trigger-rate-audit-2026-06.md`
+  - Covered 69 tracked Markdown eval cases at commit `6588ce2`
+  - Next run: after 10 additional tracked case evals or the next major routing/checklist change
 
 ### P1 — Remaining
-- **Run first rule-trigger-rate audit** against existing 32+ eval cases to validate the audit framework and establish baseline trigger rates for the 8 core disciplines. (toward #123)
 - Use `SYSTEM-MAP.md` to tighten family-level coverage and identify where a dedicated family map, route-supporting reference, checklist hardening, or delivery note is still missing.
 - Add more evals for freshness, counter-evidence, and decision-quality regressions.
 - Test the skill against more real fast-moving company/product cases.
@@ -23,6 +26,7 @@ This file tracks likely next improvements and helps keep repo evolution intentio
 - Run at least 2-3 more real comparative-distillation cases and promote only the recurring candidate rules.
 - Validate the new market-outlook routing against 2-3 more real cases before hardening further wording or adding more specialized sub-checklists.
 - **Validate the new technical deep-dive routing** against 2-3 real technical analysis cases (architecture comparison, feasibility assessment, patent analysis) and harden the route definition if activation or artifact contract execution is weak.
+  - ✅ MCP protocol case complete — `evals/comparative-distillation/mcp-protocol-report-technical-deep-dive-comparative-distillation.md` covers architecture comparison, security threat model, and roadmap validation burdens. Rules from #242–#245 validated as closing the identified gaps. (toward #246)
 
 ### P2
 - Expand finance/investment-specific guidance for valuation, consensus, and reporting-period handling.

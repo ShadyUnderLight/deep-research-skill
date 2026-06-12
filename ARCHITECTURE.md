@@ -87,7 +87,7 @@ The current first-class routes are:
 - constrained choice / shortlist
 - listed-company / investment-style research
 - private company / startup evaluation
-- academic / literature review (⚠️ experimental)
+- academic / literature review (hardened; still needs more real-case validation)
 
 As a rule:
 
@@ -268,10 +268,10 @@ Evals should continue to drive changes, rather than abstract architecture change
 
 ## What is intentionally not done yet
 
-This architecture is still early-stage. It does **not** yet do all of the following:
+This architecture is still evolving. It does **not** yet do all of the following:
 
 - formal family grouping across all `references/`, `checklists/`, and `evals`
-- a dedicated system-map file for failure families and intervention points
+- full eval indexing and route-family coverage metadata beyond the lightweight `SYSTEM-MAP.md`
 - a fully independent delivery subsystem with separate top-level docs
 - subfolder formalization for eval types such as `case`, `rubric`, `distillation`, and `meta-eval`
 
@@ -293,4 +293,3 @@ When making future changes, prefer this order of questions:
 Place the change in the narrowest layer that fully explains the problem.
 
 Do not default to expanding `SKILL.md` unless the change truly belongs to the workflow spine.
-to the workflow spine.

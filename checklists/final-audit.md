@@ -151,6 +151,12 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for equipment-selection / procurement / home-server-planning tasks, minimum viable configuration vs recommended configuration are separated when that distinction materially affects the answer
 - [ ] for equipment-selection / procurement / home-server-planning tasks, hardware route and system choice are visibly bound into one stack recommendation rather than treated as detached sections
 - [ ] for equipment-selection / procurement / home-server-planning tasks, power, noise, maintenance burden, backup overhead, and expansion friction are treated as ranking variables when relevant
+- [ ] for equipment-selection / procurement / home-server-planning tasks, the report segments recommendation by workload or operator persona when the answer materially differs by use case
+- [ ] for equipment-selection / procurement / home-server-planning tasks, the hardware ↔ system fit includes software stack, deployment method, and maintenance mode, not only hardware specification
+- [ ] for equipment-selection / procurement / home-server-planning tasks, when benchmark performance numbers (tok/s, TTFT, throughput, latency) materially affect the recommendation, each benchmark reference discloses model, quantization, context/prompt length, backend, metric type, batch/concurrency, and source role; server-side throughput is not directly compared with single-stream desktop tok/s as if they were the same metric
+- [ ] for equipment-selection / procurement / home-server-planning tasks, cost sensitivity variables (such as monthly active GPU hours, daily usage duration, storage/network/power costs, depreciation/residual value) are explicitly shown and drive the break-even analysis
+- [ ] for equipment-selection / procurement / home-server-planning tasks, budget assumptions declare what is included and what is excluded; bare "约 ¥X" or "总成本 ¥Y" without scope triggers hard-fail （阻断级）
+- [ ] for equipment-selection / procurement / home-server-planning tasks, when hardware is the core output, a build-ready configuration table is present with hardware components, software/OS, included/excluded items, operating burden, and expansion path
 - [ ] for market-entry / regional-expansion / country-prioritization tasks, priority relative to alternatives, country shortlist, hard gates, and sequencing logic are explicit rather than implied
 - [ ] for market-entry / regional-expansion / country-prioritization tasks, regional hub vs first beachhead vs later expansion market are separated when relevant
 - [ ] for market-outlook / industry-evolution tasks, a current market snapshot was verified before forward-looking sections
@@ -166,6 +172,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for technical deep-dive / architecture analysis tasks, the report makes a technical judgment (not just a survey) and the judgment is supported by evidence
 - [ ] for technical deep-dive / architecture analysis tasks, comparison dimensions are explicit and the analysis is dimension-by-dimension (not just a feature list)
 - [ ] for technical deep-dive / architecture analysis tasks, technical state is current and vendor claims are distinguished from independently verified technical facts
+- [ ] for technical deep-dive / architecture analysis tasks, roadmap / feature-state claims separate stable/shipped from experimental, deprecated/superseded, announced roadmap, proposed/SEP draft, and rumored/community signal
 - [ ] for regulatory / policy impact analysis tasks, current regulations are separated from pending/in-progress legislation
 - [ ] for regulatory / policy impact analysis tasks, business impact is analyzed (direct vs indirect) and uncertainty is explicitly bounded
 - [ ] for regulatory / policy impact analysis tasks, scenario analysis covers optimistic / base / pessimistic outcomes
@@ -240,6 +247,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] the thesis, key risks, and key unknowns are easy to identify within 10-15 seconds of scanning
 - [ ] methodology detail does not displace judgment visibility on the front page; if the first screen displays evidence grading, audit status, route metadata, or process notes before the thesis, verify that an explicit exception applies (e.g., academic review method statement is the core output)
 - [ ] the front page feels like a report opening rather than a process note or metadata dump
+- [ ] (technical-deep-dive 适用) technical report front page 不只展示 evidence legend / route metadata / 背景说明；它必须先展示技术判断、决策场景、关键风险和版本基线（见 `references/report-template.md` §Technical deep-dive opening）（非阻塞）
 
 ## Judgment visibility in layout
 
@@ -280,6 +288,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] source notes, evidence labels, and section labels visible to the user are intentional reader-facing devices rather than leaked process scaffolding
 - [ ] tables, bullets, spacing, and heading hierarchy improve scanability rather than making the report feel like a raw export
 - [ ] presentation credibility leaks such as spelling mistakes, inconsistent naming, awkward table rhythm, orphaned headings, or obvious spacing artifacts are treated as delivery failures rather than cosmetic nits
+- [ ] (外部报告导入卫生) final report contains no external deep-research internal citation artifacts: no `turn\d+` session references, no `\ue000cite` / `\ue001cite` placeholders, no `sandbox:` or temporary `file-` paths that are unreachable outside the source session; if such content exists, it must have been resolved into real sources / local assets (see `references/source-traceability-and-claim-citation.md` §External research output / Imported report hygiene)
 - [ ] if PDF is delivered, the PDF was reviewed as a deliverable in its own right rather than assumed correct because markdown looked clean
 - [ ] if markdown looked acceptable but PDF degraded structure, spacing, or readability, that is treated as a delivery failure rather than a minor rendering quirk
 

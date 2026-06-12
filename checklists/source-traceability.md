@@ -16,6 +16,7 @@ Run through every item before delivering the final report.
   - >3 个 load-bearing claims 在正文中没有 `[Sxx]` 或等效引用；仅使用 `[CONF]/[INFER]` 等置信/角色标签不满足追溯要求（注：`[IN]` / `[UN]` 是 traceability 标注，附有 register 推理链，与 `[INFER]` 置信标签不同，是合规格式）——读者无法从主张追踪到具体来源
   - 例外：等效格式（Author-Year / arXiv ID / DOI / 自然语言唯一标识引用 + 完整 Source Register）通过 conditional pass 等级
   - 另见 `references/source-traceability-and-claim-citation.md` §Source ID format consistency
+  - (外部报告导入卫生) 正文存在不可解析的外部深度研究报告引用——`turn\d+` 会话引用、`\ue000cite` / `\ue001cite` 占位符、`sandbox:` 图片路径或临时 `file-` 路径——且未转换为可复核来源或本地资产；注意：等效格式豁免不适用于此规则（`turn43view0` 无论搭配何种 register 格式都不是可追溯引用）→ 任一违规 **不可交付**（参见 `references/source-traceability-and-claim-citation.md` §External research output / Imported report hygiene）
 
 - [ ] **conditional pass**: functionally equivalent non-`[SN]` inline format (Author-Year / arXiv ID / DOI / natural language uniquely identifying the source) + structured register exists → pass with recommendation to add `[SN]` references
 - [ ] **full pass**: structured `[SN]` inline citations + complete register
@@ -36,6 +37,8 @@ Run through every item before delivering the final report.
 ## Source type discipline
 
 - [ ] primary sources (official filings, company disclosures, primary documents) are distinguished from secondary (media, analyst reports)
+- [ ] [BLOCKER] `SECONDARY_MEDIA` / `SECONDARY_ANALYST` / `SECONDARY_FEED` sources must not be labeled `[确认事实]` / `[CONF]` / `[Confirmed]` in the body. The upper bound for secondary-source labels is `[推断]` / `[INFER]`, per the source-type-to-label mapping table in `references/quantitative-role-labeling.md` (§来源类型到证据标签的校准规则). Exceptions for multi-source cross-validated claims must be explicitly documented.
+- [ ] [BLOCKER] `PRIMARY_COMPANY` / `PRIMARY_PARTNER` sources (company self-reports, partner announcements) must carry an inline caveat `(来源：厂商自述，非独立验证)` — they cannot be silently labeled `[确认事实]` without the caveat.
 - [ ] inferred claims are labeled `[IN]` and not presented as confirmed facts
 - [ ] no source is given higher weight than its type warrants
 - [ ] for load-bearing tier / positioning judgments, the body text makes visible which key claims are direct-evidence-backed vs inference-heavy rather than hiding the weighting inside a bibliography or source register

@@ -13,6 +13,7 @@ Evals should help identify:
 
 ## Directory structure
 
+- `INDEX.md` — case-level asset index for route, failure-family, discipline, status, and intervention-target scans
 - `cases/` — single-case failures, route-specific lessons, or delivery failures tied to one task
 - `comparative-distillation/` — paired-report comparisons or single-output distillations used to extract reusable repo changes
 - `meta/` — cross-case execution, activation, and discipline notes
@@ -54,6 +55,27 @@ It should point toward at least one likely intervention, such as:
 - delivery fix
 - no action
 
+## Asset index
+
+Keep `evals/INDEX.md` synchronized with tracked case evals in `evals/cases/`.
+
+The index is the first place to answer:
+
+- which route has active eval coverage
+- which failure family a case protects
+- which discipline, checklist, validator, or rule is the main intervention target
+- whether a case is active, candidate, stale, needs review, or superseded
+
+Status values:
+
+- `active` — normalized case that belongs in the regression/audit asset set
+- `candidate` — useful failure material that still needs normalization before it becomes active
+- `needs-review` — tracked case whose route, failure family, or current-rule verdict should be rechecked
+- `stale` — case expresses an old contract and should be rewritten or retired
+- `superseded` — case is covered by a newer, clearer eval
+
+When adding a tracked `evals/cases/*.md` file, add exactly one row to `evals/INDEX.md`. Keep temporary reports, scratch outputs, and unnormalized local material out of the active index until they have a clear eval purpose.
+
 ## What not to put here
 
 Do not use `evals/` for:
@@ -68,6 +90,12 @@ Do not use `evals/` for:
 Keep evals organized by function rather than by recency alone.
 
 If a new eval does not clearly fit an existing subtype, choose the smallest reasonable category instead of creating unnecessary taxonomy.
+
+When rules evolve, historical evals may keep their original case background, but they must clearly separate historical observations from current acceptance rules. Use short fields when a prior verdict no longer matches the current contract:
+
+- **Historical verdict**: how the case was judged when the eval was created
+- **Current rule verdict**: how the same pattern should be judged under the current rule set
+- **Current eval target**: what the eval now primarily guards against
 
 ## Periodic audits
 

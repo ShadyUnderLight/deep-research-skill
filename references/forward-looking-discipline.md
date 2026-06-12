@@ -54,6 +54,21 @@ When multiple forward-looking claims appear, signal their relative confidence:
 
 The report should not mix high-confidence and low-confidence forward claims in one undifferentiated outlook section.
 
+## Technical roadmap adaptation
+
+The categories above (announced / estimated / inferred) are designed for financial forecasts and corporate guidance. Technology roadmaps require additional dimensions:
+
+- **Feature lifecycle stage**: is the capability stable / experimental / deprecated / proposed?
+- **Specification status**: is the spec adopted / draft / SEP / archived?
+- **Implementation status**: is there a production implementation / reference implementation / proof-of-concept / none?
+
+Apply these rules when writing about technical roadmaps:
+
+1. **Confirmation scope is narrower for roadmap claims.** You can confirm that "the organization published a roadmap item," but you cannot confirm that "the roadmap outcome will be delivered." The former is an observed event; the latter is a forward-looking claim.
+2. **Do not mix lifecycle stages.** A deprecated feature is not "available but older" — it is explicitly superseded. An experimental extension is not "early production" — it is not yet stable.
+3. **Official roadmaps can confirm intent, not delivery.** Even when the source is the specification body itself, roadmap priority is not a commitment. Label accordingly.
+4. **When in doubt, use the stratification table in `references/technical-analysis-discipline.md` §Roadmap/feature state stratification.**
+
 ## Assumption chains
 
 When the report derives a forward-looking number (revenue projection, market size forecast, adoption timeline), make the assumption chain visible:
@@ -101,6 +116,7 @@ Fix: `假设年均增长率15%（基于[来源]的行业预测），到2030年�
 ## Relationship to other discipline files
 
 - `references/finance-date-discipline.md` covers the broader time-layer separation for financial numbers, including historical reported facts and current market snapshots. This file focuses specifically on the forward-looking subset.
+- `references/technical-analysis-discipline.md` §Roadmap/feature state stratification provides a state classification table specific to technical roadmap claims.
 - `checklists/forward-looking-claims.md` is the delivery-time gate: run it to catch unlabeled forward claims before the report goes out.
 - `checklists/final-audit.md` includes forward-looking gates for precision and estimate sourcing.
 
