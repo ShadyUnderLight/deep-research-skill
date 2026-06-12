@@ -16,13 +16,13 @@ fail() { echo "  ❌ $1"; FAILED=1; }
 echo "=== Contract A: technical-analysis-discipline.md ==="
 FILE_A="$ROOT/references/technical-analysis-discipline.md"
 
-if grep -q "### 6. Definition-sensitive concepts" "$FILE_A" 2>/dev/null; then
+if grep -q -E "### [67]\. Definition-sensitive concepts" "$FILE_A" 2>/dev/null; then
   pass "A1: Has 'Definition-sensitive concepts' section"
 else
-  fail "A1: Missing '### 6. Definition-sensitive concepts' section"
+  fail "A1: Missing Definition-sensitive concepts section"
 fi
 
-if grep -q "原始学术定义\|academic definition\|engineering definition\|Operational definition\|操作性定义" "$FILE_A" 2>/dev/null; then
+if grep -q -E "原始学术定义|academic definition|engineering definition|[Oo]perational definition|操作性定义" "$FILE_A" 2>/dev/null; then
   pass "A2: Contains definition-related terminology"
 else
   fail "A2: Missing definition-related terminology"
@@ -48,13 +48,13 @@ echo ""
 echo "=== Contract C: technical-analysis-audit.md ==="
 FILE_C="$ROOT/checklists/technical-analysis-audit.md"
 
-if grep -q "定义敏感\|definition-sensitive\|概念边界\|术语边界" "$FILE_C" 2>/dev/null; then
+if grep -q -E "定义敏感|definition-sensitive|概念边界|术语边界" "$FILE_C" 2>/dev/null; then
   pass "C1: Has definition-sensitive concept check"
 else
   fail "C1: Missing definition-sensitive concept check"
 fi
 
-if grep -q "操作性定义\|operational definition\|工程范式" "$FILE_C" 2>/dev/null; then
+if grep -q -E "操作性定义|operational definition|工程范式" "$FILE_C" 2>/dev/null; then
   pass "C2: Has operational definition check"
 else
   fail "C2: Missing operational definition check"

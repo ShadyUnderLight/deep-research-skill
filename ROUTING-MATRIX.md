@@ -482,6 +482,8 @@ For this route, be especially strict about:
 - whether minimum viable vs recommended configuration is separated when it changes the answer materially
 - whether household operating burdens like noise, power, maintenance, backup, and expansion friction are treated as ranking variables rather than side notes
 - whether rejected routes lose for explicit operator constraints rather than broad category descriptions
+- whether the report segments recommendation by workload or operator persona when the answer materially differs by use case
+- whether benchmark performance numbers that carry a recommendation show test method and comparability boundary
 
 ### Trigger
 Use when the task is mainly about:
@@ -511,7 +513,7 @@ Use when the task is mainly about:
 ### Attach
 - current-state verification when current market pricing, current platforms, or current device availability materially affect the answer
 - decision utility
-- quantitative role labeling when budgets, power estimates, operating costs, or scoring materially affect the recommendation
+- quantitative role labeling when budgets, power estimates, operating costs, scoring, or benchmark performance numbers materially affect the recommendation
 - source traceability when specific hardware, pricing, system constraints, or long-run suitability claims carry the conclusion
 
 ### Audit
@@ -523,6 +525,7 @@ The final report should visibly show:
 
 - the real purchase or build decision
 - dominant household or operator constraints
+- workload or operator persona segmentation when the recommendation differs materially by use case
 - top recommendation
 - credible runner-up
 - rejected routes and why
@@ -539,6 +542,9 @@ Fail if the report:
 - names budget bands without clarifying major inclusion / exclusion assumptions
 - discusses hardware and systems separately without binding them into a stack recommendation
 - treats household operating costs and maintenance friction as side notes instead of ranking variables
+- fails to segment by workload or operator persona when materially different use cases would produce materially different recommendations
+- uses benchmark performance numbers to determine a recommendation without disclosing model, quantization, metric type, and backend
+- compares server-side throughput numbers with single-stream desktop tok/s as if they were the same metric
 
 ---
 
@@ -594,10 +600,11 @@ Use when the task is mainly about:
 The final report should visibly show:
 
 - **For principle analysis:** core mechanism, key components, fundamental constraints, comparison with alternatives
-- **For architecture comparison:** candidate architectures, explicit comparison dimensions, dimension-by-dimension analysis, trade-off summary, conditional recommendation
+- **For architecture comparison:** candidate architectures with comparator roles, explicit comparison dimensions, dimension-by-dimension analysis, trade-off summary with load-bearing dimensions identified, conditional recommendation with reversal criteria
 - **For feasibility assessment:** what is being attempted, available approaches, evidence of viability, critical unknowns, validation requirements, explicit conclusion (feasible / conditionally feasible / not feasible)
 - **For roadmap evaluation:** current state of the art, announced vs. rumored roadmaps, key milestones and dependencies, risk factors, realistic timeline assessment
 - **For patent analysis:** patent landscape, technical coverage areas, freedom-to-operate assessment, filing trends
+- **For security-sensitive architecture analysis:** assets, trust boundaries, threat actors, attack paths, risk prioritization, engineering controls, detection signals, short/medium/long-term roadmap — see `references/technical-analysis-discipline.md` §Security deep-dive (threat modeling add-on)
 
 ### Hard fail
 Fail if the report:

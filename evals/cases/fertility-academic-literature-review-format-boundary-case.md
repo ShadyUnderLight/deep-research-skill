@@ -8,8 +8,9 @@ This eval targets a format boundary failure:
 
 - the report uses **(Author, Year, Journal)** inline citations — the universal standard in academic publishing
 - this format is **more informative than `[SN]`** — a reader can immediately identify the source without cross-referencing an appendix
-- but it **does not use `[SN]`/`[IN]`/`[UN]`** numbering, triggering the checklist hard-fail for format noncompliance
-- the core question: **should the project's `[SN]` requirement override discipline-specific citation standards when the alternative format provides equivalent or better traceability?**
+- **Historical verdict**: this case was created when `[SN]` format compliance was still being tested as a possible hard-fail boundary
+- **Current rule verdict**: `(Author, Year, Journal)` satisfies the inline traceability requirement for conditional pass when the register cross-references those citations structurally
+- **Current eval target**: ensure academic reports keep discipline-appropriate citations while still providing search strategy, publication-bias, evidence-tiering, and register traceability
 
 This continues the Round 2 pattern of **source traceability format boundary** cases:
 
@@ -48,7 +49,7 @@ The academic standard `(Author, Year, Journal)` is:
 - Universally recognized across academic disciplines
 - Permanently resolvable (unlike arXiv IDs which may change)
 
-Yet it triggers the project's source-traceability hard-fail because it doesn't use `[SN]` numbering.
+Under the current source-traceability rule, this format no longer fails merely because it does not use `[SN]` numbering; it conditionally passes when cross-referenced to a structured register.
 
 This case raises the same question as the AI Traffic Police and 泡泡玛特 cases: **should functionally equivalent citation formats be accepted?**
 
