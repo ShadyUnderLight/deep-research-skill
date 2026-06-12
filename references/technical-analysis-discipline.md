@@ -166,7 +166,7 @@ A technical analysis report should visibly show:
 - Comparison with alternatives
 
 ### For architecture comparison
-- Candidate architectures with comparator roles (substitute / complement / ancestor / excluded with rationale)
+- Candidate architectures with comparator roles (direct substitute / complement / lower-level primitive / higher-level runtime or platform / historical or design ancestor / unsuitable comparator — with exclusion rationale)
 - Comparison dimensions with explicit criteria
 - Dimension-by-dimension analysis
 - Trade-off summary with load-bearing dimensions identified

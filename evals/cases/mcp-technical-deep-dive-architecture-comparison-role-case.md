@@ -37,7 +37,7 @@ Analyze the MCP (Model Context Protocol) protocol's architecture and compare it 
 
 A passing answer should:
 
-### 1. Classify each comparator by role
+1. **Classify each comparator by role.**
 
 Each compared alternative should have an explicit role, for example:
 
@@ -46,25 +46,27 @@ Each compared alternative should have an explicit role, for example:
 | LSP (Language Server Protocol) | Historical / design ancestor | JSON-RPC-based protocol pattern, same participant model ancestor |
 | Google A2A (Agent-to-Agent) | Complement at application layer | Solves different problem (inter-agent vs. tool-access), can coexist |
 | OpenAI Function Calling | Direct substitute in tool-calling scope | Overlapping capability for LLM tool execution, different architectural approach |
-| REST/OpenAPI | API-description alternative | Addresses tool description but at different abstraction level; should be acknowledged and compared or excluded with reason |
+| REST/OpenAPI | API-description alternative¹ | Addresses tool description but at different abstraction level; should be acknowledged and compared or excluded with reason |
 
-### 2. Include a comparison table with role column
+> ¹ "API-description alternative" maps to the `unsuitable comparator` role in the official taxonomy (see `references/technical-analysis-discipline.md` §Architecture comparison). REST/OpenAPI operates at a different abstraction layer — it describes HTTP endpoints rather than LLM tool invocation — so it is not a direct substitute. It may still be worth comparing briefly to explain why it is not the right comparison object, then excluded with rationale.
+
+2. **Include a comparison table with role column.**
 
 The comparison table should have a column for comparator role (not just name, features, pros/cons).
 A 3-column table ("MCP / A2A / Function Calling" with features listed) without role column is **not sufficient**.
 
-### 3. Provide after-table trade-off interpretation
+3. **Provide after-table trade-off interpretation.**
 
 The comparison table must be followed by a short interpretation block that:
 - identifies which 2-3 dimensions are **load-bearing** (drive the recommendation)
 - explains why the remaining dimensions are background only
 - states what conditions would reverse the recommendation
 
-### 4. State exclusion rationale (if applicable)
+4. **State exclusion rationale (if applicable).**
 
 If common alternatives are excluded from the comparison (e.g., gRPC, WebSocket, REST), the report should briefly state why they are not the right comparison objects (different layer, different problem scope, etc.).
 
-### 5. Make a conditional recommendation
+5. **Make a conditional recommendation.**
 
 The recommendation should state both:
 - under what conditions MCP is preferred
@@ -92,7 +94,7 @@ This case adds an **architecture comparison role** failure mode not yet covered 
 | MCP opening baseline | technical-deep-dive | Fail | Opening lacks audience, decision scenario, version baseline |
 | CPO inline citation | technical-deep-dive | Conditional pass | Body citations absent, vendor claims lack caveats |
 | K8s vs Swarm | technical-deep-dive | Conditional pass | Self-assessment overconfident, benchmark method missing |
-| **MCP comparator roles (this)** | technical-deep-dive | **Fail** | **Comparison is feature parity without comparator roles or load-bearing interpretation** |
+| MCP comparator roles (this) | technical-deep-dive | Fail | Comparison is feature parity without comparator roles or load-bearing interpretation |
 
 Existing cases test whether comparison dimensions are explicit and load-bearing. This case goes further: it tests whether the **comparison structure itself** reveals the architectural relationships between alternatives, not just their feature differences.
 

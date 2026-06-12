@@ -46,7 +46,7 @@ These items verify that the report's front page provides a trustworthy temporal 
 - [ ] each dimension has clear criteria
 - [ ] trade-offs are stated, not just advantages
 - [ ] the comparison covers at least: performance, cost, maturity, ecosystem (or justified subset)
-- [ ] each comparator's role is visible (substitute / complement / ancestor / excluded with reason)
+- [ ] each comparator's role is visible (direct substitute / complement / lower-level primitive / higher-level runtime / historical ancestor / unsuitable — with exclusion rationale)
 - [ ] comparison table is followed by a trade-off interpretation identifying load-bearing dimensions
 - [ ] the recommendation explains which dimensions are load-bearing and what conditions would reverse the conclusion
 - [ ] if a common comparator was excluded, the exclusion reason is stated
