@@ -75,6 +75,16 @@ Fail if any of these are true:
 - [ ] roadmap evaluation treats announced features as shipped
 - [ ] patent analysis is counting without coverage analysis
 
+## Security deep-dive (activate when security risk is the main burden)
+
+这些检查项只对安全风险是主负担的技术 deep-dive 报告启用。如果任务不以安全分析为主线，跳过本小节。
+
+- [ ] 如果报告主要涉及安全风险，是否定义了**核心资产**（用户数据、凭据、本地资源、远程权限等）、**攻击者类型**与**信任边界**
+- [ ] 是否给出了**风险优先级**（可能性 × 影响），而不是等权列出所有风险
+- [ ] 是否将缓解措施分为**预防 / 检测 / 响应**（或短/中/长期），而不是堆砌原则性建议
+- [ ] 是否提供了工程可落地的**检测信号/监控字段**（如监控指标、阈值建议），而不仅说"应加强监控"
+- [ ] （非阻塞）是否区分了**协议设计风险、实现漏洞、部署误配置、供应链风险**等不同风险类型
+
 ---
 
 ## Final sign-off

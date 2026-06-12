@@ -156,7 +156,7 @@ Organize by task type. Examples:
 
 - company: products, financials, competition, risks, strategy
 - market: size, growth, structure, competition, bottlenecks
-- technical: feasibility, constraints, trade-offs, implementation needs
+- technical: feasibility, constraints, trade-offs, implementation needs. For security-sensitive tasks, consider the threat modeling structure in `references/technical-analysis-discipline.md` §Security deep-dive: threat modeling add-on (assets, trust boundaries, threat actors, risk prioritization, engineering controls, detection signals, short/medium/long-term roadmap).
 - policy: rules, scope, timing, compliance impact, edge cases
 
 ### Valuation method and scenario analysis (mandatory for listed-company work)
