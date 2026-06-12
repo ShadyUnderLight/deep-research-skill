@@ -241,6 +241,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] the thesis, key risks, and key unknowns are easy to identify within 10-15 seconds of scanning
 - [ ] methodology detail does not displace judgment visibility on the front page; if the first screen displays evidence grading, audit status, route metadata, or process notes before the thesis, verify that an explicit exception applies (e.g., academic review method statement is the core output)
 - [ ] the front page feels like a report opening rather than a process note or metadata dump
+- [ ] (technical-deep-dive 适用) technical report front page 不只展示 evidence legend / route metadata / 背景说明；它必须先展示技术判断、决策场景、关键风险和版本基线（见 `references/report-template.md` §Technical deep-dive opening）（非阻塞）
 
 ## Judgment visibility in layout
 
