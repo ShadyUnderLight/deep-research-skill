@@ -23,6 +23,18 @@ def test_routing_matrix_benchmark_disclosure() -> None:
             "benchmark performance numbers",
             "metric type",
             "backend",
+            # Second hard-fail condition — unique needle
+            "single-stream desktop tok/s",
+        ],
+    )
+
+
+def test_routing_matrix_attach_section() -> None:
+    """Verify the Attach section explicitly includes benchmark numbers."""
+    assert_contains(
+        "ROUTING-MATRIX.md",
+        [
+            "scoring, or benchmark performance numbers materially affect",
         ],
     )
 
@@ -33,7 +45,10 @@ def test_final_audit_recalls_benchmark_disclosure() -> None:
         [
             "benchmark performance numbers",
             "quantization",
+            "context",
             "backend",
+            # Second half of the rule — unique needle
+            "single-stream desktop tok/s",
         ],
     )
 
@@ -43,6 +58,8 @@ def test_quantitative_role_includes_equipment_selection() -> None:
         "references/quantitative-role-labeling.md",
         [
             "Equipment selection / procurement / home-server-planning",
+            "epistemic role",
+            "comparability note",
         ],
     )
 
@@ -50,6 +67,7 @@ def test_quantitative_role_includes_equipment_selection() -> None:
 def main() -> int:
     tests = [
         test_routing_matrix_benchmark_disclosure,
+        test_routing_matrix_attach_section,
         test_final_audit_recalls_benchmark_disclosure,
         test_quantitative_role_includes_equipment_selection,
     ]

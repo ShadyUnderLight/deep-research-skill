@@ -543,7 +543,7 @@ Fail if the report:
 - discusses hardware and systems separately without binding them into a stack recommendation
 - treats household operating costs and maintenance friction as side notes instead of ranking variables
 - fails to segment by workload or operator persona when materially different use cases would produce materially different recommendations
-- uses benchmark performance numbers to determine a recommendation without disclosing metric type or backend
+- uses benchmark performance numbers to determine a recommendation without disclosing model, quantization, metric type, and backend
 - compares server-side throughput numbers with single-stream desktop tok/s as if they were the same metric
 
 ---
