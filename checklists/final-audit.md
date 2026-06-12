@@ -173,6 +173,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for technical deep-dive / architecture analysis tasks, comparison dimensions are explicit and the analysis is dimension-by-dimension (not just a feature list)
 - [ ] for technical deep-dive / architecture analysis tasks, technical state is current and vendor claims are distinguished from independently verified technical facts
 - [ ] for technical deep-dive / architecture analysis tasks, roadmap / feature-state claims separate stable/shipped from experimental, deprecated/superseded, announced roadmap, proposed/SEP draft, and rumored/community signal
+- [ ] for technical deep-dive / architecture analysis tasks, benchmark / performance / cost numbers that carry a conclusion disclose model / system version, workload / dataset, hardware / environment, metric definition, measurement scope, concurrency / batch / context, and source role, per `references/technical-analysis-discipline.md` §Benchmark comparability for technical deep-dive
 - [ ] for regulatory / policy impact analysis tasks, current regulations are separated from pending/in-progress legislation
 - [ ] for regulatory / policy impact analysis tasks, business impact is analyzed (direct vs indirect) and uncertainty is explicitly bounded
 - [ ] for regulatory / policy impact analysis tasks, scenario analysis covers optimistic / base / pessimistic outcomes
