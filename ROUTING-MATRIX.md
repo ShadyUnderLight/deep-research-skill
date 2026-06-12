@@ -605,6 +605,7 @@ The final report should visibly show:
 - **For roadmap evaluation:** current state of the art, announced vs. rumored roadmaps, key milestones and dependencies, risk factors, realistic timeline assessment
 - **For patent analysis:** patent landscape, technical coverage areas, freedom-to-operate assessment, filing trends
 - **For security-sensitive architecture analysis:** assets, trust boundaries, threat actors, attack paths, risk prioritization, engineering controls, detection signals, short/medium/long-term roadmap — see `references/technical-analysis-discipline.md` §Security deep-dive (threat modeling add-on)
+- **For agentic / workflow architecture comparison:** control-plane profile covering state/action boundary, failure/recovery model, observability and permission model — see `references/technical-analysis-discipline.md` §Control-plane / workflow-system architecture add-on
 
 ### Hard fail
 Fail if the report:

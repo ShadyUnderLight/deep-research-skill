@@ -329,6 +329,23 @@ Fail the report if:
 | 中期 (3-12 月) | 建立检测与响应体系 | 部署异常监控、自动化 token 吊销、定期渗透测试 | 检测覆盖率 >80% 已知攻击路径 |
 | 长期 (12+ 月) | 安全架构内置化 | 威胁建模纳入设计流程、安全 review 门禁、供应链安全自动化 | 新功能上线前自动安全 gate 通过率 >95% |
 
+## Control-plane / workflow-system architecture add-on
+
+当被比较对象包含 agent、orchestrator、planner、tool loop、workflow engine、multi-step execution 或 stateful runtime 时，除通用比较维度外，必须从 control-plane 视角评估架构。本 add-on 提供 agentic/workflow 系统的专门维度。
+
+> 本 add-on 不替代 §Security deep-dive：安全威胁建模是另一层附加纪律，control-plane add-on 是架构比较基本盘。两者可同时启用。
+
+| 维度 | 关键问题 |
+|------|----------|
+| Control plane | 谁决定下一步？是否有 planner / router / evaluator / loop controller 决定动作序列？ |
+| State & memory | 哪些状态是一等对象（conversation / task / checkpoint / knowledge memory）？如何持久化、隔离、清理？ |
+| Tool & action surface | 系统能调用哪些工具/函数/API？每次调用是否有副作用？如何管理工具注册与权限？ |
+| Dataflow & API | 数据流是同步流水线还是事件驱动/异步 workflow？接口是 request/response 还是 event stream？ |
+| Error recovery | 失败后 retry、abstain、checkpoint、rollback、compensation 各如何处理？是否区分信息失败与工作流失败？ |
+| Observability & permission | 能否追踪子步骤、工具调用、成本和证据来源？工具权限、知识源权限、memory write policy 如何控制？ |
+
+引入 control plane 后，报告中还应评估新增的平台组件与运维负担（orchestrator、queue、state store、trace store、tool gateway 等）。
+
 ## Related references
 
 - `references/forward-looking-discipline.md` — for forecasts, roadmap statements, announced-vs-rumored separation, forward-looking assumption chains, and technical roadmap adaptation. Use when the task involves technology roadmap evaluation. See also §Roadmap/feature state stratification above for state-level classification.

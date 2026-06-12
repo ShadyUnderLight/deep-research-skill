@@ -7,7 +7,7 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
 - Commit anchor: `583fa32`
-- Case count: 80 tracked Markdown cases
+- Case count: 81 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -73,6 +73,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/cjk-pdf-validation-input-market-case.md` | pdf-delivery fixture | Triggered | N/A | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Fixture used to validate CJK rendering pipeline. |
 | `evals/cases/cnooc-judgment-shape-improved-but-freshness-still-leaked-case.md` | listed-company | Failed execution | Triggered | Failed execution | Failed execution | N/A | Triggered | Triggered | Triggered | Judgment shape improved but freshness still leaks. |
 | `evals/cases/content-platform-constrained-choice-compounded-fail-case.md` | constrained-choice | Triggered | Failed execution | N/A | Failed execution | Triggered | Triggered | Failed execution | Triggered | Zero [Sxx] inline citations; register exists but disconnected; self-assessment claims full pass with all three gaps. |
+| `evals/cases/control-plane-add-on-activation-case.md` | technical-deep-dive | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | New add-on-activation fixture (issue #269); pending formal audit. |
 | `evals/cases/consensus-and-forward-pe-misuse-case.md` | finance-date discipline | Failed execution | Triggered | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Consensus and forward PE roles are activated but misused. |
 | `evals/cases/cross-border-ecommerce-market-outlook-self-assessment-case.md` | market-outlook | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Self-assessment overclaims while traceability/forward-looking are partial. |
 | `evals/cases/dc-power-market-outlook-forward-looking-label-gap-case.md` | market-outlook | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Forward-looking claims labeled as confirmed; source register weak. |
