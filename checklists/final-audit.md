@@ -288,6 +288,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] source notes, evidence labels, and section labels visible to the user are intentional reader-facing devices rather than leaked process scaffolding
 - [ ] tables, bullets, spacing, and heading hierarchy improve scanability rather than making the report feel like a raw export
 - [ ] presentation credibility leaks such as spelling mistakes, inconsistent naming, awkward table rhythm, orphaned headings, or obvious spacing artifacts are treated as delivery failures rather than cosmetic nits
+- [ ] (外部报告导入卫生) final report contains no external deep-research internal citation artifacts: no `turn\d+` session references, no `\ue000cite` / `\ue001cite` placeholders, no `sandbox:` or temporary `file-` paths that are unreachable outside the source session; if such content exists, it must have been resolved into real sources / local assets (see `references/source-traceability-and-claim-citation.md` §External research output / Imported report hygiene)
 - [ ] if PDF is delivered, the PDF was reviewed as a deliverable in its own right rather than assumed correct because markdown looked clean
 - [ ] if markdown looked acceptable but PDF degraded structure, spacing, or readability, that is treated as a delivery failure rather than a minor rendering quirk
 

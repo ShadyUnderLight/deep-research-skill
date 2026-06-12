@@ -70,6 +70,58 @@ Shared-Workflow reports are not limited to the three route-specific exemptions l
 
 When a report declares multiple routes (primary + secondary), a format that matches **any** declared route's exemption qualifies for conditional pass. For example, a report with primary route "Listed Company" and secondary route "Academic / Literature Review" that uses `(Author, Year, Journal)` citations qualifies under the Academic route exemption. A format that does not match any declared route but is still functionally traceable should also be evaluated under the general conditional pass rule.
 
+## External research output / Imported report hygiene
+
+When importing or adapting output from external deep-research systems (GPT Deep Research, Claude, Gemini, etc.) as input material, the following hygiene rules apply.
+
+### Citation hygiene
+
+External deep-research systems often use internal citation handles that are not resolvable outside the originating session:
+
+- `turn...` IDs (`turn43view0`, `turn12source1`) are session-internal references — readers cannot open them
+- `\ue000cite...` / `\ue001cite` placeholders are GPT-specific rendering artifacts with no meaning outside the chat
+- Temporary file IDs (`file-xxxxxxxxxxxx`) are session-scoped and expire
+
+**Rule:** These are NOT valid final-report citations. Before delivery, every external citation handle must be:
+1. Resolved into a real URL / DOI / file path and entered into the Source Register, OR
+2. Removed from the claim
+
+Example:
+
+- ❌ `MTT S5000 is the current flagship [\ue000cite\turn43view0]`
+- ✅ `MTT S5000 is positioned as the current flagship AI chip [S01]` (with S01 in Source Register)
+
+### Asset hygiene
+
+External deep-research outputs may embed chart images from temporary sandbox paths:
+
+- `sandbox:/mnt/data/...` — GPT sandbox path, unreachable after session ends
+- `file-service://...` or similar ephemeral URIs
+
+**Rule:** Temporary sandbox image paths are NOT valid final-report assets. Charts or images must be:
+1. Regenerated into repository/vault-accessible files with source attribution, OR
+2. Replaced with the underlying data table and generation instructions
+
+### What IS allowed
+
+External deep-research outputs may be used as comparison material, structural inspiration, or discovery input. Specifically allowed without restriction:
+
+- analytical structure and judgment framework
+- dimension design and evaluation criteria
+- choice of comparison scope and methodology
+- real, independently accessible URLs or DOIs that the external report references — these are valid candidate sources and should be treated like any other source in the Source Register
+
+Only the internal citation handles and ephemeral asset paths listed above are excluded.
+
+### Relationship to existing rules
+
+These hygiene rules supplement the existing traceability discipline:
+- Source Register requirements (see §Structured Source Register Template) still apply
+- Format equivalence exemptions (see §Format equivalence exemption) still apply — `(Author, Year)` or `据 FY2025 年报` are valid even in imported content
+- The `DISCOVERY` source type restriction (see §Source type classification) still applies: search-level output is not a register entry
+
+> **Automated scanning:** A standalone validator `scripts/validate_external_citation_hygiene.py` can check any report for these hygiene violations. Run `python scripts/validate_external_citation_hygiene.py <report.md>`. Warnings are advisory (exit 0); the script does not block delivery.
+
 ## Why this matters
 
 Without claim-level traceability:
