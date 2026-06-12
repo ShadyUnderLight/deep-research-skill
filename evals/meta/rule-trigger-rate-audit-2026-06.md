@@ -7,7 +7,7 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
 - Commit anchor: `583fa32`
-- Case count: 79 tracked Markdown cases
+- Case count: 80 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -49,6 +49,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/adlink-listed-company-anchor-error-case.md` | listed-company | Failed execution | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Anchor fact and unit errors despite visible structure. |
 | `evals/cases/advantech-listed-company-traceability-hard-fail-case.md` | listed-company | Failed execution | Declared only | Failed execution | Failed execution | N/A | Triggered | Triggered | Triggered | Source register claimed as pass with zero body citations. |
 | `evals/cases/agent-reach-external-channel-preflight-case.md` | external-channel preflight | Triggered | Failed execution | N/A | N/A | N/A | N/A | Triggered | Triggered | DISCOVERY and WEAK_SIGNAL rules triggered but failed in examples. |
+| `evals/cases/agentic-rag-technical-deep-dive-compounded-case.md` | technical-deep-dive | N/A | Failed execution | N/A | Failed execution | N/A | Triggered | Failed execution | Triggered | Compounded failure: register format, numeric roles, vendor claims, self-assessment, mixed-script. |
 | `evals/cases/ai-startup-hq-constrained-choice-register-compliance-case.md` | constrained-choice | Triggered | Failed execution | N/A | Failed execution | Failed execution | Declared only | Failed execution | Triggered | Register claims 7 columns but delivers 5; aggregation not replicable; false precision in ranking. |
 | `evals/cases/ai-agent-market-outlook-stakeholder-and-route-boundary-case.md` | market-outlook | Triggered | Failed execution | Failed execution | Missing trigger | Failed execution | Failed execution | Triggered | Triggered | Stakeholder, route-boundary, traceability, and probability gaps. |
 | `evals/cases/ai-coding-agent-market-outlook-probability-case.md` | market-outlook | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Strong route execution, probability and sensitivity gaps. |
