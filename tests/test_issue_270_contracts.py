@@ -222,19 +222,33 @@ def test_d4_index_table_format():
 
 def test_p1_cross_references_valid():
     """P1: Cross-references between modified files must be valid."""
-    # technical-analysis-audit.md references technical-analysis-discipline.md sections
+    discipline = read("references/technical-analysis-discipline.md")
+
+    # technical-analysis-audit.md references  — assertion required for this PR's reference
     audit = read("checklists/technical-analysis-audit.md")
-    refs = re.findall(r'`references/technical-analysis-discipline\.md`\s*§([^`]+)', audit)
-    for ref in refs:
-        discipline = read("references/technical-analysis-discipline.md")
-        # Each §reference should match an H2 or H3 heading (accept fuzzy)
+    # This is the key cross-reference added in this PR
+    assert '§Benchmark comparability for technical deep-dive' in audit, \
+        "technical-analysis-audit.md must reference §Benchmark comparability"
+    assert '## Benchmark comparability for technical deep-dive' in discipline, \
+        "Discipline file must have the referenced heading"
+
+    # final-audit.md also references this section
+    final = read("checklists/final-audit.md")
+    assert '§Benchmark comparability for technical deep-dive' in final, \
+        "final-audit.md must reference §Benchmark comparability"
+    assert '## Benchmark comparability for technical deep-dive' in discipline, \
+        "Discipline file must have the referenced heading"
+
+    # Check all § references from audit file for completeness
+    all_refs = re.findall(r'`references/technical-analysis-discipline\.md`\s*§([^`]+)', audit)
+    for ref in all_refs:
         heading_match = re.search(
-            r'^#{2,3}\s+' + re.escape(ref.strip()).replace(r'\ ', r'\s*').replace(r'\(', r'\(').replace(r'\)', r'\)'),
+            r'^#{2,3}\s*' + re.escape(ref.strip()).replace(r'\ ', r'\s*').replace(r'\(', r'\(').replace(r'\)', r'\)'),
             discipline,
             re.MULTILINE
         )
         if not heading_match:
-            # Try more lenient match
+            # Lenient fallback: match first significant word
             words = ref.strip().split()
             if words:
                 heading_match = re.search(
@@ -242,9 +256,7 @@ def test_p1_cross_references_valid():
                     discipline,
                     re.MULTILINE | re.IGNORECASE
                 )
-        # This might be too strict for a unit test, so make it non-blocking
-        if not heading_match:
-            print(f"  ⚠  Cross-ref warning: '§{ref.strip()}' not found in technical-analysis-discipline.md")
+        assert heading_match, f"Cross-ref '§{ref.strip()}' not found as any heading in technical-analysis-discipline.md"
 
 
 def test_p2_index_not_broken():
