@@ -315,6 +315,62 @@ In these equipment-selection / procurement cases:
 - if power, cost, payback, storage growth, or scoring numbers are used, label observed values vs estimates vs assumptions vs planning-model outputs
 - if the report is in Chinese, keep load-bearing labels in Chinese and ensure PDF readability is not degraded by broken export spacing
 
+### Cost sensitivity table
+
+When cost or TCO figures are load-bearing, supplement the budget section with a cost sensitivity table that shows how the financial picture changes under different utilization levels.
+
+The table should make the break-even variable visible (for example monthly active GPU hours, daily usage duration, storage/network/power costs, or depreciation/residual value). All cost figures must carry numeric role labels (observed / estimate / assumption / model-output).
+
+| Active usage level | Local fixed cost | Local variable cost | Cloud variable cost | Break-even interpretation | Numeric role |
+|---|---:|---:|---:|:---|:---|
+| 40 GPU h/month | ... | ... | ... | 云更适合低利用率 | model-output |
+| 120 GPU h/month | ... | ... | ... | 本地开始接近 | model-output |
+| 240 GPU h/month | ... | ... | ... | 本地折旧摊薄 | model-output |
+
+The independent variable should match the reader's real planning dimension. Common choices: monthly active GPU hours, daily inference queries, storage growth rate, or team size.
+
+### Decision tree
+
+For equipment-selection tasks where the recommendation differs by workload, operator persona, or budget tier, include a decision tree that guides the reader from their primary constraint to the recommended route.
+
+The decision tree should show:
+- the branching logic (e.g., must run 70B+ locally? → high-memory route; frequent CUDA/fine-tuning? → RTX host; otherwise → cloud first)
+- what changes the path (e.g., budget ceiling shifts, workload grows, noise tolerance changes)
+- where to go for detail (which section to read next for each branch)
+
+Use Mermaid flowchart syntax or an equivalent decision-path table. A graphical format is preferred for scanability, but a table is sufficient when rendering is unavailable.
+
+```mermaid
+flowchart TD
+  A[主要目标] --> B{是否必须本地离线运行 70B+?}
+  B -- 是 --> C[大内存本地路线]
+  B -- 否 --> D{是否高频 CUDA/微调?}
+  D -- 是 --> E[RTX 本地主机]
+  D -- 否 --> F[云 GPU 先验证]
+```
+
+Do not treat the decision tree as a replacement for ranking logic. The ranking comes first; the decision tree helps the reader navigate to their scenario after the structure is established.
+
+For detailed decision-tree methodology, see `references/decision-tree-method.md`.
+
+### Build-ready configuration table
+
+When the recommendation involves hardware procurement or system build, include a build-ready configuration table that the reader can use directly for purchasing or assembly planning.
+
+| Scenario | Recommended stack | Included cost items | Excluded / user-supplied items | Operating burden | Expansion path |
+|---|---|---|---|---|---|
+| 7B-32B 高频开发 | RTX 5090 + Linux + CUDA/vLLM/Ollama | GPU, CPU, RAM, NVMe, PSU, case | monitor, tax, backup storage | high power/noise | second GPU / cloud burst |
+
+At minimum, the configuration table must specify:
+- **hardware components**: CPU, GPU, memory, storage (NVMe/HDD), PSU, case
+- **software / OS**: operating system, runtime, inference or serving framework
+- **included cost items**: what the quoted budget covers
+- **excluded items**: what the reader must supply separately
+- **operating burden**: power draw, noise level, cooling requirements, maintenance cadence
+- **expansion path**: how to scale or split workloads over time
+
+Do not list hardware and software in separate sections without binding them into one stack recommendation.
+
 For market-entry / regional-expansion / country-prioritization tasks, prefer this stronger structure:
 
 1. Executive summary
