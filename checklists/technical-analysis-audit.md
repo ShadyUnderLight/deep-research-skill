@@ -72,6 +72,15 @@ Fail if any of these are true:
 - [ ] roadmap evaluation treats announced features as shipped
 - [ ] patent analysis is counting without coverage analysis
 
+### Control-plane / workflow-system (activate when comparing agentic/workflow architectures)
+
+这些检查项只对包含 agent / control plane / workflow loop 的架构比较报告启用。如果任务不涉及 agentic 或工作流系统，跳过本小节。
+
+- [ ] 如果架构包含 agent/control plane/workflow loop，报告是否比较了 state/memory、tool/action surface、dataflow/API、error recovery、observability 和 permission boundary 等 control-plane 维度
+- [ ] 报告是否区分信息失败（检索/推理阶段失败）与工作流失败（编排/工具执行阶段失败）
+- [ ] 报告是否说明了引入 control plane 后新增的平台组件与运维负担（orchestrator、queue、state store、trace store、tool gateway 等）
+- [ ] （非阻塞）control-plane 架构比较是否使用了 Mermaid 或等价图示说明 pipeline 与 agentic loop 的架构差异
+
 ---
 
 ## Final sign-off

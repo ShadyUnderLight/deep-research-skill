@@ -598,6 +598,7 @@ The final report should visibly show:
 - **For feasibility assessment:** what is being attempted, available approaches, evidence of viability, critical unknowns, validation requirements, explicit conclusion (feasible / conditionally feasible / not feasible)
 - **For roadmap evaluation:** current state of the art, announced vs. rumored roadmaps, key milestones and dependencies, risk factors, realistic timeline assessment
 - **For patent analysis:** patent landscape, technical coverage areas, freedom-to-operate assessment, filing trends
+- **For agentic / workflow architecture comparison:** control-plane profile covering state/action boundary, failure/recovery model, observability and permission model — see `references/technical-analysis-discipline.md` §Control-plane / workflow-system architecture add-on
 
 ### Hard fail
 Fail if the report:
