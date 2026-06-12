@@ -594,7 +594,7 @@ Use when the task is mainly about:
 The final report should visibly show:
 
 - **For principle analysis:** core mechanism, key components, fundamental constraints, comparison with alternatives
-- **For architecture comparison:** candidate architectures, explicit comparison dimensions, dimension-by-dimension analysis, trade-off summary, conditional recommendation
+- **For architecture comparison:** candidate architectures with comparator roles, explicit comparison dimensions, dimension-by-dimension analysis, trade-off summary with load-bearing dimensions identified, conditional recommendation with reversal criteria
 - **For feasibility assessment:** what is being attempted, available approaches, evidence of viability, critical unknowns, validation requirements, explicit conclusion (feasible / conditionally feasible / not feasible)
 - **For roadmap evaluation:** current state of the art, announced vs. rumored roadmaps, key milestones and dependencies, risk factors, realistic timeline assessment
 - **For patent analysis:** patent landscape, technical coverage areas, freedom-to-operate assessment, filing trends

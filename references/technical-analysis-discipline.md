@@ -35,8 +35,11 @@ Do not use this discipline when:
 ### 2. Architecture comparison (架构对比)
 
 - What are the candidate architectures?
+- What is each candidate's role in the comparison? (direct substitute / complement / lower-level primitive / higher-level runtime or platform / historical or design ancestor / unsuitable comparator — with exclusion rationale)
 - What are the comparison dimensions? (performance, cost, maturity, ecosystem, scalability, complexity)
 - What are the trade-offs for each dimension?
+- Which comparison dimensions are load-bearing vs background information?
+- Under what conditions would the recommendation reverse?
 - Which architecture wins under which constraints?
 
 ### 3. Patent analysis (专利趋势)
@@ -122,6 +125,20 @@ When comparing technical architectures, use these dimensions:
 | Flexibility | extensibility, adaptability to new requirements |
 | Risk | technical debt, vendor lock-in, obsolescence risk |
 
+### Architecture comparison table template
+
+When presenting an architecture comparison table, use this enriched template that distinguishes comparator roles:
+
+```md
+| 方案 | 比较角色 | 解决的问题 | 成熟度 | 关键优势 | 关键代价 | 最适合场景 | 不适合场景 | 核心权衡维度 |
+|------|----------|------------|--------|----------|----------|------------|------------|--------------|
+```
+
+The table should be followed by a short interpretation:
+
+- **Load-bearing dimensions:** which dimensions drive the final recommendation (and why the others are background)
+- **Reversal conditions:** what specific change (ecosystem maturity, performance threshold, cost constraint, etc.) would change the recommendation
+
 ## Common failure modes
 
 Watch for these failure patterns:
@@ -149,11 +166,11 @@ A technical analysis report should visibly show:
 - Comparison with alternatives
 
 ### For architecture comparison
-- Candidate architectures
+- Candidate architectures with comparator roles (direct substitute / complement / lower-level primitive / higher-level runtime or platform / historical or design ancestor / unsuitable comparator — with exclusion rationale)
 - Comparison dimensions with explicit criteria
 - Dimension-by-dimension analysis
-- Trade-off summary
-- Recommendation with conditions
+- Trade-off summary with load-bearing dimensions identified
+- Recommendation with conditions and reversal criteria
 
 ### For feasibility assessment
 - What is being attempted
