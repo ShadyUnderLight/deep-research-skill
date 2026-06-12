@@ -12,7 +12,7 @@ Each test asserts a PROPERTY (invariant) about the documentation:
   - P3: technical-analysis-audit has control-plane checklist subsection with >=3 items
   - P4: Control-plane checklist covers state/action boundary, failure distinction,
         platform burden, and (optional) diagram recommendation
-  - P5: Agentic-rag eval case reviewer checklist includes control-plane dimension check
+  - P5: Control-plane add-on activation eval case exists with required structure
 """
 
 from pathlib import Path
@@ -33,7 +33,7 @@ def fail(msg: str) -> None:
 DISCIPLINE_FILE = "references/technical-analysis-discipline.md"
 ROUTING_FILE = "ROUTING-MATRIX.md"
 AUDIT_FILE = "checklists/technical-analysis-audit.md"
-EVAL_CASE_FILE = "evals/cases/agentic-rag-technical-deep-dive-compounded-case.md"
+EVAL_CASE_FILE = "evals/cases/control-plane-add-on-activation-case.md"
 
 
 # ─── helpers ──────────────────────────────────────────────────────────────────
@@ -50,29 +50,12 @@ EXPECTED_CONTROL_PLANE_CONCEPTS = [
     "permission",
 ]
 
-# Soft concepts that should appear in some form (not all may match English)
-SOFT_CONTROL_PLANE_CONCEPTS = [
-    "控制平面",
-    "状态",
-    "记忆",
-    "工具",
-    "动作",
-    "数据流",
-    "错误",
-    "可观测",
-    "权限",
-]
-
-# All required concepts (union of English and Chinese)
-REQUIRED_CONTROL_PLANE_CONCEPTS = EXPECTED_CONTROL_PLANE_CONCEPTS + SOFT_CONTROL_PLANE_CONCEPTS
-
-
 def find_section_heading(text: str, heading_prefix: str) -> int | None:
     """Find the line index of a markdown heading matching heading_prefix."""
     lines = text.split("\n")
     for i, line in enumerate(lines):
         stripped = line.strip()
-        if stripped.startswith("##") or stripped.startswith("###"):
+        if stripped.startswith("##"):
             if heading_prefix.lower() in stripped.lower():
                 return i
     return None
@@ -219,20 +202,28 @@ def test_p2_routing_mentions_agentic_workflow() -> None:
 
     found_signal = False
 
-    # Collect the entire Visible artifact contract section as one block
+    # Collect the Visible artifact contract within Technical Deep-dive route only.
+    # Proper state machine: detects route heading first, then artifact contract sub-heading.
+    in_tech_route = False
     in_artifact_contract = False
     artifact_lines = []
-    for i, line in enumerate(lines):
+    for line in lines:
         stripped = line.strip()
-        if "Route: Technical Deep-dive" in stripped or "Route: Technical Deep-dive / Architecture Analysis" in stripped:
+        # State 1: detect route heading
+        if ("Route:" in stripped) and stripped.startswith("##"):
+            in_tech_route = "Technical Deep-dive" in stripped
             in_artifact_contract = False
             artifact_lines = []
+            continue
+        # State 2: detect artifact contract sub-heading within tech route
+        if in_tech_route and "Visible artifact contract" in stripped:
+            in_artifact_contract = True
+            continue
+        # State 3: collect artifact contract lines until next section boundary
         if in_artifact_contract:
             if stripped.startswith("##") or stripped.startswith("---"):
                 break
             artifact_lines.append(stripped)
-        if "Visible artifact contract" in stripped:
-            in_artifact_contract = True
 
     artifact_block = " ".join(artifact_lines).lower()
     if "agentic" in artifact_block or "workflow" in artifact_block:
@@ -326,45 +317,47 @@ def test_p4_checklist_covers_essential_checks() -> None:
     print(f"  PASS  P4: all 3 essential control-plane coverage areas present in checklist")
 
 
-def test_p5_eval_case_reviewer_checklist_updated() -> None:
+def test_p5_eval_case_exists_with_required_sections() -> None:
     """
-    P5 (Eval case property): The agentic-rag eval case's Reviewer checklist
-    includes a control-plane dimension check (if the eval case exists).
-
-    This is a soft check: the eval case was added by #268 and may not yet
-    be merged. If absent, print a warning rather than failing.
+    P5 (Eval case property): The control-plane add-on activation eval case exists
+    with required structural sections.
     """
     eval_path = ROOT / EVAL_CASE_FILE
     if not eval_path.exists():
-        print(f"  SKIP  P5: eval case file not found ({EVAL_CASE_FILE}) — may depend on #268 merge")
-        return
+        fail(
+            f"P5 FAIL: Eval case file not found: {EVAL_CASE_FILE}"
+        )
 
     text = read(EVAL_CASE_FILE)
 
-    # Check for reviewer checklist section
-    if "## Reviewer checklist" not in text:
-        print(f"  SKIP  P5: no '## Reviewer checklist' section found — may be old version before #268")
-        return
+    required_sections = ["## Goal", "## Prompt", "## Pass criteria"]
+    section_aliases = {
+        "## Goal": ["## Goal", "## 目标", "## Purpose"],
+        "## Prompt": ["## Prompt", "## 提示"],
+        "## Pass criteria": ["## Pass criteria", "## 验收标准", "## Pass Criteria"],
+    }
 
-    # Check for control-plane dimension mention in the reviewer checklist section
-    in_reviewer_checklist = False
-    found = False
-    for line in text.split("\n"):
-        stripped = line.strip()
-        if stripped.startswith("## Reviewer checklist"):
-            in_reviewer_checklist = True
-            continue
-        if in_reviewer_checklist:
-            if stripped.startswith("##"):
-                break
-            if "control-plane" in stripped.lower() or "control plane" in stripped.lower():
-                found = True
-                break
+    missing = []
+    for section, aliases in section_aliases.items():
+        found = any(alias in text for alias in aliases)
+        if not found:
+            missing.append(section)
 
-    if found:
-        print(f"  PASS  P5: eval case reviewer checklist includes control-plane dimension check")
-    else:
-        print(f"  WARN  P5: eval case exists but reviewer checklist does not mention control-plane dimensions")
+    if missing:
+        fail(
+            f"P5 FAIL: Eval case missing required sections: {missing}"
+        )
+
+    # Soft checks
+    if "control-plane" not in text.lower() and "control plane" not in text.lower():
+        print(f"  WARN  P5: eval case exists but does not mention control-plane in body")
+    has_reviewer_checklist = any(
+        kw in text for kw in ["## Reviewer checklist", "## 审阅清单"]
+    )
+    if not has_reviewer_checklist:
+        print(f"  WARN  P5: eval case does not have explicit Reviewer checklist section (soft)")
+
+    print(f"  PASS  P5: eval case file exists with all required sections")
 
 
 # ─── main ────────────────────────────────────────────────────────────────────
@@ -377,7 +370,7 @@ def main() -> int:
         ("P2: Routing contract mentions agentic/workflow", test_p2_routing_mentions_agentic_workflow),
         ("P3: Checklist has control-plane section", test_p3_checklist_has_control_plane_section),
         ("P4: Checklist covers essential areas", test_p4_checklist_covers_essential_checks),
-        ("P5: Eval case reviewer checklist updated", test_p5_eval_case_reviewer_checklist_updated),
+        ("P5: Eval case exists with required structure", test_p5_eval_case_exists_with_required_sections),
     ]
 
     failures = []

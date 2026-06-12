@@ -42,6 +42,7 @@ jobs:
       - run: python3 scripts/test_market_outlook_monitoring_contract.py
       - run: python3 scripts/test_declared_execution.py
       - run: python3 scripts/test_md_to_pdf_preflight.py
+      - run: python3 scripts/test_control_plane_architecture_discipline.py
 
   smoke:
     runs-on: ubuntu-latest
