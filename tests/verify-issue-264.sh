@@ -16,7 +16,7 @@ fail() { echo -e "${RED}FAIL${NC} $1"; FAIL_COUNT=$((FAIL_COUNT+1)); }
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 FILE="$REPO_DIR/evals/comparative-distillation/local-llm-equipment-selection-gpt-vs-skill-comparative-distillation.md"
 
-echo "=== TDD: verify-issue-264-task1 ==="
+echo "=== TDD: verify-issue-264 ==="
 echo ""
 
 # Test 1: File exists
@@ -116,12 +116,8 @@ for dim in "${DIMENSIONS[@]}"; do
 done
 echo ""
 
-# Test 6: No full report text blocks (paragraphs that are clearly report body)
-echo "--- Test 6: No report body text exceeding 5 lines ---"
-# Check for multi-line quote blocks that would indicate full report text
-# Find lines that look like report sections (sequential non-heading lines quoting report)
-LONG_QUOTE_BLOCKS=$(grep -c "^[A-Z]" "$FILE" 2>/dev/null || echo 0)
-# We can't easily detect this with a simple check, but we can check file length is within reason
+# Test 6: File length within expected range (not dumping full reports)
+echo "--- Test 6: File length within expected range ---"
 LINE_COUNT=$(wc -l < "$FILE" 2>/dev/null || echo 0)
 if [ "$LINE_COUNT" -gt 50 ] && [ "$LINE_COUNT" -lt 600 ]; then
     pass "File length appropriate ($LINE_COUNT lines) — not dumping full reports"
@@ -195,7 +191,7 @@ echo ""
 
 # Test T2-6: Contains route-execution gap (core concept, ≥2 occurrences)
 echo "--- Test T2-6: Contains route-execution gap concept ---"
-RG_COUNT=$(grep -ci "route.execution.gap" "$CASE_FILE" 2>/dev/null || echo 0)
+RG_COUNT=$(grep -ci "route[. -]execution[. -]gap\|route-execution gap" "$CASE_FILE" 2>/dev/null || echo 0)
 if [ "$RG_COUNT" -ge 2 ]; then
     pass "Contains route-execution gap concept ($RG_COUNT occurrences — core thesis)"
 elif [ "$RG_COUNT" -eq 1 ]; then

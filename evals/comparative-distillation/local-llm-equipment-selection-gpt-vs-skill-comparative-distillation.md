@@ -45,17 +45,17 @@ The repo's response cannot be "add more checklists" — the checklists already e
 - Decision utility (per-persona recommendation)
 
 ### Visible artifact contract (what a deliverable report must contain)
-- Per-persona recommendation (not one-size-fits-all)
-- Route ranked with dominant constraint named
-- Budget assumptions explicit (what is included/excluded)
-- Hardware ↔ system stack bound into one recommendation
-- Benchmark methodology disclosed with comparability caveats
-- TCO broken into upfront + recurring with usage sensitivity
-- Configurations that are build-ready (not abstract component lists)
-- Source traceability via `[Sxx]` inline citations with Source Register
-- Numeric role labels on prices, performance, TCO
-- Clean delivery: no `turn...` references, no `sandbox:` images, honest audit status
-- Unknown/verification gap register
+- Per-persona recommendation (not one-size-fits-all)  ← route contract
+- Route ranked with dominant constraint named  ← route contract
+- Budget assumptions explicit (what is included/excluded)  ← route contract
+- Hardware ↔ system stack bound into one recommendation  ← route contract
+- Source traceability via `[Sxx]` inline citations with Source Register  ← source-traceability discipline
+- Numeric role labels on prices, performance, TCO  ← quantitative-role discipline
+- Clean delivery: no `turn...` references, no `sandbox:` images, honest audit status  ← delivery discipline
+- Unknown/verification gap register  ← decision-utility discipline
+- Benchmark methodology disclosed with comparability caveats  ← proposed enhancement (see §Candidate actions)
+- TCO broken into upfront + recurring with usage sensitivity  ← proposed enhancement (see §Candidate actions)
+- Configurations that are build-ready (not abstract component lists)  ← proposed enhancement (see §Candidate actions)
 
 ---
 
@@ -191,25 +191,27 @@ The target synthesis is not a new report — it is a **cross-report discipline g
 
 ## Candidate actions
 
-### NEW_RULE (checklist-hardening)
+> Priority labels: `PROMOTE_NOW` = implement immediately (supported by cross-report evidence); `WAIT_FOR_SECOND_CASE` = defer until pattern confirmed by a second case.
+
+### NEW_RULE (checklist-hardening) — PROMOTE_NOW
 When the Equipment Selection route is activated, the source traceability checklist must verify **inline `[Sxx]` citations in body text**, not just a source list at end. A bibliography without inline binding is a hard fail.
 
-### NEW_RULE (checklist-hardening)
+### NEW_RULE (checklist-hardening) — PROMOTE_NOW
 When benchmark scores are reported, the report must disclose: benchmark name, precision/quantization setting, batch size, and model variant. Missing any of these is a hard fail for Technical Deep-dive sections within Equipment Selection.
 
-### NEW_RULE (checklist-hardening)
+### NEW_RULE (checklist-hardening) — PROMOTE_NOW
 Cost sensitivity analysis in equipment-selection reports must vary at least one input variable (utilization hours, electricity price, or depreciation period) and show how the ranking changes. A single fixed TCO table without sensitivity is a hard fail.
 
-### CHECKLIST_HARDENING
+### CHECKLIST_HARDENING — PROMOTE_NOW
 The final-audit self-assessment check must verify delivery integrity at the **line level**, not the section level:
 - Scan for `turn...` patterns (GPT internal references) — flag as delivery blocker
 - Scan for `sandbox:`, `/sandbox/`, or local-path references — flag as delivery blocker
 - Verify that each discipline declared in the audit section has corresponding body evidence
 
-### DELIVERY_HARD_FAIL
+### DELIVERY_HARD_FAIL — PROMOTE_NOW
 If the report contains unreproducible citation patterns (`turn...`, `sandbox:`, `/sandbox/`, local absolute paths, or internal tool references), the delivery must be rejected regardless of content quality. This applies to both skill-produced and external reports.
 
-### TEMPLATE_HARDENING
+### TEMPLATE_HARDENING — WAIT_FOR_SECOND_CASE
 Add a "workload vs persona" segmentation option to the Equipment Selection route's visible artifact contract. The current contract specifies per-persona recommendation but does not mention workload-type segmentation, which is often more operationally useful.
 
 ---

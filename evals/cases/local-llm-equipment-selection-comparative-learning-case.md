@@ -27,6 +27,8 @@ Two reports commissioned independently on the same topic (local LLM equipment se
 
 **Core issues (7 failure modes across both reports):**
 
+The common thread is a **route-execution gap**: the correct route fires but production-code discipline (inline citations, role labels, honest assessment, delivery hygiene) does not follow at the sentence level. This pattern applies beyond equipment-selection to any route with source traceability or role-labeling requirements.
+
 *Report A — skill-generated (discipline scaffolding present, line-level execution absent):*
 - ❌ **Budget assumptions missing include/exclude details** — upfront and recurring costs are presented without listing what is covered (e.g., peripherals, cable management, tax, shipping) or explicitly excluded. The repo's Equipment Selection discipline requires explicit inclusion/exclusion declarations.
 - ❌ **Performance table has tok/s but missing benchmark methodology** — tokens-per-second figures are reported without disclosing precision, quantization setting, batch size, model variant, or inference engine (Ollama vs vLLM vs LM Studio). The numbers are not reproducible.
