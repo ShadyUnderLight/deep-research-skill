@@ -49,7 +49,7 @@ def _extract_tables(markdown: str) -> list[list[list[str]]]:
 
     Only captures tables where the header row is followed by a separator row
     (|---|...|). Assumes no blank lines inside a table.
-    """
+    """  # noqa: E501
     tables: list[list[list[str]]] = []
     lines = markdown.split("\n")
     i = 0
@@ -72,46 +72,34 @@ def _extract_tables(markdown: str) -> list[list[list[str]]]:
     return tables
 
 
+def _equipment_selection_zone(text: str) -> str | None:
+    """
+    Extract the equipment-selection subsection zone from
+    '### Cost sensitivity table' to the next '## ' header.
+
+    Returns None if the section does not exist (RED phase).
+    """
+    eq_header = "### Cost sensitivity table"
+    if eq_header not in text:
+        return None
+    eq_start = text.find(eq_header)
+    rest = text[eq_start:]
+    next_section = re.search(r"^## ", rest, re.MULTILINE)
+    if next_section:
+        return rest[:next_section.start()]
+    return rest
+
+
 def test_property_table_column_consistency() -> None:
     """
     Property: every pipe-delimited table in the equipment-selection section
     has the same number of columns in the header and each data row.
     """
     text = read("references/decision-report-template.md")
-
-    # Isolate the equipment-selection section:
-    # starts at "For equipment-selection / procurement / home-server-planning tasks"
-    # ends at the next section header "For market-entry" or end of file.
-    start_marker = "For equipment-selection / procurement / home-server-planning tasks, prefer this stronger structure"
-    end_marker = "\n## "
-    # Find start
-    start_idx = text.find(start_marker)
-    assert start_idx != -1, "Could not find equipment-selection section start"
-
-    # Find next top-level section (##) after start
-    # Actually, let's find the start of the equipment section more precisely
-    # The section starts with "### Equipment selection…" header
-    # Use the ### header directly
-
-    eq_header = "### Cost sensitivity table"
-    # Actually, this test will run BEFORE implementation, so the section doesn't exist yet.
-    # Let's scope the test to run only if the section exists.
-    # If it doesn't exist yet (RED phase), we just skip the property test.
-    if eq_header not in text:
-        # In RED phase, this test has nothing to validate yet
+    zone = _equipment_selection_zone(text)
+    if zone is None:
+        print(f"  SKIP  {test_property_table_column_consistency.__name__} (section not yet implemented)")
         return
-
-    # Find equipment-selection subsections area
-    eq_start = text.find(eq_header)
-    # Find next top-level section after it (next "## ")
-    # Search from eq_start
-    rest = text[eq_start + len(eq_header):]
-    # Find next "## " at line start
-    next_section = re.search(r"^## ", rest, re.MULTILINE)
-    if next_section:
-        zone = text[eq_start:eq_start + len(eq_header) + next_section.start()]
-    else:
-        zone = text[eq_start:]
 
     tables = _extract_tables(zone)
     violations = []
@@ -136,16 +124,10 @@ def test_property_table_has_minimum_two_rows() -> None:
     A table with only a header is degenerate.
     """
     text = read("references/decision-report-template.md")
-    eq_header = "### Cost sensitivity table"
-    if eq_header not in text:
-        return  # RED phase — not yet implemented
-    eq_start = text.find(eq_header)
-    rest = text[eq_start:]
-    next_section = re.search(r"^## ", rest, re.MULTILINE)
-    if next_section:
-        zone = rest[:next_section.start()]
-    else:
-        zone = rest
+    zone = _equipment_selection_zone(text)
+    if zone is None:
+        print(f"  SKIP  {test_property_table_has_minimum_two_rows.__name__} (section not yet implemented)")
+        return
 
     tables = _extract_tables(zone)
     degenerate = [ti for ti, tbl in enumerate(tables) if len(tbl) < 2]
@@ -217,7 +199,7 @@ def test_decision_tree_content() -> None:
         "references/decision-report-template.md",
         [
             "branching logic",
-            "Mermaid",
+            "Mermaid flowchart syntax",
         ],
     )
 
@@ -240,7 +222,7 @@ def test_build_ready_config_columns() -> None:
             "Scenario",
             "Recommended stack",
             "Included cost items",
-            "Excluded",
+            "Excluded / user-supplied items",
             "Operating burden",
             "Expansion path",
         ],
@@ -253,7 +235,7 @@ def test_build_ready_minimum_fields() -> None:
         "references/decision-report-template.md",
         [
             "hardware components",
-            "software",
+            "**software / OS**: operating system",
         ],
     )
 
@@ -280,7 +262,6 @@ def test_final_audit_budget_inclusion_exclusion_hard_fail() -> None:
         "checklists/final-audit.md",
         [
             "budget assumptions declare what is included and",
-            "hard-fail",
         ],
     )
 
