@@ -43,6 +43,9 @@ EXTERNAL_CITE_SANDBOX_RE = re.compile(r"sandbox:")
 # No trailing \b because the type suffix often has trailing digits (view0, source1).
 # The (?:view|source|search) suffix requirement prevents matching legitimate uses
 # of turn+N like "turn 12 degrees" or "turn 4 times".
+# LIMITATION: Bare turn42 (without view/source/search suffix) is NOT matched.
+# This is a deliberate trade-off to avoid false positives on English text
+# like "turn 4 times". Manual checklist inspection covers the bare-turn case.
 EXTERNAL_CITE_TURN_RE = re.compile(r"\bturn\d+(?:view\d*|source\d*|search\d*)")
 
 # Pattern 3: \ue000cite or \ue001cite (GPT cite rendering artifacts)

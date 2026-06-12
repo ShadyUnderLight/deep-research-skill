@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Property-based regression tests for validate_external_citation_hygiene.py.
+"""Regression tests for validate_external_citation_hygiene.py.
 
 Each test creates a fixture, runs the validator as a subprocess,
 and asserts the expected exit code and warning output.
 
-Properties verified:
+Scenarios verified:
   - Empty text → no warnings (exit 0)
   - Clean text → no warnings (exit 0)
   - Common words like "turnaround" → no false positives
@@ -50,33 +50,9 @@ def run_validator(text: str) -> subprocess.CompletedProcess:
         )
 
 
-def expect_pass(name: str, text: str, warning_substring: str | None = None) -> None:
-    """Assert validator exits 0 (pass). If warning_substring given, assert it appears in stdout."""
-    result = run_validator(text)
-    assert result.returncode == 0, (
-        f"{name}: expected pass (exit 0), got {result.returncode}\n"
-        f"stdout: {result.stdout}\nstderr: {result.stderr}"
-    )
-    if warning_substring:
-        assert warning_substring.lower() in result.stdout.lower(), (
-            f"{name}: expected warning containing '{warning_substring}' in:\n{result.stdout}"
-        )
-    print(f"  PASS  {name}")
+# ── Tests ─────────────────────────────────────────────────────────────
 
-
-def expect_fail(name: str, text: str) -> None:
-    """Assert validator exits non-zero (fail)."""
-    result = run_validator(text)
-    assert result.returncode != 0, (
-        f"{name}: expected fail (non-zero), got {result.returncode}\n"
-        f"stdout: {result.stdout}"
-    )
-    print(f"  PASS  {name}")
-
-
-# ── Property-based tests ──────────────────────────────────────────────
-
-# Property 1: Empty text → no warnings
+# Scenario 1: Empty text → no warnings
 
 
 def test_empty_text_passes() -> None:
@@ -93,7 +69,7 @@ def test_empty_text_passes() -> None:
     print("  PASS  empty text passes, no warnings")
 
 
-# Property 2: Clean text → no warnings
+# Scenario 2: Clean text → no warnings
 
 
 def test_clean_report_passes() -> None:
@@ -111,7 +87,7 @@ def test_clean_report_passes() -> None:
     print("  PASS  clean report passes, no warnings")
 
 
-# Property 3: Common English words like "turnaround" → no false positives
+# Scenario 3: Common English words like "turnaround" → no false positives
 
 
 def test_turnaround_word_no_false_positive() -> None:
@@ -146,7 +122,7 @@ def test_turning_word_no_false_positive() -> None:
     print("  PASS  'turning' no false positive")
 
 
-# Property 4: sandbox: path → 1+ warnings
+# Scenario 4: sandbox: path → 1+ warnings
 
 
 def test_sandbox_path_warns() -> None:
@@ -165,7 +141,7 @@ def test_sandbox_path_warns() -> None:
     print("  PASS  sandbox path warns")
 
 
-# Property 5: turn reference → 1+ warnings
+# Scenario 5: turn reference → 1+ warnings
 
 
 def test_turn_ref_warns() -> None:
@@ -200,7 +176,7 @@ def test_turn_source_ref_warns() -> None:
     print("  PASS  turn source ref warns")
 
 
-# Property 6: \ue000cite placeholder → 1+ warnings
+# Scenario 6: \ue000cite placeholder → 1+ warnings
 
 
 def test_cite_placeholder_warns() -> None:
@@ -219,7 +195,39 @@ def test_cite_placeholder_warns() -> None:
     print("  PASS  cite placeholder warns")
 
 
-# Property 7: Multiple pattern types → multiple distinct warnings
+def test_cite_placeholder_variant_warns() -> None:
+    """\ue001cite variant should also produce a warning."""
+    text = CLEAN_REPORT.replace(
+        "## Source Register",
+        "Result \ue001cite.\n\n## Source Register",
+    )
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass (warning only), got {result.returncode}\nstdout: {result.stdout}"
+    )
+    assert "placeholder" in result.stdout.lower(), (
+        f"expected warning about cite placeholder in:\n{result.stdout}"
+    )
+    print("  PASS  cite placeholder variant warns")
+
+
+def test_turn_search_ref_warns() -> None:
+    """turnNsearch reference should be detected."""
+    text = CLEAN_REPORT.replace(
+        "## Source Register",
+        "See [turn5search2].\n\n## Source Register",
+    )
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass (warning only), got {result.returncode}\nstdout: {result.stdout}"
+    )
+    assert "turnNxxx" in result.stdout, (
+        f"expected warning about turn reference in:\n{result.stdout}"
+    )
+    print("  PASS  turn search ref warns")
+
+
+# Scenario 7: Multiple pattern types → multiple distinct warnings
 
 
 def test_multiple_patterns_multiple_warnings() -> None:
@@ -248,7 +256,7 @@ def test_multiple_patterns_multiple_warnings() -> None:
     print(f"  PASS  multiple patterns produce {distinct_count} distinct warnings")
 
 
-# Property 8: Text that passes legitimate uses of "turn" (return to, turn to)
+# Scenario 8: Text that passes legitimate uses of "turn" (return to, turn to)
 
 
 def test_legitimate_turn_usages_no_false_positive() -> None:
@@ -269,7 +277,23 @@ def test_legitimate_turn_usages_no_false_positive() -> None:
     print("  PASS  legitimate turn usages no false positive")
 
 
-# Property 9: file- temp ID should warn
+def test_bare_turn_no_suffix_no_false_positive() -> None:
+    """Bare 'turn42' without view/source/search suffix must NOT trigger (intentional limitation)."""
+    text = CLEAN_REPORT.replace(
+        "The company reported revenue",
+        "The report cited turn42 as a reference.",
+    )
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass, got {result.returncode}\nstdout: {result.stdout}"
+    )
+    assert "⚠" not in result.stdout, (
+        f"unexpected warning about bare turn42 in:\n{result.stdout}"
+    )
+    print("  PASS  bare turn42 no false positive (intentional limitation)")
+
+
+# Scenario 9: file- temp ID should warn
 
 
 def test_file_id_warns() -> None:
@@ -301,9 +325,12 @@ def main() -> int:
         ("sandbox path warns", test_sandbox_path_warns),
         ("turn ref warns", test_turn_ref_warns),
         ("turn source ref warns", test_turn_source_ref_warns),
+        ("turn search ref warns", test_turn_search_ref_warns),
         ("cite placeholder warns", test_cite_placeholder_warns),
+        ("cite placeholder variant warns", test_cite_placeholder_variant_warns),
         ("multiple patterns → multiple warnings", test_multiple_patterns_multiple_warnings),
         ("legitimate turn usages no false positive", test_legitimate_turn_usages_no_false_positive),
+        ("bare turn42 no false positive (intentional limitation)", test_bare_turn_no_suffix_no_false_positive),
         ("file- ID warns", test_file_id_warns),
     ]
     failures = []

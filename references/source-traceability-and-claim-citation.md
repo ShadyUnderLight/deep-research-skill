@@ -62,6 +62,14 @@ The following do NOT satisfy the traceability requirement:
 - bare URLs in the body text without a source register entry
 - vague "据公开资料" or "据悉" — these do not enable unique source identification
 
+### Shared-Workflow route coverage
+
+Shared-Workflow reports are not limited to the three route-specific exemptions listed above. The general conditional pass rule applies: any functionally equivalent non-`[SN]` format (Author-Year, arXiv ID, DOI, natural language that uniquely identifies the source) paired with a structured register qualifies for conditional pass. The three route-specific exemptions are explicit examples; Shared-Workflow reports are evaluated against the general functional traceability standard.
+
+### Multi-route reports
+
+When a report declares multiple routes (primary + secondary), a format that matches **any** declared route's exemption qualifies for conditional pass. For example, a report with primary route "Listed Company" and secondary route "Academic / Literature Review" that uses `(Author, Year, Journal)` citations qualifies under the Academic route exemption. A format that does not match any declared route but is still functionally traceable should also be evaluated under the general conditional pass rule.
+
 ## External research output / Imported report hygiene
 
 When importing or adapting output from external deep-research systems (GPT Deep Research, Claude, Gemini, etc.) as input material, the following hygiene rules apply.
@@ -112,13 +120,7 @@ These hygiene rules supplement the existing traceability discipline:
 - Format equivalence exemptions (see §Format equivalence exemption) still apply — `(Author, Year)` or `据 FY2025 年报` are valid even in imported content
 - The `DISCOVERY` source type restriction (see §Source type classification) still applies: search-level output is not a register entry
 
-### Shared-Workflow route coverage
-
-Shared-Workflow reports are not limited to the three route-specific exemptions listed above. The general conditional pass rule applies: any functionally equivalent non-`[SN]` format (Author-Year, arXiv ID, DOI, natural language that uniquely identifies the source) paired with a structured register qualifies for conditional pass. The three route-specific exemptions are explicit examples; Shared-Workflow reports are evaluated against the general functional traceability standard.
-
-### Multi-route reports
-
-When a report declares multiple routes (primary + secondary), a format that matches **any** declared route's exemption qualifies for conditional pass. For example, a report with primary route "Listed Company" and secondary route "Academic / Literature Review" that uses `(Author, Year, Journal)` citations qualifies under the Academic route exemption. A format that does not match any declared route but is still functionally traceable should also be evaluated under the general conditional pass rule.
+> **Automated scanning:** A standalone validator `scripts/validate_external_citation_hygiene.py` can check any report for these hygiene violations. Run `python scripts/validate_external_citation_hygiene.py <report.md>`. Warnings are advisory (exit 0); the script does not block delivery.
 
 ## Why this matters
 
