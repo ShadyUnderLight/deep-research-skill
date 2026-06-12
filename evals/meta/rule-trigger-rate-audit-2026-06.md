@@ -6,8 +6,8 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
-- Commit anchor: `583fa32`
-- Case count: 81 tracked Markdown cases
+- Commit anchor: `9639a51`
+- Case count: 82 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -61,6 +61,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/amat-listed-company-anchor-and-label-execution-case.md` | listed-company | Failed execution | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Label inflation and stale/incorrect anchor execution. |
 | `evals/cases/apple-product-and-valuation-case.md` | product/investment analysis | Failed execution | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Product roadmap and valuation require current and forward-looking discipline. |
 | `evals/cases/apple-product-roadmap-and-investment-case.md` | product-roadmap + investment | Failed execution | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Roadmap/investment case stresses traceability and forecast labeling. |
+| `evals/cases/benchmark-comparability-technical-deep-dive-case.md` | technical-deep-dive | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | New benchmark-comparability eval case (issue #270); pending formal audit. |
 | `evals/cases/byd-competitive-positioning-traceability-hard-fail-case.md` | competitive-positioning | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Failed execution | Triggered | Source traceability not executed; self-assessment completely incorrect; evidence labels over-optimistic; strong exclusivity wording. |
 | `evals/cases/byd-report-format-discipline-case.md` | listed-company | Triggered | Failed execution | Failed execution | Failed execution | N/A | Triggered | Triggered | Triggered | Labels understood but applied inconsistently. |
 | `evals/cases/cambricon-competitive-positioning-near-pass-case.md` | competitive-positioning | Triggered | Triggered | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Near-pass; secondary verification and role labels lag. |
