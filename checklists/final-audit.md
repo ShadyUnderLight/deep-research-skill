@@ -166,6 +166,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] for technical deep-dive / architecture analysis tasks, the report makes a technical judgment (not just a survey) and the judgment is supported by evidence
 - [ ] for technical deep-dive / architecture analysis tasks, comparison dimensions are explicit and the analysis is dimension-by-dimension (not just a feature list)
 - [ ] for technical deep-dive / architecture analysis tasks, technical state is current and vendor claims are distinguished from independently verified technical facts
+- [ ] for technical deep-dive / architecture analysis tasks, roadmap / feature-state claims separate stable shipped capability from announced roadmap, experimental extension, deprecated feature, and speculative direction
 - [ ] for regulatory / policy impact analysis tasks, current regulations are separated from pending/in-progress legislation
 - [ ] for regulatory / policy impact analysis tasks, business impact is analyzed (direct vs indirect) and uncertainty is explicitly bounded
 - [ ] for regulatory / policy impact analysis tasks, scenario analysis covers optimistic / base / pessimistic outcomes
