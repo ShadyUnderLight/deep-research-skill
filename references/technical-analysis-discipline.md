@@ -147,6 +147,38 @@ The table should be followed by a short interpretation:
 - **Load-bearing dimensions:** which dimensions drive the final recommendation (and why the others are background)
 - **Reversal conditions:** what specific change (ecosystem maturity, performance threshold, cost constraint, etc.) would change the recommendation
 
+## Benchmark comparability for technical deep-dive
+
+When a technical deep-dive report's conclusions depend on benchmark numbers — latency, throughput, accuracy, cost, token-level metrics, or similar quantitative claims — the report must disclose sufficient methodology context for the reader to assess comparability.
+
+### Minimum disclosure fields
+
+For each load-bearing benchmark number, the report must disclose the following. Not every field is applicable to every benchmark; mark genuinely inapplicable fields as `N/A` rather than omitting them silently.
+
+- **Model / system version**: which model, software version, or system configuration was benchmarked. For AI/ML benchmarks, include parameter scale, quantization level, and framework version where relevant.
+- **Workload / dataset / task type**: what specific task, query type, dataset, or workload was used in the measurement. If the workload is proprietary or described only in a referenced paper, state the reference.
+- **Hardware / environment**: inference or testing hardware (CPU/GPU/TPU, memory), whether local or cloud, and any environment details that affect runtime characteristics.
+- **Metric definition**: what exactly was measured — p50/p95 latency, generation-only latency, end-to-end latency, throughput (tokens/s or requests/s), accuracy (F1, Exact Match, human eval), groundedness, citation precision, cost per token or per query. Do not use bare terms like "latency" or "accuracy" without specifying the operational definition.
+- **Measurement scope**: what is included in the measurement — for AI/ML workloads, whether retrieval, preprocessing, re-ranking, tool calls, or post-processing stages are included, or whether only the core generation/inference phase is measured; for other workloads, whether query compilation, data transfer, transformation stages, or other pipeline phases are included or excluded. The key requirement is that the scope boundary is explicit enough for the reader to understand what is and is not counted.
+- **Concurrency / batch / context**: batch size, concurrency level, context length, or other load parameters that materially affect the metric.
+- **Source role**: whether the number is an observed benchmark result from a controlled experiment, a vendor-reported claim, a proxy derived from related work, an analytical assumption, or a model output from estimation. For observed benchmarks, state how the measurement was conducted (internal experiment, published paper, third-party evaluation provider).
+
+### Cross-source comparability
+
+When numbers from different sources, papers, or products appear in the same analysis or comparison, the report must explicitly note comparability boundaries — different hardware backends, different metric types (e.g., single-stream decode vs. server throughput), different workload patterns, or different measurement methodologies. Silently juxtaposing numbers from incompatible contexts creates a false appearance of comparability.
+
+### Graceful degradation
+
+If a required field cannot be populated because the original source did not report it, the report should:
+1. note the gap explicitly (e.g., "the source does not disclose hardware"),
+2. assess whether the missing information could materially change the conclusion, and
+3. adjust confidence or claim strength accordingly.
+
+### Relationship to route-specific rules
+
+- For **Technical Deep-dive** reports, the general disclosure fields above apply.
+- For **Equipment Selection / Procurement** reports, additional route-specific benchmark comparability rules apply — see `ROUTING-MATRIX.md` §Equipment Selection Hard Fail and `checklists/final-audit.md` §Recall discipline (equipment-selection items).
+
 ## Common failure modes
 
 Watch for these failure patterns:

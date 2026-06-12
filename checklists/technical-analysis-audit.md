@@ -34,7 +34,10 @@ These items verify that the report's front page provides a trustworthy temporal 
 
 - [ ] primary technical sources are used for load-bearing claims (documentation, specs, papers, patents)
 - [ ] vendor claims are distinguished from independently verified technical facts
-- [ ] benchmarks cite methodology, environment, and date
+- [ ] benchmark numbers 标明 workload / dataset / metric definition 及测量方法，参见 `references/technical-analysis-discipline.md` §Benchmark comparability for technical deep-dive
+- [ ] latency / cost 数字说明是否 end-to-end，明确包含哪些处理阶段（如检索/预处理/推理/编译/数据传输/后处理等，视 workload 类型而定）
+- [ ] cross-source benchmark 不直接横比；如必须横比，报告说明 comparability caveat（不同硬件、不同 metric type、不同 workload、不同测量方法等）
+- [ ] performance table 有数字角色列或表注（见 `references/quantitative-role-labeling.md` §表格中的角色标签）
 - [ ] patent claims cite patent numbers or specific filings, not just counts
 - [ ] （非阻塞）厂商自述在正文中明确标注了来源角色（如 `(厂商自述)` 或 `(来源：厂商自述，非独立验证)`），见 `references/source-traceability-and-claim-citation.md` §来源标注一致性
 - [ ] （非阻塞）涉及厂商自述的行内引用附加了标准格式 caveat `(来源：厂商自述，非独立验证)` 或等效说明
