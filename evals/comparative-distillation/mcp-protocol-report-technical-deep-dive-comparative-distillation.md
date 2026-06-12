@@ -25,6 +25,8 @@ It is for:
 - identifying any remaining failure modes that are not yet covered by existing checklists or rules
 - providing a historical record so future maintainers understand why the four MCP eval cases exist
 
+> **INDEX.md note:** This file lives in `evals/comparative-distillation/` and is not added to `evals/INDEX.md`. Per `evals/README.md`, the index is synchronized with tracked case evals in `evals/cases/`. Comparative-distillation assets are tracked by the file listing alone, consistent with the 12 existing files in this directory.
+
 ---
 
 ## Dimension 1: Source Register / source traceability
@@ -63,12 +65,12 @@ No new action needed. The existing source-traceability discipline (`checklists/s
 - Reader cannot tell which quality gates were (or were not) applied
 
 ### Gap
-Report B lacks any auditability structure. This is the core difference: Report A makes its quality gates visible, Report B relies on the reader's trust. The existing `final-audit.md` process-integrity gate (lines 56–68) and the Route and audit status template already enforce this for Report A. Report B fails any delivery gate that requires audit visibility.
+Report B lacks any auditability structure. This is the core difference: Report A makes its quality gates visible, Report B relies on the reader's trust. The existing `final-audit.md` process-integrity gate (§Process-artifact sufficiency, item "Process-integrity gate") and the Route and audit status template already enforce this for Report A. Report B fails any delivery gate that requires audit visibility.
 
 A subtler gap that the comparison reveals: **cross-dimensional self-assessment consistency**. A report could pass each individual dimension check but have its audit block show all "passed" while the actual body evidence is thin or internally contradictory (e.g., timeline integrity claims pass while using inconsistent dates between dimensions). The existing individual dimension checks might not catch this gestalt pattern.
 
 ### Candidate action
-The existing process-integrity gate (§Process-artifact sufficiency, lines 56–68 in `final-audit.md`) already requires each "passed" claim to have visible body evidence. This covers the multi-dimensional case because each claimed pass must independently show evidence. However, an explicit cross-DIMENSION consistency reminder would strengthen the gate: when 3+ audit dimensions all claim "passed", verify that their evidence bases are mutually consistent (not contradictory dates, overlapping source bases that tell different stories, etc.).
+The existing process-integrity gate (§Process-artifact sufficiency in `final-audit.md`) already requires each "passed" claim to have visible body evidence. This covers the multi-dimensional case because each claimed pass must independently show evidence. However, an explicit cross-DIMENSION consistency reminder would strengthen the gate: when 3+ audit dimensions all claim "passed", verify that their evidence bases are mutually consistent (not contradictory dates, overlapping source bases that tell different stories, etc.).
 
 ### Action type
 `CHECKLIST_HARDENING` — add a (non-blocking) reminder in `final-audit.md` §Process-artifact sufficiency near the existing process-integrity gate: when 3+ audit dimensions claim passed, spot-check cross-dimensional evidence consistency.
@@ -278,7 +280,7 @@ This is primarily a **validation and documentation** case. The rules were not mi
 ## Minimal quality bar
 
 - [x] the two reports are comparable enough to justify distillation (same MCP protocol deep-dive task)
-- [x] the comparison used the six fixed dimensions plus two additional dimensions derived from the specific comparison
+- [x] the comparison used eight custom dimensions covering source traceability, self-assessment consistency, audience framing, temporal consistency, roadmap stratification, threat model architecture, comparison structure, and engineering control actionability — adapted from the template's six-dimension framework to fit technical-deep-dive route specifics
 - [x] each accepted candidate has an action type (NO_ACTION or CHECKLIST_HARDENING)
 - [x] each accepted candidate has a proposed repo home
 - [x] at least one rejected observation is documented

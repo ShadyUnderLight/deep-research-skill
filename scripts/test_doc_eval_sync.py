@@ -6,7 +6,6 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-DISTILLATION_DIR = ROOT / "evals" / "comparative-distillation"
 
 
 def read(relpath: str) -> str:
@@ -206,21 +205,7 @@ def test_mcp_distillation_dimension_structure() -> None:
 def test_mcp_distillation_action_types_are_valid() -> None:
     """Property: all action type values must be from the allowed set."""
     text = read(MCP_DISTILLATION_RELPATH)
-    # Check inline action type mentions e.g. "Action type\n`NEW_RULE`"
-    for line in text.splitlines():
-        s = line.strip()
-        # Match lines that contain a backtick-wrapped action type
-        if s.startswith("- `") and s.endswith("`"):
-            maybe_type = s.strip("- `").strip()
-            if maybe_type in ALLOWED_ACTION_TYPES:
-                continue  # valid
-        # Also match standalone code-block action types
-        if s in ALLOWED_ACTION_TYPES and any(
-            t in line for t in ALLOWED_ACTION_TYPES
-        ):
-            continue
-
-    # More precise: find pattern "Action type\n\n`TYPE`" or "### Action type\n`TYPE`"
+    # Find pattern "Action type\n\n`TYPE`" or "### Action type\n`TYPE`"
     found_types = re.findall(r"Action type\n+`(\w+)`", text)
     for t in found_types:
         expect(
@@ -242,19 +227,25 @@ def test_mcp_distillation_candidate_summary_has_action_types() -> None:
             atype = row[3].strip()
             if atype in ALLOWED_ACTION_TYPES:
                 continue
-            # NO_ACTION is always valid
             expect(
-                atype in ALLOWED_ACTION_TYPES or atype == "NO_ACTION",
+                atype in ALLOWED_ACTION_TYPES,
                 f"invalid action type '{atype}' in summary table row: {row}",
             )
 
 
 def test_mcp_distillation_final_judgment_distinguishes_gap_type() -> None:
-    """Property: final judgment must distinguish rule vs trigger vs execution gap."""
+    """Property: final judgment section must distinguish rule vs trigger vs execution gap."""
     text = read(MCP_DISTILLATION_RELPATH)
-    has_rule = "rule" in text.lower() and "gap" in text.lower()
-    has_trigger = "trigger" in text.lower() and "gap" in text.lower()
-    has_execution = "execution" in text.lower() and "gap" in text.lower()
+    # Isolate the Final judgment section only — scanning the entire doc is too weak
+    # because "rule" / "gap" / "trigger" / "execution" appear in dimension descriptions.
+    parts = text.split("## Final judgment")
+    if len(parts) < 2:
+        expect(False, "MCP distillation missing Final judgment section")
+        return
+    judgment = parts[1].split("\n## ")[0]  # content up to next level-2 heading (not ### sub-headings)
+    has_rule = "rule" in judgment.lower() and "gap" in judgment.lower()
+    has_trigger = "trigger" in judgment.lower() and "gap" in judgment.lower()
+    has_execution = "execution" in judgment.lower() and "gap" in judgment.lower()
     expect(
         has_rule or has_trigger or has_execution,
         "MCP distillation final judgment should distinguish gap type "
@@ -270,7 +261,7 @@ def test_mcp_distillation_minimal_quality_bar_checked() -> None:
     if len(bar_section) < 2:
         expect(False, "MCP distillation missing Minimal quality bar section")
         return
-    bar_text = bar_section[1].split("##")[0]  # content up to next heading
+    bar_text = bar_section[1].split("\n## ")[0]  # content up to next level-2 heading
     expect(
         "- [x]" in bar_text or "- [X]" in bar_text,
         "MCP distillation minimal quality bar must have checked items",
