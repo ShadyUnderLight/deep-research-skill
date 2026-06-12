@@ -483,6 +483,7 @@ For this route, be especially strict about:
 - whether household operating burdens like noise, power, maintenance, backup, and expansion friction are treated as ranking variables rather than side notes
 - whether rejected routes lose for explicit operator constraints rather than broad category descriptions
 - whether the report segments recommendation by workload or operator persona when the answer materially differs by use case
+- whether benchmark performance numbers that carry a recommendation show test method and comparability boundary
 
 ### Trigger
 Use when the task is mainly about:
@@ -512,7 +513,7 @@ Use when the task is mainly about:
 ### Attach
 - current-state verification when current market pricing, current platforms, or current device availability materially affect the answer
 - decision utility
-- quantitative role labeling when budgets, power estimates, operating costs, or scoring materially affect the recommendation
+- quantitative role labeling when budgets, power estimates, operating costs, scoring, or benchmark performance numbers materially affect the recommendation
 - source traceability when specific hardware, pricing, system constraints, or long-run suitability claims carry the conclusion
 
 ### Audit
@@ -542,6 +543,8 @@ Fail if the report:
 - discusses hardware and systems separately without binding them into a stack recommendation
 - treats household operating costs and maintenance friction as side notes instead of ranking variables
 - fails to segment by workload or operator persona when materially different use cases would produce materially different recommendations
+- uses benchmark performance numbers to determine a recommendation without disclosing metric type or backend
+- compares server-side throughput numbers with single-stream desktop tok/s as if they were the same metric
 
 ---
 

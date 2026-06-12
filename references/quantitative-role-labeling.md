@@ -293,6 +293,9 @@ Valuation ranges, scenario cases, and estimated financial outcomes often require
 ### Startup / private company evaluation
 ARR/MRR figures must be labeled by source type (company-reported / estimated / inferred) — this is complementary to the core role labels (observed / proxy / assumption / model-output); both should be applied where relevant. Valuation multiples (e.g., PS 100x) require explicit boundary conditions (private-company premium context, comparable transaction range). "预计" / "估测" / "约" claims must include method note or source role — bare hedge wording is insufficient. Route-specific checks at `checklists/quantitative-role-audit.md` §Startup / Private Company Evaluation.
 
+### Equipment selection / procurement / home-server-planning
+Benchmark performance numbers (tok/s, TTFT, throughput, latency) that materially affect procurement recommendations must be labeled with their epistemic role: observed-benchmark, vendor-claim, proxy-benchmark, model-output, or assumption. When a comparison table mixes numbers from different backends (MLX / CUDA / TensorRT-LLM / vLLM) or different metric types (single-stream decode vs server throughput), the table must include a comparability note. Route-specific checks at `checklists/final-audit.md` §Equipment selection.
+
 ## Minimal display patterns
 
 Quantitative role may be shown through:
