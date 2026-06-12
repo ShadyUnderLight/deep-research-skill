@@ -598,6 +598,7 @@ The final report should visibly show:
 - **For feasibility assessment:** what is being attempted, available approaches, evidence of viability, critical unknowns, validation requirements, explicit conclusion (feasible / conditionally feasible / not feasible)
 - **For roadmap evaluation:** current state of the art, announced vs. rumored roadmaps, key milestones and dependencies, risk factors, realistic timeline assessment
 - **For patent analysis:** patent landscape, technical coverage areas, freedom-to-operate assessment, filing trends
+- **For security-sensitive architecture analysis:** assets, trust boundaries, threat actors, attack paths, risk prioritization, engineering controls, detection signals, short/medium/long-term roadmap — see `references/technical-analysis-discipline.md` §Security deep-dive (threat modeling add-on)
 
 ### Hard fail
 Fail if the report:
