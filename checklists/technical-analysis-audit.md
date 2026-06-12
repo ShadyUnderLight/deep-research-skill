@@ -46,7 +46,10 @@ These items verify that the report's front page provides a trustworthy temporal 
 - [ ] each dimension has clear criteria
 - [ ] trade-offs are stated, not just advantages
 - [ ] the comparison covers at least: performance, cost, maturity, ecosystem (or justified subset)
-- [ ] the recommendation explains which dimensions are load-bearing
+- [ ] each comparator's role is visible (substitute / complement / ancestor / excluded with reason)
+- [ ] comparison table is followed by a trade-off interpretation identifying load-bearing dimensions
+- [ ] the recommendation explains which dimensions are load-bearing and what conditions would reverse the conclusion
+- [ ] if a common comparator was excluded, the exclusion reason is stated
 - [ ] （非阻塞）所有比较表、评分表、估算表包含数字角色列（或等效的表头角色行/表注），见 `references/quantitative-role-labeling.md` §表格中的角色标签
 
 ## Feasibility assessment (for technical feasibility)
