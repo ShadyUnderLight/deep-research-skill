@@ -62,7 +62,7 @@ Do not use this discipline when:
 - What could derail the roadmap?
 - What is the realistic timeline vs. optimistic claims?
 
-### Roadmap/feature state stratification
+### 6. Roadmap/feature state stratification
 
 When evaluating a technology roadmap, classify each claim into exactly one of these states.
 Do not mix multiple states in the same claim.

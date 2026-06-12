@@ -17,7 +17,7 @@ This checklist verifies that the technical analysis route was executed correctly
 - [ ] current technical state is verified (versions, capabilities, benchmarks)
 - [ ] the report's stated coverage date or assessment window is consistent with the source timeline it cites; if sources span a date range, the coverage window is explicit
 - [ ] stale technical claims are flagged and either updated or explicitly marked as historical
-- [ ] roadmap / version / feature-state claims 分为 stable shipped / experimental / deprecated / announced roadmap / proposed / rumored
+- [ ] roadmap / version / feature-state claims 分为 stable / shipped / experimental / deprecated / superseded / announced roadmap / proposed / SEP draft / rumored / community signal
 - [ ] roadmap announcement 可标为 confirmed event，但未来能力结果不得标为 confirmed outcome
 - [ ] deprecated / superseded feature 没有被当作当前推荐能力
 - [ ] 如果报告引用官方 roadmap，必须说明是否 commitment，以及该说明对结论的影响
