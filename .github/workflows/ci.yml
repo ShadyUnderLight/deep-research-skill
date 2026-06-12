@@ -41,6 +41,7 @@ jobs:
       - run: python3 scripts/test_forward_looking_label_lint.py
       - run: python3 scripts/test_market_outlook_monitoring_contract.py
       - run: python3 scripts/test_benchmark_comparability_contract.py
+      - run: python3 scripts/test_equipment_selection_contract.py
       - run: python3 scripts/test_declared_execution.py
       - run: python3 scripts/test_report_quality_validator.py
       - run: python3 scripts/test_doc_eval_sync.py

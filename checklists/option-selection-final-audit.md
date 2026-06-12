@@ -91,6 +91,7 @@ Run this checklist before delivery.
 - [ ] uncertainty is tied to the decision, not left as generic caveats
 - [ ] if the recommendation depends on one dominant assumption, that dependency is visible near the recommendation rather than buried later
 - [ ] if the route involves procurement, deployment, or physical movement, the report surfaces hidden friction in the same decision layer as price / performance / convenience rather than treating it as appendix detail
+- [ ] if the route involves physical hardware procurement or build-stack recommendation as core output, the report includes a build-ready configuration table that surfaces hidden friction (power, noise, maintenance, backup) and build-ready components in the same decision layer as price/performance
 - [ ] if the route involves multiple stakeholders or geographies, the report shows who is penalized by the winning option and why that penalty is still acceptable or not
 - [ ] when the chosen option has major execution uncertainty, the report includes at least one post-decision branch with trigger condition and monitoring signal (see `references/decision-tree-method.md`)
 

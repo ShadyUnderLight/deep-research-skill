@@ -7,7 +7,7 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
 - Commit anchor: `583fa32`
-- Case count: 78 tracked Markdown cases
+- Case count: 79 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -94,6 +94,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/injection-stale-product-data-case.md` | freshness / injection | Failed execution | Triggered | N/A | N/A | N/A | Failed execution | Triggered | Triggered | Stale product data contaminates current-state answer. |
 | `evals/cases/innolight-listed-company-execution-case.md` | listed-company | Failed execution | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Listed-company execution family with snapshot/labels/valuation gaps. |
 | `evals/cases/intel-current-state-freshness-case.md` | current-state / listed-company | Failed execution | Triggered | Triggered | Triggered | N/A | Failed execution | Triggered | Triggered | Current-state freshness failure is the target. |
+| `evals/cases/local-llm-equipment-selection-budget-boundary-case.md` | equipment-selection | Triggered | Failed execution | N/A | Failed execution | Missing trigger | Triggered | Triggered | Triggered | Budget boundary completeness and secondary provider route verification. |
 | `evals/cases/lotes-listed-company-moat-snapshot-case.md` | listed-company | Failed execution | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Market snapshot, moat boundary, valuation, and label gaps. |
 | `evals/cases/marvell-listed-company-snapshot-traceability-case.md` | listed-company | Failed execution | Missing trigger | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Claim-level citations absent; snapshot and valuation incomplete. |
 | `evals/cases/mcp-security-risk-list-vs-threat-model-case.md` | technical-deep-dive | Triggered | Failed execution | Failed execution | N/A | N/A | Triggered | Triggered | N/A | Security deep-dive output must distinguish risk list from threat model; current rule verdict: fail (after #244). |
