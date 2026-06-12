@@ -62,6 +62,20 @@ Do not use this discipline when:
 - What could derail the roadmap?
 - What is the realistic timeline vs. optimistic claims?
 
+### Roadmap/feature state stratification
+
+When evaluating a technology roadmap, classify each claim into exactly one of these states.
+Do not mix multiple states in the same claim.
+
+| 状态 | 含义 | 允许标签 | 写作要求 |
+|------|------|----------|----------|
+| Stable / shipped | 当前稳定规范或已发布实现支持 | [CONF] | 标明版本和验证日期 |
+| Experimental | 规范/扩展标明 experimental | [CONF] for status, [INFER] for maturity | 不得写成生产稳定能力 |
+| Deprecated / superseded | 已弃用或被替代 | [CONF] for status | 必须说明迁移或风险 |
+| Announced roadmap | 官方 roadmap / WG priority | [CONF] for announcement, not outcome | 必须写明不是已交付能力 |
+| Proposed / SEP draft | 提案、草案、PR | [INFER] or scoped [CONF] for proposal existence | 不得当成 adopted spec |
+| Rumored / community signal | 媒体、社区、issue、论坛 | [INFER]/[UNKN] | 必须标低置信或 discovery |
+
 ## Evidence standards
 
 For technical claims, prioritize:
@@ -116,7 +130,7 @@ Watch for these failure patterns:
 2. **Missing comparison dimensions**: compares on only 1-2 dimensions when 4-5 are decision-relevant
 3. **Stale technical state**: uses outdated version numbers, deprecated features, or superseded benchmarks
 4. **Vendor claims treated as technical facts**: marketing specs mixed with engineering evidence
-5. **Roadmap optimism**: treats announced features as shipped capabilities
+5. **Roadmap optimism**: treats announced features as shipped capabilities, or mixes stable/shipped, experimental, deprecated, announced, proposed, and rumored states into one undifferentiated layer
 6. **Ignoring operational burden**: focuses on capabilities while ignoring deployment, maintenance, and scaling costs
 7. **Patent counting without analysis**: lists patents without understanding technical coverage or freedom-to-operate
 
@@ -166,7 +180,7 @@ Fail the report if:
 
 ## Related references
 
-- `references/forward-looking-discipline.md` — for forecasts, roadmap statements, announced-vs-rumored separation, and forward-looking assumption chains. Use when the task involves technology roadmap evaluation.
+- `references/forward-looking-discipline.md` — for forecasts, roadmap statements, announced-vs-rumored separation, forward-looking assumption chains, and technical roadmap adaptation. Use when the task involves technology roadmap evaluation. See also §Roadmap/feature state stratification above for state-level classification.
 - `references/source-traceability-and-claim-citation.md` — for source type classification and inline citation. Use for all technical claims.
 - `references/source-quality.md` — for source ranking dimensions and tie-break rules. Use when source credibility is ambiguous.
 - `references/counter-evidence.md` — for actively seeking contradicting evidence. Use when the technical claim is contentious or high-stakes.
