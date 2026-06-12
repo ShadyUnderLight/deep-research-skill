@@ -482,6 +482,7 @@ For this route, be especially strict about:
 - whether minimum viable vs recommended configuration is separated when it changes the answer materially
 - whether household operating burdens like noise, power, maintenance, backup, and expansion friction are treated as ranking variables rather than side notes
 - whether rejected routes lose for explicit operator constraints rather than broad category descriptions
+- whether the report segments recommendation by workload or operator persona when the answer materially differs by use case
 
 ### Trigger
 Use when the task is mainly about:
@@ -523,6 +524,7 @@ The final report should visibly show:
 
 - the real purchase or build decision
 - dominant household or operator constraints
+- workload / operator persona segmentation when the recommendation differs materially by use case
 - top recommendation
 - credible runner-up
 - rejected routes and why
@@ -539,6 +541,7 @@ Fail if the report:
 - names budget bands without clarifying major inclusion / exclusion assumptions
 - discusses hardware and systems separately without binding them into a stack recommendation
 - treats household operating costs and maintenance friction as side notes instead of ranking variables
+- fails to segment by workload or operator persona when materially different use cases would produce materially different recommendations
 
 ---
 
