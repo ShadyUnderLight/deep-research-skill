@@ -159,6 +159,19 @@ Organize by task type. Examples:
 - technical: feasibility, constraints, trade-offs, implementation needs
 - policy: rules, scope, timing, compliance impact, edge cases
 
+#### Terminology boundary (for definition-sensitive technical topics)
+
+For technical deep-dive topics where key concepts carry multiple or contested definitions (e.g., "Agentic RAG" as academic term vs. engineering paradigm vs. vendor label), include a terminology-boundary table before the detailed comparison. This helps the reader understand which definition the report adopts and what is excluded from scope.
+
+| 概念 | 原始/严格定义 | 当代工程定义 | 本报告采用定义 | 排除边界 |
+|---|---|---|---|---|
+| [概念 A] | [原始论文/出处定义] | [当前工程/行业用法] | [本文采用的定义] | [明确排除的范围] |
+| [概念 B] | [原始论文/出处定义] | [当前工程/行业用法] | [本文采用的定义] | [明确排除的范围] |
+
+**操作性定义**：本文将 [概念 X] 归入 [分类 Y]；将 [情形 Z] 排除在外，理由是 [理由]。
+
+This table is optional but strongly recommended when the topic involves concepts with multiple competing definitions. It does not replace the 7-column Source Register.
+
 ### Valuation method and scenario analysis (mandatory for listed-company work)
 
 For listed-company reports, a **valuation method and scenario analysis** section is mandatory. It must appear in or immediately after the financial analysis portion of the report, with enough detail for a reviewer to recompute the target prices from the disclosed assumptions.
