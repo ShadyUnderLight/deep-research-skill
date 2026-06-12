@@ -291,6 +291,19 @@ For equipment-selection / procurement / home-server-planning tasks, prefer this 
 13. What would change the recommendation
 14. Sources
 
+When the recommendation differs materially by workload or operator persona, an alternative workload-segmented structure should be used:
+
+1. Executive summary by workload or operator persona
+2. Workload segmentation
+3. Decision architecture (which segment gets priority when goals conflict; tiebreaker or trade-off logic)
+4. Per-segment ranked recommendation
+5. Hardware + software stack fit per segment
+6. Minimum viable vs recommended configuration per segment
+7. Cost / operating burden comparison (including what is included or excluded in each segment's estimate)
+8. What would change the recommendation per segment
+9. Next steps
+10. Sources
+
 In these equipment-selection / procurement cases:
 - do not let the report become a route overview with a recommendation attached at the end
 - make the dominant constraint visible, such as budget, quiet operation, storage density, data safety, media capability, low maintenance, or virtualization flexibility
