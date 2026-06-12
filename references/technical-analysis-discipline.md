@@ -79,6 +79,14 @@ Do not mix multiple states in the same claim.
 | Proposed / SEP draft | 提案、草案、PR | [INFER] or scoped [CONF] for proposal existence | 不得当成 adopted spec |
 | Rumored / community signal | 媒体、社区、issue、论坛 | [INFER]/[UNKN] | 必须标低置信或 discovery |
 
+### 7. Definition-sensitive concepts (定义敏感概念)
+
+- Is the core concept definition-sensitive — does it carry multiple competing definitions (academic definition vs. engineering definition vs. vendor-specific definition)?
+- Does the report need to distinguish the original academic/strict definition from current engineering or industry usage?
+- Could the chosen definition materially change the comparison conclusions or recommendation?
+- What concepts are commonly conflated with the target concept but should remain analytically distinct?
+- What is this report's operational definition (操作性定义), and what is deliberately excluded from scope?
+
 ## Evidence standards
 
 For technical claims, prioritize:

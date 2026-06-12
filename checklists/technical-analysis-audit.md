@@ -51,6 +51,9 @@ These items verify that the report's front page provides a trustworthy temporal 
 - [ ] the recommendation explains which dimensions are load-bearing and what conditions would reverse the conclusion
 - [ ] if a common comparator was excluded, the exclusion reason is stated
 - [ ] （非阻塞）所有比较表、评分表、估算表包含数字角色列（或等效的表头角色行/表注），见 `references/quantitative-role-labeling.md` §表格中的角色标签
+- [ ] 定义敏感的技术概念在比较前已明确其定义范围：原始/严格定义、当代工程定义、本文采用定义
+- [ ] （非阻塞）如术语不是单篇论文严格定义的标准概念，报告标明其为操作性定义或工程范式归纳
+- [ ] 相关但不等价的概念有明确的排除边界，避免读者误以为比较对象在同类概念间进行
 
 ## Feasibility assessment (for technical feasibility)
 
