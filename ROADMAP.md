@@ -26,6 +26,7 @@ This file tracks likely next improvements and helps keep repo evolution intentio
 - Run at least 2-3 more real comparative-distillation cases and promote only the recurring candidate rules.
 - Validate the new market-outlook routing against 2-3 more real cases before hardening further wording or adding more specialized sub-checklists.
 - **Validate the new technical deep-dive routing** against 2-3 real technical analysis cases (architecture comparison, feasibility assessment, patent analysis) and harden the route definition if activation or artifact contract execution is weak.
+  - ✅ MCP protocol case complete — `evals/comparative-distillation/mcp-protocol-report-technical-deep-dive-comparative-distillation.md` covers architecture comparison, security threat model, and roadmap validation burdens. Rules from #242–#245 validated as closing the identified gaps. (toward #246)
 
 ### P2
 - Expand finance/investment-specific guidance for valuation, consensus, and reporting-period handling.
