@@ -524,7 +524,7 @@ The final report should visibly show:
 
 - the real purchase or build decision
 - dominant household or operator constraints
-- workload / operator persona segmentation when the recommendation differs materially by use case
+- workload or operator persona segmentation when the recommendation differs materially by use case
 - top recommendation
 - credible runner-up
 - rejected routes and why
