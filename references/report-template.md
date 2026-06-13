@@ -305,6 +305,7 @@ This symmetry matters because asymmetric structure signals to the reader that on
   - ❌ **未运行 (Not run)** — 引用正文中说明未运行原因的章节位置
   「证据」列与 Status 列的自评状态共同构成可审计记录——评审者无需全文扫描即可定位每项审计的执行证据或决定理由
 - 如果路由未选择（shared-workflow 路径），列出 `workflow-spine-audit.md` 和 `final-audit.md` 的运行状态
+- **审计状态应由 validator 输出驱动**：技术类报告交付前，应使用 `scripts/audit_report.py`（route-aware 审计编排器）对报告运行一次 consolidated audit。该工具的 verdict 输出应作为最终 Route and Audit Status 区块的客观依据。如果未运行 audit wrapper，不得将任意状态默认为 ✅ Passed；必须标注为 ⚠️ Manual 或 ❌ Not Run，并附理由。
 
 ### 9. Sources
 

@@ -50,6 +50,7 @@ jobs:
       - run: python3 scripts/test_md_to_pdf_preflight.py
       - run: python3 scripts/test_control_plane_architecture_discipline.py
       - run: python3 scripts/test_quantitative_role_audit.py
+      - run: python3 scripts/test_audit_report.py
 
   smoke:
     runs-on: ubuntu-latest
