@@ -48,31 +48,65 @@ _PRIMARY_COMPANY_TYPES: frozenset[str] = frozenset({
     "PRIMARY",  # simplified 5-class system
 })
 
-# Chinese technical source type to canonical type mapping.
-# Used by _normalize_source_type() to map free-text Chinese source types
+# Free-text source type to canonical type mapping (Chinese + common English aliases).
+# Used by _normalize_source_type() to map free-text source types
 # (common in technical reports) to the canonical types that the validator checks.
 # Parenthetical variants (e.g., "学术综述（arXiv）") are handled by stripping
 # parenthetical content before lookup.
-_TECHNICAL_CHINESE_MAP: dict[str, str] = {
+#
+# The standard canonical types are listed in §Source type classification of
+# references/source-traceability-and-claim-citation.md.
+_FREETEXT_TYPE_MAP: dict[str, str] = {
+    # Academic / literature
     "原始论文": "PRIMARY_FILING",
     "peer-reviewed paper": "PRIMARY_FILING",
     "学术综述": "SECONDARY_MEDIA",
     "arxiv preprint": "SECONDARY_MEDIA",
-    "arXiv preprint": "SECONDARY_MEDIA",
+    # Official / vendor
     "官方技术文档": "PRIMARY_DEV",
     "框架文档": "PRIMARY_DEV",
-    "官方文档": "PRIMARY_DEV",
+    "官方文档": "PRIMARY_COMPANY",
+    "技术白皮书": "PRIMARY_DEV",
+    "白皮书": "PRIMARY_DEV",
+    "产品文档": "PRIMARY_COMPANY",
+    "API文档": "PRIMARY_DEV",
+    "api 文档": "PRIMARY_DEV",
+    "公司公告": "PRIMARY_COMPANY",
+    "招股书": "PRIMARY_FILING",
+    "招股说明书": "PRIMARY_FILING",
+    "年报": "PRIMARY_FILING",
+    "年度报告": "PRIMARY_FILING",
+    # Blog / media
     "技术博客": "SECONDARY_MEDIA",
     "官方博客": "PRIMARY_COMPANY",
     "官方技术博客": "PRIMARY_COMPANY",
     "行业研究报告": "SECONDARY_ANALYST",
-    "技术分析": "INFERRED",
-    "多来源综合": "INFERRED",
+    "新闻报道": "SECONDARY_MEDIA",
+    "新闻": "SECONDARY_MEDIA",
+    "券商研报": "SECONDARY_ANALYST",
+    "研报": "SECONDARY_ANALYST",
+    # Community / weak signal
     "社区技术文章": "WEAK_SIGNAL",
     "博客园": "WEAK_SIGNAL",
     "CSDN": "WEAK_SIGNAL",
     "社区文章": "WEAK_SIGNAL",
+    "知乎": "WEAK_SIGNAL",
     "Reddit": "WEAK_SIGNAL",
+    "微信公众号": "WEAK_SIGNAL",
+    "公众号": "WEAK_SIGNAL",
+    # Transcript
+    "专家访谈": "TRANSCRIPT",
+    "访谈": "TRANSCRIPT",
+    "财报电话会": "TRANSCRIPT",
+    # Inference
+    "技术分析": "INFERRED",
+    "多来源综合": "INFERRED",
+}
+
+# Case-insensitive lookup map built from _FREETEXT_TYPE_MAP.
+# Keys are lowercased; values are the same canonical types.
+_FREETEXT_TYPE_MAP_CI: dict[str, str] = {
+    k.lower(): v for k, v in _FREETEXT_TYPE_MAP.items()
 }
 
 
@@ -240,21 +274,23 @@ def _normalize_source_type(source_type: str) -> str:
     """Normalize a source type string for canonical lookup.
 
     Steps:
-    1. Strip CJK parenthetical content like （arXiv）
-    2. Strip half-width parenthetical content like (arXiv)
-    3. Strip whitespace
-    4. If remaining string matches a key in _TECHNICAL_CHINESE_MAP, return mapped value
-    5. Otherwise return original string unchanged (uppercase canonical types pass through)
+    1. Strip leading/trailing whitespace
+    2. Strip parenthetical content: both CJK （arXiv） and half-width (arXiv)
+    3. Do case-insensitive lookup in _FREETEXT_TYPE_MAP
+    4. If found, return the canonical type; otherwise return the stripped string
+
+    Always returns a parentheses-stripped value so canonical types like
+    \"PRIMARY_FILING (annual report)\" still match _is_secondary_type() etc.
     """
     s = source_type.strip()
-    # Remove CJK parentheses and their content
+    # Strip parenthetical content (CJK and half-width parentheses)
     s = re.sub(r'[（(][^）)]*[）)]', '', s).strip()
-    # Remove half-width parentheses and their content
     s = re.sub(r'\([^)]*\)', '', s).strip()
-    # Check Chinese mapping
-    if s in _TECHNICAL_CHINESE_MAP:
-        return _TECHNICAL_CHINESE_MAP[s]
-    return source_type  # return original if no mapping
+    # Case-insensitive lookup in freetext map
+    lower = s.lower()
+    if lower in _FREETEXT_TYPE_MAP_CI:
+        return _FREETEXT_TYPE_MAP_CI[lower]
+    return s  # Return sanitized string for canonical type matching
 
 
 def _is_unknown_type(source_type: str) -> bool:
@@ -263,12 +299,19 @@ def _is_unknown_type(source_type: str) -> bool:
     Returns True if the type is not secondary, not primary-company, and not a
     recognized exempt type (PRIMARY_FILING, PRIMARY_DEV, INFERRED, UNCONFIRMED,
     WEAK_SIGNAL, TRANSCRIPT).
+
+    Note: _is_secondary_type and _is_primary_company_type are checked first
+    by the caller (check_source_consistency's elif chain). The checks here
+    are defensive redundancy — they guarantee correct behavior even if
+    _is_unknown_type were called directly.
     """
     upper = source_type.strip().upper()
-    # Known non-company types that don't need additional checks
+    # Known non-company types that don't need additional checks.
+    # Note: PRIMARY is not here because it's handled by _is_primary_company_type
+    # (it's the simplified 5-class equivalent).
     _KNOWN_OTHER_TYPES: frozenset[str] = frozenset({
-        "PRIMARY_FILING", "PRIMARY_DEV", "INFERRED", "UNCONFIRMED",
-        "WEAK_SIGNAL", "TRANSCRIPT", "PRIMARY",
+        "PRIMARY_FILING", "PRIMARY_DEV", "INFERRED",
+        "UNCONFIRMED", "WEAK_SIGNAL", "TRANSCRIPT",
     })
     if _is_secondary_type(source_type):
         return False

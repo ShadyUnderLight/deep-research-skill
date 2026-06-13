@@ -19,8 +19,10 @@ sys.path.insert(0, os.path.join(REPO_ROOT, 'scripts'))
 
 from validate_source_label_consistency import (
     _normalize_source_type,
-    _TECHNICAL_CHINESE_MAP,
+    _FREETEXT_TYPE_MAP,
+    _FREETEXT_TYPE_MAP_CI,
     _is_unknown_type,
+    _is_secondary_type,
     check_source_consistency,
 )
 
@@ -33,9 +35,10 @@ def read(path):
 # ── D1: New functions exist ────────────────────────────────────────
 
 def test_d1_imports_new_functions():
-    """D1: _normalize_source_type, _TECHNICAL_CHINESE_MAP, _is_unknown_type must be importable."""
+    """D1: _normalize_source_type, _FREETEXT_TYPE_MAP, _is_unknown_type must be importable."""
     assert callable(_normalize_source_type), "_normalize_source_type must be callable"
-    assert isinstance(_TECHNICAL_CHINESE_MAP, dict), "_TECHNICAL_CHINESE_MAP must be a dict"
+    assert isinstance(_FREETEXT_TYPE_MAP, dict), "_FREETEXT_TYPE_MAP must be a dict"
+    assert isinstance(_FREETEXT_TYPE_MAP_CI, dict), "_FREETEXT_TYPE_MAP_CI must be a dict"
     assert callable(_is_unknown_type), "_is_unknown_type must be callable"
 
 
@@ -48,15 +51,15 @@ def test_d2_normalize_strips_cjk_parens():
 
 
 def test_d2_normalize_strips_halfwidth_parens():
-    """D2: 'test (foo)' returns original (stripped 'test' not in map)."""
+    """D2: '(foo)' is stripped by normalization, returning 'test' (not original)."""
     result = _normalize_source_type("test (foo)")
-    assert result == "test (foo)", f"Expected original 'test (foo)', got '{result}'"
+    assert result == "test", f"Expected 'test' (parentheses stripped), got '{result}'"
 
 
-def test_d2_normalize_returns_original_if_unmapped():
-    """D2: Unknown strings without parens return original unchanged."""
+def test_d2_normalize_returns_stripped_if_unmapped():
+    """D2: Unknown strings without parens return stripped value unchanged."""
     result = _normalize_source_type("BOOTSTRAP_HEURISTIC")
-    assert result == "BOOTSTRAP_HEURISTIC", f"Expected original, got '{result}'"
+    assert result == "BOOTSTRAP_HEURISTIC", f"Expected stripped, got '{result}'"
 
 
 def test_d2_normalize_maps_chinese_secondary():
@@ -281,10 +284,8 @@ except ImportError:
 
 
 def test_property_normalization_idempotent():
-    """Property: Normalizing a Chinese type twice gives same result."""
-    if not HAS_HYPOTHESIS:
-        return  # skip gracefully
-    for raw_type in _TECHNICAL_CHINESE_MAP:
+    """Property: Normalizing a freetext type twice gives same result."""
+    for raw_type in _FREETEXT_TYPE_MAP:
         once = _normalize_source_type(raw_type)
         twice = _normalize_source_type(once)
         assert once == twice, f"Normalization not idempotent for '{raw_type}': {once} -> {twice}"
@@ -292,29 +293,22 @@ def test_property_normalization_idempotent():
 
 def test_property_normalize_with_cjk_parens():
     """Property: Normalizing 'base（content）' strips parens and maps correctly."""
-    if not HAS_HYPOTHESIS:
-        return
-    from hypothesis import given, strategies as st
-    # This runs as a regular test since hypothesis strategies can't be decorated here
-    # without making the whole module hypothesis-dependent
-    for base_type in list(_TECHNICAL_CHINESE_MAP.keys())[:5]:  # test first 5 entries
-        for paren_content in ["", "测试", "arXiv", "2024"]:
-            if not paren_content:
-                continue
+    for base_type in list(_FREETEXT_TYPE_MAP.keys())[:5]:  # test first 5 entries
+        for paren_content in ["测试", "arXiv", "2024"]:
             with_parens = f"{base_type}（{paren_content}）"
             result = _normalize_source_type(with_parens)
-            assert result == _TECHNICAL_CHINESE_MAP[base_type]
+            assert result == _FREETEXT_TYPE_MAP[base_type], \
+                f"Expected {_FREETEXT_TYPE_MAP[base_type]} for '{with_parens}', got '{result}'"
 
 
 def test_property_normalize_with_halfwidth_parens():
     """Property: Normalizing 'base(content)' strips halfwidth parens correctly."""
-    for base_type in list(_TECHNICAL_CHINESE_MAP.keys())[:5]:
+    for base_type in list(_FREETEXT_TYPE_MAP.keys())[:5]:
         for paren_content in ["test", "v2", "2024"]:
-            if not paren_content:
-                continue
             with_parens = f"{base_type}({paren_content})"
             result = _normalize_source_type(with_parens)
-            assert result == _TECHNICAL_CHINESE_MAP[base_type]
+            assert result == _FREETEXT_TYPE_MAP[base_type], \
+                f"Expected {_FREETEXT_TYPE_MAP[base_type]} for '{with_parens}', got '{result}'"
 
 
 def test_property_normalize_canonical_noop():
@@ -361,9 +355,9 @@ Some text referencing src-001.
 
 
 def test_property_mapped_types_produce_correct_check_type():
-    """Property: Each mapped Chinese type triggers the correct check type."""
+    """Property: Each mapped freetext type triggers the correct check type."""
     # SECONDARY_MEDIA mappings should trigger confirmed label check
-    secondary_chinese = [k for k, v in _TECHNICAL_CHINESE_MAP.items() if v.startswith("SECONDARY")]
+    secondary_chinese = [k for k, v in _FREETEXT_TYPE_MAP.items() if v.startswith("SECONDARY")]
     for ct in secondary_chinese:
         content = f"""## Source Register
 
@@ -374,11 +368,11 @@ def test_property_mapped_types_produce_correct_check_type():
 [确认事实] referencing src-001.
 """
         errors = check_source_consistency(content)
-        assert len(errors) > 0, f"'{ct}' (-> SECONDARY) should trigger confirmed label check"
-        assert "secondary" in errors[0].lower(), f"'{ct}' error should mention secondary"
+        assert len(errors) > 0, f"'{ct}' (-> {_FREETEXT_TYPE_MAP[ct]}) should trigger confirmed label check"
+        assert "confirmed label" in errors[0].lower(), f"'{ct}' error should mention 'confirmed label'"
 
     # PRIMARY_COMPANY mappings should trigger caveat check
-    primary_company_chinese = [k for k, v in _TECHNICAL_CHINESE_MAP.items() if v == "PRIMARY_COMPANY"]
+    primary_company_chinese = [k for k, v in _FREETEXT_TYPE_MAP.items() if v == "PRIMARY_COMPANY"]
     for ct in primary_company_chinese:
         content = f"""## Source Register
 
@@ -390,7 +384,104 @@ Referencing src-001 without caveat.
 """
         errors = check_source_consistency(content)
         assert len(errors) > 0, f"'{ct}' (-> PRIMARY_COMPANY) should trigger caveat check"
-        assert "caveat" in errors[0].lower(), f"'{ct}' error should mention caveat"
+        assert "self-reporting caveat" in errors[0].lower(), f"'{ct}' error should mention 'self-reporting caveat'"
+
+
+# ── D8: Edge case tests ────────────────────────────────────────────
+
+import io
+import contextlib
+
+
+def test_d8_exempt_chinese_types_clean():
+    """D8: Chinese types mapping to exempt types (PRIMARY_FILING, PRIMARY_DEV, INFERRED, WEAK_SIGNAL) produce no errors."""
+    exempt_cases = [
+        ("原始论文", "PRIMARY_FILING"),
+        ("官方技术文档", "PRIMARY_DEV"),
+        ("API文档", "PRIMARY_DEV"),
+        ("多来源综合", "INFERRED"),
+        ("技术分析", "INFERRED"),
+        ("社区技术文章", "WEAK_SIGNAL"),
+        ("知乎", "WEAK_SIGNAL"),
+        ("专家访谈", "TRANSCRIPT"),
+    ]
+    for ct, expected_type in exempt_cases:
+        content = f"""## Source Register
+
+| Source ID | Source Name | Source Type |
+|-----------|-------------|-------------|
+| src-001   | Test Source | {ct}        |
+
+Some text referencing src-001 without confirmed label or caveat issues.
+"""
+        errors = check_source_consistency(content)
+        assert len(errors) == 0, f"'{ct}' (-> {expected_type}) should produce no errors, got: {errors}"
+
+
+def test_d8_case_insensitive_english():
+    """D8: Case variations of English freetext entries should still map correctly."""
+    cases = [
+        ("ARXIV PREPRINT", "SECONDARY_MEDIA"),
+        ("Peer-reviewed Paper", "PRIMARY_FILING"),
+        ("PEER-REVIEWED PAPER", "PRIMARY_FILING"),
+    ]
+    for raw, expected in cases:
+        result = _normalize_source_type(raw)
+        assert result == expected, f"Case-insensitive lookup for '{raw}' should give '{expected}', got '{result}'"
+
+
+def test_d8_canonical_type_with_parens():
+    """D8: Canonical types with parenthetical annotations should still match type checks."""
+    # PRIMARY_FILING (annual report) should still be PRIMARY_FILING after normalization
+    result = _normalize_source_type("PRIMARY_FILING (annual report)")
+    assert result == "PRIMARY_FILING", f"Canonical type with parens should be stripped to 'PRIMARY_FILING', got '{result}'"
+    assert not _is_unknown_type(result), "PRIMARY_FILING should not be unknown"
+
+    # SECONDARY_MEDIA with parenthetical should still be detected as secondary
+    result = _normalize_source_type("SECONDARY_MEDIA (arXiv)")
+    assert result == "SECONDARY_MEDIA", f"SECONDARY_MEDIA with parens should be stripped, got '{result}'"
+    assert _is_secondary_type(result), "SECONDARY_MEDIA should be detected as secondary"
+
+
+def test_d8_new_chinese_types():
+    """D8: Newly added Chinese types map correctly."""
+    cases = [
+        ("招股书", "PRIMARY_FILING"),
+        ("年报", "PRIMARY_FILING"),
+        ("公司公告", "PRIMARY_COMPANY"),
+        ("新闻报道", "SECONDARY_MEDIA"),
+        ("券商研报", "SECONDARY_ANALYST"),
+        ("知乎", "WEAK_SIGNAL"),
+        ("微信公众号", "WEAK_SIGNAL"),
+        ("专家访谈", "TRANSCRIPT"),
+        ("白皮书", "PRIMARY_DEV"),
+    ]
+    for raw, expected in cases:
+        assert _normalize_source_type(raw) == expected, f"'{raw}' should map to '{expected}'"
+
+
+def test_d8_non_strict_stderr_warning():
+    """D8: Non-strict mode should print warning to stderr for unknown types."""
+    content = """## Source Register
+
+| Source ID | Source Name | Source Type |
+|-----------|-------------|-------------|
+| src-001   | Test Source | MYSTERY_TYPE |
+
+Some text referencing src-001.
+"""
+    stderr_buf = io.StringIO()
+    with contextlib.redirect_stderr(stderr_buf):
+        errors = check_source_consistency(content, strict=False)
+    assert len(errors) == 0, "Non-strict should return no errors"
+    stderr_output = stderr_buf.getvalue()
+    assert "warning:" in stderr_output, f"Expected warning on stderr, got: {stderr_output}"
+
+
+def test_d8_normalize_accounting_for_whitespace():
+    """D8: Chinese types with extra whitespace should still be normalized."""
+    result = _normalize_source_type("  学术综述  ")
+    assert result == "SECONDARY_MEDIA", f"Whitespace-padded '学术综述' should map to SECONDARY_MEDIA"
 
 
 # ── Cross-file invariants ─────────────────────────────────────────
@@ -408,9 +499,9 @@ def test_p1_validator_has_strict_flag():
 
 
 def test_p1_validator_has_chinese_map():
-    """P1: Validator script must have _TECHNICAL_CHINESE_MAP."""
+    """P1: Validator script must have _FREETEXT_TYPE_MAP."""
     content = read("scripts/validate_source_label_consistency.py")
-    assert "_TECHNICAL_CHINESE_MAP" in content, "Validator missing _TECHNICAL_CHINESE_MAP"
+    assert "_FREETEXT_TYPE_MAP" in content, "Validator missing _FREETEXT_TYPE_MAP"
 
 
 def test_p2_index_not_broken():
@@ -484,7 +575,7 @@ if __name__ == "__main__":
         ("D1: imports new functions", test_d1_imports_new_functions),
         ("D2: normalize strips CJK parens", test_d2_normalize_strips_cjk_parens),
         ("D2: normalize strips halfwidth parens", test_d2_normalize_strips_halfwidth_parens),
-        ("D2: normalize returns original if unmapped", test_d2_normalize_returns_original_if_unmapped),
+        ("D2: normalize returns stripped if unmapped", test_d2_normalize_returns_stripped_if_unmapped),
         ("D2: normalize maps chinese secondary", test_d2_normalize_maps_chinese_secondary),
         ("D2: normalize maps chinese primary company", test_d2_normalize_maps_chinese_primary_company),
         ("D3: unknown type non-strict", test_d3_unknown_type_non_strict),
@@ -518,6 +609,12 @@ if __name__ == "__main__":
         ("PROP: strict rejects unknowns", test_property_strict_mode_rejects_all_unknown_types),
         ("PROP: non-strict warns unknowns", test_property_non_strict_mode_warns_unknown_types),
         ("PROP: mapped types correct check", test_property_mapped_types_produce_correct_check_type),
+        ("D8: exempt chinese types clean", test_d8_exempt_chinese_types_clean),
+        ("D8: case insensitive english", test_d8_case_insensitive_english),
+        ("D8: canonical type with parens", test_d8_canonical_type_with_parens),
+        ("D8: new chinese types", test_d8_new_chinese_types),
+        ("D8: non-strict stderr warning", test_d8_non_strict_stderr_warning),
+        ("D8: whitespace handling", test_d8_normalize_accounting_for_whitespace),
     ]
 
     passed = 0
