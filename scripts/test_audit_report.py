@@ -75,7 +75,11 @@ Each dimension conclusion is backed by [S01] and [S02].
 
 
 def _report_with_6col_register() -> str:
-    """Report whose Source Register has only 6 columns (should fail)."""
+    """Report whose Source Register has only 6 columns (should fail).
+
+    Uses 'secondary' source type to avoid triggering source-label-consistency,
+    isolating the test to the column-count failure only.
+    """
     return """\
 # Test Report
 
@@ -97,7 +101,7 @@ Body text with citation [S01] and [S02].
 | ID | Source Name | Type | Date | URL | Reliability |
 |----|-------------|------|------|-----|-------------|
 | S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium |
-| S02 | Example B | primary | 2026-02-01 | https://example.com/b | high |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high |
 """
 
 
@@ -175,7 +179,11 @@ Body text with citation [S01].
 
 
 def _report_with_table_missing_role_labels() -> str:
-    """Report with tables lacking numeric role labels."""
+    """Report with tables lacking numeric role labels.
+
+    Uses 'secondary' source type to avoid triggering source-label-consistency,
+    isolating the test to missing-role-labels only.
+    """
     return """\
 # Test Report
 
@@ -213,7 +221,7 @@ Body with [S01] and [S02].
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
 | S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
-| S02 | Example B | primary | 2026-02-01 | https://example.com/b | high | §4 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §4 |
 """
 
 
@@ -235,7 +243,11 @@ Body text with citation [S01].
 
 
 def _report_shared_workflow() -> str:
-    """Report using shared-workflow path (no primary route)."""
+    """Report using shared-workflow path (no primary route).
+
+    Falls back to technical-deep-dive validators since the auto-detected
+    route name doesn't match any ROUTE_VALIDATORS key.
+    """
     return """\
 # Test Report
 
@@ -257,8 +269,11 @@ Body text with citation [S01] and [S02].
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
 | S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
-| S02 | Example B | primary | 2026-02-01 | https://example.com/b | high | §5 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
 """
+
+
+
 
 
 # ── Test helpers ────────────────────────────────────────────────────────────
@@ -353,7 +368,7 @@ class TestValidReport:
 
     def test_route_detected(self) -> None:
         result = _run_audit(_valid_report())
-        assert "Route: Technical Deep-dive" in result.stdout
+        assert "technical-deep-dive" in result.stdout.lower()
 
 
 class Test6ColumnRegister:
@@ -450,7 +465,9 @@ class TestNoRouteBlock:
 
     def test_blocking_mentions_missing_section(self) -> None:
         result = _run_audit(_report_no_route_block())
-        assert "Missing" in result.stdout or "Route" in result.stdout
+        assert "Missing '## Route and audit status' section" in result.stdout, (
+            f"Expected specific missing section error, got:\n{result.stdout}"
+        )
 
 
 class TestRouteOverride:
@@ -465,7 +482,11 @@ class TestRouteOverride:
         assert result.returncode == 0, (
             f"Unknown route falls back to technical-deep-dive validators, "
             f"expected pass, got exit {result.returncode}\n"
-            f"stdout:\n{result.stdout}"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+        # Warning should be printed to stderr about the fallback
+        assert "warning" in result.stderr.lower(), (
+            f"Expected fallback warning in stderr, got:\n{result.stderr}"
         )
 
 
@@ -572,6 +593,51 @@ class TestProperties:
             f"stdout:\n{result.stdout}"
         )
 
+    # Property 5b: Route normalization works for various input formats
+    def test_route_normalization(self) -> None:
+        """Route names are normalized correctly regardless of input format."""
+        import tempfile
+        # Create a minimal report and verify route normalization
+        base_md = """\
+# Test
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| final-audit | ✅ Passed | §2 可追溯 |
+
+## Body
+
+Body with [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Ex | secondary | 2026-01-01 | https://ex.com | medium | §3 |
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False, encoding="utf-8") as f:
+            f.write(base_md)
+            tmp = f.name
+        try:
+            # Same report with different route formats
+            for route_arg in ["technical-deep-dive", "Technical Deep-dive", "technical deep dive"]:
+                r = subprocess.run(
+                    [sys.executable, SCRIPT, tmp, "--route", route_arg],
+                    capture_output=True, text=True, timeout=30,
+                )
+                assert r.returncode == 0, (
+                    f"Route '{route_arg}' failed (exit {r.returncode}):\n{r.stdout}"
+                )
+                assert "technical-deep-dive" in r.stdout.lower(), (
+                    f"Normalized route not found for '{route_arg}'\n{r.stdout}"
+                )
+        finally:
+            Path(tmp).unlink(missing_ok=True)
+
     # Property 6: Same result with explicit --route route-name as auto-detect
     def test_explicit_route_matches_auto(self) -> None:
         """Explicit --route technical-deep-dive gives same result as auto."""
@@ -609,6 +675,70 @@ class TestProperties:
                 assert blocking == 0, (
                     f"[{label}] Exit {result.returncode} but {blocking} blocking lines"
                 )
+
+
+
+class TestSharedWorkflow:
+    """Shared-workflow reports should fall back to default validators."""
+
+    def test_exit_code_zero_when_valid(self) -> None:
+        """Shared-workflow report with valid structure should pass."""
+        result = _run_audit(_report_shared_workflow())
+        assert result.returncode == 0, (
+            f"Expected pass for shared-workflow, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_fallback_warning_in_stderr(self) -> None:
+        """Auto-detected route 'Shared-workflow' should trigger fallback warning."""
+        result = _run_audit(_report_shared_workflow())
+        assert "warning" in result.stderr.lower() or "unknown route" in result.stderr.lower(), (
+            f"Expected fallback warning in stderr, got:\n{result.stderr}"
+        )
+
+
+class TestValidatorCount:
+    """Ensures all validators actually run (catches silent drops)."""
+
+    def test_all_four_validators_executed_on_failing_report(self) -> None:
+        """A report that triggers issues in all validators should show all four."""
+        # Create a report that will fail every validator:
+        # - No route block -> report-quality fail
+        # - Add opam declaration without execution -> declared-execution fail
+        # - Large tables without role labels -> table-role-labels fail
+        # - Primary company source without caveat -> source-label-consistency fail
+        content = """\
+# Test Report
+
+This report declares O/P/A/M labels but has no role labels.
+Primary company source S01 lacks the required caveat.
+
+## Performance
+
+| A | B |
+|---|---|
+| 1 | 2 |
+| 3 | 4 |
+| 5 | 6 |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Test Corp | primary_company | 2026-01-01 | https://example.com | medium | §3 |
+"""
+        result = _run_audit(content)
+        expected_markers = [
+            "[report-quality]",
+            "[declared-execution]",
+            "[table-role-labels]",
+            "[source-label-consistency]",
+        ]
+        for marker in expected_markers:
+            assert marker in result.stdout or marker in result.stderr, (
+                f"Missing '{marker}' in output — validator may not have run\n"
+                f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+            )
 
 
 if __name__ == "__main__":

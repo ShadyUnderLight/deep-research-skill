@@ -23,7 +23,6 @@ from __future__ import annotations
 import argparse
 import sys
 from dataclasses import dataclass, field
-from functools import partial
 from pathlib import Path
 from typing import Callable
 
@@ -48,7 +47,6 @@ from validate_report_quality import (
     check_strict_warnings,
     get_route_name,
     strip_fenced_code_blocks,
-    ROUTE_AUDIT_HEADING,
 )
 
 from validate_declared_execution import validate_file as vde_validate_file
@@ -78,11 +76,51 @@ class CheckResult:
 ValidatorFn = Callable[..., CheckResult]
 
 
+# ── Route name normalization ────────────────────────────────────────────────
+
+# Maps display-style route names (as they appear in the ## Route and audit
+# status block) to normalized dict keys.  Each entry should be lowercase
+# with whitespace collapsed, so we can match regardless of formatting.
+_ROUTE_ALIASES: dict[str, str] = {
+    "technical deep-dive": "technical-deep-dive",
+}
+
+# Default route used when auto-detection fails or an unknown route is given.
+_DEFAULT_ROUTE = "technical-deep-dive"
+
+
+def _normalize_route(name: str) -> str:
+    """Normalize a display route name to a canonical key.
+
+    Strips leading/trailing whitespace, collapses internal whitespace,
+    lowercases, and checks the alias table.  Falls back to the canonical
+    version of the name itself (lowercased, spaces → hyphens) so that
+    ``--route technical-deep-dive`` works without an alias entry.
+    """
+    normalized = " ".join(name.strip().lower().split())
+    canon = _ROUTE_ALIASES.get(normalized)
+    if canon is not None:
+        return canon
+    # Fallback heuristic: replace whitespace with hyphens
+    return normalized.replace(" ", "-")
+
+
 # ── Wrapper runners for each validator ─────────────────────────────────────
 
+# Each _run_* function accepts ``**kwargs`` so that the dispatch loop
+# can pass shared flags (e.g. ``strict``) uniformly.  Validators that
+# do not use a particular flag simply ignore it.
 
-def _run_report_quality(path: Path, strict: bool = False) -> CheckResult:
-    """Run validate_report_quality checks via public check_* functions."""
+
+def _run_report_quality(path: Path, **kwargs: bool) -> CheckResult:
+    """Run validate_report_quality checks via public check_* functions.
+
+    Accepts ``strict`` keyword (default ``False``) to enable additional
+    route-specific warnings.
+
+    Crash isolation: each check_* call is individually wrapped so that
+    a crash in one does not silently discard the results of others.
+    """
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError) as exc:
@@ -95,36 +133,43 @@ def _run_report_quality(path: Path, strict: bool = False) -> CheckResult:
     errors: list[str] = []
     warnings: list[str] = []
 
+    def _run(func, *a, **kw):  # local helper for crash isolation
+        try:
+            return func(*a, **kw)
+        except Exception as exc:
+            return [f"{func.__name__} crashed: {exc}"]
+
     # 1. Route and audit status
-    errors.extend(check_route_audit_block(cleaned))
-    errors.extend(check_route_declaration(cleaned))
-    errors.extend(check_audit_evidence(cleaned))
+    errors.extend(_run(check_route_audit_block, cleaned))
+    errors.extend(_run(check_route_declaration, cleaned))
+    errors.extend(_run(check_audit_evidence, cleaned))
 
     # 2. Source Register
-    errors.extend(check_source_register_exists(cleaned))
-    errors.extend(check_source_register_columns(cleaned))
-    errors.extend(check_source_register_missing_ids(cleaned))
-    errors.extend(check_source_register_mapping(cleaned))
-    errors.extend(check_source_register_duplicate_ids(cleaned))
-    warnings.extend(check_source_register_doi_coverage(cleaned))
+    errors.extend(_run(check_source_register_exists, cleaned))
+    errors.extend(_run(check_source_register_columns, cleaned))
+    errors.extend(_run(check_source_register_missing_ids, cleaned))
+    errors.extend(_run(check_source_register_mapping, cleaned))
+    errors.extend(_run(check_source_register_duplicate_ids, cleaned))
+    warnings.extend(_run(check_source_register_doi_coverage, cleaned))
 
     # 3. Body references
-    errors.extend(check_body_references(cleaned))
+    errors.extend(_run(check_body_references, cleaned))
 
     # 4. Key section citation coverage (hard fail)
-    errors.extend(check_key_section_citation_coverage(cleaned))
+    errors.extend(_run(check_key_section_citation_coverage, cleaned))
 
     # 5. Audit self-assessment consistency (warnings only)
-    warnings.extend(check_audit_self_assessment_consistency(cleaned))
+    warnings.extend(_run(check_audit_self_assessment_consistency, cleaned))
 
     # 6. Strict mode warnings
+    strict = kwargs.get("strict", False)
     if strict:
-        warnings.extend(check_strict_warnings(cleaned))
+        warnings.extend(_run(check_strict_warnings, cleaned))
 
     return CheckResult(name="report-quality", errors=errors, warnings=warnings)
 
 
-def _run_declared_execution(path: Path) -> CheckResult:
+def _run_declared_execution(path: Path, **kwargs: bool) -> CheckResult:
     """Run validate_declared_execution checks."""
     try:
         errors, warnings = vde_validate_file(path)
@@ -136,7 +181,7 @@ def _run_declared_execution(path: Path) -> CheckResult:
     return CheckResult(name="declared-execution", errors=errors, warnings=warnings)
 
 
-def _run_table_role_labels(path: Path) -> CheckResult:
+def _run_table_role_labels(path: Path, **kwargs: bool) -> CheckResult:
     """Run validate_table_role_labels checks."""
     try:
         errors = vtr_validate_file(path)
@@ -148,7 +193,7 @@ def _run_table_role_labels(path: Path) -> CheckResult:
     return CheckResult(name="table-role-labels", errors=errors, warnings=[])
 
 
-def _run_source_label_consistency(path: Path) -> CheckResult:
+def _run_source_label_consistency(path: Path, **kwargs: bool) -> CheckResult:
     """Run validate_source_label_consistency checks."""
     try:
         errors = vsl_validate_file(path)
@@ -179,7 +224,10 @@ def _auto_detect_route(path: Path) -> str | None:
     except (OSError, UnicodeError):
         return None
     cleaned = strip_fenced_code_blocks(text)
-    return get_route_name(cleaned)
+    raw = get_route_name(cleaned)
+    if raw is None:
+        return None
+    return _normalize_route(raw)
 
 
 # ── Verdict computation ────────────────────────────────────────────────────
@@ -219,7 +267,6 @@ def _compute_verdict(
         for warn in result.warnings:
             warnings.append(f"[{result.name}] {warn}")
 
-        # Determine per-validator status for recommended audit status
         if result.errors:
             status[result.name] = "fail"
         elif result.warnings:
@@ -310,29 +357,35 @@ def audit_report(
             blocking=[f"{path}: not a regular file"],
         )
 
+    resolved_route: str | None = route
+
     # Auto-detect route if not specified
-    resolved_route = route
     if resolved_route is None:
         detected = _auto_detect_route(path)
         if detected is not None:
             resolved_route = detected
         else:
-            # Fall back to technical-deep-dive when no route detected
-            resolved_route = "technical-deep-dive"
+            resolved_route = _DEFAULT_ROUTE
+
+    # Normalize the route (in case user passed --route with a display name)
+    resolved_route = _normalize_route(resolved_route)
 
     # Look up validators for the resolved route
     validators = ROUTE_VALIDATORS.get(resolved_route)
     if validators is None:
-        # Unknown route — fall back to technical-deep-dive validators
-        validators = ROUTE_VALIDATORS.get("technical-deep-dive", [])
+        # Unknown route — warn and fall back to default
+        print(
+            f"warning: unknown route '{resolved_route}', "
+            f"falling back to '{_DEFAULT_ROUTE}' validators",
+            file=sys.stderr,
+        )
+        resolved_route = _DEFAULT_ROUTE
+        validators = ROUTE_VALIDATORS.get(_DEFAULT_ROUTE, [])
 
-    # Run each validator
+    # Run each validator with shared flags as keyword arguments
     results: list[CheckResult] = []
     for validator in validators:
-        if validator is _run_report_quality:
-            result = _run_report_quality(path, strict=strict)
-        else:
-            result = validator(path)
+        result = validator(path, strict=strict)
         results.append(result)
 
     return _compute_verdict(resolved_route, results)
