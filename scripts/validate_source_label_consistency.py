@@ -48,6 +48,67 @@ _PRIMARY_COMPANY_TYPES: frozenset[str] = frozenset({
     "PRIMARY",  # simplified 5-class system
 })
 
+# Free-text source type to canonical type mapping (Chinese + common English aliases).
+# Used by _normalize_source_type() to map free-text source types
+# (common in technical reports) to the canonical types that the validator checks.
+# Parenthetical variants (e.g., "学术综述（arXiv）") are handled by stripping
+# parenthetical content before lookup.
+#
+# The standard canonical types are listed in §Source type classification of
+# references/source-traceability-and-claim-citation.md.
+_FREETEXT_TYPE_MAP: dict[str, str] = {
+    # Academic / literature
+    "原始论文": "PRIMARY_FILING",
+    "peer-reviewed paper": "PRIMARY_FILING",
+    "学术综述": "SECONDARY_MEDIA",
+    "arxiv preprint": "SECONDARY_MEDIA",
+    # Official / vendor
+    "官方技术文档": "PRIMARY_DEV",
+    "框架文档": "PRIMARY_DEV",
+    "官方文档": "PRIMARY_COMPANY",
+    "技术白皮书": "PRIMARY_DEV",
+    "白皮书": "PRIMARY_DEV",
+    "产品文档": "PRIMARY_COMPANY",
+    "API文档": "PRIMARY_DEV",
+    "api 文档": "PRIMARY_DEV",
+    "公司公告": "PRIMARY_COMPANY",
+    "招股书": "PRIMARY_FILING",
+    "招股说明书": "PRIMARY_FILING",
+    "年报": "PRIMARY_FILING",
+    "年度报告": "PRIMARY_FILING",
+    # Blog / media
+    "技术博客": "SECONDARY_MEDIA",
+    "官方博客": "PRIMARY_COMPANY",
+    "官方技术博客": "PRIMARY_COMPANY",
+    "行业研究报告": "SECONDARY_ANALYST",
+    "新闻报道": "SECONDARY_MEDIA",
+    "新闻": "SECONDARY_MEDIA",
+    "券商研报": "SECONDARY_ANALYST",
+    "研报": "SECONDARY_ANALYST",
+    # Community / weak signal
+    "社区技术文章": "WEAK_SIGNAL",
+    "博客园": "WEAK_SIGNAL",
+    "CSDN": "WEAK_SIGNAL",
+    "社区文章": "WEAK_SIGNAL",
+    "知乎": "WEAK_SIGNAL",
+    "Reddit": "WEAK_SIGNAL",
+    "微信公众号": "WEAK_SIGNAL",
+    "公众号": "WEAK_SIGNAL",
+    # Transcript
+    "专家访谈": "TRANSCRIPT",
+    "访谈": "TRANSCRIPT",
+    "财报电话会": "TRANSCRIPT",
+    # Inference
+    "技术分析": "INFERRED",
+    "多来源综合": "INFERRED",
+}
+
+# Case-insensitive lookup map built from _FREETEXT_TYPE_MAP.
+# Keys are lowercased; values are the same canonical types.
+_FREETEXT_TYPE_MAP_CI: dict[str, str] = {
+    k.lower(): v for k, v in _FREETEXT_TYPE_MAP.items()
+}
+
 
 def strip_fenced_code_blocks(text: str) -> str:
     """Replace content inside fenced code blocks with empty lines.
@@ -209,12 +270,66 @@ def _split_sentences(text: str) -> list[str]:
     return results
 
 
-def check_source_consistency(text: str) -> list[str]:
+def _normalize_source_type(source_type: str) -> str:
+    """Normalize a source type string for canonical lookup.
+
+    Steps:
+    1. Strip leading/trailing whitespace
+    2. Strip parenthetical content: both CJK （arXiv） and half-width (arXiv)
+    3. Do case-insensitive lookup in _FREETEXT_TYPE_MAP
+    4. If found, return the canonical type; otherwise return the stripped string
+
+    Always returns a parentheses-stripped value so canonical types like
+    \"PRIMARY_FILING (annual report)\" still match _is_secondary_type() etc.
+    """
+    s = source_type.strip()
+    # Strip parenthetical content (CJK and half-width parentheses)
+    s = re.sub(r'[（(][^）)]*[）)]', '', s).strip()
+    s = re.sub(r'\([^)]*\)', '', s).strip()
+    # Case-insensitive lookup in freetext map
+    lower = s.lower()
+    if lower in _FREETEXT_TYPE_MAP_CI:
+        return _FREETEXT_TYPE_MAP_CI[lower]
+    return s  # Return sanitized string for canonical type matching
+
+
+def _is_unknown_type(source_type: str) -> bool:
+    """Check if a normalized source type is unknown (not in any recognized set).
+
+    Returns True if the type is not secondary, not primary-company, and not a
+    recognized exempt type (PRIMARY_FILING, PRIMARY_DEV, INFERRED, UNCONFIRMED,
+    WEAK_SIGNAL, TRANSCRIPT).
+
+    Note: _is_secondary_type and _is_primary_company_type are checked first
+    by the caller (check_source_consistency's elif chain). The checks here
+    are defensive redundancy — they guarantee correct behavior even if
+    _is_unknown_type were called directly.
+    """
+    upper = source_type.strip().upper()
+    # Known non-company types that don't need additional checks.
+    # Note: PRIMARY is not here because it's handled by _is_primary_company_type
+    # (it's the simplified 5-class equivalent).
+    _KNOWN_OTHER_TYPES: frozenset[str] = frozenset({
+        "PRIMARY_FILING", "PRIMARY_DEV", "INFERRED",
+        "UNCONFIRMED", "WEAK_SIGNAL", "TRANSCRIPT",
+    })
+    if _is_secondary_type(source_type):
+        return False
+    if _is_primary_company_type(source_type):
+        return False
+    if upper in _KNOWN_OTHER_TYPES:
+        return False
+    return True
+
+
+def check_source_consistency(text: str, strict: bool = False) -> list[str]:
     """Check label/source type consistency. Returns list of error messages.
 
     Two checks:
     1. Secondary sources must not be referenced with confirmed labels.
     2. Primary company sources must have a self-reporting caveat nearby.
+
+    When strict=True, unknown source types cause errors (not just warnings).
     """
     cleaned = strip_fenced_code_blocks(text)
     lines = cleaned.splitlines()
@@ -239,9 +354,12 @@ def check_source_consistency(text: str) -> list[str]:
         if not source_id:
             continue
 
+        # Normalize Chinese technical source types to canonical types
+        norm_type = _normalize_source_type(source_type)
+
         ref_re = _source_ref_re(source_id)
 
-        if _is_secondary_type(source_type):
+        if _is_secondary_type(norm_type):
             # Check 1: Secondary source should not have confirmed label nearby.
             for sent in sentences:
                 if not ref_re.search(sent):
@@ -252,7 +370,7 @@ def check_source_consistency(text: str) -> list[str]:
                         f"but referenced with confirmed label: {sent[:100]}"
                     )
 
-        elif _is_primary_company_type(source_type):
+        elif _is_primary_company_type(norm_type):
             # Check 2: Primary company source needs self-reporting caveat.
             for sent in sentences:
                 if not ref_re.search(sent):
@@ -264,13 +382,24 @@ def check_source_consistency(text: str) -> list[str]:
                         f"{sent[:100]}"
                     )
 
+        elif _is_unknown_type(norm_type):
+            # Check 3: Unknown source type detection.
+            msg = (
+                f"source {source_id} has unrecognized source type "
+                f"'{source_type}': map to a canonical type or correct the entry"
+            )
+            if strict:
+                errors.append(msg)
+            else:
+                print(f"warning: {msg}", file=sys.stderr)
+
     return errors
 
 
-def validate_file(path: Path) -> list[str]:
+def validate_file(path: Path, strict: bool = False) -> list[str]:
     """Validate all source label consistency rules in *path*."""
     raw = path.read_text(encoding="utf-8", errors="replace")
-    return check_source_consistency(raw)
+    return check_source_consistency(raw, strict=strict)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -280,6 +409,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     parser.add_argument("paths", nargs="+", help="Markdown files to validate")
+    parser.add_argument("--strict", action="store_true",
+                        help="Fail on unknown source types (default: warn only)")
     args = parser.parse_args(argv)
 
     errors: list[str] = []
@@ -288,7 +419,7 @@ def main(argv: list[str] | None = None) -> int:
         if not path.exists():
             errors.append(f"{path}: file not found")
             continue
-        errors.extend(validate_file(path))
+        errors.extend(validate_file(path, strict=args.strict))
 
     if errors:
         print("Source label consistency lint failed:")
