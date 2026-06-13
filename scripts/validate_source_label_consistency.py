@@ -48,6 +48,33 @@ _PRIMARY_COMPANY_TYPES: frozenset[str] = frozenset({
     "PRIMARY",  # simplified 5-class system
 })
 
+# Chinese technical source type to canonical type mapping.
+# Used by _normalize_source_type() to map free-text Chinese source types
+# (common in technical reports) to the canonical types that the validator checks.
+# Parenthetical variants (e.g., "学术综述（arXiv）") are handled by stripping
+# parenthetical content before lookup.
+_TECHNICAL_CHINESE_MAP: dict[str, str] = {
+    "原始论文": "PRIMARY_FILING",
+    "peer-reviewed paper": "PRIMARY_FILING",
+    "学术综述": "SECONDARY_MEDIA",
+    "arxiv preprint": "SECONDARY_MEDIA",
+    "arXiv preprint": "SECONDARY_MEDIA",
+    "官方技术文档": "PRIMARY_DEV",
+    "框架文档": "PRIMARY_DEV",
+    "官方文档": "PRIMARY_DEV",
+    "技术博客": "SECONDARY_MEDIA",
+    "官方博客": "PRIMARY_COMPANY",
+    "官方技术博客": "PRIMARY_COMPANY",
+    "行业研究报告": "SECONDARY_ANALYST",
+    "技术分析": "INFERRED",
+    "多来源综合": "INFERRED",
+    "社区技术文章": "WEAK_SIGNAL",
+    "博客园": "WEAK_SIGNAL",
+    "CSDN": "WEAK_SIGNAL",
+    "社区文章": "WEAK_SIGNAL",
+    "Reddit": "WEAK_SIGNAL",
+}
+
 
 def strip_fenced_code_blocks(text: str) -> str:
     """Replace content inside fenced code blocks with empty lines.
@@ -209,12 +236,57 @@ def _split_sentences(text: str) -> list[str]:
     return results
 
 
-def check_source_consistency(text: str) -> list[str]:
+def _normalize_source_type(source_type: str) -> str:
+    """Normalize a source type string for canonical lookup.
+
+    Steps:
+    1. Strip CJK parenthetical content like （arXiv）
+    2. Strip half-width parenthetical content like (arXiv)
+    3. Strip whitespace
+    4. If remaining string matches a key in _TECHNICAL_CHINESE_MAP, return mapped value
+    5. Otherwise return original string unchanged (uppercase canonical types pass through)
+    """
+    s = source_type.strip()
+    # Remove CJK parentheses and their content
+    s = re.sub(r'[（(][^）)]*[）)]', '', s).strip()
+    # Remove half-width parentheses and their content
+    s = re.sub(r'\([^)]*\)', '', s).strip()
+    # Check Chinese mapping
+    if s in _TECHNICAL_CHINESE_MAP:
+        return _TECHNICAL_CHINESE_MAP[s]
+    return source_type  # return original if no mapping
+
+
+def _is_unknown_type(source_type: str) -> bool:
+    """Check if a normalized source type is unknown (not in any recognized set).
+
+    Returns True if the type is not secondary, not primary-company, and not a
+    recognized exempt type (PRIMARY_FILING, PRIMARY_DEV, INFERRED, UNCONFIRMED,
+    WEAK_SIGNAL, TRANSCRIPT).
+    """
+    upper = source_type.strip().upper()
+    # Known non-company types that don't need additional checks
+    _KNOWN_OTHER_TYPES: frozenset[str] = frozenset({
+        "PRIMARY_FILING", "PRIMARY_DEV", "INFERRED", "UNCONFIRMED",
+        "WEAK_SIGNAL", "TRANSCRIPT", "PRIMARY",
+    })
+    if _is_secondary_type(source_type):
+        return False
+    if _is_primary_company_type(source_type):
+        return False
+    if upper in _KNOWN_OTHER_TYPES:
+        return False
+    return True
+
+
+def check_source_consistency(text: str, strict: bool = False) -> list[str]:
     """Check label/source type consistency. Returns list of error messages.
 
     Two checks:
     1. Secondary sources must not be referenced with confirmed labels.
     2. Primary company sources must have a self-reporting caveat nearby.
+
+    When strict=True, unknown source types cause errors (not just warnings).
     """
     cleaned = strip_fenced_code_blocks(text)
     lines = cleaned.splitlines()
@@ -239,9 +311,12 @@ def check_source_consistency(text: str) -> list[str]:
         if not source_id:
             continue
 
+        # Normalize Chinese technical source types to canonical types
+        norm_type = _normalize_source_type(source_type)
+
         ref_re = _source_ref_re(source_id)
 
-        if _is_secondary_type(source_type):
+        if _is_secondary_type(norm_type):
             # Check 1: Secondary source should not have confirmed label nearby.
             for sent in sentences:
                 if not ref_re.search(sent):
@@ -252,7 +327,7 @@ def check_source_consistency(text: str) -> list[str]:
                         f"but referenced with confirmed label: {sent[:100]}"
                     )
 
-        elif _is_primary_company_type(source_type):
+        elif _is_primary_company_type(norm_type):
             # Check 2: Primary company source needs self-reporting caveat.
             for sent in sentences:
                 if not ref_re.search(sent):
@@ -264,13 +339,24 @@ def check_source_consistency(text: str) -> list[str]:
                         f"{sent[:100]}"
                     )
 
+        elif _is_unknown_type(norm_type):
+            # Check 3: Unknown source type detection.
+            msg = (
+                f"source {source_id} has unrecognized source type "
+                f"'{source_type}': map to a canonical type or correct the entry"
+            )
+            if strict:
+                errors.append(msg)
+            else:
+                print(f"warning: {msg}", file=sys.stderr)
+
     return errors
 
 
-def validate_file(path: Path) -> list[str]:
+def validate_file(path: Path, strict: bool = False) -> list[str]:
     """Validate all source label consistency rules in *path*."""
     raw = path.read_text(encoding="utf-8", errors="replace")
-    return check_source_consistency(raw)
+    return check_source_consistency(raw, strict=strict)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -280,6 +366,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     )
     parser.add_argument("paths", nargs="+", help="Markdown files to validate")
+    parser.add_argument("--strict", action="store_true",
+                        help="Fail on unknown source types (default: warn only)")
     args = parser.parse_args(argv)
 
     errors: list[str] = []
@@ -288,7 +376,7 @@ def main(argv: list[str] | None = None) -> int:
         if not path.exists():
             errors.append(f"{path}: file not found")
             continue
-        errors.extend(validate_file(path))
+        errors.extend(validate_file(path, strict=args.strict))
 
     if errors:
         print("Source label consistency lint failed:")

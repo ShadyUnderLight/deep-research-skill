@@ -267,6 +267,25 @@ Classify every source in the register by type. Use these types consistently:
 
 **`DISCOVERY` is not a valid Source Register source type.** Search-level discovery results (Exa search summaries, Agent-Reach `POST /search` output) are candidate sources only. They must be recorded in the source intake log (see `references/external-channel-preflight.md`) and may only enter the Source Register after content fetch and reclassification into one of the types above. Body citations of the form `[Sxx]` must never reference raw discovery output.
 
+## Technical Chinese source type mapping
+
+技术类报告 Source Register 中的常见中文来源类型到规范类型的映射。此映射供 `scripts/validate_source_label_consistency.py` 使用，也作为报告编写者的参考。带括号的变体（如"学术综述（arXiv）"）会在查找前剥离括号内容，映射到基础条目。优先使用规范类型而非中文自由文本；中文类型仅为兼容已有报告格式的 fallback。
+
+| 报告常见写法 | 映射规范类型 | 默认最高正文标签 | 说明 |
+|---|---|---|---|
+| 原始论文 / peer-reviewed paper | PRIMARY_FILING | [确认事实] for paper claims; [推断] for generalization | 只确认论文报告了某实验 |
+| arXiv preprint / 学术综述 | SECONDARY_MEDIA | [推断] unless citing paper existence | 预印本状态需说明 |
+| 官方技术文档 / 框架文档 | PRIMARY_DEV | [确认事实] for API/docs existence; caveated for performance/adoption | 厂商自述需 caveat |
+| 技术博客 / 官方博客 | SECONDARY_MEDIA / PRIMARY_COMPANY | [推断] or caveated | 官方博客可升为 PRIMARY_COMPANY；厂商自述需 caveat |
+| 行业研究报告 | SECONDARY_ANALYST | [推断] | 不能无 caveat 标 confirmed |
+| 社区技术文章 / 博客园 / CSDN | WEAK_SIGNAL | [推断]/[未知] | 只作补充 |
+| 多来源综合 / 技术分析 | INFERRED | [推断] | 必须有推理链 |
+
+**使用说明：**
+- 此映射是示例性而非穷举性。新增常见写法应添加到 `scripts/validate_source_label_consistency.py` 的 `_TECHNICAL_CHINESE_MAP` 中。
+- 带括号的变体（如 `学术综述（arXiv）`）会在查找前剥离括号内容，映射到基础条目。
+- 优先使用规范类型（PRIMARY_FILING, SECONDARY_MEDIA 等）而非中文自由文本。中文类型仅为兼容已有报告格式的 fallback。
+
 ## Claim classification
 
 In the source register, classify the nature of each claim:
