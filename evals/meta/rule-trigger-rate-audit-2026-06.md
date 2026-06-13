@@ -6,8 +6,8 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
-- Commit anchor: `9639a51`
-- Case count: 82 tracked Markdown cases
+- Commit anchor: `1fde05f`
+- Case count: 83 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -118,6 +118,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/startup-evaluation-route-activation-case.md` | startup-evaluation activation | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Route activation fixture for startup evaluation. |
 | `evals/cases/storage-chip-listed-company-deep-dive-pass-case.md` | listed-company + technical-deep-dive | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Pass-level dual-route benchmark. |
 | `evals/cases/technical-analysis-kubernetes-vs-docker-case.md` | technical-deep-dive activation | N/A | Triggered | Triggered | N/A | Triggered | Triggered | Triggered | Triggered | Technical route activation and artifact-contract fixture. |
+| `evals/cases/technical-source-type-chinese-mapping-case.md` | source-traceability | N/A | Triggered | N/A | N/A | N/A | N/A | Triggered | Triggered | New Chinese source-type mapping eval case (issue #272); pending formal audit. |
 | `evals/cases/tiktok-ai-technical-deep-dive-route-inflation-case.md` | technical-deep-dive | Triggered | Failed execution | Failed execution | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Route inflation and secondary-route execution drift. |
 | `evals/cases/transformer-academic-review-evidence-matrix-and-secondary-route-case.md` | academic-review + technical-deep-dive | N/A | Failed execution | Triggered | N/A | Failed execution | N/A | Triggered | Triggered | Academic metadata, evidence matrix, secondary-route hard-fail skipped. |
 | `evals/cases/unitree-competitive-positioning-secondary-route-case.md` | competitive-positioning | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Secondary route, label, strong-claim, and valuation gaps. |
