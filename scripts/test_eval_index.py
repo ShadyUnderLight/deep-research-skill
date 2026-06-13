@@ -116,6 +116,46 @@ def test_eval_readme_links_index_and_status_policy() -> None:
         assert phrase in text, f"README should document {phrase} index status"
 
 
+def test_agentic_rag_compounded_case_related_issues() -> None:
+    """P1: The agentic-rag compounded eval MUST reference #268-#272.
+
+    Contract: the Related issue / PR column value for the
+    agentic-rag-technical-deep-dive-compounded-case row MUST contain
+    references to all 5 issues whose rules this eval tests:
+      - #268 (terminology boundary)
+      - #269 (control-plane add-on)
+      - #270 (benchmark comparability)
+      - #271 (route-aware audit wrapper)
+      - #272 (source type mapping)
+    """
+    rows = parse_index_rows()
+    target = None
+    for row in rows:
+        if "agentic-rag-technical-deep-dive-compounded-case" in row["Path"]:
+            target = row
+            break
+
+    assert target is not None, (
+        "Row for agentic-rag-technical-deep-dive-compounded-case not found in INDEX.md"
+    )
+
+    related = target["Related issue / PR"]
+    assert related and related != "-", (
+        f"Related issue / PR column is empty for agentic-rag compounded case: {related!r}"
+    )
+
+    # Split on comma/semicolon to avoid substring false positives (e.g. #268 matching #2680)
+    tokens = [t.strip() for t in related.replace(";", ",").split(",")]
+    found_issues = {t for t in tokens if t.startswith("#")}
+
+    expected_issues = {"#268", "#269", "#270", "#271", "#272"}
+    missing = expected_issues - found_issues
+    assert not missing, (
+        f"Missing {missing} in related issues column: '{related}' — "
+        f"found issues: {found_issues}"
+    )
+
+
 def main() -> int:
     tests = [
         test_index_file_exists,
@@ -124,6 +164,7 @@ def main() -> int:
         test_index_uses_known_status_values,
         test_index_rows_are_complete_enough_for_coverage_scans,
         test_eval_readme_links_index_and_status_policy,
+        test_agentic_rag_compounded_case_related_issues,
     ]
     failures = []
     for test in tests:
