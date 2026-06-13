@@ -17,6 +17,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import tempfile
+from collections.abc import Callable
 from pathlib import Path
 
 # ── Fixture builders ─────────────────────────────────────────────────────────
@@ -596,7 +597,6 @@ class TestProperties:
     # Property 5b: Route normalization works for various input formats
     def test_route_normalization(self) -> None:
         """Route names are normalized correctly regardless of input format."""
-        import tempfile
         # Create a minimal report and verify route normalization
         base_md = """\
 # Test
@@ -742,5 +742,68 @@ Primary company source S01 lacks the required caveat.
 
 
 if __name__ == "__main__":
-    import pytest
-    raise SystemExit(pytest.main([__file__, "-v"]))
+    # Self-contained test runner (no external dependencies).
+    # Follows the same pattern as test_report_quality_validator.py and other
+    # test scripts in this project.
+    tests: list[tuple[str, Callable[[], None]]] = [
+        # TestValidReport
+        ("valid report exit 0", TestValidReport().test_exit_code_zero),
+        ("valid report overall pass", TestValidReport().test_overall_pass),
+        ("valid report no blocking", TestValidReport().test_no_blocking),
+        ("valid report route detected", TestValidReport().test_route_detected),
+        # Test6ColumnRegister
+        ("6-col register exit blocking", Test6ColumnRegister().test_exit_code_blocking),
+        ("6-col register overall fail", Test6ColumnRegister().test_overall_fail),
+        ("6-col register mentions column count", Test6ColumnRegister().test_blocking_mentions_column_count),
+        # TestAuditMismatch
+        ("audit mismatch exit warnings", TestAuditMismatch().test_exit_code_warnings),
+        ("audit mismatch overall conditional-pass", TestAuditMismatch().test_overall_conditional_pass),
+        ("audit mismatch mentions quantitative-role", TestAuditMismatch().test_warning_mentions_quantitative_role),
+        # TestDeclaredExecPassButOverallFail
+        ("declared-exec pass but overall fail exit", TestDeclaredExecPassButOverallFail().test_exit_code_blocking),
+        ("declared-exec pass but overall fail overall", TestDeclaredExecPassButOverallFail().test_overall_fail),
+        ("declared-exec pass but overall fail error msg", TestDeclaredExecPassButOverallFail().test_blocking_mentions_column_and_mismatch),
+        # TestTableMissingRoleLabels
+        ("tables missing role labels exit", TestTableMissingRoleLabels().test_exit_code_blocking),
+        ("tables missing role labels mentions role", TestTableMissingRoleLabels().test_blocking_mentions_role_labels),
+        # TestNoRouteBlock
+        ("no route block exit", TestNoRouteBlock().test_exit_code_blocking),
+        ("no route block missing section", TestNoRouteBlock().test_blocking_mentions_missing_section),
+        # TestRouteOverride
+        ("--route appears in output", TestRouteOverride().test_explicit_route_appears_in_output),
+        ("--route unknown falls back", TestRouteOverride().test_unknown_route_falls_back),
+        # TestNonExistentFile
+        ("non-existent file exit", TestNonExistentFile().test_exit_code_blocking),
+        # TestSharedWorkflow
+        ("shared-workflow valid passes", TestSharedWorkflow().test_exit_code_zero_when_valid),
+        ("shared-workflow fallback warning", TestSharedWorkflow().test_fallback_warning_in_stderr),
+        # TestValidatorCount
+        ("all 4 validators run on failing report", TestValidatorCount().test_all_four_validators_executed_on_failing_report),
+        # TestProperties
+        ("property: exit 0 iff overall pass", TestProperties().test_exit_code_zero_iff_overall_pass),
+        ("property: exit 2 iff blocking", TestProperties().test_exit_code_two_iff_blocking),
+        ("property: route always present", TestProperties().test_route_always_present),
+        ("property: overall is valid", TestProperties().test_overall_is_valid),
+        ("property: strict mode doesn't break valid", TestProperties().test_strict_mode_on_valid_report),
+        ("property: route normalization", TestProperties().test_route_normalization),
+        ("property: explicit route matches auto", TestProperties().test_explicit_route_matches_auto),
+        ("property: blocking count matches exit", TestProperties().test_blocking_count_matches_exit_code),
+    ]
+
+    failures: list[str] = []
+    for name, fn in tests:
+        try:
+            fn()
+        except AssertionError as exc:
+            failures.append(name)
+            print(f"  FAIL  {name}: {exc}")
+        except Exception as exc:
+            failures.append(name)
+            print(f"  FAIL  {name} (exception): {exc}")
+
+    if failures:
+        print(f"\n{len(failures)} test(s) failed: {', '.join(failures)}")
+        raise SystemExit(1)
+
+    print(f"\nAll {len(tests)} tests passed.")
+    raise SystemExit(0)
