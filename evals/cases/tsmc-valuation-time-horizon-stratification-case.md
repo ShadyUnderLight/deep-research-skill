@@ -91,8 +91,8 @@ This eval is distinct from the existing TSMC eval case (`evals/cases/tsmc-listed
 
 This eval directly tests the behavioral impact of three new rules proposed in issue #277:
 
-1. `references/report-template.md` §时间分层估值判断 — forces opening to stratify by time horizon
-2. `references/report-template.md` §四变量拆解 — forces identification of 3-5 valuation-driving variables
+1. `references/report-template.md` §Time-horizon valuation stratification — forces opening to stratify by time horizon
+2. `references/report-template.md` §Four-variable decomposition — forces identification of 3-5 valuation-driving variables
 3. `checklists/listed-company-report.md` — new checklist items for horizon consistency
 
 ## Related evals

@@ -698,7 +698,7 @@ The final report should visibly show:
 - claim-level traceability for load-bearing claims in the body, not only a bibliography at the end
 - risks and counter-evidence
 - uncertainty around forward views
-- when the task asks "whether the stock has sufficiently priced in long-term growth", visible time-horizon valuation stratification: short-to-medium term (1-3yr / 3-5yr) priced-in status vs long-term (5-10yr) remaining optionality, with horizon-consistent action implications
+- （条件强制）when the task asks "whether the stock has sufficiently priced in long-term growth", visible time-horizon valuation stratification: short-to-medium term (1-3yr / 3-5yr) priced-in status vs long-term (5-10yr) remaining optionality, with horizon-consistent action implications
 - when moat / monopoly / scarcity is central, a visible distinction among:
   - legal or regulatory exclusivity
   - resource or infrastructure control
