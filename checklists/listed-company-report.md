@@ -85,6 +85,12 @@ Run through every item before delivering the final report.
 - [ ] if the view is positive but not valuation-grade, timing-grade, or precision-grade, the downgrade boundary is explicit
 - [ ] asset injection, restructuring, one-off financing, M&A, or other major corporate actions are split into: confirmed transaction facts / likely operating impact / open uncertainty about realization, timing, synergy quality, or dependency on external variables
 
+### Time-horizon valuation stratification (适用于"是否充分反映长期增长"类问题)
+
+- [ ] （非阻塞）当任务涉及"是否充分反映长期增长 / 是否便宜 / 是否透支"时，opening 区分了短中期（1-3年 / 3-5年）已定价部分与长期（5-10年）未定价 optionality，而不是只给出一个方向性判断
+- [ ] （非阻塞）报告明确列出了 3-5 个估值驱动变量（如需求规模、份额捕获、利润率转换、估值透支等），并解释了为什么它们比背景事实更重要；这些变量驱动了报告章节顺序
+- [ ] （非阻塞）投资行动含义与时间层次一致：不把"长期可持有"写成"当前明显低估"；如果短期已充分定价但长期仍有上行空间，行动选项反映这种张力
+
 ## Monopoly / moat / scarcity discipline
 
 - [ ] monopoly, oligopoly, strong moat, market leadership, and listed-market proxy scarcity are clearly separated when defensibility is central to the task

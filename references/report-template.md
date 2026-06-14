@@ -39,6 +39,42 @@ This block locks the time layers that govern the entire memo:
 
 For full definition and failure modes, see `references/finance-date-discipline.md` → "Research Anchor Block" section.
 
+### Time-horizon valuation stratification (mandatory when the task asks "是否充分反映长期增长")
+
+当报告要回答"当前估值是否充分反映了[长期增长/长期价值/长期不确定性]"时，opening 的 thesis 必须按以下结构做时间分层，而不仅给出一个方向性判断（如"未充分反映" / "合理偏低"）：
+
+```
+一句话结论：
+- 短中期（1-3年 / 3-5年）：[已充分反映 / 部分反映 / 未充分反映]，原因是 [估值倍数 / 共识 EPS / 管理层指引]
+- 长期（5-10年）：[仍有上行可选性 / 已大体反映 / 难以判断]，原因是 [TAM / 护城河 / 资本回收 / 竞争格局]
+- 行动含义：[可持有 / 等待回撤 / 仅适合高风险资金 / 不具备安全边际] — 必须与时间层次一致，不把"长期可持有"写成"当前明显低估"
+```
+
+**为什么要时间分层？**
+
+GPT 深度研究的 TSMC 报告展示了更强的判断结构：不是把问题压缩到"低估/不低估"二元结论，而是拆成"近 3-5 年增长已较充分定价、10 年维度上行可选性尚未完全定价"。这让读者能判断：
+
+- 市场到底定价了哪一段增长？
+- 哪一段仍有分歧？
+- 新增资金和长期持有者的结论是否应该不同？
+
+如果 opening 只有一个方向性估值判断而没有时间分层，则该报告应视为**条件性通过（conditional pass）**而非全通过。
+
+This stratification rule was added via issue #277 to distinguish flat valuation judgments from time-aware ones.
+
+### Four-variable decomposition (recommended for long-term growth valuation tasks)
+
+对于"估值是否充分反映长期增长"类任务，opening 或第二节应明确拆解为以下四个变量，并使后续章节顺序与之对齐：
+
+1. **需求规模**：长期 TAM / 行业增长是否足够大，来源和假设是什么。
+2. **份额捕获**：公司是否能持续拿到足够份额，护城河和竞争证据是什么。
+3. **利润率与现金流转换**：增长是否改善 margin / FCF / ROIC，还是被 CapEx、折旧、海外扩张吞掉。
+4. **估值透支程度**：当前 PE/Forward PE/DCF 是否已经资本化前述增长。
+
+这四个变量应成为后续章节的组织骨架，而不是散落在财务、市场、风险段落中。如果没有明确采用四变量结构，报告中的 3-5 个估值驱动变量仍应显式列出，并用它们驱动报告结构。
+
+This decomposition is recommended when the task involves "has the market priced in long-term growth" — it prevents the report from treating valuation as a single PE comparison and forces explicit handling of the growth→value conversion chain.
+
 Do not default to using the front page as the main location for:
 - full evidence-label explanations
 - full numeric-role explanations
@@ -213,6 +249,8 @@ For listed-company reports, a **valuation method and scenario analysis** section
 | 乐观 | $__ | __x | $__ | __ |
 | 基准 | $__ | __x | $__ | __ |
 | 悲观 | $__ | __x | $__ | __ |
+
+> **时间分层关联**：当估值问题涉及"是否充分反映长期增长"时，本节的情景分析应反映时间分层（见前文 §Time-horizon valuation stratification），各情景的时间范围和触发条件应与短中期/长期维度明确绑定。乐观/悲观情景不应仅在幅度上不同，还应在"哪段增长被定价了"上做差异化假设。
 
 ### 5. Risks and counter-evidence
 
