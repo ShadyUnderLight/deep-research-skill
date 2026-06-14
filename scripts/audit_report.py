@@ -52,6 +52,7 @@ from validate_report_quality import (
 from validate_declared_execution import validate_file as vde_validate_file
 from validate_table_role_labels import validate_file as vtr_validate_file
 from validate_source_label_consistency import validate_file as vsl_validate_file
+from validate_listed_company_delivery import validate_file as vlc_validate_file
 
 
 # ── Exit codes ──────────────────────────────────────────────────────────────
@@ -83,6 +84,9 @@ ValidatorFn = Callable[..., CheckResult]
 # with whitespace collapsed, so we can match regardless of formatting.
 _ROUTE_ALIASES: dict[str, str] = {
     "technical deep-dive": "technical-deep-dive",
+    "listed company / investment-style research": "listed-company",
+    "listed company": "listed-company",
+    "investment-style research": "listed-company",
 }
 
 # Default route used when auto-detection fails or an unknown route is given.
@@ -205,12 +209,33 @@ def _run_source_label_consistency(path: Path, **kwargs: bool) -> CheckResult:
     return CheckResult(name="source-label-consistency", errors=errors, warnings=[])
 
 
+def _run_listed_company_delivery(path: Path, **kwargs: bool) -> CheckResult:
+    """Run validate_listed_company_delivery checks."""
+    try:
+        errors, warnings = vlc_validate_file(path)
+    except Exception as exc:
+        return CheckResult(
+            name="listed-company-delivery",
+            errors=[f"listed-company-delivery validator crashed: {exc}"],
+        )
+    return CheckResult(
+        name="listed-company-delivery", errors=errors, warnings=warnings
+    )
+
+
 # ── Route → validator mapping ──────────────────────────────────────────────
 
 ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
     "technical-deep-dive": [
         _run_report_quality,
         _run_declared_execution,
+        _run_table_role_labels,
+        _run_source_label_consistency,
+    ],
+    "listed-company": [
+        _run_report_quality,
+        _run_declared_execution,
+        _run_listed_company_delivery,
         _run_table_role_labels,
         _run_source_label_consistency,
     ],
