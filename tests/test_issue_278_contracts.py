@@ -31,13 +31,15 @@ def test_d1_has_dcf_trigger_section():
 
 
 def test_d1_trigger_section_position():
-    """D1: DCF trigger MUST be after DCF subsection and before SOTP."""
+    """D1: DCF trigger MUST be after DCF subsection; SOTP must be between DCF subsection and trigger."""
     content = read("references/valuation-methodology.md")
     dcf_sub_pos = content.index("### DCF (Discounted Cash Flow)")
     trigger_pos = content.index("## DCF / reverse DCF trigger")
     sotp_pos = content.index("### SOTP (Sum of the Parts)")
-    assert dcf_sub_pos < trigger_pos < sotp_pos, \
-        f"Section ordering: DCF subsection({dcf_sub_pos}) < trigger({trigger_pos}) < SOTP({sotp_pos})"
+    # SOTP is part of Metric selection logic, so it should be after DCF subsection
+    # but before DCF trigger (which is a separate top-level section)
+    assert dcf_sub_pos < sotp_pos < trigger_pos, \
+        f"Section ordering: DCF subsection({dcf_sub_pos}) < SOTP({sotp_pos}) < trigger({trigger_pos})"
 
 
 def test_d1_has_trigger_conditions():
@@ -121,7 +123,7 @@ def test_d2_cross_ref_to_valuation_methodology():
     content = read("references/report-template.md")
     dcf_start = content.index("DCF / 反向 DCF（当适用）")
     dcf_section = content[dcf_start:]
-    assert "valuation-methodology.md" in dcf_section or "valuation" in dcf_section.lower(), \
+    assert "valuation-methodology.md" in dcf_section, \
         "DCF section missing cross-reference to valuation-methodology.md"
 
 

@@ -81,6 +81,19 @@ Do not use when:
 - the company is pre-revenue or pre-profit with no clear path
 - the model would depend on speculative assumptions about distant future
 
+> **Forward reference**: For when DCF is **required** rather than merely available — including trigger conditions, acceptable outputs, and degradation rules — see §DCF / reverse DCF trigger below.
+
+### SOTP (Sum of the Parts)
+
+Use when:
+- the company has distinct business segments with different valuation logics
+- conglomerate discount or premium is material
+- segment-level data is sufficient for independent valuation
+
+Do not use when:
+- segment data is insufficient or unreliable
+- inter-segment dependencies make separation artificial
+
 ## DCF / reverse DCF trigger
 
 DCF is listed above as one of several valuation methods. This section defines when DCF is **required** rather than merely available.
@@ -91,8 +104,7 @@ A listed-company valuation must include DCF or reverse DCF (or an explicit expla
 
 - **Operating history**: The company has a sufficiently long operating history (typically 10+ years of reported financials).
 - **Cash flow predictability**: The company has positive and reasonably predictable free cash flow.
-- **Long-term growth question**: The report's core valuation question is whether long-term growth (5+ years) is already reflected in the current price.
-- **Multi-year dependency**: The valuation conclusion depends on assumptions about revenue growth, margin structure, CapEx intensity, or FCF conversion extending 5+ years into the future.
+- **Long-term growth dependency**: The report's core valuation question is whether long-term growth (5+ years) is already reflected in the current price, and/or the valuation conclusion depends on assumptions about revenue growth, margin structure, CapEx intensity, or FCF conversion extending 5+ years into the future.
 - **PE/PEG insufficiency**: PE or PEG ratios alone cannot adequately capture the long-term growth realization path, or the company's growth profile makes pure multiple-based valuation misleading.
 
 ### Acceptable outputs (choose one)
@@ -116,17 +128,6 @@ If DCF is determined to be not applicable after the above assessment:
 - `references/report-template.md` §Valuation method and scenario analysis contains the DCF assumption table template and sensitivity matrix template.
 - `references/quantitative-role-labeling.md` §Sensitivity classification defines the sensitivity analysis framework that applies to DCF assumptions.
 - `checklists/listed-company-report.md` §DCF / 反向 DCF contains the enforcement checklist.
-
-### SOTP (Sum of the Parts)
-
-Use when:
-- the company has distinct business segments with different valuation logics
-- conglomerate discount or premium is material
-- segment-level data is sufficient for independent valuation
-
-Do not use when:
-- segment data is insufficient or unreliable
-- inter-segment dependencies make separation artificial
 
 ## Precision downgrade rules
 
@@ -157,6 +158,14 @@ Downgrade valuation precision when the company or data quality does not support 
 - If M&A, restructuring, asset injection, or spin-off is pending or recent, valuation may be distorted
 - Split the valuation into pre-action and post-action scenarios when relevant
 - Do not compress transaction certainty into valuation certainty
+
+### DCF-triggered-but-declined
+
+When all DCF trigger conditions are met but DCF is deemed not applicable (see §DCF / reverse DCF trigger → Non-applicability explanation):
+
+- The valuation precision ceiling is **directional or range-based**, not precise.
+- A single-point target price should not be given; prefer a valuation range with explicit assumptions or a directional judgment.
+- The non-applicability reasoning must be visible in the valuation section (not buried in a footnote), so the reader can assess whether the DCF avoidance is justified.
 
 ## Target price discipline
 
