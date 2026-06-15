@@ -77,3 +77,10 @@ This checklist verifies that the academic route was executed correctly and the f
 - [ ] no conflation of study design and venue prestige dimensions
 - [ ] no ignoring publication bias or the "file drawer problem" — 发表偏倚讨论已按规定完成（至少 2-3 句，涵盖偏倚方向判断和结论调整建议；参见 `references/academic-evidence-hierarchy.md`「发表偏倚讨论」节）
 - [ ] （Tier-1）no secondary route hard-fail verification skipped without itemization: when a secondary route is declared, its hard-fail verification must be itemized per condition (which were checked, which passed/failed, and evidence for each); "covered elsewhere without independent run" constitutes a hard-fail — see ROUTING-MATRIX.md "Secondary route hard-fail requirement"
+
+## Eval regression cases
+
+The following eval cases guard academic-review delivery discipline against real failure patterns. Run or review them as part of the regression set when modifying academic route rules, checklists, or validators:
+
+- `evals/cases/ai-agent-planning-academic-review-compounded-case.md` — compounded academic fail: search strategy incomplete + stale current-state + source register placeholder + evidence matrix not executed + self-assessment overclaim. Expected verdict: **Fail**.
+- `evals/cases/mllm-visual-reasoning-academic-review-narrow-fail-case.md` — narrow fail: body traceability absent (zero `[S##]`) while all other academic disciplines pass. Expected verdict: **Conditional Pass**.
