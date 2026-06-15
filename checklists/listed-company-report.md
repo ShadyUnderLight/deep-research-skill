@@ -37,7 +37,7 @@ Run through every item before delivering the final report.
 
 ### Capital return discipline (CapEx-heavy 公司适用)
 
-适用触发条件：公司属于半导体制造、工业制造、能源、电力、数据中心、通信基础设施等资本密集型业务，或 CapEx / 收入长期高于 20%，或核心 thesis 依赖产能扩张/新节点爬坡/海外建厂/重资产投入（完整定义见 `references/valuation-methodology.md` §Capital return discipline for CapEx-heavy companies → 触发条件）。
+适用触发条件：公司属于半导体制造、工业制造、能源、电力、数据中心、通信基础设施、矿业/金属、化工/石化等资本密集型业务，或 CapEx / 收入长期高于 20%，或核心 thesis 依赖产能扩张/新节点爬坡/海外建厂/重资产投入，或增长主要依赖产能扩张而非价格/product mix 改善（完整定义见 `references/valuation-methodology.md` §Capital return discipline for CapEx-heavy companies → 触发条件）。
 
 - [ ] （阻断级）当本纪律触发时，报告不得仅凭收入增长和 PE/PEG 得出估值结论；必须检查 FCF conversion / CapEx burden / D&A / ROIC，并在估值章节而非仅风险章节处理这些变量
 - [ ] （非阻塞）如果增长依赖新产能、新地区、新节点或重资产扩张，报告说明了初期 margin 稀释的时间范围与回收周期，而不是只提示"存在稀释风险"

@@ -95,11 +95,12 @@ This decomposition is recommended when the task involves "has the market priced 
 | 新产能/新地区 margin 稀释 | | | | | estimate / assumption |
 
 **填写规则**：
-- 「当前状态」列填写最近报告期的实际可观测数据（如 FY2025 CapEx/收入 = 35%）。
-- 「基准假设」列填写报告采用的分析假设（如未来 3 年 CapEx/收入逐步降至 28%）。
-- 「压力情景」列填写当关键假设不成立时的替代值（如 ASML 设备交付延迟，CapEx/收入维持 35%+）。
+- 「当前状态」列填写最近报告期的实际可观测数据（如 FY2025 CapEx/收入 = 35%）。该列数值为 **observed**（观察值）。
+- 「基准假设」列填写报告采用的分析假设（如未来 3 年 CapEx/收入逐步降至 28%）。该列数值为 **assumption**（假设）。
+- 「压力情景」列填写当关键假设不成立时的替代值（如 ASML 设备交付延迟，CapEx/收入维持 35%+）。该列数值为 **assumption**（假设）。
 - 「对估值影响」列简述该变量偏离对 PE 倍数调整、目标价变动或结论方向的量化/方向性影响。
-- 「数字角色」列标识每个数值的认识论角色（观察值 / 假设 / 模型输出 / 估算），见 `references/quantitative-role-labeling.md`。
+- 「数字角色」列标注各行数字的主要认识论角色。由于同一行内「当前状态」（observed）与「基准假设/压力情景」（assumption）分属不同角色，各行数字角色列标注的是该行**核心角色范围**。例如 CapEx/收入 = `observed / assumption` 表示当前值为观察值、未来值为假设。见 `references/quantitative-role-labeling.md`。
+- FCF margin 和 ROIC 的「当前状态」格基于实际财务报表计算，角色为 **model output（基于观察值）**；「基准假设/压力情景」格角色为 **model output（基于假设）**。
 
 > 本表不替代 DCF（当 DCF 触发条件满足时 DCF 仍必须执行），而是在 DCF 不适用或作为 DCF 假设的补充可见框架时，确保 CapEx-heavy 公司的资本回收变量不被忽略。
 
