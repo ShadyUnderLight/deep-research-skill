@@ -232,6 +232,43 @@ If segment-level financials are unavailable or unreliable, SOTP creates false pr
 ### Conflating snapshot with thesis
 `The stock is cheap because it trades at 10x PE` is not a valuation thesis. It is a snapshot with an unsupported conclusion. A proper thesis would explain why 10x is cheap relative to what benchmark and why.
 
+## Capital return discipline for CapEx-heavy companies (重资产公司的资本回收纪律)
+
+当分析资本密集型上市公司的估值时，仅使用收入增长和 PE/PEG 框架可能掩盖最关键的财务问题：增长是否以足够高的回报率沉淀为自由现金流和股东价值。
+
+### 触发条件
+
+以下**任一**条件满足时，必须启动本纪律：
+
+- **行业属性**：公司属于半导体制造、工业制造、能源、电力、数据中心、通信基础设施等资本密集型业务。
+- **CapEx 强度**：CapEx / 收入长期高于 20%，或显著影响自由现金流。
+- **Thesis 依赖**：报告核心 thesis 依赖产能扩张、新节点爬坡、海外建厂、重资产投入。
+- **增长模式**：收入增长主要来自增加产能/固定资产而非价格/产品 mix 改善。
+
+### 必须回答的六个问题
+
+当本纪律触发时，报告必须在估值章节（或紧邻的四变量分解段）中回答以下问题，而非仅将 CapEx 风险列在风险段落：
+
+1. **增长来源**：收入增长来自价格、出货量、产品 mix，还是一次性周期因素？区分可持续增长与周期波动。
+2. **再投资负担**：实现增长需要多少 CapEx / working capital / D&A？CapEx / 收入比率是否高于同行业可比公司，如果是，原因是什么？
+3. **利润率稀释**：新产能、新地区、新节点或学习曲线是否短期压低 margin？具体影响幅度和时间范围是什么？
+4. **FCF 转换**：净利润增长是否确实转化为自由现金流增长？D&A 和 CapEx 的差额（即 reinvestment gap）对 FCF 的实际影响是什么？
+5. **ROIC 与回收周期**：增量资本回报率（ROIC）是否高于 WACC？回收周期是否在投资人可接受范围内？增长是否在扩大收入规模但并未提高股东回报？
+6. **估值影响**：如果 CapEx 强度持续高于假设，或 FCF 转换低于预期，估值结论如何变化？PE/PEG 框架能否单独支撑结论，还是需要 DCF 或 ROIC 分析？
+
+### 常见失败模式
+
+- **增长故事代替资本回报分析**：报告强调 TAM 和收入增长，但未检查增长的资本成本。读者无法判断增长是否创造价值。
+- **风险清单代替估值输入**：CapEx 和 FCF 风险列在风险章节，但估值结论（目标价、PE 倍数判断）沿用 PE/PEG 框架，未纳入这些风险。
+- **轻资产模板套用到重资产公司**：用标准的"收入增长 + PE 倍数收缩/扩张"模板分析半导体制造或数据中心公司，忽略了 FCF 转换的关键问题。
+- **忽视 margin 稀释的阶段差异**：新节点/新产区初期爬坡的 margin 稀释是暂时性的，但如果不量化阶段和回收期，容易将过渡期问题误判为结构性缺陷，或反过来忽视其量化影响。
+
+### 与现有规则的关系
+
+- 本纪律的四变量关联：六个问题中的问题 1-3 对应四变量分解的变量 3（利润率与现金流转换），问题 5-6 对应变量 4（估值透支程度）。本纪律为四变量分解中 CapEx-heavy 场景提供更详细的执行指导。
+- 本纪律与 `references/report-template.md` §增长到现金流转换表 配合使用：该表提供定量框架，本纪律提供分析问题集。
+- 本纪律不替代 DCF 触发条件：如果满足 DCF 触发条件（见 §DCF / reverse DCF trigger），DCF 仍然必须执行。本纪律在 DCF 不适用时提供最低限度的资本回收分析框架。
+
 ## Relationship to other discipline files
 
 - `references/finance-date-discipline.md` covers time-layer separation and source-type labeling for financial numbers. This file focuses on methodology selection and precision discipline.
