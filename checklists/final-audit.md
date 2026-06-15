@@ -137,6 +137,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 - [ ] current-state verification was run for fast-moving topics
 - [ ] listing status and financial snapshot were verified for listed companies
+- [ ] for CapEx-heavy listed company reports (trigger conditions defined in `references/valuation-methodology.md` §Capital return discipline for CapEx-heavy companies), the valuation conclusion does not rest on revenue growth and PE/PEG alone without explicitly checking FCF conversion, CapEx burden, D&A, and ROIC; the capital return variables are treated as valuation inputs rather than only risk-list items (see `checklists/listed-company-report.md` §Capital return discipline)
 - [ ] source traceability was applied for structured or investment-relevant outputs — 正文 load-bearing claims 有 `[Sxx]` 或功能等效引用（仅 `[CONF]/[INFER]` 等置信标签不满足追溯要求；`[IN]`/`[UN]` 是合规的 traceability 标注，区别于 `[INFER]` 置信标签）；未通过 `checklists/source-traceability.md` hard-fail gate 则视为不可交付
 - [ ] scope completeness was checked when the report claims global, comprehensive, or industry-wide scope
 - [ ] decision utility was checked when the report carries a recommendation, choice, judgment, or investment-style decision burden
