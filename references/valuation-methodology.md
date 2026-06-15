@@ -81,6 +81,8 @@ Do not use when:
 - the company is pre-revenue or pre-profit with no clear path
 - the model would depend on speculative assumptions about distant future
 
+> **Forward reference**: For when DCF is **required** rather than merely available — including trigger conditions, acceptable outputs, and degradation rules — see §DCF / reverse DCF trigger below.
+
 ### SOTP (Sum of the Parts)
 
 Use when:
@@ -91,6 +93,41 @@ Use when:
 Do not use when:
 - segment data is insufficient or unreliable
 - inter-segment dependencies make separation artificial
+
+## DCF / reverse DCF trigger
+
+DCF is listed above as one of several valuation methods. This section defines when DCF is **required** rather than merely available.
+
+### Applicable trigger conditions
+
+A listed-company valuation must include DCF or reverse DCF (or an explicit explanation of non-applicability) when ALL of the following are true:
+
+- **Operating history**: The company has a sufficiently long operating history (typically 10+ years of reported financials).
+- **Cash flow predictability**: The company has positive and reasonably predictable free cash flow.
+- **Long-term growth dependency**: The report's core valuation question is whether long-term growth (5+ years) is already reflected in the current price, and/or the valuation conclusion depends on assumptions about revenue growth, margin structure, CapEx intensity, or FCF conversion extending 5+ years into the future.
+- **PE/PEG insufficiency**: PE or PEG ratios alone cannot adequately capture the long-term growth realization path, or the company's growth profile makes pure multiple-based valuation misleading.
+
+### Acceptable outputs (choose one)
+
+1. **Forward DCF**: Explicit projections of revenue, operating margin, D&A, CapEx, tax rate, WACC, and terminal value, producing a per-share fair value range. Key assumptions must be labeled with number roles (assumption / model output / observed input) and source/method.
+
+2. **Reverse DCF**: Starting from the current market price, calculate the implied revenue growth, FCF margin, terminal growth rate, or WACC embedded in the current valuation, then evaluate whether those implied assumptions are reasonable relative to available evidence.
+
+3. **Non-applicability explanation**: If DCF is deemed not applicable (despite meeting the trigger conditions superficially), the report must explain specifically why — e.g., "FCF is too volatile for meaningful projection due to [reason]" or "terminal value would dominate unreasonably because [reason]." Vague justifications such as "DCF is not needed" without specific reasoning do not satisfy this requirement.
+
+### Degradation rule
+
+If DCF is determined to be not applicable after the above assessment:
+
+- The report must still satisfy the existing methodology requirements (metric selection logic, target price discipline, and precision downgrade rules).
+- The valuation conclusion must be visibly downgraded — "directional" or "range-based" rather than "precise" — because the absence of a cash-flow-based structural model reduces the precision ceiling.
+- The non-applicability reasoning must be visible in the valuation section, not buried in a footnote or appendix.
+
+### Relationship to other rules
+
+- `references/report-template.md` §Valuation method and scenario analysis contains the DCF assumption table template and sensitivity matrix template.
+- `references/quantitative-role-labeling.md` §Sensitivity classification defines the sensitivity analysis framework that applies to DCF assumptions.
+- `checklists/listed-company-report.md` §DCF / 反向 DCF contains the enforcement checklist.
 
 ## Precision downgrade rules
 
@@ -121,6 +158,14 @@ Downgrade valuation precision when the company or data quality does not support 
 - If M&A, restructuring, asset injection, or spin-off is pending or recent, valuation may be distorted
 - Split the valuation into pre-action and post-action scenarios when relevant
 - Do not compress transaction certainty into valuation certainty
+
+### DCF-triggered-but-declined
+
+When all DCF trigger conditions are met but DCF is deemed not applicable (see §DCF / reverse DCF trigger → Non-applicability explanation):
+
+- The valuation precision ceiling is **directional or range-based**, not precise.
+- A single-point target price should not be given; prefer a valuation range with explicit assumptions or a directional judgment.
+- The non-applicability reasoning must be visible in the valuation section (not buried in a footnote), so the reader can assess whether the DCF avoidance is justified.
 
 ## Target price discipline
 
