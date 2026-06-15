@@ -61,6 +61,23 @@ NL_ATTR_RE = re.compile(
     re.IGNORECASE,
 )
 
+# ── Placeholder patterns (for Source Register DOI/URL column) ─────────────
+# Detects common placeholder values that indicate unresolved entries.
+PLACEHOLDER_RE = re.compile(
+    r"^[\s\-—–—]*$"         # whitespace-only, dashes, em-dashes, en-dashes
+    r"|TBD"                  # TBD (case-sensitive, avoids 'tbd' suffix)
+    r"|tbd"                  # lowercase tbd
+    r"|T\.B\.D\."            # T.B.D. dotted form
+    r"|xxxxx"                # placeholder xxxxx
+    r"|arXiv:\d{4}\.xxxxx"   # arXiv placeholder pattern
+    r"|—|–"      # HTML entities for em-dash / en-dash
+)
+
+# ── Academic 11-column Source Register header patterns ────────────────────
+ACADEMIC_EXTRA_COLUMNS = [
+    "Publication Type", "Peer-review Status", "Venue", "Venue Prestige",
+]
+
 # ── Key section patterns (for section-level citation coverage check) ──────
 
 KEY_SECTION_PATTERNS: list[re.Pattern[str]] = [
@@ -443,6 +460,51 @@ def check_source_register_mapping(cleaned: str) -> list[str]:
             f"not found in Source Register"
         ]
     return []
+
+
+def check_source_register_placeholders(cleaned: str) -> list[str]:
+    """Detect placeholder values in Source Register DOI/URL column.
+
+    Checks for —, TBD, xxxxx, arXiv:xxxxx, and other patterns that
+    indicate unresolved entries.
+    Returns warning list (non-empty → warning only).
+    """
+    sec = section_text(cleaned, SOURCE_REGISTER_HEADING)
+    if sec is None:
+        return []
+    table = parse_table(sec)
+    if table is None or len(table) < 2:
+        return []
+
+    header = table[0]
+    data_rows = table[1:]
+
+    doi_col = find_col_index(header, [re.compile(r"DOI\s*/\s*URL", re.IGNORECASE)])
+    if doi_col == -1:
+        return []
+
+    found: list[str] = []
+    for i, row in enumerate(data_rows, start=2):
+        if len(row) <= doi_col:
+            continue
+        val = row[doi_col].strip()
+        if not val:
+            continue  # empty handled by DOI coverage check
+        if PLACEHOLDER_RE.search(val):
+            if len(found) < 5:
+                found.append(f"row {i}: '{val}'")
+            else:
+                found.append("...")
+                break
+
+    if not found:
+        return []
+
+    return [
+        f"Source Register: {len(found)} entry/entries with placeholder "
+        f"DOI/URL — {', '.join(found)}. "
+        f"Resolve to real DOI/URL or annotate as unavailable."
+    ]
 
 
 def check_source_register_duplicate_ids(cleaned: str) -> list[str]:
@@ -852,6 +914,53 @@ def check_audit_self_assessment_consistency(cleaned: str) -> list[str]:
     return warnings
 
 
+# ── Academic route checks ──────────────────────────────────────────────────
+
+
+def _is_academic_route(cleaned: str) -> bool:
+    """Detect if the report's primary route is academic/literature-review.
+
+    Uses word-boundary matching to avoid false positives like
+    "Literature-based Market Research" or "Academic-style Overview".
+    """
+    route = get_route_name(cleaned)
+    if route is None:
+        return False
+    rl = route.lower()
+    if re.search(r"\bacademic\b", rl):
+        return True
+    if re.search(r"\bliterature[-\s]?review\b", rl):
+        return True
+    return False
+
+
+def check_academic_register_columns(cleaned: str) -> list[str]:
+    """Verify academic-route reports use 11-column Source Register.
+
+    Academic / Literature Review reports must have the extended 11-column
+    Source Register template (7 base + Publication Type, Peer-review Status,
+    Venue, Venue Prestige). Returns error list (non-empty → hard fail).
+    Only fires when the primary route is detected as academic/literature-review.
+    """
+    if not _is_academic_route(cleaned):
+        return []
+    sec = section_text(cleaned, SOURCE_REGISTER_HEADING)
+    if sec is None:
+        return []  # missing register is caught by existing check
+    table = parse_table(sec)
+    if table is None:
+        return []
+    header = table[0]
+    if len(header) < 11:
+        return [
+            f"Academic / Literature Review route requires an 11-column "
+            f"Source Register, but found {len(header)} column(s). "
+            f"Expected 7 base columns + "
+            f"{' / '.join(ACADEMIC_EXTRA_COLUMNS)}."
+        ]
+    return []
+
+
 # ── Main ──────────────────────────────────────────────────────────────────
 
 
@@ -878,6 +987,7 @@ def validate_file(path: Path, strict: bool = False) -> int:
     errors.extend(check_source_register_mapping(cleaned))
     errors.extend(check_source_register_duplicate_ids(cleaned))
     warnings.extend(check_source_register_doi_coverage(cleaned))
+    warnings.extend(check_source_register_placeholders(cleaned))
 
     # 3. Body references
     errors.extend(check_body_references(cleaned))
@@ -885,10 +995,13 @@ def validate_file(path: Path, strict: bool = False) -> int:
     # 4. Key section citation coverage (hard fail)
     errors.extend(check_key_section_citation_coverage(cleaned))
 
-    # 5. Audit self-assessment consistency (warnings only)
-    warnings.extend(check_audit_self_assessment_consistency(cleaned))
+    # 5. Audit self-assessment consistency (hard-fail gate)
+    errors.extend(check_audit_self_assessment_consistency(cleaned))
 
-    # 6. Strict mode warnings
+    # 6. Academic route checks
+    errors.extend(check_academic_register_columns(cleaned))
+
+    # 7. Strict mode warnings
     if strict:
         warnings.extend(check_strict_warnings(cleaned))
 

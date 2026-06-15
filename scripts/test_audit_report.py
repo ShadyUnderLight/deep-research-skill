@@ -394,23 +394,23 @@ class Test6ColumnRegister:
 
 
 class TestAuditMismatch:
-    """Report claiming quantitative-role ✅ but body lacks roles -> warning."""
+    """Report claiming quantitative-role ✅ but body lacks roles -> blocking error."""
 
-    def test_exit_code_warnings(self) -> None:
+    def test_exit_code_blocking(self) -> None:
         result = _run_audit(_report_with_audit_mismatch())
-        assert result.returncode == 1, (
-            f"Expected exit 1 (warnings), got {result.returncode}\n"
+        assert result.returncode == 2, (
+            f"Expected exit 2 (blocking), got {result.returncode}\n"
             f"stdout:\n{result.stdout}"
         )
 
-    def test_overall_conditional_pass(self) -> None:
+    def test_overall_fail(self) -> None:
         result = _run_audit(_report_with_audit_mismatch())
-        assert _get_overall(result.stdout) == "conditional-pass"
+        assert _get_overall(result.stdout) == "fail"
 
-    def test_warning_mentions_quantitative_role(self) -> None:
+    def test_error_mentions_quantitative_role(self) -> None:
         result = _run_audit(_report_with_audit_mismatch())
         assert "quantitative-role" in result.stdout or "quantitative role" in result.stdout, (
-            f"Expected quantitative-role warning, got:\n{result.stdout}"
+            f"Expected quantitative-role error, got:\n{result.stdout}"
         )
 
 
@@ -756,9 +756,9 @@ if __name__ == "__main__":
         ("6-col register overall fail", Test6ColumnRegister().test_overall_fail),
         ("6-col register mentions column count", Test6ColumnRegister().test_blocking_mentions_column_count),
         # TestAuditMismatch
-        ("audit mismatch exit warnings", TestAuditMismatch().test_exit_code_warnings),
-        ("audit mismatch overall conditional-pass", TestAuditMismatch().test_overall_conditional_pass),
-        ("audit mismatch mentions quantitative-role", TestAuditMismatch().test_warning_mentions_quantitative_role),
+        ("audit mismatch exit blocking", TestAuditMismatch().test_exit_code_blocking),
+        ("audit mismatch overall fail", TestAuditMismatch().test_overall_fail),
+        ("audit mismatch mentions quantitative-role", TestAuditMismatch().test_error_mentions_quantitative_role),
         # TestDeclaredExecPassButOverallFail
         ("declared-exec pass but overall fail exit", TestDeclaredExecPassButOverallFail().test_exit_code_blocking),
         ("declared-exec pass but overall fail overall", TestDeclaredExecPassButOverallFail().test_overall_fail),
