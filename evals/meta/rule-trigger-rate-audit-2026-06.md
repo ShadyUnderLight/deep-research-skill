@@ -6,8 +6,8 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
-- Commit anchor: `e990742`
-- Case count: 84 tracked Markdown cases
+- Commit anchor: `f053fd9`
+- Case count: 85 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -121,6 +121,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/technical-source-type-chinese-mapping-case.md` | source-traceability | N/A | Triggered | N/A | N/A | N/A | N/A | Triggered | Triggered | New Chinese source-type mapping eval case (issue #272); pending formal audit. |
 | `evals/cases/tiktok-ai-technical-deep-dive-route-inflation-case.md` | technical-deep-dive | Triggered | Failed execution | Failed execution | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Route inflation and secondary-route execution drift. |
 | `evals/cases/transformer-academic-review-evidence-matrix-and-secondary-route-case.md` | academic-review + technical-deep-dive | N/A | Failed execution | Triggered | N/A | Failed execution | N/A | Triggered | Triggered | Academic metadata, evidence matrix, secondary-route hard-fail skipped. |
+| `evals/cases/tsmc-valuation-dcf-and-sensitivity-case.md` | listed-company | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | New DCF/sensitivity eval case (issue #278); pending formal audit. |
 | `evals/cases/tsmc-valuation-time-horizon-stratification-case.md` | listed-company | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | New time-horizon stratification eval case (issue #277); pending formal audit. |
 | `evals/cases/unitree-competitive-positioning-secondary-route-case.md` | competitive-positioning | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Secondary route, label, strong-claim, and valuation gaps. |
 | `evals/cases/world-cup-constrained-choice-wrong-route-case.md` | constrained-choice / wrong-route | Triggered | Missing trigger | Failed execution | Failed execution | N/A | Missing trigger | Triggered | Triggered | Evidence labels good; wrong route and no inline citations. |
