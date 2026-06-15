@@ -32,6 +32,7 @@ ALLOWED_STATUSES = {
 
 ALLOWED_RULE_STATUSES = {
     "pass",
+    "conditional-pass",
     "fail",
     "warn",
     "manual-review",
