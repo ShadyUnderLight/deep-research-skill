@@ -261,6 +261,48 @@ For listed-company reports, a **valuation method and scenario analysis** section
 >
 > **四变量关联**：以下情景的 EPS 假设和 PE 倍数选择应反映前文 §Four-variable decomposition 中确定的估值驱动因素。例如，乐观情景通常假设"需求规模"和"份额捕获"加速、"利润率转换"改善；悲观情景则假设"需求规模"受限或"估值透支"程度较高。本节是四变量从定性分析到价格假设的转换层。
 
+#### DCF / 反向 DCF（当适用）
+
+当报告的估值结论符合 `references/valuation-methodology.md` §DCF / reverse DCF trigger 的适用条件时，估值部分必须包含以下内容之一。如果 DCF 不适用，必须提供具体的不可用原因说明。
+
+**DCF 关键假设表**
+| 假设 | [近期年份]E | [中期年份]E | [远期年份]E | 数字角色 | 来源 / 方法 |
+|---|---:|---:|---:|---|---|
+| 收入增速 | | | | assumption / model output | |
+| 营业利润率 | | | | assumption | |
+| CapEx / 收入 | | | | assumption | |
+| D&A / 收入 | | | | assumption | |
+| 税率 | | | | assumption | |
+| WACC | | | | assumption | |
+| 永续增长率 | | | | assumption | |
+
+**三情景股权价值**
+| 情景 | 股权价值 | 较当前市值 | 关键触发条件 | 数字角色 |
+|---|---:|---:|---|---|
+| 乐观 | | | | model output |
+| 基准 | | | | model output |
+| 悲观 | | | | model output |
+
+#### 敏感性矩阵
+
+当 DCF / 反向 DCF 用于估值时，必须对至少一个高敏感性假设提供单变量敏感性分析。
+
+> **敏感性分析 ≠ 情景分析**：情景分析同时变动多个假设（如乐观/基准/悲观三情景），读者无法看到单一关键假设变化对结论的独立影响。敏感性分析每次只变一个假设（如 WACC ±0.5% 或永续增长率 ±0.25%），保持其他假设不变，以隔离每个变量的边际影响。当报告提供多情景分析时，仍需对高敏感性假设提供独立敏感性表。两者互补而非替代。参见 `references/quantitative-role-labeling.md` §Sensitivity classification。
+
+模板格式：
+
+```
+| WACC \\ 永续增长率 | [低值] | [基准值] | [高值] |
+|---|---:|---:|---:|
+| [低值] | | | |
+| [基准值] | | | |
+| [高值] | | | |
+```
+
+结论：估值最敏感变量是 [变量]；若 [变量] 低于/高于 [阈值]，结论从 [低估/合理] 翻转为 [高估/不具安全边际]。
+
+> **DCF 关联**：上述 DCF 假设和敏感性矩阵应与前文 §Four-variable decomposition 中确定的估值驱动因素一致。DCF 是"估值透支程度"变量的定量实现层。敏感性矩阵揭示哪个四变量因素对结论影响最大。
+
 ### 5. Risks and counter-evidence
 
 - include the strongest reasons the main conclusion could be wrong

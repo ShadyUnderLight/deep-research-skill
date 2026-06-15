@@ -699,6 +699,8 @@ The final report should visibly show:
 - risks and counter-evidence
 - uncertainty around forward views
 - （条件强制）when the task asks "whether the stock has sufficiently priced in long-term growth", visible time-horizon valuation stratification: short-to-medium term (1-3yr / 3-5yr) priced-in status vs long-term (5-10yr) remaining optionality, with horizon-consistent action implications
+- when the conclusion involves "whether current valuation already reflects long-term growth" and the company has positive FCF and sufficient operating history, includes DCF or reverse DCF or an explicit explanation of why DCF is not applicable
+- when DCF is used, includes a sensitivity matrix or single-variable tipping point for at least one high-sensitivity assumption
 - when moat / monopoly / scarcity is central, a visible distinction among:
   - legal or regulatory exclusivity
   - resource or infrastructure control

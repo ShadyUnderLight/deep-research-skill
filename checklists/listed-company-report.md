@@ -35,6 +35,14 @@ Run through every item before delivering the final report.
 - [ ] （非阻塞）估值方法包含倍数区间范围，以及可比公司选择逻辑或估值指标选择理由说明（对照 `references/report-template.md` §Valuation method and scenario analysis）
 - [ ] （非阻塞）情景分析包含乐观/基准/悲观三档，每档有明确的 EPS 假设、PE 倍数和触发条件
 
+### DCF / 反向 DCF（当适用）
+
+- [ ] （阻断级）当报告判断"长期增长是否已反映 / 是否透支"且公司有较长经营历史和正向自由现金流时，必须包含 DCF、反向 DCF，或明确说明不适用原因 — 缺此项则至多条件性通过（参见 `references/valuation-methodology.md` §DCF / reverse DCF trigger）
+- [ ] （非阻塞）DCF / 反向 DCF 的关键假设列了数字角色、来源/方法和时间范围
+- [ ] （非阻塞）至少一个高敏感变量有单变量敏感性矩阵或 tipping point（参见 `references/quantitative-role-labeling.md` §Sensitivity classification）
+- [ ] （非阻塞）目标价 / 股权价值区间可由披露假设复算
+- [ ] （非阻塞）多变量三情景不替代单变量敏感性分析（参见 `references/quantitative-role-labeling.md` §Sensitivity classification，该处已说明"情景分析 ≠ 敏感性分析"）
+
 ## Reporting-period discipline
 
 - [ ] TTM / LTM figures are labeled as derived, not confused with reported fiscal year
