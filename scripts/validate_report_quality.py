@@ -70,8 +70,7 @@ PLACEHOLDER_RE = re.compile(
     r"|T\.B\.D\."            # T.B.D. dotted form
     r"|xxxxx"                # placeholder xxxxx
     r"|arXiv:\d{4}\.xxxxx"   # arXiv placeholder pattern
-    r"|\u2014|\u2013"        # explicit unicode em-dash / en-dash
-    r"|—|–"    # HTML entity
+    r"|—|–"      # HTML entities for em-dash / en-dash
 )
 
 # ── Academic 11-column Source Register header patterns ────────────────────
@@ -919,12 +918,20 @@ def check_audit_self_assessment_consistency(cleaned: str) -> list[str]:
 
 
 def _is_academic_route(cleaned: str) -> bool:
-    """Detect if the report's primary route is academic/literature-review."""
+    """Detect if the report's primary route is academic/literature-review.
+
+    Uses word-boundary matching to avoid false positives like
+    "Literature-based Market Research" or "Academic-style Overview".
+    """
     route = get_route_name(cleaned)
     if route is None:
         return False
     rl = route.lower()
-    return "academic" in rl or "literature" in rl
+    if re.search(r"\bacademic\b", rl):
+        return True
+    if re.search(r"\bliterature[-\s]?review\b", rl):
+        return True
+    return False
 
 
 def check_academic_register_columns(cleaned: str) -> list[str]:

@@ -40,10 +40,12 @@ from validate_report_quality import (
     check_source_register_missing_ids,
     check_source_register_mapping,
     check_source_register_duplicate_ids,
+    check_source_register_doi_coverage,
+    check_source_register_placeholders,
     check_body_references,
     check_key_section_citation_coverage,
     check_audit_self_assessment_consistency,
-    check_source_register_doi_coverage,
+    check_academic_register_columns,
     check_strict_warnings,
     get_route_name,
     strip_fenced_code_blocks,
@@ -155,6 +157,7 @@ def _run_report_quality(path: Path, **kwargs: bool) -> CheckResult:
     errors.extend(_run(check_source_register_mapping, cleaned))
     errors.extend(_run(check_source_register_duplicate_ids, cleaned))
     warnings.extend(_run(check_source_register_doi_coverage, cleaned))
+    warnings.extend(_run(check_source_register_placeholders, cleaned))
 
     # 3. Body references
     errors.extend(_run(check_body_references, cleaned))
@@ -162,10 +165,13 @@ def _run_report_quality(path: Path, **kwargs: bool) -> CheckResult:
     # 4. Key section citation coverage (hard fail)
     errors.extend(_run(check_key_section_citation_coverage, cleaned))
 
-    # 5. Audit self-assessment consistency (warnings only)
-    warnings.extend(_run(check_audit_self_assessment_consistency, cleaned))
+    # 5. Audit self-assessment consistency (hard-fail gate)
+    errors.extend(_run(check_audit_self_assessment_consistency, cleaned))
 
-    # 6. Strict mode warnings
+    # 6. Academic route checks
+    errors.extend(_run(check_academic_register_columns, cleaned))
+
+    # 7. Strict mode warnings
     strict = kwargs.get("strict", False)
     if strict:
         warnings.extend(_run(check_strict_warnings, cleaned))
