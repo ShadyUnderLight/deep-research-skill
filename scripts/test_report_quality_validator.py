@@ -308,9 +308,9 @@ The transformer architecture revolutionized NLP (Vaswani et al., 2017, NeurIPS).
 
 ## Source Register
 
-| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
-|----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 |
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported | Publication Type | Peer-review Status | Venue | Venue Prestige |
+|----|-------------|-------------|------|---------|-------------|------------------|-----------------|--------------------|-------|----------------|
+| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 | published | peer-reviewed | NeurIPS | top-tier |
 """
     expect_pass("author-year ref passes", text)
 
@@ -408,9 +408,9 @@ The key finding is supported by prior work [S01].
 
 ## Source Register
 
-| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
-|----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example academic paper | secondary | 2025-06-01 | https://example.com | high | §2 |
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported | Publication Type | Peer-review Status | Venue | Venue Prestige |
+|----|-------------|-------------|------|---------|-------------|------------------|-----------------|--------------------|-------|----------------|
+| S01 | Example academic paper | secondary | 2025-06-01 | https://example.com | high | §2 | published | peer-reviewed | NeurIPS | top-tier |
 """
     # Should still pass (exit 0) since warnings are not hard errors
     expect_pass("strict warning only", text, "--strict")
@@ -454,12 +454,11 @@ Regulatory compliance is mandatory for all options [S03].
 # ── Audit self-assessment consistency tests ──────────────────────────────
 
 
-def test_audit_source_traceability_mismatch_warns() -> None:
-    """source-traceability marked ✅ Passed but body has zero refs → warn.
+def test_audit_source_traceability_mismatch_fails() -> None:
+    """source-traceability marked ✅ Passed but body has zero refs → hard-fail.
     
-    The warning is additive: the existing hard error (exit 2) from
-    check_body_references still fires, AND the self-assessment warning
-    appears. We verify both the warning text AND the exit code.
+    Previously warnings-level; now hard error (exit 2).
+    The existing hard error from check_body_references also fires.
     """
     text = """\
 ## Route and audit status
@@ -487,15 +486,15 @@ No source references in the actual body text.
         f"expected exit 2 (hard error), got {result.returncode}\n"
         f"stdout: {result.stdout}"
     )
-    # Self-assessment warning is additive
+    # Self-assessment mismatch is now a hard error (was warning)
     assert "self-assessment mismatch" in result.stdout.lower(), (
-        f"expected warning about self-assessment mismatch in:\n{result.stdout}"
+        f"expected self-assessment mismatch error in:\n{result.stdout}"
     )
-    print("  PASS  audit source-traceability mismatch warns")
+    print("  PASS  audit source-traceability mismatch fails")
 
 
-def test_audit_quantitative_role_mismatch_warns() -> None:
-    """quantitative-role marked ✅ Passed but tables have no role labels."""
+def test_audit_quantitative_role_mismatch_fails() -> None:
+    """quantitative-role marked ✅ Passed but tables have no role labels → hard-fail."""
     text = """\
 ## Route and audit status
 
@@ -523,14 +522,15 @@ Body text with citation [S01].
 | S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
 """
     result = run_validator(text)
-    assert result.returncode == 0, (
-        f"expected pass (exit 0), got {result.returncode}\n"
+    # Now hard-fail (exit 2) instead of pass with warning (exit 0)
+    assert result.returncode == 2, (
+        f"expected exit 2 (hard error), got {result.returncode}\n"
         f"stdout: {result.stdout}"
     )
     assert "self-assessment mismatch" in result.stdout.lower(), (
-        f"expected warning about self-assessment mismatch in:\n{result.stdout}"
+        f"expected self-assessment mismatch error in:\n{result.stdout}"
     )
-    print("  PASS  audit quantitative-role mismatch warns")
+    print("  PASS  audit quantitative-role mismatch fails")
 
 
 def test_audit_self_assessment_consistent_no_warn() -> None:
@@ -590,9 +590,9 @@ The transformer architecture revolutionized NLP (Vaswani et al., 2017, NeurIPS).
 
 ## Source Register
 
-| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
-|----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 |
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported | Publication Type | Peer-review Status | Venue | Venue Prestige |
+|----|-------------|-------------|------|---------|-------------|------------------|-----------------|--------------------|-------|----------------|
+| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 | published | peer-reviewed | NeurIPS | top-tier |
 """
     result = run_validator(text)
     assert result.returncode == 0, (
@@ -829,9 +829,9 @@ This analysis supports continued development [S01].
 
 ## Source Register
 
-| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
-|----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Vaswani et al. 2017 | primary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 |
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported | Publication Type | Peer-review Status | Venue | Venue Prestige |
+|----|-------------|-------------|------|---------|-------------|------------------|-----------------|--------------------|-------|----------------|
+| S01 | Vaswani et al. 2017 | primary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 | published | peer-reviewed | NeurIPS | top-tier |
 """
     result = run_validator(text)
     assert result.returncode == 0, (
@@ -955,6 +955,174 @@ Body text with citation [S01].
 No citation in this section.
 """
     expect_fail("key section after register fails", text)
+
+
+# ── Source Register placeholder detection tests ──────────────────────────
+
+
+def _make_register_placeholder_fixture(doi_value: str) -> str:
+    """Build a minimal valid report + register with a specific DOI/URL value."""
+    return f"""\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | {doi_value} | medium | §2 |
+"""
+
+
+def test_register_placeholder_emdash_warns() -> None:
+    """Em-dash (—) in DOI/URL column → warning (not hard error)."""
+    text = _make_register_placeholder_fixture("—")
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass with warning (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "placeholder" in result.stdout.lower(), (
+        f"expected placeholder warning in:\n{result.stdout}"
+    )
+    print("  PASS  register placeholder em-dash warns")
+
+
+def test_register_placeholder_tbd_warns() -> None:
+    """TBD in DOI/URL column → warning."""
+    text = _make_register_placeholder_fixture("TBD")
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass with warning (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "placeholder" in result.stdout.lower(), (
+        f"expected placeholder warning in:\n{result.stdout}"
+    )
+    print("  PASS  register placeholder TBD warns")
+
+
+def test_register_placeholder_arxiv_xxxxx_warns() -> None:
+    """arXiv:xxxxx placeholder in DOI/URL column → warning."""
+    text = _make_register_placeholder_fixture("arXiv:2402.xxxxx")
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass with warning (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "placeholder" in result.stdout.lower(), (
+        f"expected placeholder warning in:\n{result.stdout}"
+    )
+    print("  PASS  register placeholder arXiv:xxxxx warns")
+
+
+def test_register_placeholder_xxxxx_only_warns() -> None:
+    """xxxxx placeholder in DOI/URL column → warning."""
+    text = _make_register_placeholder_fixture("xxxxx")
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass with warning (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "placeholder" in result.stdout.lower(), (
+        f"expected placeholder warning in:\n{result.stdout}"
+    )
+    print("  PASS  register placeholder xxxxx warns")
+
+
+def test_register_no_placeholder_passes() -> None:
+    """Valid DOI/URL → no placeholder warning."""
+    text = _make_register_placeholder_fixture("https://doi.org/10.1038/s41586-023-06747-5")
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "placeholder" not in result.stdout.lower(), (
+        f"unexpected placeholder warning in:\n{result.stdout}"
+    )
+    print("  PASS  register no placeholder")
+
+
+# ── Academic 11-column Source Register tests ─────────────────────────────
+
+
+def _make_academic_register_fixture(num_cols: int, route: str = "Academic / Literature Review") -> str:
+    """Build a report with academic route and an N-column Source Register."""
+    if num_cols >= 11:
+        header = "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported | Publication Type | Peer-review Status | Venue | Venue Prestige |"
+        sep = "|----|-------------|-------------|------|---------|-------------|------------------|-----------------|--------------------|-------|----------------|"
+        data = "| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 | published | peer-reviewed | NeurIPS | top-tier |"
+    else:
+        header = "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |"
+        sep = "|----|-------------|-------------|------|---------|-------------|------------------|"
+        data = "| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 |"
+    return f"""\
+## Route and audit status
+
+**Primary route**: {route}
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Findings
+
+Body text with citation [S01].
+
+## Source Register
+
+{header}
+{sep}
+{data}
+"""
+
+
+def test_academic_register_11_columns_passes() -> None:
+    """Academic route with 11-column Source Register → pass."""
+    text = _make_academic_register_fixture(11)
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    print("  PASS  academic 11-column register passes")
+
+
+def test_academic_register_7_columns_fails() -> None:
+    """Academic route with only 7-column Source Register → hard-fail."""
+    text = _make_academic_register_fixture(7)
+    result = run_validator(text)
+    assert result.returncode == 2, (
+        f"expected fail (exit 2), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "academic" in result.stdout.lower() and "column" in result.stdout.lower(), (
+        f"expected academic column count error in:\n{result.stdout}"
+    )
+    print("  PASS  academic 7-column register fails")
+
+
+def test_academic_register_7_columns_non_academic_route_passes() -> None:
+    """Non-academic route with 7-column register → pass (no academic column check)."""
+    text = _make_academic_register_fixture(7, route="Technical Deep-dive")
+    result = run_validator(text)
+    assert result.returncode == 0, (
+        f"expected pass (exit 0), got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    print("  PASS  non-academic 7-column register passes")
 # ── Main ─────────────────────────────────────────────────────────────────
 
 
@@ -977,8 +1145,8 @@ def main() -> int:
         ("natural language unique ref passes", test_natural_language_unique_ref_passes),
         ("strict mode warning only", test_strict_mode_warning_only_no_hard_fail),
         ("all checks together passes", test_all_checks_together_passes),
-        ("audit source-traceability mismatch warns", test_audit_source_traceability_mismatch_warns),
-        ("audit quantitative-role mismatch warns", test_audit_quantitative_role_mismatch_warns),
+        ("audit source-traceability mismatch fails", test_audit_source_traceability_mismatch_fails),
+        ("audit quantitative-role mismatch fails", test_audit_quantitative_role_mismatch_fails),
         ("audit self-assessment consistent", test_audit_self_assessment_consistent_no_warn),
         ("audit self-assessment author-year consistent", test_audit_self_assessment_author_year_consistent),
         ("audit self-assessment doi consistent", test_audit_self_assessment_doi_consistent),
@@ -992,6 +1160,14 @@ def main() -> int:
         ("body ref not in register fails", test_body_ref_not_in_register_fails),
         ("register duplicate ID fails", test_register_duplicate_id_fails),
         ("key section after register fails", test_key_section_after_register_still_checked),
+        ("register placeholder em-dash warns", test_register_placeholder_emdash_warns),
+        ("register placeholder TBD warns", test_register_placeholder_tbd_warns),
+        ("register placeholder arXiv:xxxxx warns", test_register_placeholder_arxiv_xxxxx_warns),
+        ("register placeholder xxxxx warns", test_register_placeholder_xxxxx_only_warns),
+        ("register no placeholder passes", test_register_no_placeholder_passes),
+        ("academic 11-column register passes", test_academic_register_11_columns_passes),
+        ("academic 7-column register fails", test_academic_register_7_columns_fails),
+        ("non-academic 7-column register passes", test_academic_register_7_columns_non_academic_route_passes),
     ]
     failures = []
     for name, fn in tests:

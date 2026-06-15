@@ -239,6 +239,12 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
     ],
+    "academic-review": [
+        _run_report_quality,
+        _run_declared_execution,
+        _run_table_role_labels,
+        _run_source_label_consistency,
+    ],
 }
 
 
