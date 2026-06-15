@@ -6,8 +6,8 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
-- Commit anchor: `f053fd9`
-- Case count: 86 tracked Markdown cases
+- Commit anchor: `b3cf583`
+- Case count: 88 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -52,6 +52,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/agentic-rag-technical-deep-dive-compounded-case.md` | technical-deep-dive | N/A | Failed execution | N/A | Failed execution | N/A | Triggered | Failed execution | Triggered | Compounded failure: register format, numeric roles, vendor claims, self-assessment, mixed-script. |
 | `evals/cases/ai-startup-hq-constrained-choice-register-compliance-case.md` | constrained-choice | Triggered | Failed execution | N/A | Failed execution | Failed execution | Declared only | Failed execution | Triggered | Register claims 7 columns but delivers 5; aggregation not replicable; false precision in ranking. |
 | `evals/cases/ai-agent-market-outlook-stakeholder-and-route-boundary-case.md` | market-outlook | Triggered | Failed execution | Failed execution | Missing trigger | Failed execution | Failed execution | Triggered | Triggered | Stakeholder, route-boundary, traceability, and probability gaps. |
+| `evals/cases/ai-agent-planning-academic-review-compounded-case.md` | academic-review | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | New compounded academic-review eval case (issue #294); pending formal audit. |
 | `evals/cases/ai-coding-agent-market-outlook-probability-case.md` | market-outlook | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Strong route execution, probability and sensitivity gaps. |
 | `evals/cases/ai-coding-tools-provider-selection-traceability-fail-case.md` | provider-selection | Missing trigger | Missing trigger | N/A | Missing trigger | N/A | Triggered | Triggered | Triggered | Decision architecture present; evidence/current/numeric disciplines absent. |
 | `evals/cases/ai-cost-control-market-outlook-full-pass-benchmark.md` | market-outlook | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Full-pass benchmark with all required audits visible. |
@@ -106,6 +107,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/memory-academic-review-first-post-fix-case.md` | academic-review | N/A | Triggered | Triggered | N/A | Triggered | N/A | Triggered | Triggered | Post-fix academic-review validation. |
 | `evals/cases/minimax-company-report-case.md` | company report | Failed execution | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Company report distillation case with execution gaps. |
 | `evals/cases/minimax-sea-memo-pdf-layout-case.md` | market-entry / delivery | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Failed execution | Failed execution | Failed execution | Decision memo content mixed with PDF/layout failure. |
+| `evals/cases/mllm-visual-reasoning-academic-review-narrow-fail-case.md` | academic-review | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | New academic-review narrow-fail eval case (issue #294); pending formal audit. |
 | `evals/cases/moore-threads-listing-status-case.md` | current-state / listing status | Failed execution | Triggered | Triggered | Triggered | N/A | Triggered | Triggered | Triggered | Listing-state and time-discipline stress case. |
 | `evals/cases/nev-parts-europe-market-entry-quantitative-role-case.md` | market-entry | Triggered | Triggered | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Quantitative role labeling is the main leak. |
 | `evals/cases/pdf-delivery-trigger-regression-case.md` | delivery regression | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | Delivery-only trigger regression. |
