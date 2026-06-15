@@ -39,6 +39,49 @@ This block locks the time layers that govern the entire memo:
 
 For full definition and failure modes, see `references/finance-date-discipline.md` → "Research Anchor Block" section.
 
+### Time-horizon valuation stratification (mandatory when the task asks "是否充分反映长期增长")
+
+当报告要回答"当前估值是否充分反映了[长期增长/长期价值/长期不确定性]"时，opening 的 thesis 必须按以下结构做时间分层，而不仅给出一个方向性判断（如"未充分反映" / "合理偏低"）：
+
+```
+一句话结论：
+- 短中期（1-3年 或 3-5年，选择最符合该行业周期的子范围）：[已充分反映 / 部分反映 / 未充分反映]，原因是 [估值倍数 / 共识 EPS / 管理层指引]
+- 长期（5-10年）：[仍有上行可选性 / 已大体反映 / 难以判断]，原因是 [TAM / 护城河 / 资本回收 / 竞争格局]
+- 行动含义：[可持有 / 等待回撤 / 仅适合高风险资金 / 不具备安全边际] — 必须与时间层次一致，不把"长期可持有"写成"当前明显低估"
+```
+
+**分类选择指引**：三个选项之间没有严格的定量阈值，但有优先选择规则：
+- **已充分反映**：当前估值倍数已显著高于历史均值，或与共识 EPS 对应的 PEG > 2x，或 DCF 反向计算隐含的增长假设已超过最乐观的 TAM 预测
+- **未充分反映**：当前估值倍数低于历史均值且增长趋势确认，或与同业相比有明显折价但基本面差异不足以解释该折价
+- **部分反映**：当难以判断"已充分反映"还是"未充分反映"时，优先选择"部分反映"，并用证据量化剩余空间的幅度
+
+**为什么要时间分层？**
+
+GPT 深度研究的 TSMC 报告展示了更强的判断结构：不是把问题压缩到"低估/不低估"二元结论，而是拆成"近 3-5 年增长已较充分定价、10 年维度上行可选性尚未完全定价"。这让读者能判断：
+
+- 市场到底定价了哪一段增长？
+- 哪一段仍有分歧？
+- 新增资金和长期持有者的结论是否应该不同？
+
+如果 opening 只有一个方向性估值判断而没有时间分层，则该报告应视为**条件性通过（conditional pass）**而非全通过。
+
+**证据分层要求**：当使用时间分层时，support / weakening / unresolved 的分离应在每个时间维度内执行，而不是全局笼统地做。也就是说，对于短中期和长期应分别列出支持证据、削弱证据和未解变量。这防止了"短期有风险但长期看好"这样的定性判断背后缺乏分层的证据支撑。
+
+This stratification rule was added via issue #277 to distinguish flat valuation judgments from time-aware ones.
+
+### Four-variable decomposition (recommended for long-term growth valuation tasks)
+
+对于"估值是否充分反映长期增长"类任务，opening 或第二节应明确拆解为以下四个变量，并使后续章节顺序与之对齐：
+
+1. **需求规模**：长期 TAM / 行业增长是否足够大，来源和假设是什么。
+2. **份额捕获**：公司是否能持续拿到足够份额，护城河和竞争证据是什么。
+3. **利润率与现金流转换**：增长是否改善 margin / FCF / ROIC，还是被 CapEx、折旧、海外扩张吞掉。
+4. **估值透支程度**：当前 PE/Forward PE/DCF 是否已经资本化前述增长。
+
+这四个变量应成为后续章节的组织骨架，而不是散落在财务、市场、风险段落中。如果没有明确采用四变量结构，报告中的 3-5 个估值驱动变量仍应显式列出，并用它们驱动报告结构。
+
+This decomposition is recommended when the task involves "has the market priced in long-term growth" — it prevents the report from treating valuation as a single PE comparison and forces explicit handling of the growth→value conversion chain.
+
 Do not default to using the front page as the main location for:
 - full evidence-label explanations
 - full numeric-role explanations
@@ -213,6 +256,10 @@ For listed-company reports, a **valuation method and scenario analysis** section
 | 乐观 | $__ | __x | $__ | __ |
 | 基准 | $__ | __x | $__ | __ |
 | 悲观 | $__ | __x | $__ | __ |
+
+> **时间分层关联**：当估值问题涉及"是否充分反映长期增长"时，本节的情景分析应反映时间分层（见前文 §Time-horizon valuation stratification），各情景的时间范围和触发条件应与短中期/长期维度明确绑定。乐观/悲观情景不应仅在幅度上不同，还应在"哪段增长被定价了"上做差异化假设。
+>
+> **四变量关联**：以下情景的 EPS 假设和 PE 倍数选择应反映前文 §Four-variable decomposition 中确定的估值驱动因素。例如，乐观情景通常假设"需求规模"和"份额捕获"加速、"利润率转换"改善；悲观情景则假设"需求规模"受限或"估值透支"程度较高。本节是四变量从定性分析到价格假设的转换层。
 
 ### 5. Risks and counter-evidence
 
