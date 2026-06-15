@@ -81,7 +81,7 @@ The unique contributions:
 ## Current rule verdict
 
 - Academic methodology hard-fail: search strategy incomplete
-- Current-state verification: coverage window >18 months old not explicitly declared
+- Current-state verification: coverage window >18 months old not explicitly declared — violates `checklists/academic-analysis-audit.md` §Current-state discipline (coverage window declaration)
 - Delivery cleanliness: unresolved placeholder in Source Register
 - Evidence matrix: declared but not executed as dual-dimension
 - Process-integrity hard-fail: self-assessment overclaim

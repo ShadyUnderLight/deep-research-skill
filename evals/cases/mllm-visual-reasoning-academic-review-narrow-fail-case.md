@@ -80,7 +80,7 @@ Without this eval, the skill could produce academic reviews that pass search str
 - Source traceability hard-fail: body has zero `[S##]` inline citations
 - Process-integrity risk: self-assessment claims ✅ while body citations absent
 - Source Register: 4 entries with placeholder DOIs
-- Peer-review status: recent papers need verification or downgrade
+- Peer-review status: recent papers need verification or downgrade — triggers `checklists/academic-analysis-audit.md` §Current-state discipline (Tier-1 recent-paper peer-review verification)
 
 Current rules correctly rate this as **Conditional Pass** — the structure and execution are strong, and the single hard-fail (body traceability) can be fixed with a focused intervention.
 
