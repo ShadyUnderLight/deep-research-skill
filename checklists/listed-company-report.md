@@ -35,6 +35,15 @@ Run through every item before delivering the final report.
 - [ ] （非阻塞）估值方法包含倍数区间范围，以及可比公司选择逻辑或估值指标选择理由说明（对照 `references/report-template.md` §Valuation method and scenario analysis）
 - [ ] （非阻塞）情景分析包含乐观/基准/悲观三档，每档有明确的 EPS 假设、PE 倍数和触发条件
 
+### Capital return discipline (CapEx-heavy 公司适用)
+
+适用触发条件：公司属于半导体制造、工业制造、能源、电力、数据中心、通信基础设施等资本密集型业务，或 CapEx / 收入长期高于 20%，或核心 thesis 依赖产能扩张/新节点爬坡/海外建厂/重资产投入（完整定义见 `references/valuation-methodology.md` §Capital return discipline for CapEx-heavy companies → 触发条件）。
+
+- [ ] （阻断级）当本纪律触发时，报告不得仅凭收入增长和 PE/PEG 得出估值结论；必须检查 FCF conversion / CapEx burden / D&A / ROIC，并在估值章节而非仅风险章节处理这些变量
+- [ ] （非阻塞）如果增长依赖新产能、新地区、新节点或重资产扩张，报告说明了初期 margin 稀释的时间范围与回收周期，而不是只提示"存在稀释风险"
+- [ ] （非阻塞）FCF / CapEx / D&A 数字的角色和时间口径在转换表或正文中可见（观察值 vs 假设 vs 模型输出）
+- [ ] （非阻塞）若 CapEx 强度、FCF 转换或 ROIC 等资本回收关键变量存在实质性不确定性（±20% 偏差可改变估值结论），最终结论降级为方向性或条件性判断，而非精确目标价
+
 ### DCF / 反向 DCF（当适用）
 
 - [ ] （阻断级）当报告判断"长期增长是否已反映 / 是否透支"且公司有较长经营历史和正向自由现金流时，必须包含 DCF、反向 DCF，或明确说明不适用原因 — 缺此项则至多条件性通过（参见 `references/valuation-methodology.md` §DCF / reverse DCF trigger）
