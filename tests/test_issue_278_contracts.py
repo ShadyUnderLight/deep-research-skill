@@ -43,7 +43,7 @@ def test_d1_trigger_section_position():
 
 
 def test_d1_has_trigger_conditions():
-    """D1: Trigger section MUST have 5 bullet-point trigger conditions."""
+    """D1: Trigger section MUST have 4+ bullet-point trigger conditions."""
     content = read("references/valuation-methodology.md")
     section_start = content.index("## DCF / reverse DCF trigger")
     section = content[section_start:]
