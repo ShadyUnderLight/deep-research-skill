@@ -59,6 +59,10 @@ This list is non-exhaustive. Chinese equivalents of any listed English term are 
 
 If the exact strength of the wording is not supported by sufficiently direct evidence, downgrade the wording.
 
+When the report uses customer-lock-in wording such as `客户锁定` / `客户粘性` / `深度绑定` / `不可替代` / `唯一供应商` / `供应链核心` / "irreplaceable supplier" / "deep customer lock-in", additionally check whether the customer has active second-source / supplier de-risking signals. If second-source signals exist but the report omits them, the wording must be downgraded (see `checklists/listed-company-report.md` §Customer concentration / second-source discipline and `references/report-template.md` §客户集中度与第二供应源风险（如适用）).
+
+Customer lock-in is a defensibility signal; the presence of active second-source construction is a weakening signal. A report that presents only the lock-in side without checking the de-risking side has an asymmetric evidence structure.
+
 ## Mandatory downgrade rules
 
 - If the support is only secondary commentary, treat the claim as inference only.
@@ -91,6 +95,7 @@ Watch for these common drifts:
 - market leadership -> no meaningful competition
 - regulatory scarcity -> sole national franchise
 - management-stated ranking -> confirmed industry fact
+- customer lock-in -> no substitution risk（"客户锁定"可能是客户黏性、技术排他性或高转换成本的结果，并不排除客户主动建设第二来源）
 
 Do not let polished prose hide category drift.
 

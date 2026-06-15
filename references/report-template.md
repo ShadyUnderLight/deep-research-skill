@@ -131,6 +131,21 @@ For listed-company reports, a completed market snapshot table is mandatory. It m
 
 > 注：PB 须注明净资产所属报告期，PS 须注明营收口径（TTM / FY2025 等）。
 
+### 客户集中度与第二供应源风险（如适用）
+
+当客户集中度 materially 影响 thesis 时（参见 `checklists/listed-company-report.md` §Customer concentration / second-source discipline），报告应包含以下分析结构：
+
+| 指标 | 最近期间 | 前期对比 | 证据角色 | 估值含义 |
+|---|---:|---:|---|---|
+| 前十大客户收入占比 | | | observed / estimate | |
+| 第一大客户占比 | | | observed / estimate | |
+| 第二大客户占比 | | | observed / estimate | |
+| second-source 信号 | | | media-reported / inferred | |
+
+结论：客户集中度对 thesis 的净影响是 [增强/削弱/双向]，主要通过 [收入可见度/议价权/替代风险/估值倍数] 影响估值。
+
+> **双面性要求**：上表和分析必须同时呈现客户集中度的正面和负面含义，避免仅列举风险。正面含义包括收入可见度、共同研发深度、客户锁定效应；负面含义包括议价权削弱、单客户波动风险、第二供应源替代威胁。如果报告使用"客户锁定""深度绑定"等措辞，必须检查 second-source / supplier de-risking 信号（参见 `references/moat-monopoly-screening.md` §Concept-boundary traps）。
+
 ## Scanability and paragraph discipline
 
 Final reports should support scan reading, not only sequential reading.
