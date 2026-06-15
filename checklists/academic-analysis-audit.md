@@ -36,6 +36,14 @@ This checklist verifies that the academic route was executed correctly and the f
 
 - [ ] （Tier-1）发表偏倚讨论存在（≥2 句，说明偏倚方向与结论调整）：publication bias is discussed (at least 2-3 sentences covering: direction judgment — whether the evidence set skews toward positive results; conclusion adjustment — how conclusions should be modified if publication bias is likely)
 
+## Current-state discipline
+
+Current-state verification for academic reviews has different semantics than product/company current-state checks. The core contract: academic reviews have an inherently time-bound "current state" — the coverage window determines what the report can legitimately claim as current.
+
+- [ ] coverage window 显式声明：报告正文（非仅方法论段落）必须声明 literature coverage window（如"本综述覆盖截至 YYYY 年末的文献"）。若报告日期距最新 verified source 超过 12 个月，不得声称 current SOTA / latest debate / 当前前沿 / 最新进展。可选项：a) 执行 current-state refresh 更新覆盖窗口，或 b) 将报告降级为 historical snapshot 并在标题、opening、结论中同步降级
+- [ ] 结论绑定 coverage window：结论区的措辞必须与 coverage window 一致。若覆盖到 2024 年末，结论应写"截至 2024 年末的学术分析"，不得写成"当前学术争议全景"或"最新进展综述"。若近期论文（报告日期 3 个月内）的 peer-review 状态未确认，结论不得以高置信度使用这些论文支撑核心论点
+- [ ] （Tier-1）近期来源 peer-review 验证：对报告日期前 3 个月内的来源，若 Source Register 中标注为 peer-reviewed 或同等状态，必须包含可见核验证据（proceedings link / OpenReview / publisher page / official accepted list）。仅有 arXiv URL 且无其他验证证据 → 状态应降级为 preprint / accepted-pending / under review。此规则防止 preprint → peer-reviewed 的 evidence level 过度上调
+
 ## Statistical assessment (if applicable)
 
 - [ ] statistical claims include effect sizes, not just p-values
