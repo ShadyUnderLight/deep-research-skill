@@ -11,6 +11,7 @@ This checklist verifies that the academic route was executed correctly and the f
 - [ ] the task was explicitly classified as academic literature review, field progress analysis, or paper comparison
 - [ ] the academic route was selected as the primary route (not as a secondary discipline)
 - [ ] the route conflict check was run: confirmed this is not better served by technical deep-dive, market outlook, or generic research
+- [ ] 子风格选择已确认：使用标准 survey-style 还是 field-progress analysis sub-style；若使用 field-progress，确认触发条件匹配（见 `ROUTING-MATRIX.md`「子风格选择指引」）
 
 ## Evidence hierarchy compliance
 
@@ -53,6 +54,7 @@ Current-state verification for academic reviews has different semantics than pro
 - [ ] no-image / text-only baseline 被视为重要反证：当模型在视觉推理任务上显著领先时，若缺少 no-image baseline 或 text-only baseline，不可排除语言捷径（language shortcut）作为竞争解释；缺少 baseline 的领先声称应降级
 - [ ] cross-source benchmark numbers 不直接横比而不注明 comparability caveat：不同 prompt 设定、不同数据集切分、不同评估实现的分数不可直接并列比较而无限制说明
 - [ ] （Tier-1）当 benchmark comparability schema 在 load-bearing comparison 中严重缺失（3+ 字段不可用，或无 dataset/protocol 信息），report 结论被降级为方向性判断而非强排名；若结论未做对应降级 → hard-fail。此规则防止 schema 不完整时结论过度声称
+- [ ] （non-blocking / 可读性检查）当报告中涉及 3+ benchmark 或 3+ 模型比较时，建议使用结构化对比表（见 `references/academic-evidence-hierarchy.md` §Benchmark comparison table template）而非 prose 段落，以提高信息密度和可扫描性
 
 ## Statistical assessment (if applicable)
 
@@ -82,9 +84,28 @@ Current-state verification for academic reviews has different semantics than pro
 
 ## Artifact contract verification
 
-- [ ] for field progress analysis: search strategy, key breakthroughs, current state, open questions, evidence quality
-- [ ] for paper comparison: comparison dimensions, paper-by-paper analysis, cross-cutting themes, strengths/weaknesses
-- [ ] for technology origin tracing: seminal work, evolutionary steps, current paradigm, evidence quality
+### For standard academic survey (文献综述，默认)
+- [ ] scope of review (time period, sub-fields covered, search strategy)
+- [ ] key research themes and trends
+- [ ] major breakthroughs and milestones
+- [ ] current state of the art
+- [ ] open questions and future directions
+- [ ] evidence quality assessment
+
+### For field-progress analysis (子风格)
+- [ ] opening verdict: thesis-first judgment in opening 10-15% (progress confirmed, main limits, evidence that overstates/understates, applicability boundary)
+- [ ] scope and search strategy (same as survey-style)
+- [ ] mechanism or benchmark ladder: at least one of mechanism map / benchmark ladder / evidence ladder
+- [ ] representative failure cases: 3-5 specific cases with task, ground truth, failure mode, mechanism link, source citation
+- [ ] conditions that would change the conclusion: what evidence would increase confidence, what would reverse judgment
+- [ ] evidence quality assessment
+- [ ] research/practice next steps (recommended, non-blocking)
+
+### For paper comparison
+- [ ] comparison dimensions, paper-by-paper analysis, cross-cutting themes, strengths/weaknesses, recommendations for practitioners
+
+### For technology origin tracing
+- [ ] seminal work, evolutionary steps, current paradigm, evidence quality
 
 ## Hard fail check
 
