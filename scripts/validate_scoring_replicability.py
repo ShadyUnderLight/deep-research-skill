@@ -41,6 +41,7 @@ TRIGGER_KEYWORDS = [
     r'综合得分',
     r'星级',
     r'胜率',
+    r'排名变化',
     # Medium-confidence triggers (need context but strong signal in CC reports)
     r'\branking score\b',
     r'\bweighted score\b',
@@ -48,6 +49,7 @@ TRIGGER_KEYWORDS = [
     r'\btotal score\b',
     r'\bfinal score\b',
     r'\boverall score\b',
+    r'\brating\b',
     r'\bprobability\b',
 ]
 
@@ -83,12 +85,11 @@ EVIDENCE_KEYWORDS = [
     r'误差范围',
     r'\bmargin of error\b',
     r'\bcaveat\b',
-    # Role labels (must be present for aggregated numbers)
-    r'数字角色',
-    r'\bmodel.output\b',
-    r'\bobserved\b',
-    r'\bproxy\b',
-    r'\fassumption\b',
+    # Dimension definitions / decomposition
+    r'维度定义',
+    r'\bdimension\b',
+    r'\bdecompos',
+    r'分解',
 ]
 
 # ── Compile regexes once ─────────────────────────────────────────────────
@@ -149,14 +150,15 @@ def _has_sufficient_evidence(text: str) -> bool:
     """Return True if enough evidence keywords are present.
 
     Uses a simple count threshold to avoid false positives from
-    incidental keyword matches.  Requires at least 2 distinct
-    evidence keyword hits across the document.
+    incidental keyword matches.  Requires at least 3 distinct
+    evidence keyword hits across the document, covering at minimum
+    two of: weights/priority, scoring rules/conversion, worked examples.
     """
     cleaned = _strip_fenced_code_blocks(text)
     matches = _EVIDENCE_RE.findall(cleaned)
-    # Deduplicate for minimum variety — two different evidence types
+    # Deduplicate for minimum variety — require 3+ distinct types
     unique_matches = set(m.lower() for m in matches)
-    return len(unique_matches) >= 2
+    return len(unique_matches) >= 3
 
 
 # ── Main validation ──────────────────────────────────────────────────────

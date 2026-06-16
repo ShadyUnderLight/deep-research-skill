@@ -27,7 +27,8 @@ from validate_scoring_replicability import validate_file
 
 def _scoring_table_no_rules() -> str:
     """Report with a multi-dimension scoring table + final score but no
-    scoring rules, no weights, no worked example.  Should fail."""
+    scoring rules, no weights, no worked example, no role labels.
+    Should fail."""
     return """\
 # Programming Language Learning Value
 
@@ -43,6 +44,30 @@ def _scoring_table_no_rules() -> str:
 | 🥈 | Rust | B+ | B+ | B | A | B | 3.7/5 |
 | 🥉 | Kotlin | B+ | B+ | A- | B+ | B+ | 3.6/5 |
 | 4 | Swift | C+ | C+ | B- | C+ | C | 2.8/5 |
+"""
+
+
+def _scoring_table_role_labels_no_rules() -> str:
+    """Report with scoring table + role labels but NO evidence
+    (no weights, no scoring rules, no worked example).
+    This is the critical case: layer-1 passes (role labels present)
+    but layer-2 must fail (no reproducible method).
+    Should fail."""
+    return """\
+# Programming Language Learning Value
+
+## Route and audit status
+
+**Primary route**: Constrained Choice / Shortlist
+
+## 排名
+
+| 排名 | 语言 | 市场需求 | **总分** | 数字角色 |
+|------|------|----------|----------|---------|
+| 🥇 | Python | A+ | 4.8/5 | model-output |
+| 🥈 | Rust | B+ | 3.7/5 | model-output |
+| 🥉 | Kotlin | B+ | 3.6/5 | model-output |
+| 4 | Swift | C+ | 2.8/5 | model-output |
 """
 
 
@@ -158,9 +183,38 @@ class TestScoringTableNoRules:
     def test_error_mentions_replicability(self) -> None:
         errors = _run_validator(_scoring_table_no_rules())
         combined = " ".join(errors).lower()
-        keywords = ["总分", "replicab", "scoring", "规则", "权重", "weight"]
+        # Error message is in English; check for English keywords only
+        keywords = ["replicab", "scoring", "aggregation", "weight", "rule"]
         assert any(kw in combined for kw in keywords), (
-            f"Error should mention replicability/scoring/rules/weights, "
+            f"Error should mention replicability/scoring/aggregation/weights, "
+            f"got:\n{errors}"
+        )
+
+
+class TestScoringTableRoleLabelsNoRules:
+    """CRITICAL: A report with scoring table + role labels but NO evidence
+    (no weights, no scoring rules, no worked examples) must fail.
+    
+    This tests the scenario reported by cross-review: role label keywords
+    were previously counted as evidence, creating a false pass.
+    """
+
+    def test_returns_errors(self) -> None:
+        errors = _run_validator(_scoring_table_role_labels_no_rules())
+        assert len(errors) > 0, (
+            f"CRITICAL: Expected blocking errors for scoring table with "
+            f"role labels but no rules — role labels should NOT count "
+            f"as evidence for replicability. Got empty list."
+        )
+
+    def test_error_not_fooled_by_role_labels(self) -> None:
+        """Role label keywords alone should not satisfy the evidence check."""
+        errors = _run_validator(_scoring_table_role_labels_no_rules())
+        combined = " ".join(errors).lower()
+        # The error should still mention missing aggregation method,
+        # not "role labels found" — role labels are a separate concern
+        assert "replicab" in combined or "aggregation" in combined, (
+            f"Error should mention replicability despite role labels present, "
             f"got:\n{errors}"
         )
 
@@ -178,7 +232,8 @@ class TestProbabilityNoMethod:
     def test_error_mentions_probability(self) -> None:
         errors = _run_validator(_probability_no_method())
         combined = " ".join(errors).lower()
-        keywords = ["概率", "probab", "方法", "method", "复算", "reproduc"]
+        # Error message is in English; check for English keywords
+        keywords = ["probab", "method", "reproduc", "aggregation"]
         assert any(kw in combined for kw in keywords), (
             f"Error should mention probability/method/reproducibility, "
             f"got:\n{errors}"
@@ -217,6 +272,7 @@ class TestProperties:
     def test_always_returns_list(self) -> None:
         for fixture, label in [
             (_scoring_table_no_rules(), "no-rules"),
+            (_scoring_table_role_labels_no_rules(), "role-labels-no-rules"),
             (_probability_no_method(), "no-method"),
             (_scoring_table_with_rules(), "with-rules"),
             (_no_trigger_report(), "no-trigger"),
@@ -243,7 +299,9 @@ No tables, no scores, no rankings, no probabilities.
     # Property 3: Missing file produces clear error
     def test_missing_file_error(self) -> None:
         from validate_scoring_replicability import validate_file as vf
-        errors = vf(Path("/tmp/nonexistent_scoring_test_file.md"))
+        import uuid
+        nonexistent = Path(tempfile.gettempdir()) / f"nonexistent_{uuid.uuid4().hex}.md"
+        errors = vf(nonexistent)
         assert len(errors) > 0, "Expected error for missing file"
         assert any("not found" in e.lower() or "exist" in e.lower() or "no such" in e.lower()
                    for e in errors), (
@@ -261,6 +319,11 @@ if __name__ == "__main__":
          TestScoringTableNoRules().test_returns_errors),
         ("scoring table no rules error mentions replicability",
          TestScoringTableNoRules().test_error_mentions_replicability),
+        # TestScoringTableRoleLabelsNoRules
+        ("scoring table role labels no rules returns errors",
+         TestScoringTableRoleLabelsNoRules().test_returns_errors),
+        ("scoring table role labels no rules not fooled by role labels",
+         TestScoringTableRoleLabelsNoRules().test_error_not_fooled_by_role_labels),
         # TestProbabilityNoMethod
         ("probability no method returns errors",
          TestProbabilityNoMethod().test_returns_errors),
