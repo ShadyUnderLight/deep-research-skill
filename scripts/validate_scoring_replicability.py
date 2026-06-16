@@ -151,8 +151,9 @@ def _has_sufficient_evidence(text: str) -> bool:
 
     Uses a simple count threshold to avoid false positives from
     incidental keyword matches.  Requires at least 3 distinct
-    evidence keyword hits across the document, covering at minimum
-    two of: weights/priority, scoring rules/conversion, worked examples.
+    evidence keyword hits across the document.  In practice, this
+    means a report must demonstrate coverage in at least two of:
+    weights/priority, scoring rules/conversion, worked examples.
     """
     cleaned = _strip_fenced_code_blocks(text)
     matches = _EVIDENCE_RE.findall(cleaned)
