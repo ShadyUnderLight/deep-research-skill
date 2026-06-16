@@ -11,7 +11,7 @@ This checklist verifies that the academic route was executed correctly and the f
 - [ ] the task was explicitly classified as academic literature review, field progress analysis, or paper comparison
 - [ ] the academic route was selected as the primary route (not as a secondary discipline)
 - [ ] the route conflict check was run: confirmed this is not better served by technical deep-dive, market outlook, or generic research
-- [ ] 子风格选择已确认：使用标准 survey-style 还是 field-progress-analysis sub-style；若使用 field-progress，确认触发条件匹配（见 `ROUTING-MATRIX.md`「子风格选择指引」）
+- [ ] 子风格选择已确认：使用标准 survey-style 还是 field-progress analysis sub-style；若使用 field-progress，确认触发条件匹配（见 `ROUTING-MATRIX.md`「子风格选择指引」）
 
 ## Evidence hierarchy compliance
 

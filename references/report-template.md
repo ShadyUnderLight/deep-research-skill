@@ -383,7 +383,7 @@ This symmetry matters because asymmetric structure signals to the reader that on
 
 ### 7b. Academic-review recommendations (optional, academic-review route only)
 
-当报告使用 **Academic / Literature Review** 路由且启用了 **field-progress-analysis** 子风格时，建议在 bottom line 之后包含一个 recommendations 区块。该区块不替代 bottom line，而是为读者提供可操作的下步指引。
+当报告使用 **Academic / Literature Review** 路由且启用了 **field-progress analysis** 子风格时，建议在 bottom line 之后包含一个 recommendations 区块。该区块不替代 bottom line，而是为读者提供可操作的下步指引。
 
 ```
 ## 研究者 / 实践者下一步
