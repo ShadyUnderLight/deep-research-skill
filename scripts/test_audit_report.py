@@ -290,6 +290,125 @@ Each dimension conclusion is backed by [S01] and [S02].
 """
 
 
+def _cc_scoring_table_no_rules() -> str:
+    """Constrained-choice report with scoring table + total scores but no
+    scoring rules, weights, or worked example.  Should fail scoring-replicability.
+
+    Keeps all other structure valid (source register, role labels, route block)
+    so the failure is isolated to scoring-replicability only.
+    """
+    return """\
+# Programming Language Learning Value
+
+## Route and audit status
+
+**Primary route**: Constrained Choice / Shortlist
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 使用 [S01] [S02] 引用 |
+| option-selection-final-audit | ✅ Passed | §2-§6 可追溯 |
+| final-audit | ✅ Passed | §5 含数字角色列 |
+
+## 排名
+
+| 排名 | 语言 | 市场需求 | 生态成熟度 | 学习回报 | 前景 | 广度 | **总分** | 数字角色 |
+|------|------|----------|------------|----------|------|------|----------|---------|
+| 🥇 | Python | A+ | A+ | A+ | A+ | A+ | 4.8/5 | model-output |
+| 🥈 | Rust | B+ | B+ | B | A | B | 3.7/5 | model-output |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _cc_probability_no_method() -> str:
+    """Constrained-choice report with probability distribution but no
+    replicable method.  Should fail scoring-replicability."""
+    return """\
+# World Cup Prediction
+
+## Route and audit status
+
+**Primary route**: Constrained Choice / Shortlist
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 使用 [S01] [S02] 引用 |
+| option-selection-final-audit | ✅ Passed | §2 可追溯 |
+| final-audit | ✅ Passed | §5 含数字角色列 |
+
+## 胜率预测
+
+| 结果 | 概率 | 数字角色 |
+|------|------|---------|
+| Argentina 胜 | 60% | model-output |
+| 平局 | 25% | model-output |
+| Algeria 胜 | 15% | model-output |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _cc_scoring_table_with_rules() -> str:
+    """Constrained-choice report with scoring table + weights + rules +
+    worked example.  Should pass all validators including scoring-replicability."""
+    return """\
+# Programming Language Learning Value
+
+## Route and audit status
+
+**Primary route**: Constrained Choice / Shortlist
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 使用 [S01] [S02] 引用 |
+| option-selection-final-audit | ✅ Passed | §2-§6 可追溯 |
+| final-audit | ✅ Passed | §5 含数字角色列 |
+
+## 执行摘要
+
+This report evaluates programming language learning value based on market demand [S01].
+
+## Findings
+
+Python and Rust show strong demand in 2026 [S01]. Learning curves vary significantly by language [S02].
+
+## 评分规则
+
+字母等级转 5 分制：A+=5.0, A=4.5, A-=4.0, B+=3.5, B=3.0, B-=2.5, C+=2.0, C=1.5。
+
+**权重**：市场需求 30%，生态成熟度 25%，学习回报 20%，前景 15%，广度 10%。
+
+**计算示例 (Python)**：总分 = (5.0×0.30)+(5.0×0.25)+(5.0×0.20)+(5.0×0.15)+(5.0×0.10) = 5.0/5。
+
+**⚠ 近似分差说明**：Rust 3.7 与 Kotlin 3.6 的差距（0.1）在估算误差范围内
+（±0.15）。排名取决于生态成熟度权重，如果该维度权重下降 5pp，差距可能逆转。
+
+## 排名
+
+| 排名 | 语言 | 市场需求 | 生态成熟度 | 学习回报 | **总分** | 数字角色 |
+|------|------|----------|------------|----------|----------|---------|
+| 🥇 | Python | A+ (5.0) | A+ (5.0) | A+ (5.0) | 5.0/5 | model-output |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
 def _valid_chinese_constrained_choice_report() -> str:
     """A valid constrained-choice report with Chinese heading.
 
@@ -635,6 +754,8 @@ class TestProperties:
             (_report_with_table_missing_role_labels(), "no-roles"),
             (_report_no_route_block(), "no-route"),
             (_report_with_declared_exec_pass_but_fail(), "declared-but-fail"),
+            (_cc_scoring_table_no_rules(), "cc-scoring-no-rules"),
+            (_cc_probability_no_method(), "cc-prob-no-method"),
         ]:
             result = _run_audit(fixture)
             blocking_count = _count_blocking(result.stdout)
@@ -759,7 +880,11 @@ Body with [S01].
             (_report_with_table_missing_role_labels(), "no-roles"),
             (_report_no_route_block(), "no-route"),
             (_report_with_declared_exec_pass_but_fail(), "declared-but-fail"),
+            (_cc_scoring_table_no_rules(), "cc-scoring-no-rules"),
+            (_cc_probability_no_method(), "cc-prob-no-method"),
+            (_cc_scoring_table_with_rules(), "cc-scoring-with-rules"),
         ]:
+            # CC-specific fixtures have route in their block, so auto-detection works
             result = _run_audit(fixture)
             blocking = _count_blocking(result.stdout)
             if result.returncode == 2:
@@ -822,6 +947,70 @@ class TestConstrainedChoice:
         )
 
 
+class TestConstrainedChoiceScoringReplicability:
+    """Constrained-choice scoring-replicability validator must catch
+    reports that present aggregated scores/probabilities without
+    showing reproducible method, and pass those that include it."""
+
+    def test_scoring_table_no_rules_blocking(self) -> None:
+        """Scoring table with total scores but no rules → blocking."""
+        result = _run_audit(
+            _cc_scoring_table_no_rules(),
+            extra_args=["--route", "constrained-choice"],
+        )
+        assert result.returncode == 2, (
+            f"Expected exit 2 (blocking), got {result.returncode}\n"
+            f"stdout:\n{result.stdout}"
+        )
+
+    def test_scoring_table_no_rules_mentions_scoring_replicability(self) -> None:
+        """Error output should mention the scoring-replicability validator."""
+        result = _run_audit(
+            _cc_scoring_table_no_rules(),
+            extra_args=["--route", "constrained-choice"],
+        )
+        assert "scoring-replicability" in result.stdout, (
+            f"Expected scoring-replicability in output, got:\n{result.stdout}"
+        )
+
+    def test_probability_no_method_blocking(self) -> None:
+        """Probability distribution without method → blocking."""
+        result = _run_audit(
+            _cc_probability_no_method(),
+            extra_args=["--route", "constrained-choice"],
+        )
+        assert result.returncode == 2, (
+            f"Expected exit 2 (blocking), got {result.returncode}\n"
+            f"stdout:\n{result.stdout}"
+        )
+
+    def test_scoring_table_with_rules_passes(self) -> None:
+        """Scoring table with weights, rules, and worked example → pass."""
+        result = _run_audit(
+            _cc_scoring_table_with_rules(),
+            extra_args=["--route", "constrained-choice"],
+        )
+        assert result.returncode == 0, (
+            f"Expected exit 0, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_scoring_table_with_rules_no_scoring_replicability_errors(self) -> None:
+        """Passing report should not have scoring-replicability blocking errors."""
+        result = _run_audit(
+            _cc_scoring_table_with_rules(),
+            extra_args=["--route", "constrained-choice"],
+        )
+        blocking = _count_blocking(result.stdout)
+        # Count scoring-replicability specific blocking
+        for line in result.stdout.splitlines():
+            if line.strip().startswith("- ") and "[scoring-replicability]" in line:
+                blocking -= 1
+        assert blocking == 0, (
+            f"Expected no scoring-replicability blocking, got:\n{result.stdout}"
+        )
+
+
 class TestSharedWorkflow:
     """Shared-workflow reports should fall back to default validators."""
 
@@ -844,8 +1033,8 @@ class TestSharedWorkflow:
 class TestValidatorCount:
     """Ensures all validators actually run (catches silent drops)."""
 
-    def test_all_four_validators_executed_on_failing_report(self) -> None:
-        """A report that triggers issues in all validators should show all four."""
+    def test_all_validators_executed_on_failing_report(self) -> None:
+        """A report that triggers issues in all validators should show all five."""
         # Create a report that will fail every validator:
         # - No route block -> report-quality fail
         # - Add opam declaration without execution -> declared-execution fail
@@ -871,16 +1060,25 @@ Primary company source S01 lacks the required caveat.
 |----|-------------|-------------|------|---------|-------------|------------------|
 | S01 | Test Corp | primary_company | 2026-01-01 | https://example.com | medium | §3 |
 """
-        result = _run_audit(content)
-        expected_markers = [
-            "[report-quality]",
-            "[declared-execution]",
-            "[table-role-labels]",
-            "[source-label-consistency]",
+        result = _run_audit(content, extra_args=["--route", "constrained-choice"])
+        # Validators appear either as [name] in blocking/warnings or
+        # as "name:" in the recommended audit status section.
+        all_validator_names = [
+            "report-quality",
+            "declared-execution",
+            "table-role-labels",
+            "source-label-consistency",
+            "scoring-replicability",
         ]
-        for marker in expected_markers:
-            assert marker in result.stdout or marker in result.stderr, (
-                f"Missing '{marker}' in output — validator may not have run\n"
+        for name in all_validator_names:
+            marker_bracket = f"[{name}]"
+            marker_plain = f"{name}:"
+            assert (
+                marker_bracket in result.stdout
+                or marker_bracket in result.stderr
+                or marker_plain in result.stdout
+            ), (
+                f"Missing '{name}' in output — validator may not have run\n"
                 f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
             )
 
@@ -923,11 +1121,22 @@ if __name__ == "__main__":
         ("constrained-choice no fallback warning", TestConstrainedChoice().test_constrained_choice_no_fallback_warning),
         ("constrained-choice route runs validators", TestConstrainedChoice().test_constrained_choice_route_runs_validators),
         ("constrained-choice auto-detect via chinese heading", TestConstrainedChoice().test_auto_detect_constrained_choice_via_chinese_heading),
+        # TestConstrainedChoiceScoringReplicability
+        ("cc scoring table no rules blocking",
+         TestConstrainedChoiceScoringReplicability().test_scoring_table_no_rules_blocking),
+        ("cc scoring table no rules mentions scoring-replicability",
+         TestConstrainedChoiceScoringReplicability().test_scoring_table_no_rules_mentions_scoring_replicability),
+        ("cc probability no method blocking",
+         TestConstrainedChoiceScoringReplicability().test_probability_no_method_blocking),
+        ("cc scoring table with rules passes",
+         TestConstrainedChoiceScoringReplicability().test_scoring_table_with_rules_passes),
+        ("cc scoring table with rules no scoring-replicability errors",
+         TestConstrainedChoiceScoringReplicability().test_scoring_table_with_rules_no_scoring_replicability_errors),
         # TestSharedWorkflow
         ("shared-workflow valid passes", TestSharedWorkflow().test_exit_code_zero_when_valid),
         ("shared-workflow fallback warning", TestSharedWorkflow().test_fallback_warning_in_stderr),
         # TestValidatorCount
-        ("all 4 validators run on failing report", TestValidatorCount().test_all_four_validators_executed_on_failing_report),
+        ("all 5 validators run on failing report", TestValidatorCount().test_all_validators_executed_on_failing_report),
         # TestProperties
         ("property: exit 0 iff overall pass", TestProperties().test_exit_code_zero_iff_overall_pass),
         ("property: exit 2 iff blocking", TestProperties().test_exit_code_two_iff_blocking),
