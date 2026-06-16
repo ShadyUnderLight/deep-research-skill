@@ -9,11 +9,11 @@ Reference: `references/comparative-distillation-method.md#step-6`
 
 ## Summary finding
 
-All PROMOTE_NOW candidates from the 11 existing distillation cases are **already covered** by existing checklists, SKILL.md, and reference documents. See each entry below for exact coverage location.
+All PROMOTE_NOW candidates from the 13 existing distillation cases are **already covered** by existing checklists, SKILL.md, and reference documents. See each entry below for exact coverage location.
 
 There are **zero uncovered PROMOTE_NOW candidates** that require further case validation before promotion.
 
-**Implication:** running 2-3 more distillation cases is unlikely to produce new rule discoveries. The existing rule system has already absorbed the lessons from all 11 cases. The remaining gap is primarily execution/activation discipline rather than missing rules.
+**Implication:** running 2-3 more distillation cases is unlikely to produce new rule discoveries. The existing rule system has already absorbed the lessons from all 13 cases. The remaining gap is primarily execution/activation discipline rather than missing rules.
 
 ---
 
@@ -103,7 +103,7 @@ There are **zero uncovered PROMOTE_NOW candidates** that require further case va
 
 | Metric | Count |
 |---|---|
-| Total candidate rules (all 11 files) | 60 |
+| Total candidate rules (all 13 files) | 60 |
 | PROMOTE_NOW | 43 |
 | WAIT_FOR_SECOND_CASE | 3 |
 | (unlabeled, implicitly actionable) | 14 |
@@ -124,14 +124,25 @@ There are **zero uncovered PROMOTE_NOW candidates** that require further case va
 | Unknown-to-conclusion linkage | amd (R08), cas-space (R08) | Already in `checklists/final-audit.md` L145-152 |
 | Thesis-first company structure | amd (R09), cas-space (R09) | Already in `checklists/final-audit.md` L69-83 |
 | Outlook number role labeling | ai-coding-agent (R02), sea-market-entry (merged) | Already in `checklists/final-audit.md` L130 |
+| Career/skill-selection proxy indicator discipline | programming-language-learning (new) | Already in `checklists/option-selection-final-audit.md` via [#308](https://github.com/ShadyUnderLight/deep-research-skill/issues/308) |
 
 All recurring rules are already covered. No new promotion is needed.
+
+### Recent additions (June 2026)
+
+Two new comparative-distillation cases were added as part of issue #310:
+
+- **World Cup constrained-choice** (`world-cup-constrained-choice-gpt-vs-local-comparative-distillation.md`): Identified constrained-choice probability-distribution gaps (probability method opacity, numeric role labeling, route wiring, self-assessment accuracy). All gaps closed by [#306](https://github.com/ShadyUnderLight/deep-research-skill/issues/306), [#307](https://github.com/ShadyUnderLight/deep-research-skill/issues/307), [#309](https://github.com/ShadyUnderLight/deep-research-skill/issues/309).
+
+- **Programming language learning** (`programming-language-learning-gpt-vs-local-comparative-distillation.md`): Identified career/skill-selection proxy discipline gaps (proxy indicator conflation, US-vs-global scope confusion, bare learning time estimates, shortlist boundary leak). All gaps closed by [#306](https://github.com/ShadyUnderLight/deep-research-skill/issues/306), [#308](https://github.com/ShadyUnderLight/deep-research-skill/issues/308), [#309](https://github.com/ShadyUnderLight/deep-research-skill/issues/309).
+
+Both cases have all 6 candidate actions marked `NO_ACTION` — confirming the existing rule coverage is sufficient and the gaps were primarily execution/wiring problems.
 
 ---
 
 ## Conclusion for issue #96
 
-All PROMOTE_NOW candidates from the 11 existing distillation cases are already covered by the current skill system. The existing checklists, SKILL.md, and reference documents have absorbed the lessons from all 11 comparisons.
+All PROMOTE_NOW candidates from the 13 existing distillation cases are already covered by the current skill system. The existing checklists, SKILL.md, and reference documents have absorbed the lessons from all 13 comparisons.
 
 **There is nothing new to promote.** Running 2-3 additional distillation cases is unlikely to produce uncovered rule discoveries; the marginal value would be validating that the current coverage is sufficient.
 
