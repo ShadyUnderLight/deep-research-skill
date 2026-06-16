@@ -74,6 +74,10 @@ A passing answer should:
    - If proxy labels are missing, quantitative-role cannot be ✅
    - If scope block is missing, decision-architecture cannot be ✅
 
+9. **Scope block placement is correct.**
+   - The default decision scope block appears after the executive summary / judgment block and before detailed analysis
+   - The scope block includes option universe and explicit exclusions
+
 ## Failure signs
 
 Mark this eval as failed if the answer does any of the following:
