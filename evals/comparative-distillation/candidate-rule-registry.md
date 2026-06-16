@@ -13,7 +13,7 @@ All PROMOTE_NOW candidates from the 13 existing distillation cases are **already
 
 There are **zero uncovered PROMOTE_NOW candidates** that require further case validation before promotion.
 
-**Implication:** running 2-3 more distillation cases is unlikely to produce new rule discoveries. The existing rule system has already absorbed the lessons from all 11 cases. The remaining gap is primarily execution/activation discipline rather than missing rules.
+**Implication:** running 2-3 more distillation cases is unlikely to produce new rule discoveries. The existing rule system has already absorbed the lessons from all 13 cases. The remaining gap is primarily execution/activation discipline rather than missing rules.
 
 ---
 
@@ -102,7 +102,7 @@ There are **zero uncovered PROMOTE_NOW candidates** that require further case va
 ## Summary statistics
 
 | Metric | Count |
-|---|---|---|
+|---|---|
 | Total candidate rules (all 13 files) | 60 |
 | PROMOTE_NOW | 43 |
 | WAIT_FOR_SECOND_CASE | 3 |
@@ -118,7 +118,7 @@ There are **zero uncovered PROMOTE_NOW candidates** that require further case va
 ### Rules appearing in ≥2 cases
 
 | Candidate theme | Cases | Current status |
-|---|---|---|---|
+|---|---|---|
 | Evidence-tier inflation guard | amd (R06), cas-space (R06) | Already in `checklists/listed-company-report.md` L85-91 |
 | Metric-scope audit | amd (R07), cas-space (R07) | Already in `checklists/final-audit.md` L137-141 |
 | Unknown-to-conclusion linkage | amd (R08), cas-space (R08) | Already in `checklists/final-audit.md` L145-152 |
