@@ -243,6 +243,101 @@ Body text with citation [S01].
 """
 
 
+def _valid_constrained_choice_report() -> str:
+    """A minimal valid report that passes all constrained-choice checks.
+
+    Same structure as _valid_report() but with Constrained Choice / Shortlist
+    route and route-specific audit rows.
+    """
+    return """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Constrained Choice / Shortlist
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| option-selection-final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+| final-audit | ✅ Passed | §5 Comparison 表格含数字角色列 |
+
+## 执行摘要
+
+Executive summary with citation [S01].
+
+## Findings
+
+Body text with citation [S02].
+
+## 维度结论
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | System A | System B | 数字角色 |
+|--------|----------|----------|---------|
+| Cost | 100 | 80 | observed |
+| Speed | 200 | 150 | observed |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _valid_chinese_constrained_choice_report() -> str:
+    """A valid constrained-choice report with Chinese heading.
+
+    Uses ## 附录：路由与审计状态 instead of the English heading, with
+    **Primary route**: Constrained Choice / Shortlist so that both
+    get_route_name() and check_route_declaration() work correctly.
+    """
+    return """\
+# Test Report
+
+## 附录：路由与审计状态
+
+**Primary route**: Constrained Choice / Shortlist
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| option-selection-final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+| final-audit | ✅ Passed | §5 Comparison 表格含数字角色列 |
+
+## 执行摘要
+
+Executive summary with citation [S01].
+
+## Findings
+
+Body text with citation [S02].
+
+## 维度结论
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | System A | System B | 数字角色 |
+|--------|----------|----------|---------|
+| Cost | 100 | 80 | observed |
+| Speed | 200 | 150 | observed |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
 def _report_shared_workflow() -> str:
     """Report using shared-workflow path (no primary route).
 
@@ -678,6 +773,55 @@ Body with [S01].
 
 
 
+class TestConstrainedChoice:
+    """Constrained-choice route must be recognized without fallback."""
+
+    def test_constrained_choice_route_recognized(self) -> None:
+        """`--route constrained-choice` should show `constrained-choice` in output."""
+        result = _run_audit(
+            _valid_report(),
+            extra_args=["--route", "constrained-choice"],
+        )
+        assert "constrained-choice" in result.stdout, (
+            f"Expected 'constrained-choice' in route output, got:\n{result.stdout}"
+        )
+
+    def test_constrained_choice_no_fallback_warning(self) -> None:
+        """stderr must NOT contain 'falling back' when using --route constrained-choice."""
+        result = _run_audit(
+            _valid_report(),
+            extra_args=["--route", "constrained-choice"],
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_constrained_choice_route_runs_validators(self) -> None:
+        """A valid report with --route constrained-choice must pass (exit 0)."""
+        result = _run_audit(
+            _valid_constrained_choice_report(),
+            extra_args=["--route", "constrained-choice"],
+        )
+        assert result.returncode == 0, (
+            f"Expected exit 0, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_auto_detect_constrained_choice_via_chinese_heading(self) -> None:
+        """Chinese heading report with constrained-choice route auto-detects."""
+        result = _run_audit(_valid_chinese_constrained_choice_report())
+        assert result.returncode == 0, (
+            f"Expected exit 0 for Chinese constrained-choice report, "
+            f"got {result.returncode}\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+        assert "constrained-choice" in result.stdout, (
+            f"Expected auto-detected 'constrained-choice' in route output, got:\n{result.stdout}"
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+
 class TestSharedWorkflow:
     """Shared-workflow reports should fall back to default validators."""
 
@@ -774,6 +918,11 @@ if __name__ == "__main__":
         ("--route unknown falls back", TestRouteOverride().test_unknown_route_falls_back),
         # TestNonExistentFile
         ("non-existent file exit", TestNonExistentFile().test_exit_code_blocking),
+        # TestConstrainedChoice
+        ("constrained-choice route recognized", TestConstrainedChoice().test_constrained_choice_route_recognized),
+        ("constrained-choice no fallback warning", TestConstrainedChoice().test_constrained_choice_no_fallback_warning),
+        ("constrained-choice route runs validators", TestConstrainedChoice().test_constrained_choice_route_runs_validators),
+        ("constrained-choice auto-detect via chinese heading", TestConstrainedChoice().test_auto_detect_constrained_choice_via_chinese_heading),
         # TestSharedWorkflow
         ("shared-workflow valid passes", TestSharedWorkflow().test_exit_code_zero_when_valid),
         ("shared-workflow fallback warning", TestSharedWorkflow().test_fallback_warning_in_stderr),

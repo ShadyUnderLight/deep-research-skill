@@ -89,6 +89,11 @@ _ROUTE_ALIASES: dict[str, str] = {
     "listed company / investment-style research": "listed-company",
     "listed company": "listed-company",
     "investment-style research": "listed-company",
+    "constrained choice": "constrained-choice",
+    "constrained choice / shortlist": "constrained-choice",
+    "constrained choice / shortlist / option selection": "constrained-choice",
+    "option selection": "constrained-choice",
+    "shortlist": "constrained-choice",
 }
 
 # Default route used when auto-detection fails or an unknown route is given.
@@ -246,6 +251,12 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_source_label_consistency,
     ],
     "academic-review": [
+        _run_report_quality,
+        _run_declared_execution,
+        _run_table_role_labels,
+        _run_source_label_consistency,
+    ],
+    "constrained-choice": [
         _run_report_quality,
         _run_declared_execution,
         _run_table_role_labels,
