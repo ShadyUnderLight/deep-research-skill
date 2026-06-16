@@ -55,6 +55,7 @@ from validate_declared_execution import validate_file as vde_validate_file
 from validate_table_role_labels import validate_file as vtr_validate_file
 from validate_source_label_consistency import validate_file as vsl_validate_file
 from validate_listed_company_delivery import validate_file as vlc_validate_file
+from validate_scoring_replicability import validate_file as vsr_validate_file
 
 
 # ── Exit codes ──────────────────────────────────────────────────────────────
@@ -234,6 +235,18 @@ def _run_listed_company_delivery(path: Path, **kwargs: bool) -> CheckResult:
     )
 
 
+def _run_scoring_replicability(path: Path, **kwargs: bool) -> CheckResult:
+    """Run validate_scoring_replicability checks."""
+    try:
+        errors = vsr_validate_file(path)
+    except Exception as exc:
+        return CheckResult(
+            name="scoring-replicability",
+            errors=[f"scoring-replicability validator crashed: {exc}"],
+        )
+    return CheckResult(name="scoring-replicability", errors=errors, warnings=[])
+
+
 # ── Route → validator mapping ──────────────────────────────────────────────
 
 ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
@@ -261,6 +274,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_declared_execution,
         _run_table_role_labels,
         _run_source_label_consistency,
+        _run_scoring_replicability,
     ],
 }
 
