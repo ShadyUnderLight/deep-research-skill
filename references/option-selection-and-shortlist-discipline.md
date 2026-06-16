@@ -93,6 +93,8 @@ The following data sources frequently appear in career/skill selection reports. 
 When multiple proxy sources from different categories are combined into a single comparison table or scoring matrix, each cell must carry or reference its role label. Do not mix observed facts and proxy indicators in the same table without distinguishing them.
 
 > Career/skill selection 类型的约束选择报告交货前必须通过 `checklists/option-selection-final-audit.md` §Career / skill selection sub-gate 检查。
+>
+> 对于所有 constrained-choice 报告（不仅限 career/skill selection），决策架构节必须包含一个 Decision Scope block。通用模板见 `references/decision-report-template.md` §Recommended structure (option-selection/shortlist 子结构)。本节的 career/skill 模板是该通用规约的子类特化。
 
 ---
 
