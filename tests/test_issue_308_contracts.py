@@ -154,7 +154,7 @@ def test_c1_proxy_section_lists_minimum_sources():
 
 
 def test_c1_existing_content_preserved():
-    """C1: All original sections MUST survive."""
+    """C1: All original sections MUST survive (all 17 ## headings)."""
     content = read(DISCIPLINE)
     landmarks = [
         "# Option Selection and Shortlist Discipline",
@@ -163,14 +163,56 @@ def test_c1_existing_content_preserved():
         "## Step 2: Identify load-bearing variables",
         "## Step 3: Choose the comparison unit explicitly",
         "## Step 4: Make the aggregation logic visible",
+        "## Step 4.5: Per-persona recommendations",
         "## Step 5: Separate evidence layers",
         "## Step 6: Build the shortlist before the deep dive",
+        "## Step 7: Handle uncertainty as scenario logic",
+        "## Step 8: Distinguish best overall, best fit, and best fallback",
         "## Good output pattern",
         "## Common failure modes",
+        "## Practical heuristics",
+        "## Output discipline",
+        "## Best home for related fixes",
         "## Bottom line",
     ]
     for landmark in landmarks:
         assert landmark in content, f"C1 missing: '{landmark}'"
+
+
+def test_c1_rule_us_scope_declaration():
+    """C1: Scope section MUST contain rule about US data scope declaration."""
+    content = read(DISCIPLINE)
+    scope_section = section_after(content, "默认决策口径 — Default decision scope")
+    assert scope_section is not None, "Missing scope section"
+    assert "US" in scope_section and "scope" in scope_section.lower(), \
+        "Missing US salary scope declaration rule"
+
+
+def test_c1_rule_multi_level_reader():
+    """C1: Scope section MUST contain rule about multi-level reader treatment."""
+    content = read(DISCIPLINE)
+    scope_section = section_after(content, "默认决策口径 — Default decision scope")
+    assert scope_section is not None, "Missing scope section"
+    assert "experience level" in scope_section.lower() or "reader" in scope_section.lower(), \
+        "Missing multi-level reader rule"
+
+
+def test_c1_rule_learning_time_labeling():
+    """C1: Scope section MUST contain rule about learning time estimate labeling."""
+    content = read(DISCIPLINE)
+    scope_section = section_after(content, "默认决策口径 — Default decision scope")
+    assert scope_section is not None, "Missing scope section"
+    assert "learning time" in scope_section.lower() or "estimate" in scope_section.lower(), \
+        "Missing learning time estimate labeling rule"
+
+
+def test_c1_rule_register_claims_typing():
+    """C1: Scope section MUST contain rule about Source Register Claims Supported typing."""
+    content = read(DISCIPLINE)
+    scope_section = section_after(content, "默认决策口径 — Default decision scope")
+    assert scope_section is not None, "Missing scope section"
+    assert "Claims Supported" in scope_section or "claim type" in scope_section.lower(), \
+        "Missing Source Register claims typing rule"
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -238,6 +280,48 @@ def test_c2_has_us_global_item():
         term in sg_section.lower()
         for term in ['US', '全球', 'global', '美国', '地理', 'geographic']
     ), "Missing US-vs-global scope boundary checklist item"
+
+
+def test_c2_subgate_section_position():
+    """C2: Sub-gate section MUST be between Evidence layers and Scenario logic."""
+    content = read(CHECKLIST)
+    ev_pos = content.index("## Evidence layers")
+    sg_section = section_after(content, "Career / skill selection sub-gate")
+    assert sg_section is not None, "Missing sub-gate section"
+    sg_pos = content.index(sg_section)
+    sc_pos = content.index("## Scenario logic and change conditions")
+    assert ev_pos < sg_pos < sc_pos, \
+        f"Position: Evidence({ev_pos}) < Sub-gate({sg_pos}) < Scenario({sc_pos})"
+
+
+def test_c2_has_blocker_check():
+    """C2: Sub-gate MUST have a [BLOCKER] check."""
+    content = read(CHECKLIST)
+    sg_section = section_after(content, "Career / skill selection sub-gate")
+    assert sg_section is not None, "Missing sub-gate section"
+    assert "[BLOCKER]" in sg_section, "Missing BLOCKER check in sub-gate"
+
+
+def test_c2_has_source_register_claims_item():
+    """C2: At least one item MUST address Source Register Claims Supported typing."""
+    content = read(CHECKLIST)
+    sg_section = section_after(content, "Career / skill selection sub-gate")
+    assert sg_section is not None, "Missing sub-gate section"
+    assert any(
+        term in sg_section.lower()
+        for term in ['claims supported', 'claim type', 'job proxy', 'salary proxy']
+    ), "Missing Source Register claims typing item"
+
+
+def test_c2_has_learning_time_label_item():
+    """C2: At least one item MUST address learning time estimate labeling."""
+    content = read(CHECKLIST)
+    sg_section = section_after(content, "Career / skill selection sub-gate")
+    assert sg_section is not None, "Missing sub-gate section"
+    assert any(
+        term in sg_section.lower()
+        for term in ['learning time', 'estimate', 'basis note']
+    ), "Missing learning time labeling item"
 
 
 def test_c2_existing_content_preserved():
@@ -347,6 +431,15 @@ def test_c5_checklist_references_discipline():
         "Discipline must have the referenced default decision scope section"
 
 
+def test_c5_backward_reference_exists():
+    """C5: Discipline file MUST reference the checklist in its new sections."""
+    content = read(DISCIPLINE)
+    assert 'checklists/option-selection-final-audit.md' in content, \
+        "Discipline must reference checklists/option-selection-final-audit.md (backward reference)"
+    assert 'Career / skill selection sub-gate' in content or '职业' in content, \
+        "Discipline must reference the career/skill sub-gate section name"
+
+
 def test_c5_no_existing_regression():
     """C5: All existing contract tests MUST still pass (scope-creep filtered)."""
     existing_tests = [
@@ -440,13 +533,21 @@ if __name__ == "__main__":
         ("C1: proxy indicators section", test_c1_has_proxy_indicators_section),
         ("C1: proxy sources >=5", test_c1_proxy_section_lists_minimum_sources),
         ("C1: existing content preserved", test_c1_existing_content_preserved),
+        ("C1: rule US scope", test_c1_rule_us_scope_declaration),
+        ("C1: rule multi-level reader", test_c1_rule_multi_level_reader),
+        ("C1: rule learning time", test_c1_rule_learning_time_labeling),
+        ("C1: rule register claims type", test_c1_rule_register_claims_typing),
 
         # C2: option-selection-final-audit.md
         ("C2: career/skill sub-gate", test_c2_has_career_skill_subgate),
+        ("C2: section position", test_c2_subgate_section_position),
         ("C2: >=3 checklist items", test_c2_has_minimum_checklist_items),
         ("C2: scope declaration item", test_c2_has_scope_declaration_item),
         ("C2: proxy role item", test_c2_has_proxy_role_item),
         ("C2: US/global item", test_c2_has_us_global_item),
+        ("C2: BLOCKER check", test_c2_has_blocker_check),
+        ("C2: register claims item", test_c2_has_source_register_claims_item),
+        ("C2: learning time item", test_c2_has_learning_time_label_item),
         ("C2: existing content preserved", test_c2_existing_content_preserved),
 
         # C3: eval case
@@ -462,6 +563,7 @@ if __name__ == "__main__":
 
         # C5: Cross-file
         ("C5: checklist references discipline", test_c5_checklist_references_discipline),
+        ("C5: backward reference from discipline", test_c5_backward_reference_exists),
         ("C5: no regression", test_c5_no_existing_regression),
         ("C5: INDEX not broken", test_c5_index_not_broken),
 

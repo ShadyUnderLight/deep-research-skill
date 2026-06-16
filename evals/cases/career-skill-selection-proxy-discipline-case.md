@@ -65,7 +65,12 @@ A passing answer should:
 6. **Separate recommendations by persona.**
    - At minimum distinct treatment for zero-base, 1-3 year, and 5+ year readers
 
-7. **Self-assessment matches execution.**
+7. **Expose composite score input roles.**
+   - If composite scoring is used (star ratings, weighted tables, A+/B+ tiers), each input dimension must carry a role label (observed / proxy / assumption / model-output)
+   - At least 1 worked example or traceable score path to specific evidence anchors
+   - Weights or priority order for each sub-dimension must be visible
+
+8. **Self-assessment matches execution.**
    - If proxy labels are missing, quantitative-role cannot be ✅
    - If scope block is missing, decision-architecture cannot be ✅
 
@@ -73,12 +78,15 @@ A passing answer should:
 
 Mark this eval as failed if the answer does any of the following:
 
-- no default scope block (target reader, market, decision goal) — immediate conditional pass floor
-- comparison tables mix TIOBE, salary, stars, survey % without role labels (constrained-choice hard-fail)
+- comparison tables mix TIOBE, salary, stars, survey % without role labels (constrained-choice route hard-fail)
+- no default scope block AND >3 unlabeled proxy indicators in load-bearing ranking positions (career/skill sub-gate compound hard-fail)
 - Source Register lacks Claims Supported column or claims are generic ("supports language ranking") without type
 - US salary presented as global demand without scope declaration
 - learning time claims used for ranking without basis note
+- composite scoring uses hidden weights or unlabeled input dimensions (aggregation not replicable)
 - self-assessment claims full pass while scope or proxy labels are missing (process-integrity concern)
+
+Missing scope block alone (without unlabeled proxies) is a conditional pass floor, not a hard-fail.
 
 ## Why this eval matters
 
@@ -116,5 +124,5 @@ The current rules (informed by issue #308) should catch this as **conditional pa
 ## Suggested scoring
 
 - **Pass**: full scope block, all proxy indicators role-labeled, 7-column register with typed claims, US data scoped, learning times labeled, per-persona recommendations, honest self-assessment
-- **Conditional pass**: scope block present but incomplete (missing 1 field), proxy labels on most but not all tables, register claims typed but not all entries, US scope mentioned but not consistently — no hard-fail triggered
-- **Fail**: no scope block (immediate floor to conditional at best), comparison tables mix proxies without role labels (hard-fail), or register lacks Claims Supported column entirely, or US data presented as global without scope declaration, or self-assessment all ✅ while scope/labels missing (process-integrity concern)
+- **Conditional pass**: scope block present but incomplete (missing 1 field), proxy labels on most but not all tables, register claims typed but not all entries, US scope mentioned but not consistently, or scope block entirely missing but proxy labels otherwise clean — no hard-fail triggered
+- **Fail**: comparison tables mix proxies without role labels (constrained-choice route hard-fail), or no scope block AND >3 unlabeled proxies (compound hard-fail), or register lacks Claims Supported column entirely, or US data presented as global without scope declaration, or self-assessment all ✅ while scope/labels missing (process-integrity concern)

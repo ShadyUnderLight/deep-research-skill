@@ -92,7 +92,7 @@ When the constrained-choice task is about learning, career, skill-selection, or 
 - [ ] Source Register Claims Supported column specifies what type of claim each source supports (job proxy / salary proxy / ecosystem size / official roadmap / community preference) rather than generic "supports language ranking"
 - [ ] US job-posting or salary data is not presented as global career demand unless the report explicitly declares US-only scope
 - [ ] if learning time estimates are used for ranking or cost comparison, each estimate is labeled as `estimate` / `assumption` / `model-output` with a brief basis note
-- [ ] [BLOCKER] a career/skill selection report that lacks a default scope declaration OR uses unlabeled proxy indicators for >3 load-bearing ranking numbers → hard-fail
+- [ ] [BLOCKER] a career/skill selection report that lacks a default scope declaration AND uses unlabeled proxy indicators for >3 load-bearing ranking numbers → hard-fail. (Missing scope alone is a conditional pass floor; hard-fail requires the compound condition.)
 
 ## Scenario logic and change conditions
 
