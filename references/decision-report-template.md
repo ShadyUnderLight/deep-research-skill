@@ -124,6 +124,38 @@ For option-selection / shortlist tasks, adapt the middle of the structure like t
 1. Executive summary
 2. What matters most
 3. Decision architecture
+
+   对于 constrained-choice / shortlist / option-selection 报告，该节必须包含以下决策口径块（Decision Scope block），放在执行摘要之后、详细分析之前：
+
+### Decision Scope / 决策口径
+
+   - **目标读者 / 使用者**：[零基础 / 1-3 年经验 / 5 年以上 / 转行 / 已有领域背景，或明确说明]
+   - **当前要做的选择**：[一句话说明实际决策问题，而非话题探索]
+   - **默认约束**：[hard constraints（硬性限制）和 soft preferences（软偏好）]
+   - **优化目标**：[最快就业 / 长期上限 / 创业效率 / 后悔概率最低 / 综合回报 / 其他]
+   - **选项全集**：[理论上的选项范围，如"所有主流编程语言"或"用户指定的四个选项"]
+   - **本次短名单**：[实际纳入比较的选项，与全集的关系]
+   - **明确排除项**：[排除了什么、为什么排除；若来自用户指定则说明"非全市场排行"]
+   - **关键未知**：[选择时尚未确认、可能影响结果的信息]
+   - **改变结论的条件**：[什么假设变化会改变排名或推荐]
+
+   **子类型示例：**
+
+   学习/职业技能选择（另见 `references/option-selection-and-shortlist-discipline.md` §默认决策口径）：
+   - 目标读者：零基础 / 1-3 年经验 / 5 年以上经验
+   - 默认市场：全球英语市场 / 美国岗位代理 / 中国岗位 / 远程岗位
+   - 优化目标：最快就业 / 长期上限 / 通用性 / 创业效率
+
+   体育/比赛预测：
+   - outcome shortlist：胜 / 平 / 负（或精确比分范围）
+   - 当前快照时间：最新排名、赔率、阵容、伤停、天气
+   - 未确认项：首发、裁判、临场伤病、赔率波动
+   - 调整规则：首发缺核心、赔率移动、天气恶化时概率怎么改
+
+   供应商/平台/地点选择：
+   - 排除项和 runner-up 必须在 opening 后 1 屏内可见
+   - 若选项来自用户指定，明确标注"不代表全市场最优"
+
 4. Ranked shortlist or best-fit options
 5. Why the top option wins
 6. Why the next-best option remains credible
