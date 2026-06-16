@@ -127,7 +127,7 @@ For option-selection / shortlist tasks, adapt the middle of the structure like t
 
    对于 constrained-choice / shortlist / option-selection 报告，该节必须包含以下决策口径块（Decision Scope block），放在执行摘要之后、详细分析之前：
 
-### Decision Scope / 决策口径
+   **Decision Scope / 决策口径**
 
    - **目标读者 / 使用者**：[零基础 / 1-3 年经验 / 5 年以上 / 转行 / 已有领域背景，或明确说明]
    - **当前要做的选择**：[一句话说明实际决策问题，而非话题探索]

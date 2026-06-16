@@ -119,7 +119,7 @@ When the constrained-choice task is about learning, career, skill-selection, or 
 - [ ] the executive summary or judgment-first opening flows directly into the decision architecture or comparison framework, not into >5 lines of pure background description (venue context, event history, category overview, or similar)
 - [ ] removing background paragraphs that immediately follow the opening judgment would sharpen rather than weaken the report
 
-## Decision scope visibility
+## Decision Scope visibility
 
 - [ ] the report includes a visible Decision Scope block (target reader, option universe, shortlist boundary, exclusions, reversal conditions) after the executive summary / judgment block and before detailed analysis
 - [ ] the Decision Scope block is present before route metadata or background exposition; if the first decision-relevant content after the summary is the decision scope rather than metadata, this check passes

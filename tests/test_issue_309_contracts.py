@@ -9,7 +9,7 @@ Tests verify structural invariants for constrained-choice Decision Scope templat
       - All required fields present
       - Existing content preserved
   C2: checklists/option-selection-final-audit.md
-      - ### Decision scope visibility subsection with 2 checklist items
+      - ### Decision Scope visibility subsection with 2 checklist items
       - Existing content preserved
   C3: references/option-selection-and-shortlist-discipline.md
       - Cross-reference to decision-report-template.md
@@ -19,6 +19,9 @@ Tests verify structural invariants for constrained-choice Decision Scope templat
       - Existing content preserved
   C5: evals/cases/career-skill-selection-proxy-discipline-case.md
       - Pass criteria include scope block position check
+      - Existing content preserved
+  C5b: evals/cases/world-cup-prediction-constrained-choice-probability-method-case.md
+      - Pass criteria include outcome shortlist + pre-match snapshot first-screen check
       - Existing content preserved
   C6: Cross-file invariants
       - Checklist references template section
@@ -60,6 +63,14 @@ def section_after(content, section_title):
     return content[match.start():]
 
 
+def content_after_marker(content, marker):
+    """Return content starting from a bold marker like **text**."""
+    match = re.search(re.escape(marker), content)
+    if not match:
+        return None
+    return content[match.start():]
+
+
 # ═══════════════════════════════════════════════════════════════════
 # C1: references/decision-report-template.md
 # ═══════════════════════════════════════════════════════════════════
@@ -68,13 +79,12 @@ TEMPLATE = "references/decision-report-template.md"
 
 
 def test_c1_has_decision_scope_block():
-    """C1: MUST contain ### Decision Scope / 决策口径 block."""
+    """C1: MUST contain **Decision Scope / 决策口径** block."""
     content = read(TEMPLATE)
     assert re.search(
-        r'^###\s+Decision Scope\s*/\s*决策口径',
-        content,
-        re.MULTILINE
-    ), "Missing '### Decision Scope / 决策口径' block"
+        r'\*\*Decision Scope\s*/\s*决策口径\*\*',
+        content
+    ), "Missing '**Decision Scope / 决策口径**' block"
 
 
 DECISION_SCOPE_FIELDS = [
@@ -93,7 +103,7 @@ DECISION_SCOPE_FIELDS = [
 def test_c1_has_all_required_fields():
     """C1: Decision Scope block MUST contain ALL 9 required fields."""
     content = read(TEMPLATE)
-    scope_block = section_after(content, "Decision Scope / 决策口径")
+    scope_block = content_after_marker(content, "**Decision Scope / 决策口径**")
     assert scope_block is not None, "Decision Scope block not found"
     for field in DECISION_SCOPE_FIELDS:
         assert field in scope_block, f"Missing field '{field}' in Decision Scope block"
@@ -104,7 +114,7 @@ def test_c1_scope_block_after_decision_architecture():
     content = read(TEMPLATE)
     da_pos = content.find("3. Decision architecture")
     assert da_pos >= 0, "Missing '3. Decision architecture' in recommended structure"
-    scope_section = section_after(content, "Decision Scope / 决策口径")
+    scope_section = content_after_marker(content, "**Decision Scope / 决策口径**")
     assert scope_section is not None, "Decision Scope block not found"
     scope_pos = content.find(scope_section)
     assert da_pos < scope_pos, \
@@ -114,11 +124,12 @@ def test_c1_scope_block_after_decision_architecture():
 def test_c1_scope_block_has_subtype_examples():
     """C1: Decision Scope block MUST include sub-type examples (career/skill, sports, vendor)."""
     content = read(TEMPLATE)
-    scope_section = section_after(content, "Decision Scope / 决策口径")
+    scope_section = content_after_marker(content, "**Decision Scope / 决策口径**")
     assert scope_section is not None, "Decision Scope block not found"
-    # Check for at least one sub-type reference
-    has_subtype = any(kw in scope_section for kw in ['学习', '技能选择', '体育', '比赛预测', '供应商', '平台'])
-    assert has_subtype, "Decision Scope block should reference sub-type examples"
+    # Check for at least two sub-type references (the template should have 3)
+    subtype_matches = sum(1 for kw in ['学习', '技能选择', '体育', '比赛预测', '供应商', '平台'] if kw in scope_section)
+    assert subtype_matches >= 2, \
+        f"Decision Scope block should reference >=2 sub-type examples, found {subtype_matches}"
 
 
 def test_c1_existing_sections_preserved():
@@ -139,20 +150,20 @@ OPTION_CHECKLIST = "checklists/option-selection-final-audit.md"
 
 
 def test_c2_has_decision_scope_visibility_subsection():
-    """C2: MUST contain ## Decision scope visibility section."""
+    """C2: MUST contain ## Decision Scope visibility section."""
     content = read(OPTION_CHECKLIST)
     assert re.search(
-        r'^##\s+Decision scope visibility',
+        r'^##\s+Decision Scope visibility',
         content,
         re.MULTILINE
-    ), "Missing '## Decision scope visibility' section"
+    ), "Missing '## Decision Scope visibility' section"
 
 
 def test_c2_has_checklist_items():
-    """C2: Decision scope visibility MUST have at least 2 checklist items."""
+    """C2: Decision Scope visibility MUST have at least 2 checklist items."""
     content = read(OPTION_CHECKLIST)
-    subsection = section_after(content, "Decision scope visibility")
-    assert subsection is not None, "Decision scope visibility subsection not found"
+    subsection = section_after(content, "Decision Scope visibility")
+    assert subsection is not None, "Decision Scope visibility subsection not found"
     # Count checklist items
     checks = re.findall(r'^\s*-\s*\[\s*\]', subsection, re.MULTILINE)
     assert len(checks) >= 2, f"Expected >=2 checklist items, found {len(checks)}"
@@ -161,7 +172,7 @@ def test_c2_has_checklist_items():
 def test_c2_checklist_references_decision_scope():
     """C2: Checklist items MUST reference Decision Scope or decision scope."""
     content = read(OPTION_CHECKLIST)
-    subsection = section_after(content, "Decision scope visibility")
+    subsection = section_after(content, "Decision Scope visibility")
     assert subsection is not None, "subsection not found"
     assert re.search(r'[Dd]ecision [Ss]cope', subsection), \
         "Checklist items must reference 'Decision Scope'"
@@ -232,7 +243,7 @@ def test_c4_recall_check_mentions_decision_scope():
     lines = [l for l in recall_section.split('\n') if 'constraine' in l or 'constrained' in l]
     assert len(lines) >= 1, "No constrained-choice line found in recall"
     any_mentions_scope = any(
-        re.search(r'[Dd]ecision [Ss]cope|[Ss]cope', l) for l in lines
+        re.search(r'[Dd]ecision [Ss]cope', l) for l in lines
     )
     assert any_mentions_scope, \
         f"No constrained-choice recall line mentions decision scope or scope"
@@ -279,6 +290,20 @@ def test_c5_existing_pass_criteria_preserved():
     assert '2. **Label all proxy indicators by role.**' in content
 
 
+WORLD_CUP_EVAL = "evals/cases/world-cup-prediction-constrained-choice-probability-method-case.md"
+
+
+def test_c5_world_cup_first_screen_check():
+    """C5: World cup eval pass criteria MUST include outcome shortlist + pre-match snapshot first-screen check."""
+    content = read(WORLD_CUP_EVAL)
+    pass_section = section_after(content, "Pass criteria")
+    assert pass_section is not None, "Pass criteria section not found"
+    assert 'outcome shortlist' in pass_section.lower() or 'Outcome shortlist' in pass_section, \
+        "World cup eval must have 'outcome shortlist' pass criterion"
+    assert 'pre-match snapshot' in pass_section.lower() or 'Pre-match snapshot' in pass_section, \
+        "World cup eval must have 'pre-match snapshot' pass criterion"
+
+
 # ═══════════════════════════════════════════════════════════════════
 # C6: Cross-file invariants (property-based)
 # ═══════════════════════════════════════════════════════════════════
@@ -294,7 +319,7 @@ def test_c6_consistent_terminology():
 def test_c6_decision_scope_block_format_readable():
     """C6: Decision Scope block MUST use markdown bullet list with bold field names."""
     content = read(TEMPLATE)
-    scope_block = section_after(content, "Decision Scope / 决策口径")
+    scope_block = content_after_marker(content, "**Decision Scope / 决策口径**")
     assert scope_block is not None, "Block not found"
     # Check for bullet list format with **bold** field names
     bullets = re.findall(r'^\s*-\s+\*\*[^*]+\*\*', scope_block, re.MULTILINE)
@@ -302,12 +327,13 @@ def test_c6_decision_scope_block_format_readable():
 
 
 def test_c6_checklist_reaches_final_audit():
-    """C6: The recall check in final-audit.md SHOULD reference option-selection-final-audit."""
+    """C6: The added recall line MUST be present in final-audit.md §Recall discipline."""
     content = read(FINAL_AUDIT)
     recall_section = section_after(content, "Recall discipline")
     assert recall_section is not None, "Recall section not found"
-    assert 'option-selection' in recall_section, \
-        "Recall should reference option-selection-final-audit"
+    # Verify the NEW line added by this PR exists (not just the pre-existing line)
+    assert 'first-screen clarity' in recall_section, \
+        "Recall must contain the new 'first-screen clarity' check line"
 
 
 def test_c6_all_tests_importable():
@@ -331,7 +357,7 @@ except ImportError:
 def test_property_decision_scope_fields_in_template():
     """Property: Every required decision scope field appears as a bullet in the template."""
     content = read(TEMPLATE)
-    scope_block = section_after(content, "Decision Scope / 决策口径")
+    scope_block = content_after_marker(content, "**Decision Scope / 决策口径**")
     assert scope_block is not None, "Decision Scope block not found"
     for field in DECISION_SCOPE_FIELDS:
         # Accept either **field** or **field / alias** (the field name may have suffixes)
@@ -344,13 +370,13 @@ def test_property_decision_scope_fields_in_template():
 def test_property_checklist_items_refer_to_existing_sections():
     """Property: Checklist items should reference existing section names."""
     content = read(OPTION_CHECKLIST)
-    subsection = section_after(content, "Decision scope visibility")
+    subsection = section_after(content, "Decision Scope visibility")
     assert subsection is not None, "subsection not found"
-    # Extract section names from the file
-    all_sections = re.findall(r'^## (.+)', content, re.MULTILINE)
-    assert len(all_sections) > 0, "Should have sections"
-    # At minimum, checklist items mention concepts that exist in the template
-    assert True, "Structural invariant: checklist exists"
+    # Verify checklist items reference Decision Scope block and metadata/background position
+    has_block_ref = 'Decision Scope block' in subsection or 'decision scope' in subsection.lower()
+    has_position_ref = 'route metadata' in subsection or 'background' in subsection.lower()
+    assert has_block_ref, f"Checklist items must reference 'Decision Scope block': {subsection}"
+    assert has_position_ref, f"Checklist items must reference positioning context: {subsection}"
 
 
 def test_property_cross_reference_format():
@@ -387,7 +413,7 @@ if __name__ == '__main__':
         ("C1: existing sections preserved", test_c1_existing_sections_preserved),
 
         # C2: option-selection-final-audit.md
-        ("C2: Decision scope visibility subsection", test_c2_has_decision_scope_visibility_subsection),
+        ("C2: Decision Scope visibility subsection", test_c2_has_decision_scope_visibility_subsection),
         ("C2: >=2 checklist items", test_c2_has_checklist_items),
         ("C2: references Decision Scope", test_c2_checklist_references_decision_scope),
         ("C2: existing sections preserved", test_c2_existing_sections_preserved),
@@ -401,9 +427,10 @@ if __name__ == '__main__':
         ("C4: recall mentions Decision Scope", test_c4_recall_check_mentions_decision_scope),
         ("C4: existing sections preserved", test_c4_existing_sections_preserved),
 
-        # C5: eval case
+        # C5: eval cases
         ("C5: scope position in pass criteria", test_c5_pass_criteria_has_scope_position),
         ("C5: existing pass criteria preserved", test_c5_existing_pass_criteria_preserved),
+        ("C5: world cup first-screen check", test_c5_world_cup_first_screen_check),
 
         # C6: Cross-file invariants
         ("C6: consistent terminology", test_c6_consistent_terminology),
