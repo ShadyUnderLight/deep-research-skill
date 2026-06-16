@@ -83,6 +83,17 @@ Run this checklist before delivery.
 - [ ] [BLOCKER] All comparison, scoring, and estimation tables must include a numeric role column (or equivalent header row / table note), per `references/quantitative-role-labeling.md` §表格中的角色标签。所有比较表、评分表、估算表必须包含数字角色列（或等效的表头角色行/表注）。
 - [ ] [BLOCKER] If >3 critical numbers in a scoring/ranking system lack role labels (observed / proxy / assumption / model-output) → hard-fail (see ROUTING-MATRIX.md §Constrained Choice hard-fail: `uses numbers without labeling observed fact / proxy / assumption / model output`). "关键数字"定义见 `references/quantitative-role-labeling.md` §What should be labeled（materially affect ranking / recommendation / sequencing / timing / valuation / confidence）。注意：辅助性描述数字（如"约 5 年"、"数万用户"）不受此规则限制。
 
+### Career / skill selection sub-gate
+
+When the constrained-choice task is about learning, career, skill-selection, or personal investment decisions (e.g., "which programming language to learn", "which framework to adopt", "which certificate to pursue"), add these checks:
+
+- [ ] the report includes a default decision scope block (target reader experience level, geographic market, decision goal, time window, indicator roles, non-comparable items) as described in `references/option-selection-and-shortlist-discipline.md` §默认决策口径 — Default decision scope
+- [ ] all job-market, salary, ranking, package-count, star, and survey-percentage numbers used for ranking carry role labels (observed / proxy / assumption / model-output) per the table in `references/option-selection-and-shortlist-discipline.md` §Common proxy indicators for career/skill selection
+- [ ] Source Register Claims Supported column specifies what type of claim each source supports (job proxy / salary proxy / ecosystem size / official roadmap / community preference) rather than generic "supports language ranking"
+- [ ] US job-posting or salary data is not presented as global career demand unless the report explicitly declares US-only scope
+- [ ] if learning time estimates are used for ranking or cost comparison, each estimate is labeled as `estimate` / `assumption` / `model-output` with a brief basis note
+- [ ] [BLOCKER] a career/skill selection report that lacks a default scope declaration AND uses unlabeled proxy indicators for >3 load-bearing ranking numbers → hard-fail. (Missing scope alone is a conditional pass floor; hard-fail requires the compound condition.)
+
 ## Scenario logic and change conditions
 
 - [ ] the report identifies the main fragility points or disruption scenarios

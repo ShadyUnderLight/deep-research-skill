@@ -51,6 +51,49 @@ Examples:
 
 If the decision architecture is unclear, the rest of the report will drift into background or guide-like description.
 
+### 默认决策口径 — Default decision scope
+
+Constrained-choice reports involving learning, career, skill-selection, or personal investment decisions (e.g., "which programming language to learn", "which framework to adopt", "which certificate to pursue") use a distinct class of evidence: job-market data, salary surveys, ecosystem activity, and community signals. These are all proxy indicators. Their reliability depends on scope assumptions that must be declared upfront.
+
+After the decision architecture, the report should include a compact scope block:
+
+```
+### 默认决策口径
+- 目标读者：零基础 / 1-3 年经验 / 5 年以上 / 转行 / 已有领域背景
+- 默认市场：全球 / 美国 / 国内 / 远程岗位 / 某行业
+- 决策目标：最快就业 / 长期上限 / 创业效率 / 平台深耕 / 系统能力 / 兴趣探索
+- 时间窗口：当前快照 + 3-5 年展望
+- 指标口径：岗位/薪资/生态/社区分别作为哪些 proxy 使用
+- 不可比项：（如美国薪资不可直接横比国内购买力、TIOBE 不等于就业需求）
+```
+
+**Rules:**
+1. If the report uses US salary or job-posting data, the default market scope must mention this explicitly. Do not present US proxy data as global demand unless scope is declared.
+2. If the report addresses multiple reader experience levels, each level gets an explicit treatment rather than a single generalized recommendation.
+3. Learning time estimates must be labeled as estimate / assumption / model-output with a brief basis note. Bare directional claims ("takes about 6 months") without source or method are not acceptable for load-bearing cost comparisons.
+4. Source Register entries for career/skill data must specify what type of claim each source supports (job proxy / salary proxy / ecosystem size / official roadmap / community preference) in the Claims Supported column.
+
+> 参见 `checklists/option-selection-final-audit.md` §Career / skill selection sub-gate，了解此类型报告的交付前检查清单。
+
+### Common proxy indicators for career/skill selection
+
+The following data sources frequently appear in career/skill selection reports. Each has a specific epistemic role that must be labeled when the number materially affects the ranking or recommendation.
+
+| Source type | Epistemic role | Label guidance |
+|---|---|---|
+| **TIOBE / RedMonk / PYPL** | Attention / discussion / search-volume proxy | `[代理 - 搜索热度]` — does not measure employment demand or production usage |
+| **Stack Overflow Developer Survey** | Developer usage / preference sample | `[代理 - 开发者样本]` — survey self-selection bias; does not equal production code share |
+| **GitHub Octoverse / repo stars / contributors** | Public code activity proxy | `[代理 - 公开代码活动]` — does not equal enterprise adoption or production deployment |
+| **LinkedIn / Glassdoor / Indeed job postings** | Job keyword proxy | `[代理 - 岗位关键词]` — affected by region, keyword choice, and job-board SEO; Swift and SWIFT (payment network) are easily confused |
+| **Salary pages (levels.fyi / Glassdoor / BLS / 猎聘)** | Mixed-caliber directional signal | `[代理 - 薪资口径混杂]` — averages vs medians vs ranges; not directly cross-comparable across sources or geographies |
+| **Package repositories (npm / PyPI / crates.io / Maven)** | Ecosystem breadth proxy | `[代理 - 生态广度]` — package count alone does not indicate quality, activity, or security governance |
+| **Official language roadmaps / release notes** | Language evolution fact | `[已确认事实]` — but does not guarantee market adoption |
+| **Google Trends / Baidu Index** | General interest proxy | `[代理 - 搜索趋势]` — directionally useful but affected by media coverage cycles |
+
+When multiple proxy sources from different categories are combined into a single comparison table or scoring matrix, each cell must carry or reference its role label. Do not mix observed facts and proxy indicators in the same table without distinguishing them.
+
+> Career/skill selection 类型的约束选择报告交货前必须通过 `checklists/option-selection-final-audit.md` §Career / skill selection sub-gate 检查。
+
 ---
 
 ## Step 2: Identify load-bearing variables

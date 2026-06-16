@@ -6,8 +6,8 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
-- Commit anchor: `8d7e269`
-- Case count: 89 tracked Markdown cases
+- Commit anchor: `b180815`
+- Case count: 90 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -68,6 +68,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/cambricon-competitive-positioning-near-pass-case.md` | competitive-positioning | Triggered | Triggered | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Near-pass; secondary verification and role labels lag. |
 | `evals/cases/cambricon-evidence-weighting-and-traceability-case.md` | listed-company / evidence weighting | Triggered | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Evidence weighting visible but weak around bottom line. |
 | `evals/cases/cambricon-first-tier-positioning-case.md` | competitive-positioning | Triggered | Triggered | N/A | Failed execution | Triggered | Triggered | Triggered | Triggered | Scope/metric/timeframe visible; overall-label compression remains. |
+| `evals/cases/career-skill-selection-proxy-discipline-case.md` | constrained-choice | Triggered | Triggered | N/A | Triggered | N/A | Triggered | N/A | N/A | New eval for career/skill proxy indicator discipline; guards against unlabeled proxy sources and missing market scope. |
 | `evals/cases/champions-league-constrained-choice-activation-case.md` | constrained-choice activation | Triggered | Missing trigger | Failed execution | Failed execution | N/A | Missing trigger | Triggered | Triggered | Route activation gap leaves prediction/ranking burden weak. |
 | `evals/cases/china-shenhua-listed-company-judgment-and-traceability-case.md` | listed-company judgment memo | Failed execution | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Judgment memo shape and claim traceability leak. |
 | `evals/cases/cjk-pdf-validation-findings-case.md` | pdf-delivery validation | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | Delivery validation artifact, not a research-output eval. |

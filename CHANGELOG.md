@@ -11,6 +11,12 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `references/option-selection-and-shortlist-discipline.md`, `checklists/option-selection-final-audit.md`, `evals/cases/career-skill-selection-proxy-discipline-case.md`, `tests/test_issue_308_contracts.py`: added career/skill selection proxy evidence discipline — requires default market/reader scope declaration, proxy indicator role labeling for TIOBE/SO Survey/GitHub/LinkedIn/salary pages/package repos/roadmaps, Source Register Claims Supported claim-type specification, and US-vs-global scope boundary; BLOCKER for compound violation (missing scope + >3 unlabeled proxies) (#308).
+
+### Fixed
+- `references/option-selection-and-shortlist-discipline.md`, `checklists/option-selection-final-audit.md`, `tests/test_issue_308_contracts.py`: fixed BLOCKER/eval threshold mismatch (OR→AND compound condition), added backward cross-references from discipline to checklist, expanded test coverage from 25 to 34 contract tests including scope rules, BLOCKER existence, sub-gate position, and cross-file backward reference (#308).
+
+### Added
 - `scripts/validate_report_quality.py`, `scripts/test_report_quality_validator.py`, and `.github/workflows/ci.yml`: added a unified final report quality validator as the minimum delivery gate — checks Route and audit status block, route declaration, audit evidence non-vague, Source Register 7-column header, body [Sxx] or equivalent citations (Author-Year/arXiv ID/DOI/natural language), with --strict mode for route-specific warnings (#234).
 - `evals/INDEX.md`, `evals/README.md`, `scripts/test_eval_index.py`, and `.github/workflows/ci.yml`: added a case-level eval asset index covering tracked `evals/cases/*.md` by route, failure family, discipline, status, intervention target, and current rule status, with CI regression coverage to keep the index synchronized (#233).
 - `scripts/validate_declared_execution.py` and `scripts/test_declared_execution.py`: Source Register inflation lint now counts functionally equivalent body citations when they map uniquely to register entries, covering arXiv IDs, DOI references, Author-Year citations, and specific natural-language source attribution while keeping vague or ambiguous attribution failing (#230).
