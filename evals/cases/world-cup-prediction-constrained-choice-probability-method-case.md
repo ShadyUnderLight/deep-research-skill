@@ -59,6 +59,10 @@ A passing answer should:
 
 6. **Place judgment before metadata.** Prediction summary should appear before evidence grading legend and audit status on the front page.
 
+7. **Outcome shortlist and pre-match snapshot in first screen.**
+   - The outcome shortlist (win / draw / loss) appears in the first 30% of the report
+   - Pre-match snapshot (kickoff time, squad status, key unknowns) is visible before detailed analysis
+
 ## Failure signs
 
 Mark this eval as failed if the answer does any of the following:
