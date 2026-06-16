@@ -32,7 +32,10 @@ TABLE_DELIMITER_RE = re.compile(
     r"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$"
 )
 
-ROUTE_AUDIT_HEADING = re.compile(r"Route\s+and\s+audit\s+status", re.IGNORECASE)
+ROUTE_AUDIT_HEADING = re.compile(
+    r"(?:Route\s+and\s+audit\s+status|附录[：:]\s*路由与审计状态)",
+    re.IGNORECASE,
+)
 SOURCE_REGISTER_HEADING = re.compile(r"Source\s+Register", re.IGNORECASE)
 PRIMARY_ROUTE_RE = re.compile(r"\*\*Primary\s+route\*\*", re.IGNORECASE)
 SHARED_WORKFLOW_RE = re.compile(
@@ -706,6 +709,14 @@ def get_route_name(cleaned: str) -> str | None:
     if m:
         return m.group(1).strip()
     m = re.search(r"\*\*Route\*\*[:\s]+(.+)", sec)
+    if m:
+        return m.group(1).strip()
+    # Chinese: 研究路线：... or 主路由：... (stop at （, space, pipe, or end of line)
+    # Also handles table-cell pipe separator: 主路由 | Constrained Choice / Shortlist
+    m = re.search(
+        r"(?:研究路线|主路由)\s*(?:[：:]|\|\s*)\s*(.+?)(?:\s*[（(]|\s*$|\s*\|\s*)",
+        sec,
+    )
     if m:
         return m.group(1).strip()
     return None

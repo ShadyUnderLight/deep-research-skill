@@ -10,6 +10,10 @@ import sys
 import tempfile
 from pathlib import Path
 
+# Direct import for get_route_name unit tests
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from validate_report_quality import get_route_name
+
 SCRIPT = str(Path(__file__).resolve().parent / "validate_report_quality.py")
 
 # ── Minimal valid report (all required elements present) ─────────────────
@@ -1123,6 +1127,82 @@ def test_academic_register_7_columns_non_academic_route_passes() -> None:
         f"stdout: {result.stdout}"
     )
     print("  PASS  non-academic 7-column register passes")
+# ── get_route_name Chinese heading tests ──────────────────────────────────
+# These import get_route_name directly for precise unit-level testing.
+
+
+def test_get_route_name_english_still_works() -> None:
+    """Existing English format still works after changes."""
+    text = """\
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+"""
+    result = get_route_name(text)
+    assert result == "Provider / Vendor Selection", (
+        f"Expected 'Provider / Vendor Selection', got {result!r}"
+    )
+    print("  PASS  get_route_name english still works")
+
+
+def test_get_route_name_chinese_heading() -> None:
+    """Report with Chinese heading and 研究路线 should return route name."""
+    text = """\
+## 附录：路由与审计状态
+
+研究路线：Constrained Choice / Shortlist
+"""
+    result = get_route_name(text)
+    assert result == "Constrained Choice / Shortlist", (
+        f"Expected 'Constrained Choice / Shortlist', got {result!r}"
+    )
+    print("  PASS  get_route_name chinese heading")
+
+
+def test_get_route_name_chinese_heading_with_secondary() -> None:
+    """Chinese heading with secondary route in parentheses."""
+    text = """\
+## 附录：路由与审计状态
+
+研究路线：Constrained Choice / Shortlist（主）+ Market Outlook（辅助）
+"""
+    result = get_route_name(text)
+    assert result == "Constrained Choice / Shortlist", (
+        f"Expected 'Constrained Choice / Shortlist', got {result!r}"
+    )
+    print("  PASS  get_route_name chinese heading with secondary")
+
+
+def test_get_route_name_chinese_primary_route() -> None:
+    """Chinese heading with 主路由 declaration."""
+    text = """\
+## 附录：路由与审计状态
+
+主路由：Constrained Choice / Shortlist
+"""
+    result = get_route_name(text)
+    assert result == "Constrained Choice / Shortlist", (
+        f"Expected 'Constrained Choice / Shortlist', got {result!r}"
+    )
+    print("  PASS  get_route_name chinese primary route")
+
+
+def test_get_route_name_chinese_table_cell_pipe() -> None:
+    """Table cell format with pipe separator: 主路由 | Constrained Choice / Shortlist."""
+    text = """\
+## 附录：路由与审计状态
+
+| Audit | 路由 | 证据 |
+|-------|------|------|
+| 主路由 | Constrained Choice / Shortlist / Option Selection | ✅ |
+"""
+    result = get_route_name(text)
+    assert result == "Constrained Choice / Shortlist / Option Selection", (
+        f"Expected 'Constrained Choice / Shortlist / Option Selection', got {result!r}"
+    )
+    print("  PASS  get_route_name chinese table cell pipe")
+
+
 # ── Main ─────────────────────────────────────────────────────────────────
 
 
@@ -1168,6 +1248,12 @@ def main() -> int:
         ("academic 11-column register passes", test_academic_register_11_columns_passes),
         ("academic 7-column register fails", test_academic_register_7_columns_fails),
         ("non-academic 7-column register passes", test_academic_register_7_columns_non_academic_route_passes),
+        # get_route_name Chinese heading tests
+        ("get_route_name english still works", test_get_route_name_english_still_works),
+        ("get_route_name chinese heading", test_get_route_name_chinese_heading),
+        ("get_route_name chinese heading with secondary", test_get_route_name_chinese_heading_with_secondary),
+        ("get_route_name chinese primary route", test_get_route_name_chinese_primary_route),
+        ("get_route_name chinese table cell pipe", test_get_route_name_chinese_table_cell_pipe),
     ]
     failures = []
     for name, fn in tests:
