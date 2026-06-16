@@ -268,6 +268,24 @@ Benchmark 可比性完整性直接约束结论强度：
 
 此约束在 `checklists/academic-analysis-audit.md` §Benchmark comparability 和 `checklists/final-audit.md` §Recall discipline 中对应有检查项。
 
+### Benchmark comparison table template
+
+当报告中涉及多模型或多 benchmark 比较时，建议使用以下结构化表格模板替代 prose 段落。该模板直接映射上文的 9 字段 schema，使可比性信息视觉可扫描：
+
+```
+| Benchmark | Capability claim | Model | Metric | Key limitation / caveat | Source |
+|-----------|------------------|-------|--------|------------------------|--------|
+| GSM8K | 数学推理 | ModelA / ModelB | accuracy: X% vs Y% | Few-shot CoT 设定不同 → 不可直接横比 | [S1], [S2] |
+| MMLU | 知识广度 | ModelA / ModelB | accuracy: X% vs Y% | 不同 dataset split 版本 → 不可比 | [S1], [S3] |
+| HumanEval | 代码生成 | ModelA / ModelB | pass@1: X vs Y | 评估协议不同（原始 vs 第三方复现） | [S2], [S4] |
+```
+
+**适用规则**：
+- 每行必须包含 Source Register 引用（`[S#]`）
+- 当 3+ 字段不可填充时，降级为方向性判断而非强排名（见上文 §Graceful degradation）
+- 该表不替代 Source Register；Source Register 仍须以 11 列扩展模板提供完整来源元数据
+- 当比较行数超过 6 行时，考虑拆分为多子表（按能力类别、benchmark 类型或时间窗口分表）
+
 ### Related references
 
 - `references/technical-analysis-discipline.md` §Benchmark comparability for technical deep-dive — 适用于 technical-deep-dive 路由的工程/部署场景 benchmark 可比性规则
@@ -420,13 +438,49 @@ Fail the report if:
 
 An academic literature review report should visibly show:
 
-### For field progress analysis
+### Opening structure guideline (field-progress 子风格)
+
+For field-progress analysis reports (see `ROUTING-MATRIX.md` academic route「子风格选择指引」), the report should open with **thesis before methodology**:
+
+```
+错误模式（metadata-first drift）：先描述搜索策略和路由选择 → 再输出领域判断
+正确模式（thesis-first）：先给出 open verdict（领域判断） → 再说明方法和证据纪律
+```
+
+| 元素 | 位置 | 说明 |
+|------|------|------|
+| Opening verdict | 报告前 10-15% | 回答：已确认进展、主要限制、什么证据会高估/低估结论、结论适用边界 |
+| Scope / search strategy | opening verdict 之后 | 说明覆盖窗口、检索策略、纳入排除标准 |
+
+> "前 10-15%" 指按**字数**估算的报告篇幅前 10-15%（约前 150-300 字的中文报告），或读者在 **1-2 屏**内可见的范围。对于短报告（<1000 字），opening verdict 应在报告前 2-3 段内给出。
+
+> 例外：当方法论本身是核心输出（如方法学综述）时，可优先描述方法论。其他所有 field-progress 报告都应 thesis-first。
+
+### For standard academic survey (文献综述，默认)
+
+当使用标准 academic survey 风格时，报告应包含（与 `ROUTING-MATRIX.md` 中「For standard academic survey」一致）：
+
 - Scope of the review (time period, sub-fields covered)
 - Key research themes and trends
 - Major breakthroughs and milestones
 - Current state of the art
 - Open questions and future directions
 - Evidence quality assessment
+
+### For field-progress analysis (领域进展判断子风格)
+
+当 field-progress 子风格激活时，在标准 survey 基础上增加以下结构。所有新增结构必须同时满足本文件的证据纪律要求（Source Register、evidence hierarchy、publication bias 等），不可因结构增强而弱化证据纪律。
+
+**Required:**
+- **Opening verdict** — thesis-first judgment in the opening 10-15%: what progress is confirmed, what the main limits are, what evidence overstates/understates conclusions, and the conclusion's applicability boundary
+- **Mechanism or benchmark ladder** — at least one of: mechanism map (decompose capability/architecture into layers and identify where failures occur), benchmark ladder (what each benchmark tests and does not test — avoid conflating benchmarks), or evidence ladder (preprint vs. benchmark paper vs. replication vs. system card vs. human study — what each source type can and cannot support)
+- **Representative failure cases** — 3-5 specific failure cases, each including: task description, expected behavior / ground truth, model failure mode, connection to mechanism-level cause or benchmark hygiene issue, source citation or Source Register mapping
+- **Conditions that would change the conclusion** — not generic limitations, but specific conditions: what new evidence would increase confidence, what counter-evidence would reverse the current judgment, what benchmark hygiene improvements would make scores more credible
+
+**Recommended (non-blocking):**
+- **Research/practice next steps** — concrete directions: how researchers should design evaluations next, how practitioners should self-test before deployment, what metrics or paper types readers should monitor
+
+> 触发条件见 `ROUTING-MATRIX.md`「子风格选择指引」：当问题涉及领域进展判断、能力验证、评测争议时激活；传统文献梳理、方法论比较保持默认 survey-style。
 
 ### For paper comparison
 - Comparison dimensions (methodology, dataset, results, limitations)
