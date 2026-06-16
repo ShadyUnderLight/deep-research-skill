@@ -834,6 +834,27 @@ Use when the task is mainly about:
 - "What is the current state of CRISPR research?" — this is academic route if analyzing research progress; it becomes market outlook if analyzing commercial applications
 - "Compare the methodologies of these 5 papers on LLM hallucination" — this is academic route, not technical deep-dive
 
+### 子风格选择指引
+
+academic / literature review 路由包含两种输出风格：
+
+**标准 academic survey（文献综述，默认）**：传统文献综述输出，适用于文献梳理、方法论对比、技术溯源。输出结构见下方「For standard academic survey」。
+
+**Field-progress analysis（学术领域进展判断，子风格）**：当用户问题需要判断领域真实进展与局限、验证能力突破、分析评测争议时激活。输出结构见下方「For field-progress analysis」。
+
+激活 field-progress 子风格的特征性问题示例：
+- "某技术/学术方向真实进展与局限是什么？"
+- "某评测方法的学术争议是什么？"
+- "某类模型能力是否真的突破？"
+- "最新研究到底说明了什么，没说明什么？"
+
+保持默认 survey-style 的典型问题示例：
+- "梳理某方向的主要研究脉络"
+- "比较某领域的主要方法论"
+- "追踪某技术的学术起源"
+
+当问题模棱两可时，默认使用 survey-style，但可在 opening thesis 中包含一句 field judgment。
+
 ### Read
 - `references/academic-evidence-hierarchy.md`
 - `references/source-traceability-and-claim-citation.md`
@@ -853,13 +874,24 @@ Use when the task is mainly about:
 ### Visible artifact contract
 The final report should visibly show:
 
-**For field progress analysis:**
+**For standard academic survey (文献综述，默认):**
 - scope of the review (time period, sub-fields covered, search strategy)
 - key research themes and trends
 - major breakthroughs and milestones
 - current state of the art
 - open questions and future directions
 - evidence quality assessment
+
+**For field-progress analysis (学术领域进展判断，子风格):**
+- **opening verdict** — thesis-first judgment: what progress is confirmed, what the main limits are, what evidence overstates/understates conclusions, and the conclusion's applicability boundary
+- scope and search strategy (same as survey-style)
+- **mechanism or benchmark ladder** — at least one of: mechanism map (capability/architecture decomposition), benchmark ladder (what each benchmark tests and does not test), or evidence ladder (what source types support which claim strengths)
+- **representative failure cases** — 3-5 specific failure cases with: task description, expected behavior, model failure mode, connection to mechanism-level cause or benchmark hygiene issue, source citation
+- **conditions that would change the conclusion** — what new evidence would increase confidence, what counter-evidence would reverse the judgment, what benchmark hygiene improvements would make scores more credible
+- evidence quality assessment
+- **research/practice next steps** (recommended) — directions for researchers to design evaluations, for practitioners to test before deployment, or for readers to monitor
+
+> 注：field-progress 子风格仍必须满足学术路由的全部证据纪律要求：Source Register（11 列学术扩展）、claim-level citation、evidence hierarchy（双维）、search strategy documentation、publication bias discussion、counter-evidence inclusion。
 
 **For paper comparison:**
 - comparison dimensions (methodology, dataset, results, limitations)
