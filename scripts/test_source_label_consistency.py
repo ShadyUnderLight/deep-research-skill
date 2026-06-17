@@ -6,6 +6,8 @@ import subprocess
 import sys
 import tempfile
 
+from hypothesis import given, strategies as st
+
 SCRIPT = str(
     Path(__file__).resolve().parent / "validate_source_label_consistency.py"
 )
@@ -227,6 +229,224 @@ def test_secondary_source_in_english_sentence_passes() -> None:
     )
 
 
+# ---------------------------------------------------------------------------
+# Issue #317: 机构来源不应触发 vendor caveat；弱源不得承载 [确认事实]
+# ---------------------------------------------------------------------------
+
+
+def test_multilateral_source_without_caveat_passes() -> None:
+    """Primary (multilateral) 来源即使无 caveat 也应通过（非厂商自述）。"""
+    expect_pass(
+        "multilateral source without caveat",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | IEA Report | Primary (multilateral) | 2026-01 | https://iea.org "
+        "| High | §3 |\n\n"
+        "[CONF] According to S01, data center energy will reach 500 TWh.\n",
+    )
+
+
+def test_government_agency_source_without_caveat_passes() -> None:
+    """Primary (US govt agency) 来源不应触发 vendor caveat 检查。"""
+    expect_pass(
+        "government agency source without caveat",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | DOE Report | Primary (US govt agency) | 2026-02 | https://energy.gov "
+        "| High | §2 |\n\n"
+        "[CONF] According to S01, electricity demand is rising.\n",
+    )
+
+
+def test_crowdsourced_source_with_confirmed_label_fails() -> None:
+    """Secondary (crowdsourced) 使用 [CONF] 应报错。"""
+    expect_fail(
+        "crowdsourced source with confirmed label",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Wiki Compilation | Secondary (crowdsourced) | 2026-01 | "
+        "https://wiki.example.com | Low | §2 |\n\n"
+        "[CONF] According to S01, the specification is confirmed.\n",
+    )
+
+
+def test_wikipedia_source_with_confirmed_label_fails() -> None:
+    """Wikipedia 来源使用 [确认事实] 应报错。"""
+    expect_fail(
+        "Wikipedia source with confirmed label",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Wikipedia Article | Wikipedia | 2026-01 | https://en.wikipedia.org "
+        "| Low | §3 |\n\n"
+        "[确认事实] S01 报告称市场规模达 500 亿美元。\n",
+    )
+
+
+def test_rumor_source_with_confirmed_label_fails() -> None:
+    """rumor 来源使用 [CONF] 应报错。"""
+    expect_fail(
+        "rumor source with confirmed label",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Leak Source | rumor | 2026-03 | https://leak.example.com "
+        "| Low | §4 |\n\n"
+        "[CONF] According to S01, the product will launch in Q3.\n",
+    )
+
+
+def test_crowdsourced_source_with_infer_label_passes() -> None:
+    """crowdsourced 来源使用 [推断] 应通过。"""
+    expect_pass(
+        "crowdsourced source with infer label",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Forum Post | crowdsourced | 2026-01 | "
+        "https://forum.example.com | Low | §5 |\n\n"
+        "[推断] S01 推测市场可能增长。\n",
+    )
+
+
+def test_primary_vendor_without_caveat_still_fails() -> None:
+    """Primary (vendor) 无 caveat 应继续报错（回归）。"""
+    expect_fail(
+        "primary vendor without caveat still fails",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | NVIDIA Blog | Primary (vendor) | 2026-01 | https://nvidia.com "
+        "| Medium | Performance claim |\n\n"
+        "[CONF] According to S01, the chip is 25x faster.\n",
+    )
+
+
+def test_multilateral_source_with_confirmed_passes() -> None:
+    """PRIMARY_INSTITUTION 规范类型使用 [CONF] 应通过（回归）。"""
+    expect_pass(
+        "PRIMARY_INSTITUTION with confirmed label",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | IEA Report | PRIMARY_INSTITUTION | 2026-01 | https://iea.org "
+        "| High | §3 |\n\n"
+        "[CONF] According to S01, data center energy will reach 500 TWh.\n",
+    )
+
+
+def test_crowdsourced_canonical_type_with_confirmed_fails() -> None:
+    """CROWDSOURCED 规范类型使用 [CONF] 应报错。"""
+    expect_fail(
+        "CROWDSOURCED canonical with confirmed label",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Wiki | CROWDSOURCED | 2026-01 | https://wiki.example.com "
+        "| Low | §2 |\n\n"
+        "[CONF] According to S01.\n",
+    )
+
+
+def test_unconfirmed_canonical_type_with_confirmed_fails() -> None:
+    """UNCONFIRMED 规范类型使用 [CONF] 应报错。"""
+    expect_fail(
+        "UNCONFIRMED canonical with confirmed label",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Rumor | UNCONFIRMED | 2026-01 | https://example.com "
+        "| Low | §2 |\n\n"
+        "[CONF] According to S01.\n",
+    )
+
+
+# ---------------------------------------------------------------------------
+# Property-based test: _normalize_source_type idempotency and roundtrip
+# ---------------------------------------------------------------------------
+
+# All valid canonical types used in the system.
+_VALID_CANONICAL_TYPES: frozenset[str] = frozenset({
+    "PRIMARY_FILING", "PRIMARY_COMPANY", "PRIMARY_PARTNER",
+    "PRIMARY_INSTITUTION", "PRIMARY_DEV", "SECONDARY_MEDIA",
+    "SECONDARY_ANALYST", "SECONDARY_FEED", "SECONDARY",
+    "TRANSCRIPT", "INFERRED", "UNCONFIRMED", "WEAK_SIGNAL",
+    "CROWDSOURCED", "PRIMARY",
+})
+
+
+@given(st.sampled_from([
+    "Primary (multilateral)",
+    "Primary (multilateral report)",
+    "Primary (multilateral analysis)",
+    "Primary (US govt agency)",
+    "Primary (government agency)",
+    "government agency",
+    "regulator",
+    "public agency",
+    "Secondary (crowdsourced)",
+    "crowdsourced",
+    "Wikipedia",
+    "wiki",
+    "rumor",
+    "leak",
+    "传闻",
+    "unconfirmed",
+    "Primary (vendor)",  # 仍为 PRIMARY_COMPANY
+    "PRIMARY_INSTITUTION",
+    "CROWDSOURCED",
+    "PRIMARY_COMPANY",
+    "SECONDARY_MEDIA",
+]))
+def test_normalize_source_type_property(source_type: str) -> None:
+    """Property: normalized canonical type is idempotent and valid.
+
+    For all known free-text and canonical source types, _normalize_source_type
+    returns a stable value, running it twice is idempotent, and the output
+    is one of the valid canonical types.
+    """
+    from validate_source_label_consistency import _normalize_source_type
+
+    first = _normalize_source_type(source_type)
+    second = _normalize_source_type(first)
+
+    # Idempotent: second application should not change value
+    assert first == second, (
+        f"normalize_source_type not idempotent for {source_type!r}: "
+        f"{first!r} -> {second!r}"
+    )
+    # Result is not empty
+    assert first.strip(), f"normalize_source_type returned empty for {source_type!r}"
+    # Result is a valid canonical type
+    assert first.upper() in _VALID_CANONICAL_TYPES, (
+        f"normalize_source_type returned unexpected canonical type "
+        f"{first!r} for {source_type!r}"
+    )
+
+
 def main() -> int:
     tests = [
         test_secondary_source_with_confirmed_label_fails,
@@ -241,6 +461,18 @@ def main() -> int:
         test_primary_partner_with_caveat_passes,
         test_infer_label_on_secondary_passes,
         test_secondary_source_in_english_sentence_passes,
+        # Issue #317 tests
+        test_multilateral_source_without_caveat_passes,
+        test_government_agency_source_without_caveat_passes,
+        test_crowdsourced_source_with_confirmed_label_fails,
+        test_wikipedia_source_with_confirmed_label_fails,
+        test_rumor_source_with_confirmed_label_fails,
+        test_crowdsourced_source_with_infer_label_passes,
+        test_primary_vendor_without_caveat_still_fails,
+        test_multilateral_source_with_confirmed_passes,
+        test_crowdsourced_canonical_type_with_confirmed_fails,
+        test_unconfirmed_canonical_type_with_confirmed_fails,
+        test_normalize_source_type_property,
     ]
     failures = []
     for test in tests:
