@@ -610,6 +610,125 @@ Each dimension conclusion is backed by [S01] and [S02].
 """
 
 
+# ── Shared base for market-outlook monitoring test fixtures ────────────
+
+_MO_BODY_PREFIX = """\
+# Power Market Outlook 2026
+
+## Route and audit status
+
+**Primary route**: Market Outlook / Industry Evolution
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
+| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+
+## 执行摘要
+
+Power constraints are tightening across global data center markets [S01].
+
+## 市场现状
+
+Current snapshot shows 5.2 GW under construction [S02].
+
+## Dimension conclusions
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | 2025 | 2026E | 数字角色 |
+|--------|------|-------|---------|
+| DC Power | 50GW | 65GW | observed |
+| Growth | 20% | 30% | estimate |
+
+"""
+
+_MO_SOURCE_REGISTER = """
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _market_outlook_with_monitoring(monitoring_body: str) -> str:
+    """Build a valid market-outlook report with a given monitoring section body."""
+    return _MO_BODY_PREFIX + monitoring_body + _MO_SOURCE_REGISTER
+
+
+def _market_outlook_with_empty_cell() -> str:
+    """Report where one monitoring signal has an empty Cadence cell.
+
+    Tests the cell-index alignment fix: the empty cell must NOT shift
+    subsequent column indices, so the signal is correctly detected as
+    not fully-defined.
+    """
+    table = """\
+## Monitoring Signals
+
+| Signal | Threshold | Cadence | Source | Trigger-to-action | 数字角色 |
+|--------|-----------|---------|--------|-------------------|---------|
+| GPU utilization | >85% for 3 months | Monthly | Cloud provider API | Notify capacity team | observed |
+| Power cost | >$0.12/kWh | | EIA report | Reassess location strategy | observed |
+| Grid interconnection | >6 months delay | Per project | Utility queue data | Explore colocation option | observed |
+"""
+    return _market_outlook_with_monitoring(table)
+
+
+def _market_outlook_uppercase_columns() -> str:
+    """Report with UPPERCASE monitoring table column headers.
+
+    Validates case-insensitive keyword matching in _map_table_header.
+    """
+    table = """\
+## Monitoring Signals
+
+| SIGNAL | THRESHOLD | CADENCE | SOURCE | TRIGGER-TO-ACTION | 数字角色 |
+|--------|-----------|---------|--------|-------------------|---------|
+| GPU utilization | >85% 3mo | Monthly | Cloud API | Notify team | observed |
+| Power cost | >$0.12/kWh | Quarterly | EIA report | Reassess | observed |
+| Grid delay | >6 months | Per proj | Utility queue | Explore colo | observed |
+"""
+    return _market_outlook_with_monitoring(table)
+
+
+def _market_outlook_two_signals() -> str:
+    """Report with only 2 fully-defined monitoring signals (<3 threshold)."""
+    table = """\
+## Monitoring Signals
+
+| Signal | Threshold | Cadence | Source | Trigger-to-action | 数字角色 |
+|--------|-----------|---------|--------|-------------------|---------|
+| GPU utilization | >85% 3mo | Monthly | Cloud API | Notify team | observed |
+| Power cost | >$0.12/kWh | Quarterly | EIA report | Reassess | observed |
+"""
+    return _market_outlook_with_monitoring(table)
+
+
+def _market_outlook_strict_with_partial() -> str:
+    """Report with 3 fully-defined + 1 partially-defined monitoring signal.
+
+    Without --strict: passes (exit 0).  With --strict: passes with warnings.
+    """
+    table = """\
+## Monitoring Signals
+
+| Signal | Threshold | Cadence | Source | Trigger-to-action | 数字角色 |
+|--------|-----------|---------|--------|-------------------|---------|
+| GPU utilization | >85% 3mo | Monthly | Cloud API | Notify team | observed |
+| Power cost | >$0.12/kWh | Quarterly | EIA report | Reassess | observed |
+| Grid delay | >6 months | Per proj | Utility queue | Explore colo | observed |
+| New entrant | announced | | Vendor press | | observed |
+"""
+    return _market_outlook_with_monitoring(table)
+
+
 def _report_shared_workflow() -> str:
     """Report using shared-workflow path (no primary route).
 
@@ -1264,6 +1383,73 @@ class TestMarketOutlookMonitoringActionability:
             f"Expected monitoring-related error, got:\n{result.stdout}"
         )
 
+    def test_empty_cell_does_not_shift_indices(self) -> None:
+        """Row with an empty cell must NOT be counted as fully-defined.
+
+        Regression test for the `if c.strip()` cell-parsing bug found in
+        cross-review: filtering empty cells shifts column indices and
+        causes false positives.
+        """
+        result = _run_audit(
+            _market_outlook_with_empty_cell(),
+            extra_args=["--route", "market-outlook"],
+        )
+        assert result.returncode == 2, (
+            f"Expected exit 2 for row with empty cell, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+        # Should report only 2 fully-defined signals (GPU + Grid, not Power cost)
+        assert "2" in result.stdout, (
+            f"Expected '2' fully-defined signals in output, got:\n{result.stdout}"
+        )
+
+    def test_uppercase_column_headers(self) -> None:
+        """UPPERCASE column headers must be matched case-insensitively."""
+        result = _run_audit(
+            _market_outlook_uppercase_columns(),
+            extra_args=["--route", "market-outlook"],
+        )
+        assert result.returncode == 0, (
+            f"Expected exit 0 for uppercase columns, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_two_signals_blocking(self) -> None:
+        """Only 2 fully-defined signals (<3 threshold) must block."""
+        result = _run_audit(
+            _market_outlook_two_signals(),
+            extra_args=["--route", "market-outlook"],
+        )
+        assert result.returncode == 2, (
+            f"Expected exit 2 for 2 signals only, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_strict_mode_warns_on_partial(self) -> None:
+        """--strict mode adds warnings for partially-defined signals.
+
+        Exit code 1 (=warnings) because partial-signal warnings exist;
+        not exit 0 (no warnings) and not exit 2 (blocking errors).
+        """
+        result = _run_audit(
+            _market_outlook_strict_with_partial(),
+            extra_args=["--route", "market-outlook", "--strict"],
+        )
+        # Warnings exist → exit 1 (not blocking, not fully pass)
+        assert result.returncode == 1, (
+            f"Expected exit 1 (warnings) for partial signals, "
+            f"got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+        # Overall verdict should be conditional-pass
+        assert "conditional-pass" in result.stdout, (
+            f"Expected 'conditional-pass' for partial signals, got:\n{result.stdout}"
+        )
+        # Should generate warnings about the partial signal
+        assert "⚠" in result.stdout or "warning" in result.stdout.lower(), (
+            f"Expected strict mode warnings, got:\n{result.stdout}"
+        )
+
 
 class TestSharedWorkflow:
     """Shared-workflow reports should fall back to default validators."""
@@ -1446,6 +1632,14 @@ if __name__ == "__main__":
          TestMarketOutlookMonitoringActionability().test_no_monitoring_section_blocking),
         ("market-outlook monitoring error message",
          TestMarketOutlookMonitoringActionability().test_non_actionable_error_mentions_monitoring),
+        ("market-outlook empty cell no false positive",
+         TestMarketOutlookMonitoringActionability().test_empty_cell_does_not_shift_indices),
+        ("market-outlook uppercase columns match",
+         TestMarketOutlookMonitoringActionability().test_uppercase_column_headers),
+        ("market-outlook 2 signals blocking",
+         TestMarketOutlookMonitoringActionability().test_two_signals_blocking),
+        ("market-outlook strict mode warns partial",
+         TestMarketOutlookMonitoringActionability().test_strict_mode_warns_on_partial),
         # TestSharedWorkflow
         ("shared-workflow valid passes", TestSharedWorkflow().test_exit_code_zero_when_valid),
         ("shared-workflow fallback warning", TestSharedWorkflow().test_fallback_warning_in_stderr),

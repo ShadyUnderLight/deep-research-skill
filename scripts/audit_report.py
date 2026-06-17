@@ -104,6 +104,10 @@ _ROUTE_ALIASES: dict[str, str] = {
 # Default route used when auto-detection fails or an unknown route is given.
 _DEFAULT_ROUTE = "technical-deep-dive"
 
+# Minimum number of fully-defined monitoring signals required for
+# market-outlook reports to pass the actionability gate.
+MIN_MONITORING_SIGNALS = 3
+
 
 def _normalize_route(name: str) -> str:
     """Normalize a display route name to a canonical key.
@@ -292,7 +296,8 @@ def _run_market_outlook_monitoring_actionability(
 
     # Find monitoring-related sections
     monitoring_sections = [
-        (h, b) for h, b in sections if "monitoring" in h.lower()
+        (h, b) for h, b in sections
+        if "monitoring" in h.lower() or "监测" in h
     ]
 
     if not monitoring_sections:
@@ -320,11 +325,9 @@ def _run_market_outlook_monitoring_actionability(
         in priority order (threshold → cadence → source → trigger_to_action);
         each column can match at most one field.
         """
-        cols = [
-            c.strip().lower()
-            for c in header_line.split("|")
-            if c.strip()
-        ]
+        # Split and drop leading/trailing artifacts from | markers
+        raw = header_line.split("|")
+        cols = [c.strip().lower() for c in raw[1:-1]]
         mapping: dict[str, int] = {}
         used: set[int] = set()
 
@@ -366,14 +369,15 @@ def _run_market_outlook_monitoring_actionability(
                 # Parse data rows
                 while i < len(body_lines) and body_lines[i].strip().startswith("|"):
                     row = body_lines[i].strip()
-                    cells = [c.strip() for c in row.split("|") if c.strip()]
+                    # Keep empty cells to preserve column index alignment
+                    raw_cells = row.split("|")
+                    cells = [c.strip() for c in raw_cells[1:-1]]
                     all_filled = True
                     missing_fields: list[str] = []
                     for field, col_idx in col_map.items():
                         if col_idx >= len(cells) or not cells[col_idx]:
                             all_filled = False
                             missing_fields.append(field)
-                            break
                     if all_filled:
                         fully_defined += 1
                     else:
@@ -390,14 +394,16 @@ def _run_market_outlook_monitoring_actionability(
     errors: list[str] = []
     warnings: list[str] = []
 
-    if fully_defined < 3:
+    if fully_defined < MIN_MONITORING_SIGNALS:
         errors.append(
             f"Only {fully_defined} fully-defined monitoring signal(s) "
-            f"found; need ≥3 with all four actionability fields "
-            f"(threshold, cadence, source, trigger-to-action)"
+            f"found; need ≥{MIN_MONITORING_SIGNALS} with all four "
+            f"actionability fields (threshold, cadence, source, "
+            f"trigger-to-action)"
         )
 
-    if kwargs.get("strict") and partial_signals:
+    strict = kwargs.get("strict", False)
+    if strict and partial_signals:
         warnings.append(
             f"{len(partial_signals)} partially-defined monitoring signal(s):"
         )
