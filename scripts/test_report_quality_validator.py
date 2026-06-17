@@ -1127,7 +1127,264 @@ def test_academic_register_7_columns_non_academic_route_passes() -> None:
         f"stdout: {result.stdout}"
     )
     print("  PASS  non-academic 7-column register passes")
-# ── get_route_name Chinese heading tests ──────────────────────────────────
+
+
+# ── Evidence section reference validation tests ───────────────────────
+# These test check_audit_evidence_section_refs functionality.
+
+def test_evidence_subsection_ref_valid_passes() -> None:
+    """Audit evidence with §X.Y ref that matches a body heading → pass.
+    Report has numbered headings like "## 7.2 Technical Deep-dive"."""
+    text = """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §7.2 验证 hard-fail 条件 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## 1. Introduction
+
+Body text with citation [S01].
+
+## 2. Analysis
+
+### 7.2 Technical Deep-dive
+
+Hard-fail verification content [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_pass("evidence subsection ref valid passes", text)
+
+
+def test_evidence_subsection_ref_phantom_fails() -> None:
+    """Audit evidence with §X.Y ref that has NO matching heading → blocking.
+    Report has numbered headings but no "## 7.2" heading."""
+    text = """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §7.2 验证 hard-fail 条件 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## 1. Introduction
+
+Body text with citation [S01].
+
+## 2. Analysis
+
+### 7.1 Component Analysis
+
+Analysis text [S01].
+
+### 7.3 Integration
+
+Analysis text [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_fail("evidence subsection ref phantom fails", text)
+
+
+def test_evidence_appendix_ref_valid_passes() -> None:
+    """Audit evidence with Appendix reference that matches a heading → pass."""
+    text = """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | Appendix B 补充数据 |
+
+## 1. Introduction
+
+Body text with citation [S01].
+
+## Appendix B
+
+Supplementary data [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_pass("evidence appendix ref valid passes", text)
+
+
+def test_evidence_appendix_ref_phantom_fails() -> None:
+    """Audit evidence with Appendix reference that has NO matching heading → blocking."""
+    text = """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | Appendix B 补充数据 |
+
+## 1. Introduction
+
+Body text with citation [S01].
+
+## Appendix A
+
+Previous data [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_fail("evidence appendix ref phantom fails", text)
+
+
+def test_evidence_no_numbered_headings_skips_section_refs() -> None:
+    """Report with no numbered headings → §X.Y and §X refs are not checked
+    (gate: can't verify what doesn't exist structurally)."""
+    text = """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §7.2 验证 |
+| final-audit | ✅ Passed | 各关卡可追溯 |
+
+## Introduction
+
+Body text with citation [S01].
+
+## Methodology
+
+Methodology content [S01].
+
+## Findings
+
+Key findings [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_pass("evidence no numbered headings skips section refs", text)
+
+
+def test_evidence_multiple_phantom_refs_all_reported() -> None:
+    """Multiple phantom refs in different rows → all reported, not just the first."""
+    text = """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §7.2 正文引用 |
+| quantitative-role | ✅ Passed | §8.3 表格角色列 |
+
+## 1. Introduction
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_fail("evidence multiple phantom refs all reported", text)
+
+
+def test_evidence_phantom_ref_not_passed_row_skipped() -> None:
+    """Phantom ref in a row that is NOT passed → skipped (only passed rows matter)."""
+    text = """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ❌ Not run | §7.2 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## 1. Introduction
+
+Body text with citation [S01].
+
+## 2. Analysis
+
+Analysis content [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_pass("evidence phantom ref not passed row skipped", text)
+
+
+def test_evidence_subsection_ref_no_heading_at_all_but_unnumbered_passes() -> None:
+    """§7.2 in evidence column, no numbered headings at all → pass (gate)."""
+    text = """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §7.2 正文引用 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## Introduction
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_pass("evidence subsection ref unnumbered doc passes", text)
 # These import get_route_name directly for precise unit-level testing.
 
 
@@ -1248,6 +1505,15 @@ def main() -> int:
         ("academic 11-column register passes", test_academic_register_11_columns_passes),
         ("academic 7-column register fails", test_academic_register_7_columns_fails),
         ("non-academic 7-column register passes", test_academic_register_7_columns_non_academic_route_passes),
+        # evidence section reference tests
+        ("evidence subsection ref valid passes", test_evidence_subsection_ref_valid_passes),
+        ("evidence subsection ref phantom fails", test_evidence_subsection_ref_phantom_fails),
+        ("evidence appendix ref valid passes", test_evidence_appendix_ref_valid_passes),
+        ("evidence appendix ref phantom fails", test_evidence_appendix_ref_phantom_fails),
+        ("evidence no numbered headings skips section refs", test_evidence_no_numbered_headings_skips_section_refs),
+        ("evidence multiple phantom refs all reported", test_evidence_multiple_phantom_refs_all_reported),
+        ("evidence phantom ref not passed row skipped", test_evidence_phantom_ref_not_passed_row_skipped),
+        ("evidence subsection ref unnumbered doc passes", test_evidence_subsection_ref_no_heading_at_all_but_unnumbered_passes),
         # get_route_name Chinese heading tests
         ("get_route_name english still works", test_get_route_name_english_still_works),
         ("get_route_name chinese heading", test_get_route_name_chinese_heading),

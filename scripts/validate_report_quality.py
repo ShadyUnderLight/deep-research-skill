@@ -51,6 +51,14 @@ AUDIT_COL_RE = re.compile(r"Audit|审计|检查项", re.IGNORECASE)
 STATUS_COL_RE = re.compile(r"Status|状态|结果", re.IGNORECASE)
 EVIDENCE_COL_RE = re.compile(r"证据|Evidence|Proof|执行证据", re.IGNORECASE)
 
+# Patterns for evidence column section reference validation
+# §X.Y — subsection reference (e.g. §7.2), excludes §X.YZ and ranges
+SUBSECTION_REF_RE = re.compile(r'(?<!\d)§(\d+)\.(\d+)(?![\d.])')
+# Appendix / 附录 X — named anchor reference
+APPENDIX_REF_RE = re.compile(r'(?:Appendix|附录)\s+([A-Za-z0-9]+)', re.IGNORECASE)
+# Secondary route declaration (in route/audit block)
+SECONDARY_ROUTE_RE = re.compile(r'\*\*Secondary\s+route\*\*[:\s]+(.+)', re.IGNORECASE)
+
 BODY_SXX_RE = re.compile(r"\[S\d{2}\]")
 AUTHOR_YEAR_RE = re.compile(
     r"\([A-Z][a-z]+(?:\s+et\s+al\.?)?,\s*\d{4}(?:,\s*[A-Za-z .]+)?\)"
@@ -310,6 +318,144 @@ def check_audit_evidence(cleaned: str) -> list[str]:
                 f"Passed audit '{audit_name}' has vague evidence: "
                 f"'{evidence_val or '(empty)'}'"
             )
+
+    return issues
+
+
+# ── Evidence section reference validation ─────────────────────────────────
+
+
+def _collect_headings(text: str) -> list[str]:
+    """Return list of heading texts (after # prefix) from markdown body.
+
+    Excludes headings within the ## Route and audit status block to avoid
+    false matches against the audit table itself.
+    """
+    lines = text.splitlines()
+    # Find the route/audit block bounds to exclude its headings
+    audit_bounds = section_bounds(text, ROUTE_AUDIT_HEADING)
+    if audit_bounds is not None:
+        audit_start, audit_end = audit_bounds
+    else:
+        audit_start, audit_end = -1, -1
+
+    headings: list[str] = []
+    for i, line in enumerate(lines):
+        # Skip lines inside the route/audit block
+        if audit_start <= i < audit_end:
+            continue
+        m = HEADING_RE.match(line.rstrip())
+        if m:
+            heading_text = m.group(2).strip()
+            headings.append(heading_text)
+    return headings
+
+
+def _heading_matches_ref(ref: str, heading_text: str) -> bool:
+    """Check if a numeric ref (e.g. '7.2' or '3') matches a heading.
+
+    For '7.2': heading starts with '7.2' followed by boundary chars.
+    For '3': heading starts with '3.' / '3:' / '3 ' or similar boundary.
+    """
+    pattern = rf'^{re.escape(ref)}(?:[\.\s:;]|\b|$)'
+    return bool(re.search(pattern, heading_text))
+
+
+def _heading_matches_appendix(ref: str, heading_text: str) -> bool:
+    """Check if an appendix ref (e.g. 'B') matches a heading."""
+    escaped = re.escape(ref)
+    pat = rf'(?:Appendix|附录)\s+{escaped}(?:\b|$)'
+    return bool(re.search(pat, heading_text, re.IGNORECASE))
+
+
+def _has_numbered_headings(headings: list[str]) -> bool:
+    """Check if any heading starts with a digit (numbered section structure)."""
+    for h in headings:
+        stripped = h.lstrip()
+        if stripped and stripped[0].isdigit():
+            # Confirm it starts with a real number, not just a stray digit
+            if re.match(r'\d+', stripped):
+                return True
+    return False
+
+
+def check_audit_evidence_section_refs(cleaned: str) -> list[str]:
+    """Verify that section references (§X.Y, Appendix X) in audit evidence
+    column correspond to actual headings in the report body.
+
+    Parses the audit status table, extracts section references from the
+    evidence column of passed rows, and checks them against the report's
+    heading structure.
+
+    Design:
+    - §X.Y (subsection) refs are checked strictly: the heading must start
+      with the same number prefix (e.g. §7.2 → '### 7.2 Technical Deep-dive').
+    - Appendix refs are checked case-insensitively against heading text.
+    - §X.Y refs are only checked when the document has at least one numbered
+      heading; without numbered structure the reference convention is unknown
+      and we skip to avoid false positives.
+    - Appendix refs are always checked (unambiguous naming convention).
+
+    Returns list of blocking errors, one per phantom reference.
+    """
+    # Collect body headings (excluding the audit block itself)
+    all_headings = _collect_headings(cleaned)
+
+    sec = section_text(cleaned, ROUTE_AUDIT_HEADING)
+    if sec is None:
+        return []
+    table = parse_table(sec)
+    if table is None:
+        return []
+
+    header = table[0]
+    audit_idx = find_col_index(header, [AUDIT_COL_RE])
+    status_idx = find_col_index(header, [STATUS_COL_RE])
+    evidence_idx = find_col_index(header, [EVIDENCE_COL_RE])
+
+    if any(i == -1 for i in (audit_idx, status_idx, evidence_idx)):
+        return []  # Can't validate without all three columns
+
+    # Gate: only verify numbered refs (§X.Y) if doc has numbered structure
+    has_numbered = _has_numbered_headings(all_headings)
+
+    issues: list[str] = []
+    for row in table[1:]:
+        if len(row) <= max(audit_idx, status_idx, evidence_idx):
+            continue
+        status_val = row[status_idx].strip()
+        if not AUDIT_PASSED_RE.match(status_val):
+            continue
+        evidence_val = row[evidence_idx].strip()
+        audit_name = row[audit_idx].strip().split("\n")[0][:60]
+
+        # --- Check subsection references §X.Y ---
+        for m in SUBSECTION_REF_RE.finditer(evidence_val):
+            ref = f"{m.group(1)}.{m.group(2)}"
+            if not has_numbered:
+                continue  # skip §X.Y check in unnumbered documents
+            found = any(
+                _heading_matches_ref(ref, h) for h in all_headings
+            )
+            if not found:
+                issues.append(
+                    f"Audit '{audit_name}' evidence references "
+                    f"'{m.group()}' but no heading matches "
+                    f"'{ref}' in the report body"
+                )
+
+        # --- Check appendix references ---
+        for m in APPENDIX_REF_RE.finditer(evidence_val):
+            ref = m.group(1)
+            found = any(
+                _heading_matches_appendix(ref, h) for h in all_headings
+            )
+            if not found:
+                issues.append(
+                    f"Audit '{audit_name}' evidence references "
+                    f"'{m.group()}' but no heading matches it "
+                    f"in the report body"
+                )
 
     return issues
 
@@ -990,6 +1136,7 @@ def validate_file(path: Path, strict: bool = False) -> int:
     errors.extend(check_route_audit_block(cleaned))
     errors.extend(check_route_declaration(cleaned))
     errors.extend(check_audit_evidence(cleaned))
+    errors.extend(check_audit_evidence_section_refs(cleaned))
 
     # 2. Source Register
     errors.extend(check_source_register_exists(cleaned))
