@@ -36,6 +36,7 @@ from validate_report_quality import (
     check_route_audit_block,
     check_route_declaration,
     check_audit_evidence,
+    check_audit_evidence_section_refs,
     check_source_register_exists,
     check_source_register_columns,
     check_source_register_missing_ids,
@@ -163,6 +164,7 @@ def _run_report_quality(path: Path, **kwargs: bool) -> CheckResult:
     errors.extend(_run(check_route_audit_block, cleaned))
     errors.extend(_run(check_route_declaration, cleaned))
     errors.extend(_run(check_audit_evidence, cleaned))
+    errors.extend(_run(check_audit_evidence_section_refs, cleaned))
 
     # 2. Source Register
     errors.extend(_run(check_source_register_exists, cleaned))
