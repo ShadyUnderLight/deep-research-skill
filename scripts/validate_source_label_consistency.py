@@ -48,6 +48,25 @@ _PRIMARY_COMPANY_TYPES: frozenset[str] = frozenset({
     "PRIMARY",  # simplified 5-class system
 })
 
+# Primary institution / agency / multilateral source types.
+# These are authoritative public sources (not company self-report),
+# so they do NOT need a vendor self-reporting caveat.
+_PRIMARY_INSTITUTION_TYPES: frozenset[str] = frozenset({
+    "PRIMARY_INSTITUTION",
+})
+
+# Crowdsourced / tertiary source types. These must NOT use confirmed labels.
+_CROWDSOURCED_TYPES: frozenset[str] = frozenset({
+    "CROWDSOURCED",
+})
+
+# Unconfirmed / rumor / leak source types. These must NOT use confirmed labels.
+# Note: UNCONFIRMED is already in _KNOWN_OTHER_TYPES; the dedicated frozenset
+# allows the elif chain to catch it before _is_unknown_type.
+_UNCONFIRMED_TYPES: frozenset[str] = frozenset({
+    "UNCONFIRMED",
+})
+
 # Free-text source type to canonical type mapping (Chinese + common English aliases).
 # Used by _normalize_source_type() to map free-text source types
 # (common in technical reports) to the canonical types that the validator checks.
@@ -101,6 +120,27 @@ _FREETEXT_TYPE_MAP: dict[str, str] = {
     # Inference
     "技术分析": "INFERRED",
     "多来源综合": "INFERRED",
+    # Multilateral / government / agency → PRIMARY_INSTITUTION
+    "primary (multilateral)": "PRIMARY_INSTITUTION",
+    "primary (multilateral report)": "PRIMARY_INSTITUTION",
+    "primary (multilateral analysis)": "PRIMARY_INSTITUTION",
+    "primary (us govt agency)": "PRIMARY_INSTITUTION",
+    "primary (government agency)": "PRIMARY_INSTITUTION",
+    "government agency": "PRIMARY_INSTITUTION",
+    "regulator": "PRIMARY_INSTITUTION",
+    "public agency": "PRIMARY_INSTITUTION",
+    # Vendor claim → PRIMARY_COMPANY (统一处理 caveat)
+    "primary (vendor)": "PRIMARY_COMPANY",
+    # Crowdsourced / tertiary → CROWDSOURCED
+    "secondary (crowdsourced)": "CROWDSOURCED",
+    "crowdsourced": "CROWDSOURCED",
+    "wikipedia": "CROWDSOURCED",
+    "wiki": "CROWDSOURCED",
+    # Rumor / leak → UNCONFIRMED
+    "rumor": "UNCONFIRMED",
+    "leak": "UNCONFIRMED",
+    "传闻": "UNCONFIRMED",
+    "unconfirmed": "UNCONFIRMED",
 }
 
 # Case-insensitive lookup map built from _FREETEXT_TYPE_MAP.
@@ -238,16 +278,34 @@ def _parse_register_table(table_lines: list[str]) -> list[tuple[str, str]]:
     return sources
 
 
+def _is_type_in(source_type: str, type_set: frozenset[str]) -> bool:
+    """Check if a normalized source type belongs to a given frozenset."""
+    return source_type.strip().upper() in type_set
+
+
 def _is_secondary_type(source_type: str) -> bool:
     """Check if a source type is secondary (granular or simplified)."""
-    upper = source_type.strip().upper()
-    return upper in _SECONDARY_TYPES
+    return _is_type_in(source_type, _SECONDARY_TYPES)
 
 
 def _is_primary_company_type(source_type: str) -> bool:
     """Check if a source type is a primary company (needs caveat)."""
-    upper = source_type.strip().upper()
-    return upper in _PRIMARY_COMPANY_TYPES
+    return _is_type_in(source_type, _PRIMARY_COMPANY_TYPES)
+
+
+def _is_institution_type(source_type: str) -> bool:
+    """Check if a source type is a primary institution/agency (no caveat)."""
+    return _is_type_in(source_type, _PRIMARY_INSTITUTION_TYPES)
+
+
+def _is_crowdsourced_type(source_type: str) -> bool:
+    """Check if a source type is crowdsourced/tertiary (no confirmed label)."""
+    return _is_type_in(source_type, _CROWDSOURCED_TYPES)
+
+
+def _is_unconfirmed_type(source_type: str) -> bool:
+    """Check if a source type is unconfirmed/rumor (no confirmed label)."""
+    return _is_type_in(source_type, _UNCONFIRMED_TYPES)
 
 
 def _source_ref_re(source_id: str) -> re.Pattern:
@@ -275,21 +333,36 @@ def _normalize_source_type(source_type: str) -> str:
 
     Steps:
     1. Strip leading/trailing whitespace
-    2. Strip parenthetical content: both CJK （arXiv） and half-width (arXiv)
-    3. Do case-insensitive lookup in _FREETEXT_TYPE_MAP
-    4. If found, return the canonical type; otherwise return the stripped string
+    2. Case-insensitive lookup in _FREETEXT_TYPE_MAP (complete string,
+       including parenthetical content)
+    3. If not found, strip parenthetical content: both CJK （arXiv） and
+       half-width (arXiv), then try lookup again
+    4. If still not found, return the stripped string for canonical type matching
+       (e.g. \"PRIMARY\" for the simplified 5-class system)
 
-    Always returns a parentheses-stripped value so canonical types like
-    \"PRIMARY_FILING (annual report)\" still match _is_secondary_type() etc.
+    The two-pass lookup ensures parenthetical variants like
+    \"Primary (multilateral)\" are matched before the parenthetical content
+    is stripped (which would leave just \"Primary\", conflating it with
+    the simplified 5-class PRIMARY).
     """
+    # Pass 1: whole-string lookup (preserves parenthetical context)
     s = source_type.strip()
-    # Strip parenthetical content (CJK and half-width parentheses)
-    s = re.sub(r'[（(][^）)]*[）)]', '', s).strip()
-    s = re.sub(r'\([^)]*\)', '', s).strip()
-    # Case-insensitive lookup in freetext map
     lower = s.lower()
     if lower in _FREETEXT_TYPE_MAP_CI:
         return _FREETEXT_TYPE_MAP_CI[lower]
+
+    # Pass 2: strip parenthetical content and retry.
+    # Loop to handle potential nested parentheses (e.g. "Primary (multilateral (report))").
+    # Each iteration strips one level; stops when no more parentheses remain.
+    while True:
+        stripped = re.sub(r'[（(][^）)]*[）)]|\([^)]*\)', '', s).strip()
+        if stripped == s:
+            break
+        s = stripped
+    lower = s.lower()
+    if lower in _FREETEXT_TYPE_MAP_CI:
+        return _FREETEXT_TYPE_MAP_CI[lower]
+
     return s  # Return sanitized string for canonical type matching
 
 
@@ -312,6 +385,7 @@ def _is_unknown_type(source_type: str) -> bool:
     _KNOWN_OTHER_TYPES: frozenset[str] = frozenset({
         "PRIMARY_FILING", "PRIMARY_DEV", "INFERRED",
         "UNCONFIRMED", "WEAK_SIGNAL", "TRANSCRIPT",
+        "PRIMARY_INSTITUTION", "CROWDSOURCED",
     })
     if _is_secondary_type(source_type):
         return False
@@ -325,9 +399,13 @@ def _is_unknown_type(source_type: str) -> bool:
 def check_source_consistency(text: str, strict: bool = False) -> list[str]:
     """Check label/source type consistency. Returns list of error messages.
 
-    Two checks:
+    Checks (applied in order):
     1. Secondary sources must not be referenced with confirmed labels.
-    2. Primary company sources must have a self-reporting caveat nearby.
+    2. Primary institution/agency sources pass through (no caveat needed).
+    3. Primary company sources must have a self-reporting caveat nearby.
+    4. Crowdsourced/tertiary sources must not be referenced with confirmed labels.
+    5. Unconfirmed/rumor/leak sources must not be referenced with confirmed labels.
+    6. Unknown source types generate a warning (or error in strict mode).
 
     When strict=True, unknown source types cause errors (not just warnings).
     """
@@ -370,8 +448,14 @@ def check_source_consistency(text: str, strict: bool = False) -> list[str]:
                         f"but referenced with confirmed label: {sent[:100]}"
                     )
 
+        elif _is_institution_type(norm_type):
+            # Check 2: Primary institution/agency source — pass through.
+            # These are authoritative public sources (multilateral, government,
+            # regulator, agency). No caveat needed; no confirmed-label restriction.
+            pass
+
         elif _is_primary_company_type(norm_type):
-            # Check 2: Primary company source needs self-reporting caveat.
+            # Check 3: Primary company source needs self-reporting caveat.
             for sent in sentences:
                 if not ref_re.search(sent):
                     continue
@@ -382,8 +466,30 @@ def check_source_consistency(text: str, strict: bool = False) -> list[str]:
                         f"{sent[:100]}"
                     )
 
+        elif _is_crowdsourced_type(norm_type):
+            # Check 4: Crowdsourced/tertiary source must not use confirmed label.
+            for sent in sentences:
+                if not ref_re.search(sent):
+                    continue
+                if CONFIRMED_LABEL_RE.search(sent):
+                    errors.append(
+                        f"source {source_id} ({source_type}) is crowdsourced "
+                        f"but referenced with confirmed label: {sent[:100]}"
+                    )
+
+        elif _is_unconfirmed_type(norm_type):
+            # Check 5: Unconfirmed/rumor/leak source must not use confirmed label.
+            for sent in sentences:
+                if not ref_re.search(sent):
+                    continue
+                if CONFIRMED_LABEL_RE.search(sent):
+                    errors.append(
+                        f"source {source_id} ({source_type}) is unconfirmed "
+                        f"but referenced with confirmed label: {sent[:100]}"
+                    )
+
         elif _is_unknown_type(norm_type):
-            # Check 3: Unknown source type detection.
+            # Check 6: Unknown source type detection.
             msg = (
                 f"source {source_id} has unrecognized source type "
                 f"'{source_type}': map to a canonical type or correct the entry"

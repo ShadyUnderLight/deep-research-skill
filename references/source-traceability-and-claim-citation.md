@@ -256,13 +256,15 @@ Classify every source in the register by type. Use these types consistently:
 - `PRIMARY_FILING` — official regulatory filing (招股书, 年报, 季报, 交易所公告)
 - `PRIMARY_COMPANY` — official company website, press release, official social media, product documentation
 - `PRIMARY_PARTNER` — official statement from a named partner or customer
+- `PRIMARY_INSTITUTION` — official multilateral, government agency, regulator, or public institution source (not company self-report; no vendor caveat required)
 - `PRIMARY_DEV` — official developer material: GitHub repository, issue, PR, release, API docs, changelog, commit log
 - `SECONDARY_MEDIA` — news article, industry report, analyst commentary
 - `SECONDARY_ANALYST` — analyst report, investment bank research
 - `SECONDARY_FEED` — RSS feed, newsletter, curated content stream
 - `TRANSCRIPT` — verbatim or near-verbatim transcript of an interview, press conference, earnings call, podcast, tutorial, or presentation
 - `INFERRED` — model inference with explicit reasoning chain documented
-- `UNCONFIRMED` — claim found in one or more sources but not independently verified
+- `CROWDSOURCED` — Wikipedia, crowdsourced compilation, tertiary sources (must not carry confirmed labels)
+- `UNCONFIRMED` — claim found in one or more sources but not independently verified; also covers rumor, leak, unconfirmed attribution (must not carry confirmed labels)
 - `WEAK_SIGNAL` — anecdotal, social media, unnamed sources, community forum speculation
 
 **`DISCOVERY` is not a valid Source Register source type.** Search-level discovery results (Exa search summaries, Agent-Reach `POST /search` output) are candidate sources only. They must be recorded in the source intake log (see `references/external-channel-preflight.md`) and may only enter the Source Register after content fetch and reclassification into one of the types above. Body citations of the form `[Sxx]` must never reference raw discovery output.
@@ -287,6 +289,10 @@ Classify every source in the register by type. Use these types consistently:
 | 微信公众号 / 公众号 | WEAK_SIGNAL | [推断]/[未知] | 只作补充 |
 | 多来源综合 / 技术分析 | INFERRED | [推断] | 必须有推理链 |
 | 专家访谈 / 访谈 / 财报电话会 | TRANSCRIPT | [确认事实] or [推断] | verbatim → confirmed; summary → inferred |
+| Primary (multilateral) / Primary (US govt agency) / government agency / regulator / public agency | PRIMARY_INSTITUTION | [确认事实] | 机构/政府来源，非厂商自述，不需 caveat |
+| Primary (vendor) | PRIMARY_COMPANY | [确认事实] + caveat | 厂商自述需 caveat，同其他公司来源处理 |
+| Secondary (crowdsourced) / crowdsourced / Wikipedia / wiki | CROWDSOURCED | [推断]/[未知] | 不可承载 [确认事实] |
+| rumor / leak / 传闻 / unconfirmed | UNCONFIRMED | [未知]/[推断] | 不可承载 [确认事实] |
 
 **使用说明：**
 - 此映射是示例性而非穷举性。新增常见写法应添加到 `scripts/validate_source_label_consistency.py` 的 `_FREETEXT_TYPE_MAP` 中。
