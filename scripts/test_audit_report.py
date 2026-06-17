@@ -457,6 +457,159 @@ Each dimension conclusion is backed by [S01] and [S02].
 """
 
 
+def _valid_market_outlook_report() -> str:
+    """A minimal valid market-outlook report that passes all checks.
+
+    Passes shared validators AND monitoring actionability (3+ signals
+    with all four fields: threshold, cadence, source, trigger-to-action).
+    """
+    return """\
+# Power Market Outlook 2026
+
+## Route and audit status
+
+**Primary route**: Market Outlook / Industry Evolution
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
+| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+
+## 执行摘要
+
+Power constraints are tightening across global data center markets [S01].
+
+## 市场现状
+
+Current snapshot shows 5.2 GW under construction in North America [S02].
+
+## Dimension conclusions
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | 2025 | 2026E | 数字角色 |
+|--------|------|-------|---------|
+| DC Power | 50GW | 65GW | observed |
+| Growth | 20% | 30% | estimate |
+
+## Monitoring Signals
+
+| Signal | Threshold | Cadence | Source | Trigger-to-action | 数字角色 |
+|--------|-----------|---------|--------|-------------------|---------|
+| GPU utilization | >85% for 3 months | Monthly | Cloud provider API | Notify capacity team | observed |
+| Power cost | >$0.12/kWh | Quarterly | EIA report | Reassess location strategy | observed |
+| Grid interconnection | >6 months delay | Per project | Utility queue data | Explore colocation option | observed |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _market_outlook_no_monitoring_actionability() -> str:
+    """Market-outlook report with monitoring signals lacking actionability.
+
+    Has only 'Signal' and 'Threshold' columns — missing cadence,
+    source, and trigger-to-action.  <3 fully-defined → blocking.
+    """
+    return """\
+# Power Market Outlook 2026
+
+## Route and audit status
+
+**Primary route**: Market Outlook / Industry Evolution
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
+| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+
+## 执行摘要
+
+Power constraints are tightening across global data center markets [S01].
+
+## 市场现状
+
+Current snapshot shows 5.2 GW under construction in North America [S02].
+
+## Dimension conclusions
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | 2025 | 2026E | 数字角色 |
+|--------|------|-------|---------|
+| DC Power | 50GW | 65GW | observed |
+| Growth | 20% | 30% | estimate |
+
+## Monitoring Signals
+
+| Signal | Threshold | 数字角色 |
+|--------|-----------|---------|
+| GPU utilization | >85% | observed |
+| Power cost | >$0.12/kWh | observed |
+| Grid interconnection | >6 months delay | observed |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _market_outlook_no_monitoring_section() -> str:
+    """Market-outlook report with no monitoring section at all."""
+    return """\
+# Power Market Outlook 2026
+
+## Route and audit status
+
+**Primary route**: Market Outlook / Industry Evolution
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
+| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+
+## 执行摘要
+
+Power constraints are tightening across global data center markets [S01].
+
+## 市场现状
+
+Current snapshot shows 5.2 GW under construction in North America [S02].
+
+## Dimension conclusions
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | 2025 | 2026E | 数字角色 |
+|--------|------|-------|---------|
+| DC Power | 50GW | 65GW | observed |
+| Growth | 20% | 30% | estimate |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
 def _report_shared_workflow() -> str:
     """Report using shared-workflow path (no primary route).
 
@@ -1011,6 +1164,107 @@ class TestConstrainedChoiceScoringReplicability:
         )
 
 
+class TestMarketOutlookRoute:
+    """Market-outlook route must be recognized without fallback."""
+
+    def test_market_outlook_route_recognized(self) -> None:
+        """--route market-outlook should show 'market-outlook' in output."""
+        result = _run_audit(
+            _valid_market_outlook_report(),
+            extra_args=["--route", "market-outlook"],
+        )
+        assert "market-outlook" in result.stdout, (
+            f"Expected 'market-outlook' in route output, got:\n{result.stdout}"
+        )
+
+    def test_market_outlook_no_fallback_warning(self) -> None:
+        """stderr must NOT contain 'falling back' for --route market-outlook."""
+        result = _run_audit(
+            _valid_market_outlook_report(),
+            extra_args=["--route", "market-outlook"],
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_market_outlook_auto_detect(self) -> None:
+        """Report with 'Market Outlook / Industry Evolution' route auto-detects."""
+        result = _run_audit(_valid_market_outlook_report())
+        assert "market-outlook" in result.stdout, (
+            f"Expected auto-detected 'market-outlook' in output, got:\n{result.stdout}"
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_market_outlook_alias_no_fallback(self) -> None:
+        """Each alias must resolve without fallback warning."""
+        for alias in [
+            "market-outlook",
+            "market outlook",
+            "market outlook / industry evolution",
+            "industry evolution",
+        ]:
+            result = _run_audit(
+                _valid_market_outlook_report(),
+                extra_args=["--route", alias],
+            )
+            assert "falling back" not in result.stderr.lower(), (
+                f"Alias '{alias}' triggered fallback:\n{result.stderr}"
+            )
+            assert "market-outlook" in result.stdout, (
+                f"Alias '{alias}' did not show 'market-outlook' in output:\n{result.stdout}"
+            )
+
+
+class TestMarketOutlookMonitoringActionability:
+    """Market-outlook monitoring actionability validator must enforce the
+    <3 fully-defined signals → blocking gate."""
+
+    def test_actionable_monitoring_passes(self) -> None:
+        """Report with 3+ fully-defined monitoring signals must pass."""
+        result = _run_audit(
+            _valid_market_outlook_report(),
+            extra_args=["--route", "market-outlook"],
+        )
+        assert result.returncode == 0, (
+            f"Expected exit 0 for actionable monitoring, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_non_actionable_monitoring_blocking(self) -> None:
+        """Report with monitoring lacking cadence/source/trigger → exit 2."""
+        result = _run_audit(
+            _market_outlook_no_monitoring_actionability(),
+            extra_args=["--route", "market-outlook"],
+        )
+        assert result.returncode == 2, (
+            f"Expected exit 2 for non-actionable monitoring, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_no_monitoring_section_blocking(self) -> None:
+        """Report with no monitoring section → exit 2."""
+        result = _run_audit(
+            _market_outlook_no_monitoring_section(),
+            extra_args=["--route", "market-outlook"],
+        )
+        assert result.returncode == 2, (
+            f"Expected exit 2 for missing monitoring section, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_non_actionable_error_mentions_monitoring(self) -> None:
+        """Error output must mention 'market-outlook-monitoring' or 'monitoring'."""
+        result = _run_audit(
+            _market_outlook_no_monitoring_actionability(),
+            extra_args=["--route", "market-outlook"],
+        )
+        assert "monitoring" in result.stdout.lower(), (
+            f"Expected monitoring-related error, got:\n{result.stdout}"
+        )
+
+
 class TestSharedWorkflow:
     """Shared-workflow reports should fall back to default validators."""
 
@@ -1082,6 +1336,52 @@ Primary company source S01 lacks the required caveat.
                 f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
             )
 
+    def test_market_outlook_validators_all_run(self) -> None:
+        """Market-outlook route must run all 5 validators, including monitoring."""
+        content = """\
+# Test
+
+## Route and audit status
+
+**Primary route**: Market Outlook / Industry Evolution
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 引用 [S01] |
+| final-audit | ✅ Passed | §2 可追溯 |
+
+## Body
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Ex | secondary | 2026-01-01 | https://ex.com | medium | §3 |
+"""
+        result = _run_audit(content, extra_args=["--route", "market-outlook"])
+        # The market-outlook validator chain: report-quality, declared-execution,
+        # table-role-labels, source-label-consistency, market-outlook-monitoring
+        expected_prefixes = [
+            "report-quality",
+            "declared-execution",
+            "table-role-labels",
+            "source-label-consistency",
+            "market-outlook-monitoring",
+        ]
+        for prefix in expected_prefixes:
+            marker_bracket = f"[{prefix}]"
+            marker_plain = f"{prefix}:"
+            assert (
+                marker_bracket in result.stdout
+                or marker_bracket in result.stderr
+                or marker_plain in result.stdout
+            ), (
+                f"Missing '{prefix}' in output — market-outlook validator "
+                f"may not have run\nstdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+            )
+
 
 if __name__ == "__main__":
     # Self-contained test runner (no external dependencies).
@@ -1132,11 +1432,26 @@ if __name__ == "__main__":
          TestConstrainedChoiceScoringReplicability().test_scoring_table_with_rules_passes),
         ("cc scoring table with rules no scoring-replicability errors",
          TestConstrainedChoiceScoringReplicability().test_scoring_table_with_rules_no_scoring_replicability_errors),
+        # TestMarketOutlookRoute
+        ("market-outlook route recognized", TestMarketOutlookRoute().test_market_outlook_route_recognized),
+        ("market-outlook no fallback warning", TestMarketOutlookRoute().test_market_outlook_no_fallback_warning),
+        ("market-outlook auto-detect", TestMarketOutlookRoute().test_market_outlook_auto_detect),
+        ("market-outlook alias no fallback", TestMarketOutlookRoute().test_market_outlook_alias_no_fallback),
+        # TestMarketOutlookMonitoringActionability
+        ("market-outlook actionable monitoring passes",
+         TestMarketOutlookMonitoringActionability().test_actionable_monitoring_passes),
+        ("market-outlook non-actionable monitoring blocking",
+         TestMarketOutlookMonitoringActionability().test_non_actionable_monitoring_blocking),
+        ("market-outlook no monitoring section blocking",
+         TestMarketOutlookMonitoringActionability().test_no_monitoring_section_blocking),
+        ("market-outlook monitoring error message",
+         TestMarketOutlookMonitoringActionability().test_non_actionable_error_mentions_monitoring),
         # TestSharedWorkflow
         ("shared-workflow valid passes", TestSharedWorkflow().test_exit_code_zero_when_valid),
         ("shared-workflow fallback warning", TestSharedWorkflow().test_fallback_warning_in_stderr),
         # TestValidatorCount
         ("all 5 validators run on failing report", TestValidatorCount().test_all_validators_executed_on_failing_report),
+        ("market-outlook all 5 validators run", TestValidatorCount().test_market_outlook_validators_all_run),
         # TestProperties
         ("property: exit 0 iff overall pass", TestProperties().test_exit_code_zero_iff_overall_pass),
         ("property: exit 2 iff blocking", TestProperties().test_exit_code_two_iff_blocking),

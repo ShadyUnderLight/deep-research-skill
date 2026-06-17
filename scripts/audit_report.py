@@ -21,6 +21,7 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -95,6 +96,9 @@ _ROUTE_ALIASES: dict[str, str] = {
     "constrained choice / shortlist / option selection": "constrained-choice",
     "option selection": "constrained-choice",
     "shortlist": "constrained-choice",
+    "market outlook": "market-outlook",
+    "market outlook / industry evolution": "market-outlook",
+    "industry evolution": "market-outlook",
 }
 
 # Default route used when auto-detection fails or an unknown route is given.
@@ -247,6 +251,165 @@ def _run_scoring_replicability(path: Path, **kwargs: bool) -> CheckResult:
     return CheckResult(name="scoring-replicability", errors=errors, warnings=[])
 
 
+def _run_market_outlook_monitoring_actionability(
+    path: Path, **kwargs: bool
+) -> CheckResult:
+    """Validate ≥3 fully-defined monitoring signals with actionability fields.
+
+    Scans monitoring-related sections for tables containing all four
+    actionability columns: threshold, cadence, source, and trigger-to-action.
+    Each data row with all four fields populated counts as one fully-defined
+    signal.  Fewer than 3 such signals is a blocking error.
+
+    Accepts ``strict`` keyword to enable warnings for partially-defined
+    signals.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        return CheckResult(
+            name="market-outlook-monitoring",
+            errors=[f"{path}: cannot read file — {exc}"],
+        )
+
+    # ── Split into sections by heading level (## or ###) ──────────────────
+    lines = text.split("\n")
+    sections: list[tuple[str, list[str]]] = []
+    current_heading: str | None = None
+    current_body: list[str] = []
+
+    for line in lines:
+        m = re.match(r"^#{2,3}\s+(.+)$", line)
+        if m:
+            if current_heading is not None:
+                sections.append((current_heading, current_body))
+            current_heading = m.group(1).strip()
+            current_body = []
+        else:
+            current_body.append(line)
+    if current_heading is not None:
+        sections.append((current_heading, current_body))
+
+    # Find monitoring-related sections
+    monitoring_sections = [
+        (h, b) for h, b in sections if "monitoring" in h.lower()
+    ]
+
+    if not monitoring_sections:
+        return CheckResult(
+            name="market-outlook-monitoring",
+            errors=[
+                "No monitoring section found — market-outlook report must "
+                "include monitoring signals with actionable fields "
+                "(threshold, cadence, source, trigger-to-action)"
+            ],
+        )
+
+    # ── Actionability field keyword sets ──────────────────────────────────
+    FIELD_KEYWORDS: dict[str, set[str]] = {
+        "threshold": {"threshold", "阈值"},
+        "cadence": {"cadence", "frequency", "频率"},
+        "source": {"source", "来源"},
+        "trigger_to_action": {"trigger", "action", "应对"},
+    }
+
+    def _map_table_header(header_line: str) -> dict[str, int]:
+        """Match markdown table header columns to actionability fields.
+
+        Returns a dict {field_name: column_index}.  Columns are matched
+        in priority order (threshold → cadence → source → trigger_to_action);
+        each column can match at most one field.
+        """
+        cols = [
+            c.strip().lower()
+            for c in header_line.split("|")
+            if c.strip()
+        ]
+        mapping: dict[str, int] = {}
+        used: set[int] = set()
+
+        for field, keywords in FIELD_KEYWORDS.items():
+            for i, col in enumerate(cols):
+                if i in used:
+                    continue
+                if any(kw in col for kw in keywords):
+                    mapping[field] = i
+                    used.add(i)
+                    break
+
+        return mapping
+
+    # ── Parse tables within monitoring sections ────────────────────────────
+    fully_defined = 0
+    partial_signals: list[str] = []
+
+    for _heading, body_lines in monitoring_sections:
+        i = 0
+        while i < len(body_lines):
+            line = body_lines[i].strip()
+            if line.startswith("|") and not line.startswith("|--"):
+                header_line = line
+                i += 1
+                # Skip separator row (|--|--|...|)
+                if i < len(body_lines) and body_lines[i].strip().startswith("|") and "---" in body_lines[i]:
+                    i += 1
+                else:
+                    continue
+
+                col_map = _map_table_header(header_line)
+                if len(col_map) < 4:
+                    # Table does not have all 4 actionability columns; skip
+                    while i < len(body_lines) and body_lines[i].strip().startswith("|"):
+                        i += 1
+                    continue
+
+                # Parse data rows
+                while i < len(body_lines) and body_lines[i].strip().startswith("|"):
+                    row = body_lines[i].strip()
+                    cells = [c.strip() for c in row.split("|") if c.strip()]
+                    all_filled = True
+                    missing_fields: list[str] = []
+                    for field, col_idx in col_map.items():
+                        if col_idx >= len(cells) or not cells[col_idx]:
+                            all_filled = False
+                            missing_fields.append(field)
+                            break
+                    if all_filled:
+                        fully_defined += 1
+                    else:
+                        signal_name = cells[0] if cells else "(unknown)"
+                        partial_signals.append(
+                            f"Signal '{signal_name}' missing: "
+                            f"{', '.join(missing_fields)}"
+                        )
+                    i += 1
+            else:
+                i += 1
+
+    # ── Compute verdict ────────────────────────────────────────────────────
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    if fully_defined < 3:
+        errors.append(
+            f"Only {fully_defined} fully-defined monitoring signal(s) "
+            f"found; need ≥3 with all four actionability fields "
+            f"(threshold, cadence, source, trigger-to-action)"
+        )
+
+    if kwargs.get("strict") and partial_signals:
+        warnings.append(
+            f"{len(partial_signals)} partially-defined monitoring signal(s):"
+        )
+        warnings.extend(f"  {s}" for s in partial_signals)
+
+    return CheckResult(
+        name="market-outlook-monitoring",
+        errors=errors,
+        warnings=warnings,
+    )
+
+
 # ── Route → validator mapping ──────────────────────────────────────────────
 
 ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
@@ -275,6 +438,13 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_scoring_replicability,
+    ],
+    "market-outlook": [
+        _run_report_quality,
+        _run_declared_execution,
+        _run_table_role_labels,
+        _run_source_label_consistency,
+        _run_market_outlook_monitoring_actionability,
     ],
 }
 
