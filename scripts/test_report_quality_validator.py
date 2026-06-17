@@ -1388,6 +1388,103 @@ Body text with citation [S01].
 # These import get_route_name directly for precise unit-level testing.
 
 
+def test_evidence_spaced_subsection_ref_passes() -> None:
+    """§ with space (§ 7.2) matches heading with same number."""
+    text = """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | § 7.2 验证 hard-fail 条件 |
+| final-audit | ✅ Passed | §2 各关卡可追溯 |
+
+## 1. Introduction
+
+Body text with citation [S01].
+
+## 2. Analysis
+
+### 7.2 Technical Deep-dive
+
+Hard-fail verification content [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_pass("evidence spaced subsection ref passes", text)
+
+
+def test_evidence_chinese_appendix_no_space_passes() -> None:
+    """Chinese appendix without space (附录B) matches heading."""
+    text = """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 引用 |
+| final-audit | ✅ Passed | 附录B 补充数据 |
+
+## 1. Introduction
+
+Body text with citation [S01].
+
+## 附录B 补充数据
+
+Supplementary data [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_pass("evidence chinese appendix no space passes", text)
+
+
+def test_evidence_subsection_ref_prefix_matches_subsubsection() -> None:
+    """§7.2 matches '### 7.2.1 Subsection' (prefix matching — intentional)."""
+    text = """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §7.2 验证 hard-fail 条件 |
+| final-audit | ✅ Passed | §3 各关卡可追溯 |
+
+## 1. Introduction
+
+Body text with citation [S01].
+
+## 2. Analysis
+
+### 7.2.1 Technical Details
+
+Only sub-subsection exists, no §7.2 heading itself.
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+"""
+    expect_pass("evidence subsection ref prefix matches subsubsection", text)
+
+
 def test_get_route_name_english_still_works() -> None:
     """Existing English format still works after changes."""
     text = """\
@@ -1514,6 +1611,9 @@ def main() -> int:
         ("evidence multiple phantom refs all reported", test_evidence_multiple_phantom_refs_all_reported),
         ("evidence phantom ref not passed row skipped", test_evidence_phantom_ref_not_passed_row_skipped),
         ("evidence subsection ref unnumbered doc passes", test_evidence_subsection_ref_no_heading_at_all_but_unnumbered_passes),
+        ("evidence spaced subsection ref passes", test_evidence_spaced_subsection_ref_passes),
+        ("evidence chinese appendix no space passes", test_evidence_chinese_appendix_no_space_passes),
+        ("evidence subsection ref prefix matches subsubsection", test_evidence_subsection_ref_prefix_matches_subsubsection),
         # get_route_name Chinese heading tests
         ("get_route_name english still works", test_get_route_name_english_still_works),
         ("get_route_name chinese heading", test_get_route_name_chinese_heading),

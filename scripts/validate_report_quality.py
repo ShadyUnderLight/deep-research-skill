@@ -52,12 +52,10 @@ STATUS_COL_RE = re.compile(r"Status|状态|结果", re.IGNORECASE)
 EVIDENCE_COL_RE = re.compile(r"证据|Evidence|Proof|执行证据", re.IGNORECASE)
 
 # Patterns for evidence column section reference validation
-# §X.Y — subsection reference (e.g. §7.2), excludes §X.YZ and ranges
-SUBSECTION_REF_RE = re.compile(r'(?<!\d)§(\d+)\.(\d+)(?![\d.])')
-# Appendix / 附录 X — named anchor reference
-APPENDIX_REF_RE = re.compile(r'(?:Appendix|附录)\s+([A-Za-z0-9]+)', re.IGNORECASE)
-# Secondary route declaration (in route/audit block)
-SECONDARY_ROUTE_RE = re.compile(r'\*\*Secondary\s+route\*\*[:\s]+(.+)', re.IGNORECASE)
+# §X.Y — subsection reference (e.g. §7.2, § 7.2), excludes §X.YZ and ranges
+SUBSECTION_REF_RE = re.compile(r'(?<!\d)§\s?(\d+)\.(\d+)(?![\d.])')
+# Appendix / 附录 X — named anchor reference (with or without space)
+APPENDIX_REF_RE = re.compile(r'(?:Appendix|附录)\s*([A-Za-z0-9]+)', re.IGNORECASE)
 
 BODY_SXX_RE = re.compile(r"\[S\d{2}\]")
 AUTHOR_YEAR_RE = re.compile(
@@ -364,7 +362,7 @@ def _heading_matches_ref(ref: str, heading_text: str) -> bool:
 def _heading_matches_appendix(ref: str, heading_text: str) -> bool:
     """Check if an appendix ref (e.g. 'B') matches a heading."""
     escaped = re.escape(ref)
-    pat = rf'(?:Appendix|附录)\s+{escaped}(?:\b|$)'
+    pat = rf'(?:Appendix|附录)\s*{escaped}(?:\b|$)'
     return bool(re.search(pat, heading_text, re.IGNORECASE))
 
 
@@ -390,11 +388,23 @@ def check_audit_evidence_section_refs(cleaned: str) -> list[str]:
     Design:
     - §X.Y (subsection) refs are checked strictly: the heading must start
       with the same number prefix (e.g. §7.2 → '### 7.2 Technical Deep-dive').
-    - Appendix refs are checked case-insensitively against heading text.
+      Supports optional space after § (e.g. '§ 7.2').
+    - Appendix refs (Appendix X / 附录 X) are checked case-insensitively
+      against heading text. Supports with or without space (e.g. '附录B').
     - §X.Y refs are only checked when the document has at least one numbered
       heading; without numbered structure the reference convention is unknown
       and we skip to avoid false positives.
     - Appendix refs are always checked (unambiguous naming convention).
+
+    Known limitations:
+    - §X (single-level, e.g. '§3') is not checked — too ambiguous and
+      often appears in ranges ('§3-§5'). Use §X.Y for precise references.
+    - §X.Y.Z (three-level) is not matched — only §X.Y is supported.
+    - Chinese ordinal appendix numbers ('附录一') are not matched —
+      only Latin letters and digits are supported for appendix refs.
+    - Appendix references in evidence are assumed to refer to the report's
+      own appendices. External Appendix refs (e.g. 'per Appendix A of ISO')
+      may cause false positives; this is acceptable for the audit context.
 
     Returns list of blocking errors, one per phantom reference.
     """
