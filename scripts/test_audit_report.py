@@ -729,6 +729,101 @@ def _market_outlook_strict_with_partial() -> str:
     return _market_outlook_with_monitoring(table)
 
 
+def _valid_provider_selection_report() -> str:
+    """A minimal valid provider-selection report that passes all checks.
+
+    Same structure as _valid_constrained_choice_report() but with
+    Provider / Vendor Selection route.  Passes shared validators AND
+    scoring-replicability (no scoring table → nothing to fail on).
+    """
+    return """\
+# AI Coding Provider Selection
+
+## Route and audit status
+
+**Primary route**: Provider / Vendor Selection
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| option-selection-final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+| final-audit | ✅ Passed | §5 Comparison 表格含数字角色列 |
+
+## 执行摘要
+
+Executive summary with citation [S01].
+
+## Findings
+
+Body text with citation [S02].
+
+## 维度结论
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | System A | System B | 数字角色 |
+|--------|----------|----------|---------|
+| Cost | 100 | 80 | observed |
+| Speed | 200 | 150 | observed |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _valid_market_entry_report() -> str:
+    """A minimal valid market-entry report that passes all checks.
+
+    Same structure as _valid_provider_selection_report() but with
+    Market Entry / Regional Expansion route.
+    """
+    return """\
+# AI Education Market Entry
+
+## Route and audit status
+
+**Primary route**: Market Entry / Regional Expansion
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| option-selection-final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+| final-audit | ✅ Passed | §5 Comparison 表格含数字角色列 |
+
+## 执行摘要
+
+Executive summary with citation [S01].
+
+## Findings
+
+Body text with citation [S02].
+
+## 维度结论
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | Country A | Country B | 数字角色 |
+|--------|-----------|-----------|---------|
+| Market Size | 100M | 80M | observed |
+| Growth | 20% | 15% | observed |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
 def _report_shared_workflow() -> str:
     """Report using shared-workflow path (no primary route).
 
@@ -1451,6 +1546,134 @@ class TestMarketOutlookMonitoringActionability:
         )
 
 
+class TestProviderSelectionRoute:
+    """Provider-selection route must be recognized without fallback."""
+
+    def test_provider_selection_route_recognized(self) -> None:
+        """--route provider-selection should show 'provider-selection' in output."""
+        result = _run_audit(
+            _valid_provider_selection_report(),
+            extra_args=["--route", "provider-selection"],
+        )
+        assert "provider-selection" in result.stdout, (
+            f"Expected 'provider-selection' in route output, got:\n{result.stdout}"
+        )
+
+    def test_provider_selection_no_fallback_warning(self) -> None:
+        """stderr must NOT contain 'falling back' for --route provider-selection."""
+        result = _run_audit(
+            _valid_provider_selection_report(),
+            extra_args=["--route", "provider-selection"],
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_provider_selection_auto_detect(self) -> None:
+        """Report with 'Provider / Vendor Selection' route auto-detects."""
+        result = _run_audit(_valid_provider_selection_report())
+        assert "provider-selection" in result.stdout, (
+            f"Expected auto-detected 'provider-selection' in output, got:\n{result.stdout}"
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_provider_selection_valid_report_passes(self) -> None:
+        """A valid report with --route provider-selection must pass (exit 0)."""
+        result = _run_audit(
+            _valid_provider_selection_report(),
+            extra_args=["--route", "provider-selection"],
+        )
+        assert result.returncode == 0, (
+            f"Expected exit 0, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_provider_selection_alias_no_fallback(self) -> None:
+        """Each alias must resolve without fallback warning."""
+        for alias in [
+            "provider-selection",
+            "provider selection",
+            "vendor selection",
+            "provider / vendor selection",
+        ]:
+            result = _run_audit(
+                _valid_provider_selection_report(),
+                extra_args=["--route", alias],
+            )
+            assert "falling back" not in result.stderr.lower(), (
+                f"Alias '{alias}' triggered fallback:\n{result.stderr}"
+            )
+            assert "provider-selection" in result.stdout, (
+                f"Alias '{alias}' did not show 'provider-selection' in output:\n{result.stdout}"
+            )
+
+
+class TestMarketEntryRoute:
+    """Market-entry route must be recognized without fallback."""
+
+    def test_market_entry_route_recognized(self) -> None:
+        """--route market-entry should show 'market-entry' in output."""
+        result = _run_audit(
+            _valid_market_entry_report(),
+            extra_args=["--route", "market-entry"],
+        )
+        assert "market-entry" in result.stdout, (
+            f"Expected 'market-entry' in route output, got:\n{result.stdout}"
+        )
+
+    def test_market_entry_no_fallback_warning(self) -> None:
+        """stderr must NOT contain 'falling back' for --route market-entry."""
+        result = _run_audit(
+            _valid_market_entry_report(),
+            extra_args=["--route", "market-entry"],
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_market_entry_auto_detect(self) -> None:
+        """Report with 'Market Entry / Regional Expansion' route auto-detects."""
+        result = _run_audit(_valid_market_entry_report())
+        assert "market-entry" in result.stdout, (
+            f"Expected auto-detected 'market-entry' in output, got:\n{result.stdout}"
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_market_entry_valid_report_passes(self) -> None:
+        """A valid report with --route market-entry must pass (exit 0)."""
+        result = _run_audit(
+            _valid_market_entry_report(),
+            extra_args=["--route", "market-entry"],
+        )
+        assert result.returncode == 0, (
+            f"Expected exit 0, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_market_entry_alias_no_fallback(self) -> None:
+        """Each alias must resolve without fallback warning."""
+        for alias in [
+            "market-entry",
+            "market entry",
+            "regional expansion",
+            "market entry / regional expansion",
+        ]:
+            result = _run_audit(
+                _valid_market_entry_report(),
+                extra_args=["--route", alias],
+            )
+            assert "falling back" not in result.stderr.lower(), (
+                f"Alias '{alias}' triggered fallback:\n{result.stderr}"
+            )
+            assert "market-entry" in result.stdout, (
+                f"Alias '{alias}' did not show 'market-entry' in output:\n{result.stdout}"
+            )
+
+
 class TestSharedWorkflow:
     """Shared-workflow reports should fall back to default validators."""
 
@@ -1640,6 +1863,28 @@ if __name__ == "__main__":
          TestMarketOutlookMonitoringActionability().test_two_signals_blocking),
         ("market-outlook strict mode warns partial",
          TestMarketOutlookMonitoringActionability().test_strict_mode_warns_on_partial),
+        # TestProviderSelectionRoute
+        ("provider-selection route recognized",
+         TestProviderSelectionRoute().test_provider_selection_route_recognized),
+        ("provider-selection no fallback warning",
+         TestProviderSelectionRoute().test_provider_selection_no_fallback_warning),
+        ("provider-selection auto-detect",
+         TestProviderSelectionRoute().test_provider_selection_auto_detect),
+        ("provider-selection valid report passes",
+         TestProviderSelectionRoute().test_provider_selection_valid_report_passes),
+        ("provider-selection alias no fallback",
+         TestProviderSelectionRoute().test_provider_selection_alias_no_fallback),
+        # TestMarketEntryRoute
+        ("market-entry route recognized",
+         TestMarketEntryRoute().test_market_entry_route_recognized),
+        ("market-entry no fallback warning",
+         TestMarketEntryRoute().test_market_entry_no_fallback_warning),
+        ("market-entry auto-detect",
+         TestMarketEntryRoute().test_market_entry_auto_detect),
+        ("market-entry valid report passes",
+         TestMarketEntryRoute().test_market_entry_valid_report_passes),
+        ("market-entry alias no fallback",
+         TestMarketEntryRoute().test_market_entry_alias_no_fallback),
         # TestSharedWorkflow
         ("shared-workflow valid passes", TestSharedWorkflow().test_exit_code_zero_when_valid),
         ("shared-workflow fallback warning", TestSharedWorkflow().test_fallback_warning_in_stderr),
