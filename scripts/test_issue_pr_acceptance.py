@@ -47,7 +47,7 @@ except ImportError:
         message: str
         detail: str
 
-    def core_validate(issue_body="", pr_files=None, pr_merge_sha=None, pr_parent_sha=None):
+    def core_validate(issue_body="", pr_files=None, pr_merge_tree_sha=None, pr_parent_tree_sha=None):
         raise NotImplementedError("RED phase — implement me")
 
     def extract_issue_paths(body: str) -> list[str]:
@@ -63,8 +63,8 @@ def test_c1_detects_no_op_merge():
     findings = core_validate(
         issue_body="## Acceptance\n- [x] done",
         pr_files=["file1.py"],
-        pr_merge_sha="abc123",
-        pr_parent_sha="abc123",
+        pr_merge_tree_sha="abc123",
+        pr_parent_tree_sha="abc123",
     )
     codes = [f.code for f in findings]
     assert "NO_OP_MERGE" in codes, (
@@ -77,8 +77,8 @@ def test_c1_skips_when_different():
     findings = core_validate(
         issue_body="## Acceptance\n- [x] done",
         pr_files=["file1.py"],
-        pr_merge_sha="abc123",
-        pr_parent_sha="def456",
+        pr_merge_tree_sha="abc123",
+        pr_parent_tree_sha="def456",
     )
     codes = [f.code for f in findings]
     assert "NO_OP_MERGE" not in codes, (
@@ -91,8 +91,8 @@ def test_c1_skips_when_none():
     findings = core_validate(
         issue_body="## Acceptance\n- [x] done",
         pr_files=["file1.py"],
-        pr_merge_sha=None,
-        pr_parent_sha=None,
+        pr_merge_tree_sha=None,
+        pr_parent_tree_sha=None,
     )
     codes = [f.code for f in findings]
     assert "NO_OP_MERGE" not in codes, (
@@ -119,24 +119,21 @@ Additional details.
 
 
 def test_c2_detects_missing_file():
-    """C2: Issue path not in PR files MUST produce MISSING_FILE."""
+    """C2: Issue path not in PR files MUST produce MISSING_FILE for ALL."""
     findings = core_validate(
         issue_body=SAMPLE_ISSUE_WITH_PATHS,
         pr_files=["scripts/validate_report_quality.py"],
-        pr_merge_sha="abc123",
-        pr_parent_sha="def456",
+        pr_merge_tree_sha="abc123",
+        pr_parent_tree_sha="def456",
     )
     missing = [f for f in findings if f.code == "MISSING_FILE"]
-    assert len(missing) >= 1, (
-        f"Expected at least one MISSING_FILE, got codes: {[f.code for f in findings]}"
-    )
-    # At least one of the three paths should be flagged
     flagged_paths = set(m.detail for m in missing)
     expected = {"tests/test_issue_320_contracts.py",
                 "references/report-template.md",
                 "checklists/market-outlook-audit.md"}
-    assert flagged_paths & expected, (
-        f"Expected any of {expected} flagged, got {flagged_paths}"
+    # All three issue checklist paths must be flagged as missing
+    assert expected.issubset(flagged_paths), (
+        f"Expected ALL of {expected} flagged, got {flagged_paths}"
     )
 
 
@@ -150,8 +147,8 @@ def test_c2_all_files_present():
             "checklists/market-outlook-audit.md",
             "scripts/something_else.py",
         ],
-        pr_merge_sha="abc123",
-        pr_parent_sha="def456",
+        pr_merge_tree_sha="abc123",
+        pr_parent_tree_sha="def456",
     )
     missing = [f for f in findings if f.code == "MISSING_FILE"]
     assert len(missing) == 0, (
@@ -160,15 +157,21 @@ def test_c2_all_files_present():
 
 
 def test_c2_empty_pr_files():
-    """C2: Empty PR file list SHOULD still detect missing paths."""
+    """C2: Empty PR file list SHOULD flag ALL checklist paths."""
     findings = core_validate(
         issue_body=SAMPLE_ISSUE_WITH_PATHS,
         pr_files=[],
-        pr_merge_sha="abc123",
-        pr_parent_sha="def456",
+        pr_merge_tree_sha="abc123",
+        pr_parent_tree_sha="def456",
     )
     missing = [f for f in findings if f.code == "MISSING_FILE"]
-    assert len(missing) >= 1, "Expected MISSING_FILE when PR files is empty"
+    flagged_paths = set(m.detail for m in missing)
+    expected = {"tests/test_issue_320_contracts.py",
+                "references/report-template.md",
+                "checklists/market-outlook-audit.md"}
+    assert expected.issubset(flagged_paths), (
+        f"Expected ALL of {expected} flagged when PR files empty, got {flagged_paths}"
+    )
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -190,8 +193,8 @@ def test_c3_pass_no_checklist_paths():
     findings = core_validate(
         issue_body=ISSUE_NO_PATHS,
         pr_files=["scripts/new_validator.py"],
-        pr_merge_sha="abc123",
-        pr_parent_sha="def456",
+        pr_merge_tree_sha="abc123",
+        pr_parent_tree_sha="def456",
     )
     assert len(findings) == 0, (
         f"Expected empty findings, got: {[(f.code, f.detail) for f in findings]}"
@@ -208,8 +211,8 @@ def test_c4_empty_issue_body():
         findings = core_validate(
             issue_body="",
             pr_files=["file.py"],
-            pr_merge_sha="abc",
-            pr_parent_sha="def",
+            pr_merge_tree_sha="abc",
+            pr_parent_tree_sha="def",
         )
         assert isinstance(findings, list)
     except Exception as e:
@@ -222,8 +225,8 @@ def test_c4_none_issue_body():
         findings = core_validate(
             issue_body=None,  # type: ignore[arg-type]
             pr_files=["file.py"],
-            pr_merge_sha="abc",
-            pr_parent_sha="def",
+            pr_merge_tree_sha="abc",
+            pr_parent_tree_sha="def",
         )
         assert isinstance(findings, list)
     except Exception as e:
@@ -236,8 +239,8 @@ def test_c4_none_pr_files():
         findings = core_validate(
             issue_body="## Acceptance\n- [x] done",
             pr_files=None,  # type: ignore[arg-type]
-            pr_merge_sha="abc",
-            pr_parent_sha="def",
+            pr_merge_tree_sha="abc",
+            pr_parent_tree_sha="def",
         )
         assert isinstance(findings, list)
     except Exception as e:
@@ -320,8 +323,8 @@ def test_c6_directory_prefix_matches():
     findings = core_validate(
         issue_body="- `mydir/` — all files in this dir",
         pr_files=["mydir/foo.py", "mydir/bar.py"],
-        pr_merge_sha="abc",
-        pr_parent_sha="def",
+        pr_merge_tree_sha="abc",
+        pr_parent_tree_sha="def",
     )
     missing = [f for f in findings if f.code == "MISSING_FILE"]
     assert len(missing) == 0, (
@@ -335,8 +338,8 @@ def test_c6_directory_prefix_no_match():
     findings = core_validate(
         issue_body="- `mydir/` — all files in this dir",
         pr_files=["other/foo.py"],
-        pr_merge_sha="abc",
-        pr_parent_sha="def",
+        pr_merge_tree_sha="abc",
+        pr_parent_tree_sha="def",
     )
     missing = [f for f in findings if f.code == "MISSING_FILE"]
     assert len(missing) >= 1, (
@@ -382,16 +385,19 @@ PR_324_FILES = [
 
 
 def test_regression_320_324_detects_no_op():
-    """Regression: #324 was a no-op merge. Must detect NO_OP_MERGE."""
+    """Regression: #324 was a no-op merge. Must detect NO_OP_MERGE + MISSING_FILE."""
     findings = core_validate(
         issue_body=ISSUE_320_BODY_EXCERPT,
         pr_files=PR_324_FILES,
-        pr_merge_sha="e8bfc976fbc40dfcab5833c824d95a0951a59716",
-        pr_parent_sha="e8bfc976fbc40dfcab5833c824d95a0951a59716",
+        pr_merge_tree_sha="e8bfc976fbc40dfcab5833c824d95a0951a59716",
+        pr_parent_tree_sha="e8bfc976fbc40dfcab5833c824d95a0951a59716",
     )
     codes = [f.code for f in findings]
     assert "NO_OP_MERGE" in codes, (
         f"Regression: #324 no-op merge not detected. Codes: {codes}"
+    )
+    assert "MISSING_FILE" in codes, (
+        f"Regression: #324 missing templates not detected. Codes: {codes}"
     )
 
 
@@ -400,22 +406,95 @@ def test_regression_320_324_detects_missing_templates():
     findings = core_validate(
         issue_body=ISSUE_320_BODY_EXCERPT,
         pr_files=PR_324_FILES,
-        pr_merge_sha="e8bfc",
-        pr_parent_sha="82b6ec",
+        pr_merge_tree_sha="e8bfc",
+        pr_parent_tree_sha="82b6ec",
     )
     missing = [f for f in findings if f.code == "MISSING_FILE"]
     missing_details = {m.detail for m in missing}
 
-    # At minimum, the specific template files from acceptance criteria
-    # should be flagged as missing from PR diff
+    # All specific template files from acceptance criteria must be flagged
     expected = {
         "references/report-template.md",
         "references/decision-report-template.md",
+        "references/market-outlook-and-scenario-discipline.md",
+        "checklists/market-outlook-audit.md",
+        "evals/templates/decision-utility-rubric.md",
     }
-    assert expected & missing_details, (
-        f"Expected template files flagged as missing. "
+    assert expected.issubset(missing_details), (
+        f"Expected ALL template files flagged as missing. "
+        f"Missing: {expected - missing_details}. "
         f"Flagged: {missing_details}"
     )
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# C7: COMBINED AND EDGE-CASE SCENARIOS
+# ═══════════════════════════════════════════════════════════════════════════
+
+def test_c7_combined_noop_and_missing():
+    """C7: Both NO_OP_MERGE and MISSING_FILE can fire simultaneously."""
+    findings = core_validate(
+        issue_body="- [ ] `missing.py`",
+        pr_files=["present.py"],
+        pr_merge_tree_sha="same_sha",
+        pr_parent_tree_sha="same_sha",
+    )
+    codes = [f.code for f in findings]
+    assert "NO_OP_MERGE" in codes, f"NO_OP_MERGE missing: {codes}"
+    assert "MISSING_FILE" in codes, f"MISSING_FILE missing: {codes}"
+
+
+def test_c7_directory_prefix_no_overmatch():
+    """C7: Directory prefix `mydir/` must NOT match `mydir-other/`."""
+    findings = core_validate(
+        issue_body="- `mydir/`",
+        pr_files=["mydir-other/foo.py"],
+        pr_merge_tree_sha="abc",
+        pr_parent_tree_sha="def",
+    )
+    missing = [f for f in findings if f.code == "MISSING_FILE"]
+    missing_paths = {m.detail for m in missing}
+    assert "mydir/" in missing_paths, (
+        f"Directory prefix must NOT match sibling dir. Got: {missing_paths}"
+    )
+
+
+def test_c7_deep_directory_prefix():
+    """C7: Deep directory `a/b/c/` matches `a/b/c/d/e.py`."""
+    findings = core_validate(
+        issue_body="- `a/b/c/`",
+        pr_files=["a/b/c/d/e.py", "a/b/c/f/g/h.py"],
+        pr_merge_tree_sha="abc",
+        pr_parent_tree_sha="def",
+    )
+    missing = [f for f in findings if f.code == "MISSING_FILE"]
+    assert len(missing) == 0, (
+        f"Deep directory prefix should match nested files: "
+        f"{[(m.detail, m.message) for m in missing]}"
+    )
+
+
+def test_c7_uppercase_x_checkbox():
+    """C7: `- [X]` (uppercase) MUST be treated same as `- [x]`."""
+    body = "- [X] `uppercase.py`"
+    extracted = extract_issue_paths(body)
+    assert "uppercase.py" in extracted, (
+        f"Uppercase [X] path not extracted: {extracted}"
+    )
+
+
+def test_c7_asymmetric_none_does_not_crash():
+    """C7: `merge_tree=None, parent_tree='abc'` does not crash."""
+    try:
+        findings = core_validate(
+            issue_body="- [ ] `file.py`",
+            pr_files=["file.py"],
+            pr_merge_tree_sha=None,
+            pr_parent_tree_sha="abc",
+        )
+        assert isinstance(findings, list)
+    except Exception as e:
+        assert False, f"Asymmetric None crashed: {e}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -55,7 +55,7 @@ EXIT_BLOCKING = 2
 # Regex 1: checklist line `- [ ] ` / `- [x] ` / `* [ ] ` / `* [x] `
 # followed by a backtick-enclosed path.
 _CHECKLIST_PATH_RE = re.compile(
-    r"^[\s]*[-*]\s+\[[\sx]\]\s+`([^`]+)`",
+    r"^[\s]*[-*]\s+\[[\sxX]\]\s+`([^`]+)`",
     re.MULTILINE,
 )
 
@@ -99,16 +99,18 @@ def extract_issue_paths(body: str) -> list[str]:
 def core_validate(
     issue_body: Optional[str],
     pr_files: Optional[list[str]],
-    pr_merge_sha: Optional[str],
-    pr_parent_sha: Optional[str],
+    pr_merge_tree_sha: Optional[str],
+    pr_parent_tree_sha: Optional[str],
 ) -> list[ValidationFinding]:
     """Validate PR-issue acceptance consistency (pure function).
 
     Args:
         issue_body: Issue body markdown text. None/empty treated as no issue.
         pr_files: List of file paths changed in the PR. None treated as empty.
-        pr_merge_sha: SHA of the PR merge commit. None if not merged.
-        pr_parent_sha: SHA of the parent commit. None if not merged.
+        pr_merge_tree_sha: Tree SHA of the PR merge commit (NOT the commit SHA).
+                           None if PR not merged.
+        pr_parent_tree_sha: Tree SHA of the first parent commit.
+                            None if PR not merged.
 
     Returns:
         List of ValidationFinding. Empty = all checks pass.
@@ -120,14 +122,14 @@ def core_validate(
     files: set[str] = set(pr_files or [])
 
     # ── R1: No-op merge detection ──────────────────────────────────────
-    if pr_merge_sha is not None and pr_parent_sha is not None:
-        if pr_merge_sha == pr_parent_sha:
+    if pr_merge_tree_sha is not None and pr_parent_tree_sha is not None:
+        if pr_merge_tree_sha == pr_parent_tree_sha:
             findings.append(ValidationFinding(
                 severity="error",
                 code="NO_OP_MERGE",
                 message="PR merge commit has the same tree SHA as its parent — "
                         "zero files changed (no-op merge).",
-                detail=f"merge/parent tree SHA: {pr_merge_sha}",
+                detail=f"merge/parent tree SHA: {pr_merge_tree_sha}",
             ))
 
     # ── R2: Missing file / directory detection ─────────────────────────
@@ -235,11 +237,16 @@ def fetch_pr_files(pr_number: int) -> list[str]:
         return []
 
 
-def fetch_pr_merge_sha(pr_number: int) -> tuple[Optional[str], Optional[str]]:
-    """Fetch merge commit SHA and parent commit SHA for a merged PR.
+def fetch_pr_tree_shas(pr_number: int) -> tuple[Optional[str], Optional[str]]:
+    """Fetch merge tree SHA and parent tree SHA for a merged PR.
 
-    Returns:
-        (merge_sha, parent_sha) or (None, None) if PR not merged / unavailable.
+    Returns (tree SHA of merge commit, tree SHA of first parent).
+    Returns (None, None) if PR not merged, git data unavailable, or
+    either tree cannot be resolved (e.g. shallow clone).
+
+    Note: returns tree SHAs, NOT commit SHAs — two different commits
+    can produce the same tree (= no-op merge). Comparing tree SHAs
+    catches this correctly.
     """
     try:
         raw = _gh_run([
@@ -253,7 +260,8 @@ def fetch_pr_merge_sha(pr_number: int) -> tuple[Optional[str], Optional[str]]:
     except RuntimeError:
         return None, None
 
-    # Get tree of merge commit via git plumbing
+    # Get trees via git plumbing; if any step fails, return (None, None)
+    # consistently to avoid asymmetric partial results.
     try:
         tree_result = subprocess.run(
             ["git", "rev-parse", f"{merge_sha}^{{tree}}"],
@@ -263,16 +271,14 @@ def fetch_pr_merge_sha(pr_number: int) -> tuple[Optional[str], Optional[str]]:
             return None, None
         merge_tree = tree_result.stdout.strip()
 
-        # Get tree of first parent
         parent_result = subprocess.run(
             ["git", "rev-parse", f"{merge_sha}^1^{{tree}}"],
             capture_output=True, text=True, timeout=10,
         )
         if parent_result.returncode != 0:
-            return merge_tree, None
+            return None, None
         parent_tree = parent_result.stdout.strip()
 
-        # Return tree SHAs (not commit SHAs) for comparison
         return merge_tree, parent_tree
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return None, None
@@ -294,10 +300,6 @@ def build_parser() -> argparse.ArgumentParser:
         "pr_number", type=int,
         help="GitHub PR number",
     )
-    parser.add_argument(
-        "--no-fetch", action="store_true",
-        help="Skip gh CLI fetching (for testing with pre-supplied data)",
-    )
     return parser
 
 
@@ -316,11 +318,13 @@ def main() -> int:
     # Fetch data
     issue_body = fetch_issue_body(args.issue_number)
     pr_files = fetch_pr_files(args.pr_number)
-    merge_sha, parent_sha = fetch_pr_merge_sha(args.pr_number)
+    merge_tree, parent_tree = fetch_pr_tree_shas(args.pr_number)
 
     if not issue_body and not pr_files:
         print(
-            "warning: could not fetch issue body or PR files — skipping validation.",
+            "note: could not fetch issue body or PR files — "
+            "skipping validation (this is expected if the issue/PR "
+            "does not exist or gh is not configured).",
             file=sys.stderr,
         )
         return EXIT_PASS
@@ -329,8 +333,8 @@ def main() -> int:
     findings = core_validate(
         issue_body=issue_body,
         pr_files=pr_files,
-        pr_merge_sha=merge_sha,
-        pr_parent_sha=parent_sha,
+        pr_merge_tree_sha=merge_tree,
+        pr_parent_tree_sha=parent_tree,
     )
 
     if not findings:
