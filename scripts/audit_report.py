@@ -100,6 +100,14 @@ _ROUTE_ALIASES: dict[str, str] = {
     "market outlook": "market-outlook",
     "market outlook / industry evolution": "market-outlook",
     "industry evolution": "market-outlook",
+    # ── Provider / Vendor Selection ──────────────────────────
+    "provider / vendor selection": "provider-selection",
+    "provider selection": "provider-selection",
+    "vendor selection": "provider-selection",
+    # ── Market Entry / Regional Expansion ────────────────────
+    "market entry / regional expansion": "market-entry",
+    "market entry": "market-entry",
+    "regional expansion": "market-entry",
 }
 
 # Default route used when auto-detection fails or an unknown route is given.
@@ -453,6 +461,20 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_market_outlook_monitoring_actionability,
+    ],
+    "provider-selection": [
+        _run_report_quality,
+        _run_declared_execution,
+        _run_table_role_labels,
+        _run_source_label_consistency,
+        _run_scoring_replicability,
+    ],
+    "market-entry": [
+        _run_report_quality,
+        _run_declared_execution,
+        _run_table_role_labels,
+        _run_source_label_consistency,
+        _run_scoring_replicability,
     ],
 }
 
