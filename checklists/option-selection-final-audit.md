@@ -60,6 +60,10 @@ Run this checklist before delivery.
 - [ ] countries/markets are compared using one visible comparison unit rather than free-form country notes
 - [ ] hard gates (budget, product architecture, compliance readiness, channel readiness, localization burden, or similar) are explicit
 - [ ] the report names what would change the entry sequencing or turn `go` into `not now`
+- [ ] **[Phase A] recommendation-constraint consistency** — GO / Pilot / Not Now labels are checked against the report's own budget, team, compliance readiness, and timeline estimates; if the report estimates 18–24 months to entry-ready but also requires 6-month revenue verification, the beachhead must not be labelled GO
+- [ ] **[Phase A] sensitivity / switching table** — at least one sensitivity table or switching-condition description shows how changes in growth, ARPU, CAC, localization cost, partner deal cycle, or regulatory delay would change the beachhead country
+- [ ] **[Phase B] Country Diligence Card** — each shortlisted country is evaluated through a consistent diligence card that includes: target customer/payer, first-revenue path, localization depth, regulatory/data status, competitive landscape, channel/partner readiness, entry motion, cost and timeline, legal/tax/IP, and expansion/exit scenario
+- [ ] **[Phase B] two-level decision funnel** — the report explicitly separates regional screening (option universe → region shortlist) from country competition (winning region → country shortlist → single beachhead); winning region must compare at least 2–3 realistic country candidates or explain exclusivity
 
 ## Shortlist structure
 

@@ -448,6 +448,79 @@ In these market-entry cases:
 - if TAM / SAM / SOM, scenario models, or KPI plans are used, label observed numbers vs proxies vs assumptions vs planning-model outputs
 - if the final memo is written in Chinese, keep load-bearing labels in Chinese too rather than leaking English evidence buckets into the body
 
+### Country Diligence Card
+
+Each shortlisted country should be evaluated through a consistent diligence card. This ensures that the comparison is driven by comparable evidence across candidates, not by free-form prose depth that varies by country.
+
+| 字段 | 内容 | Evidence role | Source |
+|------|------|--------------|--------|
+| 目标客户 / 付费方 | | observed / proxy | [Sxx] |
+| 首笔收入路径 | | assumption / model-output | [Sxx] |
+| 本地化（语言 / 内容 / 支持） | | estimate | [Sxx] |
+| 监管 / 数据合规 | | observed / current | [Sxx] |
+| 竞争格局 | | observed / inferred | [Sxx] |
+| 渠道 / 伙伴 readiness | | observed / unknown | [Sxx] |
+| Entry motion | B2C / B2B / B2G / B2B2C | inference | [Sxx] |
+| 成本与周期 | | estimate / assumption | [Sxx] |
+| 法律 / 税务 / IP | | current fact | [Sxx] |
+| 扩展 / 退出场景 | | scenario | [Sxx] |
+
+**Rules:**
+- Each row must have a non-empty "Evidence role" when the field is populated.
+- If a field cannot be filled, mark it explicitly as `unknown` or `not applicable` rather than leaving it blank.
+- The "Source" column uses `[Sxx]` references to the Source Register; every row with an evidence role of `observed` or `current fact` MUST have a non-empty Source.
+- The same card template must be applied to all countries in the shortlist — no free-form prose for some and structured cards for others.
+
+### Sensitivity / Switching Table
+
+When the recommendation depends on load-bearing numerical assumptions (growth rate, ARPU, CAC, localization cost, partner deal cycle, regulatory delay), include at least one sensitivity table that explicitly states which variable changes would switch the beachhead country.
+
+| Variable | Current assumption | Change direction | New beachhead | Trigger threshold |
+|----------|-------------------|-----------------|---------------|-------------------|
+| Market growth rate | 12% CAGR | drops to 6% | Country B | <8% for 2 quarters |
+| ARPU | $8.50 | falls to $5.00 | Country C (pilot) | <$6.00 |
+| Localization cost | $150K | rises to $300K | Country D (hub-first) | >2x estimate |
+| Partner deal cycle | 4 months | extends to 10 months | Country B (pilot only) | >8 months |
+
+**Rules:**
+- At minimum 3 variables tested.
+- Each row must state the current assumption, the direction of change, the new beachhead if triggered, and the trigger threshold.
+- If a variable change would not alter the beachhead, state that explicitly with a brief reason.
+
+### Two-level decision funnel
+
+For market-entry / regional-expansion tasks, the report structure should explicitly reflect two comparison levels:
+
+1. **Regional screening**: Compare regions on macro dimensions — total addressable market, regulatory posture, execution distance, language/team requirements, business model fit, competitive pressure. Produce a ranked region shortlist.
+2. **Country competition**: Within the winning region, compare specific countries on micro dimensions — 6–12 month first-revenue path, channel/partner readiness, localization depth and cost, data/education/industry licensing, payment/contract/tax/entity requirements, CAC/ARPU/payback cycle, pilot testability, exit cost.
+
+**Restructured outline:**
+
+1. Executive summary
+2. What is the real decision?
+3. Recommendation (at region and country levels)
+4. Regional screening
+   - Option universe and exclusions
+   - Region-level comparison table
+   - Ranked region shortlist
+   - Winning region justification
+5. Country competition (within winning region)
+   - Country shortlist with unified comparison unit
+   - Country Diligence Cards (one per candidate)
+   - Ranked country list
+6. Why the top beachhead wins
+7. Why the runner-up remains credible
+8. Why other countries lose
+9. Hard gates and sequencing
+10. Sensitivity / switching table
+11. Regional hub / later expansion portfolio
+12. Risk / what changes the decision
+13. Sources
+
+**Rules:**
+- Every market-entry report must follow this two-level structure. If the task genuinely involves only one region (e.g., "should we enter Thailand only?"), the report must state why the option universe is limited to one region.
+- The winning region must compare at least 2-3 realistic country candidates or provide a documented justification for exclusivity.
+
 Do not give every option equal narrative weight if the user's real need is to choose.
 
 ## Opening-shape discipline

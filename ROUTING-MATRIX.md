@@ -209,10 +209,15 @@ The final report should visibly show:
 - hard gates
 - sequencing logic
 - recommended entry motion
+- two-level decision funnel: regional screening → country competition → single beachhead
+  - winning region must compare at least 2–3 realistic country candidates or explain exclusivity
 - distinction between:
   - regional hub
   - first revenue beachhead
   - later expansion market
+- Country Diligence Cards with consistent evidence-role labeling across candidates
+- sensitivity / switching table showing which variable changes would switch the beachhead
+- recommendation-constraint consistency (GO/Pilot/Not Now labels compatible with report's own budget, timeline, and compliance estimates)
 
 ### Hard fail
 Fail if the report:
@@ -221,6 +226,9 @@ Fail if the report:
 - gives country notes without a unified comparison unit
 - recommends expansion without hard gates or sequencing logic
 - collapses hub / beachhead / later expansion market into one vague "best market"
+- [NEW] skips the country-competition stage, jumping directly from regional winner to beachhead without evaluating 2–3 realistic country candidates within the winning region
+- [NEW] country diligence varies inconsistently across candidates (different fields, different depth, no evidence-role labeling)
+- [NEW] recommendation-constraint mismatch: the beachhead recommendation label (GO / Pilot Only / Not Now) contradicts the report's own estimated entry timeline, budget, team capacity, or compliance readiness
 
 ---
 

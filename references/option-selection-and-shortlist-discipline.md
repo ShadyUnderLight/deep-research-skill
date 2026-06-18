@@ -369,6 +369,8 @@ When the task involves market entry / regional expansion / country prioritizatio
 - Is one visible comparison unit being used across candidate countries, or has the report drifted into free-form country notes?
 - Which hard gates would actually block entry: budget, data/deployment architecture, compliance readiness, channel readiness, language / localization readiness, or something else?
 - Does the report show why the top entry sequence wins and what would reverse that sequence?
+- Is the report applying a two-level decision funnel? That is, does it first screen regions at a macro level (TAM, regulatory posture, execution distance) before competing individual countries within the winning region on micro dimensions (localization depth, channel readiness, CAC/ARPU, licensing)?
+- Does each shortlisted country have a consistent diligence card with explicit evidence-role labels (observed / proxy / assumption / model-output / current fact / scenario), or are some countries analyzed in free-form prose while others get structured evaluation?
 
 ---
 
