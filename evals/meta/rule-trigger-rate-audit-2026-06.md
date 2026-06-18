@@ -7,7 +7,7 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
 - Commit anchor: `b180815`
-- Case count: 90 tracked Markdown cases
+- Case count: 91 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -101,6 +101,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/intel-current-state-freshness-case.md` | current-state / listed-company | Failed execution | Triggered | Triggered | Triggered | N/A | Failed execution | Triggered | Triggered | Current-state freshness failure is the target. |
 | `evals/cases/local-llm-equipment-selection-budget-boundary-case.md` | equipment-selection | Triggered | Failed execution | N/A | Failed execution | Missing trigger | Triggered | Triggered | Triggered | Budget boundary completeness and secondary provider route verification. |
 | `evals/cases/lotes-listed-company-moat-snapshot-case.md` | listed-company | Failed execution | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Market snapshot, moat boundary, valuation, and label gaps. |
+| `evals/cases/market-entry-two-level-funnel-and-diligence-case.md` | market-entry | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | New two-level funnel and country diligence card eval case (issue #328); pending formal audit. |
 | `evals/cases/marvell-listed-company-snapshot-traceability-case.md` | listed-company | Failed execution | Missing trigger | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Claim-level citations absent; snapshot and valuation incomplete. |
 | `evals/cases/mcp-security-risk-list-vs-threat-model-case.md` | technical-deep-dive | Triggered | Failed execution | Failed execution | N/A | N/A | Triggered | Triggered | N/A | Security deep-dive output must distinguish risk list from threat model; current rule verdict: fail (after #244). |
 | `evals/cases/mcp-technical-deep-dive-architecture-comparison-role-case.md` | technical-deep-dive | N/A | Triggered | Triggered | N/A | N/A | Triggered | Triggered | N/A | Architecture comparison must include comparator roles and load-bearing trade-offs; current rule verdict: manual-review (after #245). |
