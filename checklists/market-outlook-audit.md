@@ -30,6 +30,12 @@ Run this checklist before delivery.
 - [ ] drivers and blockers are not mixed into a flat trend list
 - [ ] each driver or blocker is specific enough to be decision-relevant, not generic
 
+## Value-chain sensitivity coverage
+
+- [ ] if the topic contains 产业链 / value chain / supply chain / infrastructure chain, a value-chain sensitivity map is present
+- [ ] each chain layer includes exposure, bottleneck mechanism, beneficiaries/losers, timing, evidence strength, change-condition
+- [ ] the map is not a flat description but shows inter-layer transmission logic
+
 ## Structured multi-scenario analysis
 
 - [ ] at minimum a base case and one credible alternative scenario exist
@@ -57,6 +63,12 @@ Run this checklist before delivery.
 - 报告 scope 已明确声明聚焦单一 stakeholder 群体（标题暗示受众、开头声明 scope 如"面向 X 的决策参考"、"本文旨在为 X 提供参考"）
 - 且未以全球/行业全景报告自居（如标题含"市场全景"、"行业分析"、"全球展望"等措辞）
 
+### Stakeholder actionability（enhanced, when implementation burden exists）
+
+- [ ] stakeholder implications use action table format (decision / action / metric / trigger) when the report involves implementation, deployment, or organizational change
+- [ ] each action has a concrete, checkable recommendation (not "关注趋势")
+- [ ] "Trigger to revise" column includes specific threshold or condition for at least half of entries
+
 ## Quantitative role labeling
 
 - [ ] important numbers are labeled as observed current metric / inferred estimate / scenario assumption / illustrative calculation
@@ -77,6 +89,13 @@ Run this checklist before delivery.
 - [ ] 前瞻数字必须使用 estimate / scenario-assumption / analyst estimate / inference / model-output 等来源角色或数字角色标签，并给出归因来源和时间 basis。
 - [ ] 例外：已经发生并已被审计、披露或直接观测的 historical / current metric（如“2025 年实际营收”）可标为确认事实；仅描述“Gartner 于 2026-01 发布预测”且不把预测数值当事实时，也不触发。
 - [ ] 同一报告中出现 >3 处“前瞻数字标为确认事实”或任一 load-bearing scenario assumption 被标为确认事实 → hard-fail。
+
+## Regional coverage (global scope)
+
+- [ ] if the report title/question contains 全球 / global / 区域 / region, a regional coverage matrix is present
+- [ ] each region in the matrix has a Data role column (observed / estimate / forecast / scenario / proxy)
+- [ ] each regional key metric has an `[Sxx]` inline citation
+- [ ] if the report claims "global" but only covers US/China/EU, a scope completeness warning is present or the report explicitly qualifies its scope
 
 ## Monitoring and change conditions
 

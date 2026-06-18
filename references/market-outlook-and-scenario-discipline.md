@@ -190,6 +190,51 @@ If drivers and blockers are not separated, the scenario logic will be too mushy.
 
 ---
 
+### Value-chain sensitivity map（产业链主题建议）
+
+当题目包含「产业链」「value chain」「supply chain」「infrastructure chain」时，建议在 drivers/blockers 分析之后包含一张价值链敏感性地图。
+
+**格式模板**
+
+| 链条层级 | 当前暴露程度 | 瓶颈传导机制 | 受益方/受损方 | 影响时间 | 证据强度 | 改变结论的条件 |
+|---------|------------|------------|-------------|---------|---------|-------------|
+| 上游：... | observed / estimated | 机制说明 | ... | 短期/中期/长期 | high / medium / low | ... |
+| 中游：... | ... | ... | ... | ... | ... | ... |
+| 下游：... | ... | ... | ... | ... | ... | ... |
+
+**规则：**
+- 链条层级一般分为上游（原材料/基础供应）、中游（制造/建设/运营）、下游（应用/消费/服务），可根据题目调整。
+- 每个层级至少包含 exposure、bottleneck mechanism、beneficiaries/losers、timing、evidence strength、change-condition。
+- 不同层级之间的传导关系应在文字说明中体现，而非仅靠表格。
+
+### Regional coverage matrix（global scope 主题建议）
+
+当报告标题或问题包含「全球」「global」「区域」「region」时，建议包含一张区域覆盖矩阵。这有助于读者理解"全球"是否真的是全球覆盖，还是主要聚焦部分区域。
+
+**格式模板**
+
+| 区域 | 覆盖的关键指标 | 数据角色 | 来源 `[Sxx]` | 是否覆盖 |
+|-----|-------------|---------|-------------|---------|
+| 北美 | ... | observed / estimate / forecast / scenario / proxy | [S01], [S02] | ✅ |
+| 欧盟 | ... | ... | ... | ✅ |
+| 中国 | ... | ... | ... | ✅ |
+| 印度 | ... | ... | ... | ❌ 未覆盖 |
+| 东南亚 | ... | ... | ... | ❌ 未覆盖 |
+| 中东/非洲 | ... | ... | ... | ❌ 未覆盖 |
+
+**规则：**
+- 数据角色列必须标注角色的认识论分类（observed / estimate / forecast / scenario / proxy）。
+- 区域关键数字必须有 `[Sxx]` 正文引用，不能仅靠文末 bibliography。
+- 若只覆盖欧美和中国却声称"全球"，必须触发 scope completeness warning：
+
+  > ⚠️ 本报告声称覆盖全球市场，但实际可验证数据仅覆盖 [北美+欧盟+中国] 三个区域，占全球市场约 [X]%。建议在题目或范围声明中明确限定覆盖区域。
+
+- 区域选择不是固定的——应根据题目涉及的产业链和市场规模合理选择对比区域（例如数据中心电力主题至少覆盖北美、欧盟、中国、东南亚、中东）。
+
+**不触发条件**：报告 scope 已明确声明聚焦特定区域（如"中国市场"、"全球视角偏重欧美"）且标题/问题不含"全球"等全貌措辞。
+
+---
+
 ## Quantitative outlook discipline
 
 When using numbers in market-outlook reports, label each important number by role.
@@ -241,6 +286,27 @@ For each covered stakeholder type, provide a dedicated subsection that answers:
 Do not collapse all stakeholder implications into a single investor-focused paragraph. Each stakeholder type has different decision horizons, risk exposures, and action requirements.
 
 Without multi-stakeholder coverage, the report may be informative for one audience but fails as a decision-useful market memo.
+
+### 推荐结构：Stakeholder action table
+
+当报告涉及实施决策、成本投入、组织变更时，建议将 stakeholder 影响从"方向性描述"升级为 action table：
+
+| Stakeholder | Decision to make | Recommended action | Required evidence / metric | Trigger to revise |
+|---|---|---|---|---|
+| [角色] | [需要做的决策] | [推荐行动] | [约束条件 / 关键指标] | [什么假设变化会改变推荐] |
+
+示例：
+
+| Stakeholder | Decision to make | Recommended action | Required evidence / metric | Trigger to revise |
+|---|---|---|---|---|
+| 业务 Owner | 是否全面接入 AI Agent | 先启动 MVP 试点（1 个团队，3 个月） | 客服响应时间改善 >30% 且成本不增加 >15% | 试点 3 个月后效果未达标 → 回到部分接入方案 |
+| 数据/知识 Owner | 数据清洗与知识库优先级 | 优先打通 CRM+BI 系统数据管道 | 数据覆盖率 >80% 的渠道数 | 关键工单系统 API 不可用 → 调整 MVP scope |
+| AI 运营 Owner | 选型：集中式 Agent vs 微代理 | 部署分布式微代理 + 人工兜底 | 单 Agent 准确率 >85%，兜底率 <10% | 运维人力需求超预期 → 增加集中管理面板 |
+
+**规则：**
+- 每个 stakeholder 的行动建议必须是具体的、可检查的，而不是"关注趋势"。
+- "Trigger to revise"列必须包含具体阈值或条件。
+- 该表不替代现有"what does this mean for them"描述性段落——可以在描述性段落后附加该表，或直接用表格替代描述。
 
 ---
 
