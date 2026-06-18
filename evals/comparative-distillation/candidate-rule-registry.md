@@ -9,11 +9,9 @@ Reference: `references/comparative-distillation-method.md#step-6`
 
 ## Summary finding
 
-All PROMOTE_NOW candidates from the 13 existing distillation cases are **already covered** by existing checklists, SKILL.md, and reference documents. See each entry below for exact coverage location.
+PROMOTE_NOW candidates from the first 13 distillation cases are **already covered** by existing checklists, SKILL.md, and reference documents. See each entry below for exact coverage location.
 
-There are **zero uncovered PROMOTE_NOW candidates** that require further case validation before promotion.
-
-**Implication:** running 2-3 more distillation cases is unlikely to produce new rule discoveries. The existing rule system has already absorbed the lessons from all 13 cases. The remaining gap is primarily execution/activation discipline rather than missing rules.
+Two new distillation cases (issue #320) produced **5 new PROMOTE_NOW candidates (R61-R65)** that were not previously covered. These have been implemented via template/checklist updates in issue #320 — see each entry for the new coverage location.
 
 ---
 
@@ -96,19 +94,25 @@ There are **zero uncovered PROMOTE_NOW candidates** that require further case va
 | R58 | Express travel uncertainty as scenario risks + fallback plans | CHECKLIST_HARDENING | weekend-seaside-destination | 1 | WAIT_FOR_SECOND_CASE | `checklists/option-selection-final-audit.md` L73-78; `references/decision-report-template.md` L139-140 | 已延期 |
 | R59 | For destination-selection tasks, lead with decision frame → comparison → shortlist → detail | TEMPLATE_CHANGE | weekend-seaside-destination | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L56-57; `references/decision-report-template.md` L122-140 | 已覆盖 |
 | R60 | Optimize destination-selection reports for choice architecture rather than guide-style description | NEW_RULE | weekend-seaside-destination | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` L84-88 | 已覆盖 |
+| R61 | Add Input boundary / 未指定项 block for constrained-choice / market-entry / market-outlook templates | TEMPLATE_CHANGE | small-team-ai-agent, dc-power | 2 | PROMOTE_NOW | `references/report-template.md` §输入边界与未指定项（#320） | 已覆盖 |
+| R62 | Add Value-chain sensitivity map for industry-chain market-outlook | TEMPLATE_CHANGE + CHECKLIST_HARDENING | dc-power | 1 | PROMOTE_NOW | `references/market-outlook-and-scenario-discipline.md` §Value-chain sensitivity map; `checklists/market-outlook-audit.md` §Value-chain sensitivity coverage（#320） | 已覆盖 |
+| R63 | Add Regional coverage matrix with source role for global scope | TEMPLATE_CHANGE + CHECKLIST_HARDENING | dc-power | 1 | PROMOTE_NOW | `references/market-outlook-and-scenario-discipline.md` §Regional coverage matrix; `checklists/market-outlook-audit.md` §Regional coverage（#320） | 已覆盖 |
+| R64 | Upgrade Stakeholder implications to action table (decision/action/metric/trigger) | TEMPLATE_CHANGE + CHECKLIST_HARDENING | small-team-ai-agent, dc-power | 2 | PROMOTE_NOW | `references/market-outlook-and-scenario-discipline.md` §Stakeholder action table; `checklists/market-outlook-audit.md` §Stakeholder actionability（#320） | 已覆盖 |
+| R65 | Add Implementation stages integration in option-selection structure | TEMPLATE_CHANGE | small-team-ai-agent | 1 | PROMOTE_NOW | `references/decision-report-template.md` §实施路线（#320） | 已覆盖 |
 
 ---
 
 ## Summary statistics
 
 | Metric | Count |
-|---|---|
-| Total candidate rules (all 13 files) | 60 |
-| PROMOTE_NOW | 43 |
+|---|---|---|
+| Total candidate rules (all 15 files) | 65 |
+| PROMOTE_NOW | 48 |
 | WAIT_FOR_SECOND_CASE | 3 |
 | (unlabeled, implicitly actionable) | 14 |
-| **Covered by existing code** | **57 / 60** (95%) |
+| **Covered by existing code** | **62 / 65** (95%) |
 | Pending / WAIT_FOR_SECOND_CASE | 3 (R10, R57, R58) |
+| Pending / #320 implementation | 0 |
 | **Truly uncovered PROMOTE_NOW** | **0** |
 
 ---
@@ -137,6 +141,12 @@ Two new comparative-distillation cases were added as part of issue #310:
 - **Programming language learning** (`programming-language-learning-gpt-vs-local-comparative-distillation.md`): Identified career/skill-selection proxy discipline gaps (proxy indicator conflation, US-vs-global scope confusion, bare learning time estimates, shortlist boundary leak). All gaps closed by [#306](https://github.com/ShadyUnderLight/deep-research-skill/issues/306), [#308](https://github.com/ShadyUnderLight/deep-research-skill/issues/308), [#309](https://github.com/ShadyUnderLight/deep-research-skill/issues/309).
 
 Both cases have all 6 candidate actions marked `NO_ACTION` — confirming the existing rule coverage is sufficient and the gaps were primarily execution/wiring problems.
+
+Two new comparative-distillation cases were added as part of issue #320:
+
+- **Small-team AI Agent** (`small-team-ai-agent-gpt-vs-local-comparative-distillation.md`): Identified template-level gaps — Input boundary declaration, implementation stages integration, stakeholder action table. All candidates promoted as `TEMPLATE_CHANGE` (R61, R64, R65), implemented in [#320](https://github.com/ShadyUnderLight/deep-research-skill/issues/320).
+
+- **Data center power bottleneck** (`data-center-power-bottleneck-gpt-vs-local-comparative-distillation.md`): Identified template + checklist gaps — Value-chain sensitivity map, Regional coverage matrix, stakeholder action table. All candidates promoted as `TEMPLATE_CHANGE + CHECKLIST_HARDENING` (R62, R63, R64). Cross-case confirmed R61 (input boundary) and R64 (action table) from the AI Agent case.
 
 ---
 

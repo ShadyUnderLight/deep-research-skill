@@ -135,9 +135,10 @@ For option-selection / shortlist tasks, adapt the middle of the structure like t
    - **优化目标**：[最快就业 / 长期上限 / 创业效率 / 后悔概率最低 / 综合回报 / 其他]
    - **选项全集**：[理论上的选项范围，如"所有主流编程语言"或"用户指定的四个选项"]
    - **本次短名单**：[实际纳入比较的选项，与全集的关系]
-   - **明确排除项**：[排除了什么、为什么排除；若来自用户指定则说明"非全市场排行"]
-   - **关键未知**：[选择时尚未确认、可能影响结果的信息]
-   - **改变结论的条件**：[什么假设变化会改变排名或推荐]
+    - **明确排除项**：[排除了什么、为什么排除；若来自用户指定则说明"非全市场排行"]
+    - **关键未知**：[选择时尚未确认、可能影响结果的信息] 若未指定项改变结论，应在此标注并进入 sensitivity 分析。
+    - **输入边界 / 未指定项**：[可选，参考 `references/report-template.md` §输入边界与未指定项]
+    - **改变结论的条件**：[什么假设变化会改变排名或推荐]
 
    **子类型示例：**
 
@@ -170,6 +171,22 @@ In these option-selection / shortlist cases:
 - if quantitative scoring or composite comparison is used, label what is an observed fact, what is a proxy, what is an assumption, and what is a model output
 - do not let "runner-up" become just a second-place description; explain what weighting or scenario would make it first
 - express uncertainty as change-the-ranking or ranking-reversal conditions when possible, not only as generic caveats
+
+**实施路线（当有落地决策负担时建议包含）：**
+
+当推荐涉及实施、部署或组织变更时，在推荐路径之后补充实施路线：
+
+| 阶段 | 要做什么 | 不做什么 | 关键里程碑 | Owner / 运营模型 |
+|-----|---------|---------|-----------|-----------------|
+| 准备/MVP | ... | ... | ... | ... |
+| 扩展 | ... | ... | ... | ... |
+| 强化 | ... | ... | ... | ... |
+| 稳态 | ... | ... | ... | ... |
+
+规则：
+- 区分 MVP 形态与长期终局，不把终局架构当第一阶段建议。
+- 每个阶段必须说明"什么情况下加速下一阶段、什么情况下暂停"。
+- 对组织类报告，明确 Owner / 运营模型的归属变化。
 
 For market-outlook / industry-evolution / "未来12个月如何演化" tasks, prefer this stronger structure:
 

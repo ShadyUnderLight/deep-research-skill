@@ -147,6 +147,13 @@ Whether the report tells the reader what to do next, verify next, or monitor nex
 - sequencing or prioritization of follow-up actions
 - stakeholder-specific actions when the report is meant for operators, buyers, builders, investors, or other distinct audiences
 
+**Enhanced checks for implementation-heavy reports:**
+
+When the report involves implementation, deployment, or organizational change:
+- is there an action table mapping stakeholder → decision → action → metric → trigger?
+- are the actions concrete and checkable rather than aspirational?
+- does each action have a defined revision trigger?
+
 ### 0
 - no meaningful next step guidance
 
