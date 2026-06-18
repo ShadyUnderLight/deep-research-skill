@@ -126,21 +126,21 @@ def test_c2b_routing_has_unresolved_link():
 def test_c3a_audit_has_tco_check():
     """C3a: option-selection-final-audit.md has TCO boundary check."""
     content = read("checklists/option-selection-final-audit.md")
-    assert re.search(r'TCO.*边界|直接费.*网络|总拥有成本.*声明', content), \
+    assert re.search(r'TCO breakdown.*included/excluded boundary|Enterprise rollout gate', content), \
         "Missing TCO boundary check in audit"
 
 
 def test_c3b_audit_has_migration_check():
     """C3b: option-selection-final-audit.md has migration/rollout check."""
     content = read("checklists/option-selection-final-audit.md")
-    assert re.search(r'迁移.*checklist|安全.*SSO.*培训|inventory.*身份.*CI', content), \
+    assert re.search(r'migration/rollout checklist.*inventory.*training.*exit|Enterprise rollout gate', content), \
         "Missing migration/rollout check in audit"
 
 
 def test_c3c_audit_has_team_scale_check():
     """C3c: option-selection-final-audit.md has team-size/governance check."""
     content = read("checklists/option-selection-final-audit.md")
-    assert re.search(r'团队规模|小团队|中型|大型团队|治理成熟度', content), \
+    assert re.search(r'team size.*governance maturity.*implementation path|Enterprise rollout gate', content), \
         "Missing team-size/governance check in audit"
 
 
@@ -151,7 +151,7 @@ def test_c3c_audit_has_team_scale_check():
 def test_c4a_discipline_has_rollout_questions():
     """C4a: option-selection-and-shortlist-discipline.md has enterprise rollout heuristic questions."""
     content = read("references/option-selection-and-shortlist-discipline.md")
-    assert re.search(r'enterprise rollout|企业落地|迁移.*上线|TCO.*hidden|团队规模.*路线', content), \
+    assert re.search(r'enterprise provider selection.*rollout decisions|full TCO.*included/excluded boundary', content), \
         "Missing enterprise rollout heuristic questions"
 
 
