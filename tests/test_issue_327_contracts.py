@@ -65,7 +65,7 @@ def test_c1b_has_team_size_roadmap():
 def test_c1c_has_migration_checklist():
     """C1c: provider-selection template has migration checklist with security/identity/CI/training/exit."""
     content = read("references/decision-report-template.md")
-    assert re.search(r'inventory|安全|SSO|SCIM|RBAC|审计.*培训|试运行|退出条件', content), \
+    assert re.search(r'inventory|安全|SSO|SCIM|RBAC|试运行|退出条件', content), \
         "Missing migration checklist items"
 
 

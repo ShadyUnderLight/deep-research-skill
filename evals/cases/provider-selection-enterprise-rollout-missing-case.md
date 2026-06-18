@@ -1,10 +1,14 @@
-# Provider Selection: 选型结构强但企业落地缺失
+# Eval: Provider Selection Enterprise Rollout Missing Case
 
 **Verdict:** CONDITIONAL PASS (enterprise rollout layer missing)
 
 **Route:** provider-selection
 
 **Failure class:** structural-completeness — 推荐结构存在完整排名逻辑，但缺乏企业落地蓝图
+
+## Goal
+
+验证 provider-selection 报告在满足所有核心决策纪律（当前快照、追溯、排名、角色标签）的情况下，是否仍然会因为缺少企业落地蓝图（推荐层级、团队路线、TCO、迁移 checklist、未决问题关联）而降低对企业采购者的决策可用性。
 
 ## 场景
 
@@ -54,9 +58,9 @@
 ## 规则/纪律引用
 
 - `ROUTING-MATRIX.md` §Provider / Vendor Selection — Visible artifact contract
-- `references/decision-report-template.md` §Provider-selection 企业落地蓝图
+- `references/decision-report-template.md` §Provider-selection 企业落地蓝图（详见模板中加粗段落）
 - `checklists/option-selection-final-audit.md` §Enterprise rollout gate
-- `references/option-selection-and-shortlist-discipline.md` §企业落地启发式问题
+- `references/option-selection-and-shortlist-discipline.md` §When the task involves enterprise provider selection（详见启发式问题列表）
 
 ## 修复方向
 
