@@ -361,6 +361,15 @@ When the task involves model/API provider selection, also ask:
 - Is the report comparing providers using a current snapshot, or using stale flagship anchors?
 - Is the output becoming a vendor encyclopedia instead of a ranked provider-choice memo?
 
+When the task involves enterprise provider selection with procurement or rollout decisions, also ask:
+
+- Who is the reader: an individual developer choosing a tool, or an enterprise buyer/governance team managing procurement and rollout?
+- Would the recommendation change if the team were 5 people vs 200 people? Does the report distinguish implementation paths by team scale?
+- Is a simple cost comparison sufficient, or does the decision require a full TCO with network/audit/training/switching cost and an explicit included/excluded boundary?
+- Are there unresolved compliance, accessibility, data-residency, or contracting questions that could change the recommendation from primary to avoid?
+- Does the reader need a migration and rollout plan covering inventory, security, identity, CI integration, training, trial run, and exit — not just a ranking?
+- Are cost numbers labeled with their data role (observed / estimate / assumption / vendor-claim / model-output), and is the TCO boundary declared in the same visibility layer as the ranking?
+
 When the task involves market entry / regional expansion / country prioritization, also ask:
 
 - Is the real choice whether to enter now, delay, pilot, or sequence entry over phases?
