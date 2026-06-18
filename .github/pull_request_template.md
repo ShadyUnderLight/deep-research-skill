@@ -32,6 +32,17 @@ What should the skill do better after this change?
 - Updated eval:
 - No eval change because:
 
+## Issue acceptance mapping
+
+If this PR closes or partially addresses an issue, list how each acceptance
+criterion maps to actual changed files or test commands.
+
+| Acceptance item (from issue) | Implementation file/section | Verification command |
+|---|---|---|
+| e.g. "Add input boundary table" | `references/report-template.md` | `python3 scripts/test_*.py` |
+
+Omit if PR is a trivial fix (typo, formatting) with no linked issue.
+
 ## Risks / possible regressions
 
 What might this change worsen or accidentally break?
