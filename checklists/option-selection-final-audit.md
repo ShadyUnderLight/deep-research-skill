@@ -52,6 +52,18 @@ Run this checklist before delivery.
 - [ ] support regions, mainland-China accessibility, signing/payment reality, data residency, and SLA/status are treated as ranking variables when relevant, not buried as footnotes
 - [ ] if a key provider fact could not be confirmed, it is marked unknown rather than filled with likely-but-stale prior knowledge
 
+### Enterprise rollout gate
+
+When the reader is an enterprise buyer, governance team, or the provider-selection report will be used for procurement or rollout decisions, also run these checks:
+
+- [ ] the report includes a recommendation hierarchy (首选/备选/次选/避免) rather than only a scored ranking or flat shortlist
+- [ ] the report shows how team size or governance maturity changes the implementation path, or explicitly states that the recommendation is stable across team scales
+- [ ] the report includes a migration/rollout checklist covering at least: inventory, network verification, security/compliance assessment, pilot, identity/SSO/SCIM, repo/CI integration, training, trial run, and exit conditions
+- [ ] the report includes a TCO breakdown with direct fees, network, audit, integration, training, contract, and switching costs, with an explicit included/excluded boundary
+- [ ] all TCO line items carry a cost role label (observed / estimate / assumption / model-output); unestimated items are marked `not estimated` with a reason
+- [ ] unresolved questions (mainland accessibility, contracting entity, data cross-border, industry licensing, local alternatives) are linked to recommendation-tier strength and reversal conditions
+- [ ] if the report lacks these enterprise rollout layers despite being used for procurement, the executive summary calls out this gap explicitly
+
 ## Market-entry / regional-expansion gate
 
 - [ ] for market-entry, country-prioritization, or regional-expansion tasks, the report states whether the recommendation is `go`, `not now`, `pilot only`, or phased entry

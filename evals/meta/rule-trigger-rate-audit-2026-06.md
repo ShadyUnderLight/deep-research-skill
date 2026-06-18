@@ -7,7 +7,7 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
 - Commit anchor: `b180815`
-- Case count: 90 tracked Markdown cases
+- Case count: 91 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -114,6 +114,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/pdf-delivery-trigger-regression-case.md` | delivery regression | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | Delivery-only trigger regression. |
 | `evals/cases/pop-mart-listed-company-traceability-hard-fail-case.md` | listed-company | Failed execution | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Traceability hard-fail plus absolute/inference claim issues. |
 | `evals/cases/rag-api-provider-selection-traceability-fail-case.md` | provider-selection | Missing trigger | Missing trigger | N/A | Failed execution | N/A | Failed execution | Triggered | Triggered | Same provider-selection evidence/current-state under-triggering pattern. |
+| `evals/cases/provider-selection-enterprise-rollout-missing-case.md` | provider-selection | Triggered | Triggered | N/A | Triggered | Missing trigger | Triggered | N/A | N/A | Enterprise rollout gate validates that recommendation hierarchy, TCO, migration checklist, team-size roadmap, and unresolved-questions linkage are present alongside the ranking. |
 | `evals/cases/ranking-and-current-claims-xiaomi-update-case.md` | ranking/current-claims | Triggered | Triggered | N/A | Triggered | Triggered | Triggered | Triggered | Triggered | Current ranking/source/metric discipline is explicit. |
 | `evals/cases/regulatory-analysis-route-activation-case.md` | regulatory-analysis activation | Triggered | Triggered | Triggered | N/A | Triggered | Triggered | Triggered | Triggered | Route activation fixture for regulatory impact tasks. |
 | `evals/cases/reporting-period-and-ttm-confusion-case.md` | finance-date discipline | Failed execution | Triggered | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Time-layer and metric-role confusion are central. |

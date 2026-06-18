@@ -148,6 +148,12 @@ The final report should visibly show:
 - why the runner-up remains credible
 - why other options lose
 - accessibility / compliance / data-control / SLA treatment when relevant
+- **enterprise rollout layer when the reader is a buyer or governance team:**
+  - recommendation hierarchy (首选 / 备选 / 次选 / 避免) rather than only a scored ranking
+  - team-size / governance-maturity roadmap (small / medium / large / regulated)
+  - migration and rollout checklist covering security, identity, repo/CI, training, trial run, and exit
+  - TCO with explicit included/excluded boundary and cost role labels (observed / estimate / assumption / model-output)
+  - unresolved questions linked to recommendation-tier strength and reversal conditions
 
 ### Hard fail
 Fail if the report:
@@ -155,6 +161,7 @@ Fail if the report:
 - compares stale anchor products or models without current verification
 - treats mainland accessibility / compliance / SLA as side notes instead of ranking logic
 - becomes a vendor overview instead of a choice memo
+- presents a scored ranking without recommendation hierarchy when the reader is an enterprise buyer or procurement decision-maker
 
 ---
 
