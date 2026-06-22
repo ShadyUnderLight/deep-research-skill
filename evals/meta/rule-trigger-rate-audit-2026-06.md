@@ -7,7 +7,7 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
 - Commit anchor: `b180815`
-- Case count: 91 tracked Markdown cases
+- Case count: 94 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -49,13 +49,16 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/adlink-listed-company-anchor-error-case.md` | listed-company | Failed execution | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Anchor fact and unit errors despite visible structure. |
 | `evals/cases/advantech-listed-company-traceability-hard-fail-case.md` | listed-company | Failed execution | Declared only | Failed execution | Failed execution | N/A | Triggered | Triggered | Triggered | Source register claimed as pass with zero body citations. |
 | `evals/cases/agent-reach-external-channel-preflight-case.md` | external-channel preflight | Triggered | Failed execution | N/A | N/A | N/A | N/A | Triggered | Triggered | DISCOVERY and WEAK_SIGNAL rules triggered but failed in examples. |
+| `evals/cases/agent-api-market-outlook-full-spectrum-fail-case.md` | market-outlook | N/A | Failed execution | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | 100% register inflation severity benchmark (new for #331). |
 | `evals/cases/agentic-rag-technical-deep-dive-compounded-case.md` | technical-deep-dive | N/A | Failed execution | N/A | Failed execution | N/A | Triggered | Failed execution | Triggered | Compounded failure: register format, numeric roles, vendor claims, self-assessment, mixed-script. |
 | `evals/cases/ai-startup-hq-constrained-choice-register-compliance-case.md` | constrained-choice | Triggered | Failed execution | N/A | Failed execution | Failed execution | Declared only | Failed execution | Triggered | Register claims 7 columns but delivers 5; aggregation not replicable; false precision in ranking. |
 | `evals/cases/ai-agent-market-outlook-stakeholder-and-route-boundary-case.md` | market-outlook | Triggered | Failed execution | Failed execution | Missing trigger | Failed execution | Failed execution | Triggered | Triggered | Stakeholder, route-boundary, traceability, and probability gaps. |
 | `evals/cases/ai-agent-planning-academic-review-compounded-case.md` | academic-review | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | New compounded academic-review eval case (issue #294); pending formal audit. |
 | `evals/cases/ai-coding-agent-market-outlook-probability-case.md` | market-outlook | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Strong route execution, probability and sensitivity gaps. |
+| `evals/cases/ai-coding-provider-selection-current-state-conflict-case.md` | provider-selection | Failed execution | Failed execution | N/A | Failed execution | N/A | Triggered | Triggered | Triggered | Verified stale provider data + register inflation >25% (new for #331). |
 | `evals/cases/ai-coding-tools-provider-selection-traceability-fail-case.md` | provider-selection | Missing trigger | Missing trigger | N/A | Missing trigger | N/A | Triggered | Triggered | Triggered | Decision architecture present; evidence/current/numeric disciplines absent. |
 | `evals/cases/ai-cost-control-market-outlook-full-pass-benchmark.md` | market-outlook | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Full-pass benchmark with all required audits visible. |
+| `evals/cases/ai-edu-market-entry-sensitivity-and-route-intersection-case.md` | market-entry | Failed execution | Failed execution | N/A | Failed execution | N/A | Failed execution | Triggered | Triggered | Sensitivity absent + zero [Sxx] + secondary route not verified (new for #331). |
 | `evals/cases/ai-saas-market-entry-traceability-case.md` | market-entry | Triggered | Missing trigger | Failed execution | Missing trigger | Triggered | Triggered | Triggered | Triggered | Decision architecture strong; body citations and role labels absent. |
 | `evals/cases/ai-traffic-police-technical-deep-dive-traceability-case.md` | technical-deep-dive | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Format-boundary case with functional traceability visible. |
 | `evals/cases/ai-video-market-outlook-label-and-probability-gap-case.md` | market-outlook | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Scenario structure visible; labels and probability basis fail. |

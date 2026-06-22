@@ -99,6 +99,14 @@ Two new distillation cases (issue #320) produced **5 new PROMOTE_NOW candidates 
 | R63 | Add Regional coverage matrix with source role for global scope | TEMPLATE_CHANGE + CHECKLIST_HARDENING | dc-power | 1 | PROMOTE_NOW | `references/market-outlook-and-scenario-discipline.md` §Regional coverage matrix; `checklists/market-outlook-audit.md` §Regional coverage（#320） | 已覆盖 |
 | R64 | Upgrade Stakeholder implications to action table (decision/action/metric/trigger) | TEMPLATE_CHANGE + CHECKLIST_HARDENING | small-team-ai-agent, dc-power | 2 | PROMOTE_NOW | `references/market-outlook-and-scenario-discipline.md` §Stakeholder action table; `checklists/market-outlook-audit.md` §Stakeholder actionability（#320） | 已覆盖 |
 | R65 | Add Implementation stages integration in option-selection structure | TEMPLATE_CHANGE | small-team-ai-agent | 1 | PROMOTE_NOW | `references/decision-report-template.md` §实施路线（#320） | 已覆盖 |
+| R66 | Add provider current-state external verifiability check (last-verified date, contradiction = hard fail) | CHECKLIST_HARDENING | ai-coding-provider-selection | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` (new) via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
+| R67 | Require vendor claim caveat "(厂商文档，非独立验证)" for provider docs in body | CHECKLIST_HARDENING | ai-coding-provider-selection | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` (new) via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
+| R68 | Require body-level `[Sxx]` + numeric role labels on market-data estimates in market-entry reports | CHECKLIST_HARDENING | ai-edu-market-entry | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` (new) via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
+| R69 | Require sensitivity analysis for load-bearing estimated variables in market-entry (what change would reverse recommendation) | NEW_RULE | ai-edu-market-entry | 1 | PROMOTE_NOW | `checklists/option-selection-final-audit.md` via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
+| R70 | Require shortlist boundary justification: list excluded options and rationale | CHECKLIST_HARDENING | ai-edu-market-entry | 1 | PROMOTE_NOW | `references/decision-report-template.md` via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
+| R71 | Add inference-register disconnected-from-body detection method | CHECKLIST_HARDENING | agent-api-market-outlook | 1 | PROMOTE_NOW | `checklists/final-audit.md` (new) via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
+| R72 | Add monitoring signal actionability 4-field verification (threshold, cadence, source, trigger-to-action) | CHECKLIST_HARDENING | agent-api-market-outlook | 1 | PROMOTE_NOW | `checklists/market-outlook-audit.md` via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
+| R73 | Add route-boundary check: market-outlook reports containing competitive-positioning content must document rationale | NEW_RULE | agent-api-market-outlook | 1 | PROMOTE_NOW | `checklists/market-outlook-audit.md` via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
 
 ---
 
@@ -106,14 +114,14 @@ Two new distillation cases (issue #320) produced **5 new PROMOTE_NOW candidates 
 
 | Metric | Count |
 |---|---|---|
-| Total candidate rules (all 15 files) | 65 |
-| PROMOTE_NOW | 48 |
+| Total candidate rules (all 18 files) | 73 |
+| PROMOTE_NOW | 56 |
 | WAIT_FOR_SECOND_CASE | 3 |
 | (unlabeled, implicitly actionable) | 14 |
-| **Covered by existing code** | **62 / 65** (95%) |
+| **Covered by existing code** | **62 / 73** (85%) |
 | Pending / WAIT_FOR_SECOND_CASE | 3 (R10, R57, R58) |
-| Pending / #320 implementation | 0 |
-| **Truly uncovered PROMOTE_NOW** | **0** |
+| Pending / #331 implementation | 8 (R66-R73: new candidates from three GPT-vs-local comparisons) |
+| **Truly uncovered PROMOTE_NOW** | **8** (R66-R73) — new candidates from issue #331, pending checklist/template updates |
 
 ---
 
@@ -147,6 +155,16 @@ Two new comparative-distillation cases were added as part of issue #320:
 - **Small-team AI Agent** (`small-team-ai-agent-gpt-vs-local-comparative-distillation.md`): Identified template-level gaps — Input boundary declaration, implementation stages integration, stakeholder action table. All candidates promoted as `TEMPLATE_CHANGE` (R61, R64, R65), implemented in [#320](https://github.com/ShadyUnderLight/deep-research-skill/issues/320).
 
 - **Data center power bottleneck** (`data-center-power-bottleneck-gpt-vs-local-comparative-distillation.md`): Identified template + checklist gaps — Value-chain sensitivity map, Regional coverage matrix, stakeholder action table. All candidates promoted as `TEMPLATE_CHANGE + CHECKLIST_HARDENING` (R62, R63, R64). Cross-case confirmed R61 (input boundary) and R64 (action table) from the AI Agent case.
+
+Three new comparative-distillation cases were added as part of issue #331:
+
+- **AI Coding Agent provider-selection** (`ai-coding-provider-selection-gpt-vs-local-comparative-distillation.md`): Identified execution-level gaps — provider current-state external verifiability, vendor claim caveat for provider docs. Both candidates promoted as `CHECKLIST_HARDENING` (R66, R67). The numeric-role and self-assessment execution gap was determined to be a pure execution problem (existing rules, no new action needed). Confirmed that #325 and #327 already cover the enterprise rollout structure gap.
+
+- **AI Education market-entry** (`ai-edu-market-entry-gpt-vs-local-comparative-distillation.md`): Identified mixed gaps — sensitivity analysis for load-bearing estimated variables (missing rule, R69), market-data traceability/shortlist boundary justification (execution reinforcement, R68, R70), and two-level funnel already covered by #328.
+
+- **Agent API market-outlook** (`agent-api-market-outlook-gpt-vs-local-comparative-distillation.md`): Identified mixed gaps — route boundary for market-outlook + positioning content (missing rule, R73), inference register disconnected-from-body detection and monitoring actionability 4-field verification (execution reinforcement, R71, R72). Structural gaps confirmed covered by #329 and #330.
+
+All three cases track real reports with verified failure patterns. Together they produce **8 new candidates** (R66-R73), of which 6 are `CHECKLIST_HARDENING` and 2 are `NEW_RULE`.
 
 ---
 
