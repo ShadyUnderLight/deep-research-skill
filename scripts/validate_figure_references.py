@@ -38,7 +38,7 @@ CAPTION_ENGLISH = re.compile(
 )
 
 # Figure ENTITIES (Mermaid fences, images)
-MERMAID_FENCE_OPEN = re.compile(r'^[ ]{0,3}`{3,}mermaid\s*$', re.IGNORECASE)
+MERMAID_FENCE_OPEN = re.compile(r'^[ ]{0,3}(?:`{3,}|~{3,})mermaid\s*$', re.IGNORECASE)
 FENCE_CLOSE = re.compile(r'^[ ]{0,3}(`{3,}|~{3,})\s*$')
 IMAGE_REF = re.compile(r'!\[.*?\]\(.*?\)')
 
@@ -80,21 +80,31 @@ class FigureDef:
 
 
 def strip_fenced_code_blocks(text: str) -> str:
-    """Replace content inside fenced code blocks with empty lines.
+    """Replace content inside non-mermaid fenced code blocks with empty lines.
     
     Preserves line count so error line numbers map to original file.
-    Excludes mermaid fences (they are figure entities, not code blocks).
+    Mermaid fences are kept visible (they are figure entities, not code).
+    Supports both backtick (```) and tilde (~~~) fences.
     """
     lines = text.splitlines()
     result = list(lines)  # copy
     in_fence = False
+    in_mermaid = False
     fence_char = ""
     fence_len = 0
-    is_mermaid = False
-    opener_line = -1
 
     for i, line in enumerate(lines):
         stripped = line.rstrip()
+
+        # Track mermaid block body (skip closing fence detection for fences
+        # that opened while not in_fence — they are mermaid closing fences)
+        if in_mermaid:
+            # Inside a mermaid block: look for any closing fence
+            closing = re.compile(r'^[ ]{0,3}(`{3,}|~{3,})\s*$')
+            if closing.match(stripped):
+                in_mermaid = False
+            # Mermaid content is preserved (not blanked)
+            continue
 
         if not in_fence:
             m = FENCE_OPEN.match(stripped)
@@ -103,15 +113,16 @@ def strip_fenced_code_blocks(text: str) -> str:
                 fence_len = len(m.group(1))
                 # Check if this is a mermaid fence
                 rest = stripped[fence_len:].strip()
-                is_mermaid = rest.lower().startswith('mermaid')
-                if is_mermaid:
-                    # Keep mermaid fences visible (don't blank them)
+                if rest.lower().startswith('mermaid'):
+                    # Mermaid fence — keep visible, track body
+                    in_mermaid = True
                     continue
+                # Non-mermaid code fence — blank it
                 in_fence = True
-                opener_line = i
                 result[i] = ""
                 continue
         else:
+            # Inside a non-mermaid code fence — look for matching close
             closing = re.compile(
                 r'^[ ]{0,3}'
                 + re.escape(fence_char)
@@ -120,7 +131,6 @@ def strip_fenced_code_blocks(text: str) -> str:
             if closing.match(stripped):
                 in_fence = False
                 result[i] = ""
-                is_mermaid = False
                 continue
             result[i] = ""
 
@@ -185,16 +195,9 @@ def collect_figure_defs(text: str) -> list[FigureDef]:
             )
             if closing.match(stripped):
                 in_mermaid = False
-                # Check if this mermaid block already has a caption
-                has_num_caption = any(
-                    d.num is not None and d.kind == "caption"
-                    and abs(d.line - mermaid_start) < 5
-                    for d in defs
-                )
-                defs.append(
-                    FigureDef(None if not has_num_caption else None,
-                              mermaid_start, "mermaid")
-                )
+                # Add mermaid as an entity (caption is a separate FigureDef
+                # with kind="caption" if one exists nearby)
+                defs.append(FigureDef(None, mermaid_start, "mermaid"))
                 mermaid_start = -1
                 continue
 
@@ -350,8 +353,9 @@ def validate_figure_references(text: str) -> tuple[list[str], list[str]]:
     # Collect figure refs from body text (code fences stripped)
     refs = collect_figure_refs(cleaned)
 
-    # Collect figure defs from raw text (includes mermaid fences)
-    defs = collect_figure_defs(text)
+    # Collect figure defs from cleaned text (code fences stripped,
+    # mermaid fences preserved)
+    defs = collect_figure_defs(cleaned)
 
     # Cross-reference
     return cross_reference(refs, defs)

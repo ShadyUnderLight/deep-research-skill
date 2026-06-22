@@ -480,6 +480,121 @@ graph TD
     print("  PASS  mermaid without body reference (warning only)")
 
 
+# ── Cross-review regression tests (B1-B4 fixes) ─────────────────────────
+
+
+def test_mermaid_ref_after_block_detected():
+    """B1: Figure ref AFTER a mermaid block must still be detected.
+    
+    Prior bug: the mermaid closing fence ``` was misidentified as opening
+    a new code fence, blanking all content after it.
+    """
+    text = """\
+# Report
+
+```mermaid
+graph TD
+    A-->B
+```
+
+图1: Mermaid caption
+
+Further analysis is shown in 图1.
+"""
+    expect_pass("ref after mermaid block", text)
+
+
+def test_mermaid_ref_between_mermaid_blocks_detected():
+    """B1 variant: ref between two mermaid blocks must be detected."""
+    text = """\
+# Report
+
+First diagram 图1.
+
+```mermaid
+graph TD
+    A-->B
+```
+
+图1: First mermaid
+
+Second diagram 图2.
+
+```mermaid
+graph LR
+    X-->Y
+```
+
+图2: Second mermaid
+"""
+    expect_pass("ref between two mermaid blocks", text)
+
+
+def test_tilde_mermaid_fence_detected():
+    """B3: ~~~mermaid fence must be recognized as a figure entity."""
+    text = """\
+# Report
+
+图1 uses tilde fence.
+
+~~~mermaid
+graph TD
+    A-->B
+~~~
+
+图1: Tilde mermaid
+"""
+    expect_pass("tilde mermaid fence", text)
+
+
+def test_tilde_mermaid_does_not_blank_after():
+    """B1+B3: ~~~mermaid closing fence must not blank subsequent content."""
+    text = """\
+# Report
+
+```mermaid
+graph LR
+    X-->Y
+```
+
+图1: First diagram
+
+Also see 图2 below.
+
+~~~mermaid
+graph TD
+    A-->B
+~~~
+
+图2: Second diagram
+"""
+    expect_pass("tilde mermaid after backtick mermaid", text)
+
+
+def test_code_fence_inside_code_block_mermaid_ignored():
+    """B2: Code fence content must be stripped so 图N inside code is ignored."""
+    text = """\
+# Report
+
+Here's some code:
+
+```python
+# 图1: This is code, not a real caption
+result = process(data)
+```
+
+The real 图1 is below.
+
+```mermaid
+graph TD
+    A-->B
+```
+
+图1: Real caption
+"""
+    expect_pass("code block mermaid caption ignored", text)
+
+
 # ── Main ───────────────────────────────────────────────────────────────────
 
 
@@ -505,6 +620,12 @@ def main() -> int:
         ("image as figure with caption", test_image_as_figure_passes),
         ("mermaid with explicit caption", test_mermaid_with_explicit_caption_passes),
         ("mermaid without body reference (warning only)", test_no_figure_number_in_body_but_mermaid_exists_passes),
+        # --- Cross-review regression tests ---
+        ("ref after mermaid block", test_mermaid_ref_after_block_detected),
+        ("ref between two mermaid blocks", test_mermaid_ref_between_mermaid_blocks_detected),
+        ("tilde mermaid fence", test_tilde_mermaid_fence_detected),
+        ("tilde mermaid after backtick mermaid", test_tilde_mermaid_does_not_blank_after),
+        ("code block mermaid caption ignored", test_code_fence_inside_code_block_mermaid_ignored),
     ]
 
     passed = 0
