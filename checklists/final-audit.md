@@ -294,6 +294,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] tables, bullets, spacing, and heading hierarchy improve scanability rather than making the report feel like a raw export
 - [ ] presentation credibility leaks such as spelling mistakes, inconsistent naming, awkward table rhythm, orphaned headings, or obvious spacing artifacts are treated as delivery failures rather than cosmetic nits
 - [ ] (外部报告导入卫生) final report contains no external deep-research internal citation artifacts: no `turn\d+` session references, no `\ue000cite` / `\ue001cite` placeholders, no `sandbox:` or temporary `file-` paths that are unreachable outside the source session; if such content exists, it must have been resolved into real sources / local assets (see `references/source-traceability-and-claim-citation.md` §External research output / Imported report hygiene)
+- [ ] figure reference completeness validated: run `python3 scripts/validate_figure_references.py <report.md>` — every "图X" / "Figure X" reference in body text must have a corresponding caption or figure entity; duplicate captions are blocked; Mermaid blocks without captions and figure numbering gaps are flagged as warnings
 - [ ] if PDF is delivered, the PDF was reviewed as a deliverable in its own right rather than assumed correct because markdown looked clean
 - [ ] if markdown looked acceptable but PDF degraded structure, spacing, or readability, that is treated as a delivery failure rather than a minor rendering quirk
 
