@@ -16,6 +16,22 @@ Run this checklist before delivery.
 - [ ] the route's "Do not use" clauses from `ROUTING-MATRIX.md` have been checked against the task
 - [ ] if the task mixes market-evolution and selection/ranking questions, the primary burden has been identified and the correct primary route selected
 
+## Category Boundary check
+
+- [ ] the report declares its core category, adjacent categories, and excluded categories before framing analysis
+- [ ] a category boundary table is present with columns: 类别 / 是否纳入核心市场 / 纳入理由 / 不可直接比较项
+- [ ] different categories are NOT directly ranked or mixed into the same comparison table without a cross-category comparison unit explanation
+- [ ] a participant operating across multiple layers is included under the business line of its primary revenue source
+- [ ] the comparison unit (统一比较单位) is declared when cross-category comparison is needed
+- [ ] a counterexample or concrete illustration exists showing what happens when category boundaries are absent
+
+### Category boundary hard-fail gate
+
+- [ ] （阻断级）报告未声明 core / adjacent / excluded categories，且内容中出现了明显属于不同类别的参与者混入同一比较表的现象
+- [ ] （阻断级）存在不同类别参与者被直接排名的情况，且没有 cross-category comparison unit 说明
+
+> 见 `references/market-outlook-and-scenario-discipline.md` §Category Boundary。
+
 ## Current market snapshot
 
 - [ ] the report starts from a verified current baseline before forward-looking sections
@@ -35,6 +51,14 @@ Run this checklist before delivery.
 - [ ] if the topic contains 产业链 / value chain / supply chain / infrastructure chain, a value-chain sensitivity map is present
 - [ ] each chain layer includes exposure, bottleneck mechanism, beneficiaries/losers, timing, evidence strength, change-condition
 - [ ] the map is not a flat description but shows inter-layer transmission logic
+
+## Participant Value-Chain Map check
+
+- [ ] if the topic involves multiple participant types (aggregators, agent platforms, model providers, cloud vendors, hardware, open-source, search APIs), a participant value-chain map is present
+- [ ] each layer in the map includes: value capture method, bottleneck, dependency relationship, and absorption/displacement risk
+- [ ] the map is not just a supply-chain sensitivity map — it focuses on value flow and economic capture, not physical/technical chain
+- [ ] if value-chain sensitivity map is also present, the distinction between the two maps is clearly stated
+- [ ] key commercial numbers in the map have role labels and [Sxx] inline citations
 
 ## Structured multi-scenario analysis
 
@@ -68,6 +92,32 @@ Run this checklist before delivery.
 - [ ] stakeholder implications use action table format (decision / action / metric / trigger) when the report involves implementation, deployment, or organizational change
 - [ ] each action has a concrete, checkable recommendation (not "关注趋势")
 - [ ] "Trigger to revise" column includes specific threshold or condition for at least half of entries
+
+## Demand Segmentation check
+
+- [ ] when the market is visibly heterogeneous, the report explicitly segments demand (not a single undifferentiated "market demand")
+- [ ] at least 2 segmentation dimensions are used (e.g., industry regulation intensity, enterprise size, geography, workload type)
+- [ ] each selected segment answers: job-to-be-done, buyer/payer identity, willingness-to-pay proxy, deployment requirement, evidence strength
+- [ ] different segments are not directly compared using the same metrics without qualification
+- [ ] if the report covers only one segment, the scope is explicitly declared rather than claimed as "the whole market"
+
+## Commercialization / Pricing check
+
+- [ ] the report identifies the real buyer (budget owner, procurement unit, decision chain), not just the user/beneficiary
+- [ ] the report covers at least two of: pricing unit/model, unit economics variables, validation metrics
+- [ ] gross-margin pressure sources are identified
+- [ ] when independent infrastructure viability is claimed, appropriate validation metrics (ARR, retention, enterprise contract count, multi-model usage, paid query mix) are named
+
+### Commercialization hard-fail gate
+
+- [ ] （阻断级）如果报告断言"市场很大"但未识别谁付费（buyer）、以什么定价单位（pricing unit）以及该单位 economics 的关键变量，则商业分析标记为未通过
+
+## Regulatory-to-Business Transmission check
+
+- [ ] the report goes beyond listing regulatory names — each regulatory factor is linked to at least 2 specific business variables (deployment model, sales cycle length, data residency cost, content licensing cost, gross margin, etc.)
+- [ ] the transmission chain is explicit: regulatory factor → business variable → mechanism → impact magnitude/range
+- [ ] enacted vs proposed regulations are treated with different certainty levels
+- [ ] regulatory claims about impact on business metrics are labeled: observed / estimate / inference / scenario-assumption
 
 ## Quantitative role labeling
 

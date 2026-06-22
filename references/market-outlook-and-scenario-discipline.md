@@ -121,6 +121,44 @@ This logic matters more than preserving a generic background section order.
 
 ---
 
+## Category Boundary / Market Definition（类别边界与市场定义）
+
+Market-outlook 报告必须先声明**这个市场到底包含谁、价值如何流动、谁付钱**。没有类别边界，不同层的参与者（如芯片厂商和 API 聚合平台）会被混入同一张比较表，导致分析失去统一的比较单位。
+
+### 必含结构
+
+#### 1. Category Boundary Table（类别边界表）
+
+必须声明 core category、adjacent categories、excluded categories、comparison unit。一个参与者跨层时，按其主要收入来源所在的业务口径纳入。
+
+| 类别 | 是否纳入核心市场 | 纳入理由 | 不可直接比较项 |
+|------|---------------|---------|-------------|
+| Research/Search API | 是 | 提供 Agent 外部检索能力 | 查询质量、覆盖、延迟、成本 |
+| Model API aggregator | 邻接 | 聚合模型而非研究数据，是上游供应 | 不可直接用模型数量比较搜索基础设施 |
+| Agent framework | 邻接 | 编排和调用层，不直接承载索引/抓取 | 架构选择 vs 数据获取能力不属于同类指标 |
+| Hardware / chip vendor | 外部驱动 | 影响本地部署成本和可用性 | 算力指标与搜索/API 层的商业指标没有可比性 |
+
+**规则：**
+- 不同类别的参与者**不得在缺少 cross-category 说明的情况下直接排名**或混入同一比较表。
+- 如果一个参与者跨越多个层（如同时提供 API 和框架），按其**最大收入来源所在业务口径**纳入。
+- 如果 core category 本身有多个子类（如检索 API 分为搜索 API、知识图谱 API、结构化提取 API），报告应说明这些子类之间是否可比较。
+
+#### 2. Comparison Unit Discipline（统一比较单位纪律）
+
+当报告需要跨类别比较时，必须声明：
+
+- 使用什么**统一比较单位**（如：同一 customer segment 下的每 query 成本、同一 workload 下的端到端延迟）
+- 为什么这个单位在跨类别时仍然有意义
+- 当统一比较单位不存在时，不得进行跨类别直接排名
+
+#### 3. 反例：术语定义存在但分类仍然混乱
+
+下面是一个实际触发 #329 的案例（来自 GPT 对比蒸馏）：
+
+> GPT 版同时包含"Research/Search API"和"Model API Aggregator"两类参与者，但在同一个市场规模表中混用了 OpenRouter（API 聚合）、DMXAPI（搜索基础设施）、Parallel.ai（模型编排），导致芯片厂商和 API 聚合平台之间失去统一比较单位。**仅有术语定义不够，需要 category boundary + comparison unit discipline。**
+
+---
+
 ## Structured multi-scenario analysis
 
 Market-outlook reports must not rest on a single base case.
@@ -235,6 +273,33 @@ If drivers and blockers are not separated, the scenario logic will be too mushy.
 
 ---
 
+### Participant Value-Chain Map（参与者价值链地图）
+
+当报告涉及多类参与者（聚合平台、Agent 平台、模型提供商、云厂商、硬件、开源社区、搜索 API）及其价值流动时，建议在 drivers/blockers 分析后包含一张参与者价值链地图，补充上述产业链敏感图。
+
+**与 Value-chain sensitivity map 的区别：**
+- 产业链敏感图聚焦**供应-制造-交付**的物理/技术链条，适用于"芯片短缺如何影响服务器交付"这类问题。
+- 参与者地图聚焦**价值创造-捕获-流动**的经济链条，适用于"API 聚合平台能否从搜索基础设施中独立盈利"这类问题。
+- 两者可以共存：产业链主题优先用敏感图，市场结构主题优先用参与者地图。当话题同时涉及两者时，两张图都应包含。
+
+**格式模板**
+
+| 链条层级 | 参与者类别 | Value Capture | Bottleneck | 依赖关系 | 被吸收/取代风险 | 证据强度 |
+|---------|-----------|-------------|-----------|---------|--------------|---------|
+| 上游：数据/索引/内容权利 | 数据供应商、索引运营商、内容许可方 | 内容许可费、数据订阅 | 高质量数据获取成本 | 下游检索层依赖其索引覆盖 | 被模型训练数据自动化取代 | medium |
+| 搜索/抓取/提取与结构化 | 搜索 API、抓取平台、知识图谱 API | 按 query / page / token 收费 | 实时性、反爬、多语言覆盖 | 依赖上游数据权利和索引质量 | 被 model-native knowledge 吸收 | medium |
+| API 聚合/路由 | API 网关、聚合平台、负载均衡 | 按 token / query 抽佣或加价 | 模型 API 定价波动、延迟 | 依赖模型层和搜索层 API | 被云厂商内置路由取代 | high |
+| Agent 编排与模型层 | Agent 框架、模型 API、微调平台 | Seat 订阅、token 消耗、按结果付费 | 准确率、幻觉控制、企业集成 | 依赖搜索层获取外部知识 | 被模型原生工具调用吸收 | medium |
+| 企业分发/集成 | 企业应用市场、SaaS 平台、咨询集成商 | 实施费、年度合同、SaaS 订阅 | 企业采购周期、合规审核 | 依赖下游 Agent 和模型层稳定性 | 被 SaaS 平台内置 Agent 功能取代 | low |
+| 客户与付费方 | 企业 buyer、个人开发者、云账户 | 按用量/座位/合同付费 | 付费意愿、预算归属 | 所有上层依赖 customer adoption | — | observed |
+
+**规则：**
+- 每层必须标注 value capture 方式（谁收什么费）、bottleneck（约束该层扩张的主要因素）、dependency（依赖哪些下层的稳定性和质量）、absorption risk（该层功能被其他层内置/取代的风险）。
+- 层之间的价值传导关系应在正文中说明，而非仅靠表格。
+- 所有关键商业数字必须有角色标注和 `[Sxx]` 来源引用。
+
+---
+
 ## Quantitative outlook discipline
 
 When using numbers in market-outlook reports, label each important number by role.
@@ -307,6 +372,115 @@ Without multi-stakeholder coverage, the report may be informative for one audien
 - 每个 stakeholder 的行动建议必须是具体的、可检查的，而不是"关注趋势"。
 - "Trigger to revise"列必须包含具体阈值或条件。
 - 该表不替代现有"what does this mean for them"描述性段落——可以在描述性段落后附加该表，或直接用表格替代描述。
+
+---
+
+## Demand Segmentation（需求细分）
+
+当市场明显异质（不同 buyer 群体有显著不同的购买动机、使用场景、价格敏感度）时，报告必须显式拆分需求维度，而不是用一个泛化的"市场需求"替代。
+
+### 至少覆盖两个细分维度
+
+常用维度（选择与当前市场最相关的两个或以上）：
+
+| 维度 | 细分类型 | 示例 |
+|------|---------|------|
+| 行业监管强度 | 受监管 vs 未受监管 | 金融/医疗 vs 创意/零售 |
+| 企业规模/技术能力 | 大企业 vs SME vs 个人开发者 | 自建 vs 采购 vs 使用免费工具 |
+| 地域/数据主权 | 数据驻留要求强 vs 弱 | 欧盟 GDPR 区域 vs 其他区域 |
+| Workload 类型 | 简单搜索 vs 复杂研究 vs 结构化提取 vs 企业知识富化 vs 本地 Agent | 不同 workload 对应不同的 buyer 和技术要求 |
+
+### 每 segment 的输出要求
+
+每个 selected segment 必须回答：
+
+- **Job-to-be-done / 使用场景**：这个 segment 的用户想完成什么任务？
+- **购买者身份**：决策者是谁（CTO/业务线/个人开发者）？采购流程多长？
+- **付费意愿 proxy**：用什么信号衡量购买意愿（PoC request、RFP 数量、GitHub star、API 调用量增长）？
+- **部署要求**：SaaS / on-prem / hybrid / edge / 本地？
+- **证据强度**：该 segment 的分析有多少基于 observed data，多少基于推断/假设？
+
+### 通用规则
+
+- 不同 segment 之间不可使用同一套 metrics 直接排名——每个 segment 有独立的成功标准和购买逻辑。
+- 如果报告只覆盖一个 segment，必须显式声明 scope 限定，不得以"市场整体"自称。
+- 关键商业数字必须有角色标注和 `[Sxx]` 来源引用。
+
+---
+
+## Commercialization / Pricing Layer（商业化与定价层）
+
+市场展望不能只写技术趋势和融资列表。必须说明**价值如何被捕获、谁付钱、商业闭环如何成立**。
+
+### 必含元素
+
+#### 1. Buyer identification（谁付费）
+
+明确谁是真实 buyer（不是受益者，是掏钱的人），包括：
+- 预算归属（IT 预算 / 业务线预算 / 研发预算 / 个人账户）
+- 采购单位（团队 / 部门 / 企业 / 个人）
+- 决策链条（自下而上 vs 自上而下 vs 个人采购）
+
+#### 2. Pricing unit / model（定价单位与模式）
+
+覆盖市场中存在的定价模式：
+
+| 模式 | 适用场景 | 对毛利的影响 |
+|------|---------|------------|
+| Per query / per token | API、搜索服务 | 低毛利但弹性好，边际成本随用量下降 |
+| Per seat / per user | Agent 平台、企业 SaaS | 高毛利但扩散慢，依赖用户增长 |
+| Annual contract / enterprise license | 大型企业部署 | 高确定性但销售周期长 |
+| Consumption / usage-based | 云市场、按量付费 | 随 adoption 增长，但 unit economics 依赖留存 |
+| Freemium / open-core | 开源商业化、开发者工具 | 低转化率但社区扩散快 |
+
+#### 3. Unit economics 的主要变量
+
+至少识别以下变量中的 2-3 个：
+- **获客成本**（CAC）：销售团队 vs 自服务 vs 渠道
+- **客单价**（ARPU / ACV）：受 segment 和部署模式影响
+- **毛利**（Gross margin）：基础设施成本 vs 软件利润率
+- **留存/续费**（Retention）：Net Revenue Retention 是独立基础设施的关键指标
+- **规模效应**：边际成本是否随规模下降
+
+#### 4. 验证指标（Validation metrics）
+
+声明什么商业指标能验证该独立层成立：
+
+- **ARR / Revenue growth**：收入绝对值和增长率
+- **Gross margin**：独立基础设施 vs 模型内置功能的利润比较
+- **Enterprise contract count**：企业级合同数量和平均合同额
+- **Multi-model / multi-provider usage**：用户使用超过一个供应商的比例（验证聚合层价值）
+- **付费 query / token mix**：付费 vs 免费使用比例
+
+#### 数字角色纪律
+
+所有商业化数字必须标注角色（observed / estimate / assumption / scenario / proxy）和 `[Sxx]` 来源引用。
+
+> ✅ 正确："企业 ARR 在 2026 年达到约 $50M（estimate，基于公开收入披露 [S03] 和销售团队规模推断 [S07]）"
+> ❌ 错误："企业 ARR 在 2026 年达到 $50M"
+
+---
+
+## Regulatory-to-Business Transmission（监管影响传导）
+
+监管章节必须有实质内容，不能只列法规名称。必须解释**法规变化如何影响具体的商业变量**。
+
+### 必含传导路径
+
+每项识别的监管因素都必须连接至少 2 个以下商业变量：
+
+| 监管因素 | → 影响哪个商业变量 | → 传导机制 | 证据强度 |
+|---------|------------------|-----------|---------|
+| 数据出境法规 / GDPR / 数据本地化 | 部署模式选择（SaaS vs on-prem vs hybrid） | 数据本地化要求 → 增加本地部署成本 → 影响产品定价和交付策略 | medium |
+| AI 责任 / 可解释性要求 | 销售周期长度、企业合同通过率 | 合规审核流程增加 → 延长 PoC 到生产的时间 → 影响收入确认节奏 | low |
+| 知识产权 / 训练数据版权 | 内容许可成本、毛利 | 训练数据需要明确授权 → 增加上游成本 → 压缩毛利 | medium |
+| 出口管制 / 芯片限制 | 部署区域选择、硬件成本 | 受限区域的客户需替代方案 → 影响市场覆盖和 unit economics | observed |
+
+### 规则
+
+- 不要出现"监管风险是 XX"后直接跳到结论文本——必须展示完整的 **regulatory factor → business variable → mechanism → impact magnitude/range** 链条。
+- 如果判断（judgment）涉及监管影响，数字必须标注为 estimate / inference / scenario-assumption，不得标为确认事实。
+- 已知法规（已生效）与提案法规（未通过）必须分开处理，不能用同一确定性级别讨论。
 
 ---
 
