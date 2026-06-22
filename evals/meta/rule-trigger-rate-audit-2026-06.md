@@ -7,7 +7,7 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
 - Commit anchor: `b180815`
-- Case count: 91 tracked Markdown cases (baseline); +3 appended via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331)
+- Case count: 94 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
