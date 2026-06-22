@@ -174,10 +174,9 @@ This comparison is for:
 List each accepted candidate briefly.
 
 | # | Candidate action | Failure family | Action type | Proposed home |
-|---|---|---|---|---|
+|---|---|---|---|---|---|
 | 1 | provider current-state external verifiability check：每个 claim 标注最后验证日期；可被官方文档证伪时硬失败 | current-state / provider-selection | `CHECKLIST_HARDENING` | `checklists/option-selection-final-audit.md` |
 | 2 | 厂商声明 caveat：vendor docs 在正文中必须标注"(厂商文档，非独立验证)" | source traceability / vendor claim | `CHECKLIST_HARDENING` | `checklists/option-selection-final-audit.md` |
-| 3 | 强化 provider-selection 场景的数字角色/自审一致性执行 | quantitative-role-label / process-integrity | `CHECKLIST_HARDENING` | `checklists/option-selection-final-audit.md` |
 
 ---
 
@@ -195,11 +194,6 @@ List each accepted candidate briefly.
 - **Why this home is best:** 与现有 source-type 分类纪律并列。
 - **Promotion status:** `PROMOTE_NOW`
 
-### Candidate 3: provider-selection execution reinforcement
-- **Why it matters:** 模板和 checklists 已覆盖但 agent 未自动激活，导致自审不准确。
-- **Why this home is best:** 属于 route-specific trigger rate 改善，不是新规则。
-- **Promotion status:** `PROMOTE_NOW`
-
 ---
 
 ## Things explicitly rejected
@@ -209,6 +203,7 @@ List each accepted candidate briefly.
 | GPT 版的企业落地结构（推荐层级、迁移步骤、TCO）| #325、#327 已覆盖，不重复推广 |
 | GPT 版的文末 bibliography 替代正文 `[Sxx]` | 不符合 source traceability 纪律，不接受 |
 | GPT 版数字无 role label | 当前 skill 已有 quantitative role labeling 纪律且更严格 |
+| 强化数字角色/自审执行 | 属于执行问题而非规则缺口，当前 checklists 已覆盖；不需要 promote |
 
 ---
 
@@ -226,7 +221,7 @@ List each accepted candidate briefly.
 - Provider-selection 的结构性改进已由 #325、#327 完成，不需要等更多 case
 
 ### Is this mainly a missing rule, missing trigger, or execution problem?
-- 主要是 **execution problem**：2/3 的候选动作是对已有规则的执行强化（checklist hardening），不是新规则或新模板。剩余 1/3 是对 fast-moving provider 独有的 external verifiability 检查。
+- 主要是 **execution problem**：规则的执行强化（checklist hardening），不是新规则或新模板。
 
 ---
 

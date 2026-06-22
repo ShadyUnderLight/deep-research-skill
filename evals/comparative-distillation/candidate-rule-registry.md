@@ -158,7 +158,7 @@ Two new comparative-distillation cases were added as part of issue #320:
 
 Three new comparative-distillation cases were added as part of issue #331:
 
-- **AI Coding Agent provider-selection** (`ai-coding-provider-selection-gpt-vs-local-comparative-distillation.md`): Identified execution-level gaps — provider current-state external verifiability, vendor claim caveat for provider docs. Both candidates promoted as `CHECKLIST_HARDENING` (R66, R67). Confirmed that #325 and #327 already cover the enterprise rollout structure gap.
+- **AI Coding Agent provider-selection** (`ai-coding-provider-selection-gpt-vs-local-comparative-distillation.md`): Identified execution-level gaps — provider current-state external verifiability, vendor claim caveat for provider docs. Both candidates promoted as `CHECKLIST_HARDENING` (R66, R67). The numeric-role and self-assessment execution gap was determined to be a pure execution problem (existing rules, no new action needed). Confirmed that #325 and #327 already cover the enterprise rollout structure gap.
 
 - **AI Education market-entry** (`ai-edu-market-entry-gpt-vs-local-comparative-distillation.md`): Identified mixed gaps — sensitivity analysis for load-bearing estimated variables (missing rule, R69), market-data traceability/shortlist boundary justification (execution reinforcement, R68, R70), and two-level funnel already covered by #328.
 

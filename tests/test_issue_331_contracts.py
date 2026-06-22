@@ -8,6 +8,12 @@ Tests verify structural invariants across:
 - Candidate rule registry entries for the three comparison families
 - Meta audit case matrix coverage
 
+This test file covers STRUCTURAL and CONTRACT invariants, not behavioral
+report-generation tests. Behavioral CI tests (running actual reports and
+verifying route-specific failure reasons) require a full end-to-end test
+infrastructure that does not yet exist in this project. See #331 acceptance
+criteria §5 for the behavioral regression specification.
+
 Usage:
     python tests/test_issue_331_contracts.py
 
@@ -145,22 +151,35 @@ def test_c2c_market_outlook_has_full_structure():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_c3a_provider_selection_rejects_gpt_citation():
-    """C3a: provider-selection artifact rejects bibliography-only sourcing."""
+    """C3a: provider-selection artifact rejects bibliography-only sourcing in 'Things explicitly rejected'."""
     content = read(DISTILLATION_FILES[0])
-    assert "bibliography" in content or "inline" in content or "[S" in content, \
-        "Missing GPT citation limitation rejection"
+    # Find the "Things explicitly rejected" section and verify it contains citation rejection
+    rejected_section = re.search(r'## Things explicitly rejected\n\n(.+?)\n\n## Final judgment',
+                                 content, re.DOTALL)
+    assert rejected_section, "Missing 'Things explicitly rejected' section"
+    rejected_text = rejected_section.group(1)
+    assert "bibliography" in rejected_text, \
+        "Provider-selection artifact does not reject bibliography-only sourcing in rejected section"
 
 def test_c3b_market_entry_rejects_gpt_citation():
-    """C3b: market-entry artifact rejects bibliography-only sourcing."""
+    """C3b: market-entry artifact rejects bibliography-only sourcing in 'Things explicitly rejected'."""
     content = read(DISTILLATION_FILES[1])
-    assert "bibliography" in content or "inline" in content or "[S" in content, \
-        "Missing GPT citation limitation rejection"
+    rejected_section = re.search(r'## Things explicitly rejected\n\n(.+?)\n\n## Final judgment',
+                                 content, re.DOTALL)
+    assert rejected_section, "Missing 'Things explicitly rejected' section"
+    rejected_text = rejected_section.group(1)
+    assert "bibliography" in rejected_text, \
+        "Market-entry artifact does not reject bibliography-only sourcing in rejected section"
 
 def test_c3c_market_outlook_rejects_gpt_citation():
-    """C3c: market-outlook artifact rejects bibliography-only sourcing."""
+    """C3c: market-outlook artifact rejects bibliography-only sourcing in 'Things explicitly rejected'."""
     content = read(DISTILLATION_FILES[2])
-    assert "bibliography" in content or "inline" in content or "[S" in content, \
-        "Missing GPT citation limitation rejection"
+    rejected_section = re.search(r'## Things explicitly rejected\n\n(.+?)\n\n## Final judgment',
+                                 content, re.DOTALL)
+    assert rejected_section, "Missing 'Things explicitly rejected' section"
+    rejected_text = rejected_section.group(1)
+    assert "bibliography" in rejected_text, \
+        "Market-outlook artifact does not reject bibliography-only sourcing in rejected section"
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -191,22 +210,22 @@ def test_c4c_index_has_market_outlook_case():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_c5a_registry_mentions_provider_selection():
-    """C5a: candidate-rule-registry.md mentions ai-coding-provider-selection case."""
+    """C5a: candidate-rule-registry.md references ai-coding-provider-selection by full distillation filename."""
     content = read("evals/comparative-distillation/candidate-rule-registry.md")
-    assert "ai-coding-provider-selection" in content or "provider-selection-current-state" in content or "coding-provider" in content, \
-        "candidate-rule-registry.md missing provider-selection reference"
+    assert "ai-coding-provider-selection" in content, \
+        "candidate-rule-registry.md missing reference to ai-coding-provider-selection distillation"
 
 def test_c5b_registry_mentions_market_entry():
-    """C5b: candidate-rule-registry.md mentions market-entry distillation."""
+    """C5b: candidate-rule-registry.md references ai-edu-market-entry by full distillation filename."""
     content = read("evals/comparative-distillation/candidate-rule-registry.md")
-    assert "market-entry" in content and "ai-edu" in content, \
-        "candidate-rule-registry.md missing market-entry reference"
+    assert "ai-edu-market-entry" in content, \
+        "candidate-rule-registry.md missing reference to ai-edu-market-entry distillation"
 
 def test_c5c_registry_mentions_market_outlook():
-    """C5c: candidate-rule-registry.md mentions agent-api market-outlook case."""
+    """C5c: candidate-rule-registry.md references agent-api-market-outlook by full distillation filename."""
     content = read("evals/comparative-distillation/candidate-rule-registry.md")
-    assert "agent-api-market-outlook" in content or "full-spectrum-fail" in content or "agent-api" in content, \
-        "candidate-rule-registry.md missing market-outlook reference"
+    assert "agent-api-market-outlook" in content, \
+        "candidate-rule-registry.md missing reference to agent-api-market-outlook distillation"
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -214,22 +233,22 @@ def test_c5c_registry_mentions_market_outlook():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_c6a_audit_mentions_provider_selection():
-    """C6a: rule-trigger-rate-audit mentions provider-selection case by full name."""
+    """C6a: rule-trigger-rate-audit mentions provider-selection case by full case filename."""
     content = read("evals/meta/rule-trigger-rate-audit-2026-06.md")
-    assert "ai-coding-provider-selection" in content or "provider-selection-current-state" in content, \
-        "rule-trigger-rate-audit missing provider-selection reference"
+    assert "ai-coding-provider-selection" in content, \
+        "rule-trigger-rate-audit missing ai-coding-provider-selection reference"
 
 def test_c6b_audit_mentions_market_entry():
-    """C6b: rule-trigger-rate-audit mentions market-entry case."""
+    """C6b: rule-trigger-rate-audit mentions market-entry case by full case filename."""
     content = read("evals/meta/rule-trigger-rate-audit-2026-06.md")
-    assert "ai-edu-market-entry" in content or "market-entry-sensitivity" in content, \
-        "rule-trigger-rate-audit missing market-entry reference"
+    assert "ai-edu-market-entry" in content, \
+        "rule-trigger-rate-audit missing ai-edu-market-entry reference"
 
 def test_c6c_audit_mentions_market_outlook():
-    """C6c: rule-trigger-rate-audit mentions market-outlook case."""
+    """C6c: rule-trigger-rate-audit mentions market-outlook case by full case filename."""
     content = read("evals/meta/rule-trigger-rate-audit-2026-06.md")
-    assert "agent-api-market-outlook" in content or "full-spectrum-fail" in content, \
-        "rule-trigger-rate-audit missing market-outlook reference"
+    assert "agent-api-market-outlook" in content, \
+        "rule-trigger-rate-audit missing agent-api-market-outlook reference"
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -240,7 +259,12 @@ def test_c7a_all_artifacts_have_action_types():
     """C7a: All three artifacts have Action type labels (NO_ACTION / TEMPLATE_CHANGE / etc)."""
     for path in DISTILLATION_FILES:
         content = read(path)
-        action_types = re.findall(r'`(NO_ACTION|TEMPLATE_CHANGE|CHECKLIST_HARDENING|NEW_RULE(?:\s*\+\s*CHECKLIST_HARDENING)?)`', content)
+        # Include TEMPLATE_CHANGE + CHECKLIST_HARDENING compound type and NEW_RULE + CHECKLIST_HARDENING
+        action_types = re.findall(
+            r'`((?:NEW_RULE|TEMPLATE_CHANGE|CHECKLIST_HARDENING|NO_ACTION)'
+            r'(?:\s*\+\s*(?:CHECKLIST_HARDENING|TEMPLATE_CHANGE))?)`',
+            content
+        )
         assert len(action_types) >= 3, \
             f"{path}: expected >=3 action type labels, got {len(action_types)}"
 
@@ -295,25 +319,39 @@ def test_c9a_all_action_types_valid():
     """C9a: All action-type labels across all artifacts belong to allowed set."""
     for path in DISTILLATION_FILES:
         content = read(path)
-        found = re.findall(r'^-\s*`([^`]+)`\s*$', content, re.MULTILINE)
-        for f in found:
-            if f in ALLOWED_ACTION_TYPES:
+        # Collect all inline-code action types from tables and lists
+        # Pattern: `CODE` appearing after "Action type", "`ACTION_TYPE`", or in | table cells
+        action_codes = set()
+        # From Action type headings: lines like "- `CHECKLIST_HARDENING`"
+        action_codes.update(
+            re.findall(r'^-\s*`([^`]+)`\s*$', content, re.MULTILINE)
+        )
+        # From table cells: | `CHECKLIST_HARDENING` |
+        for match in re.finditer(r'\|\s*`([^`]+)`\s*\|', content):
+            cleaned = match.group(1).strip()
+            if cleaned and cleaned not in ('-', 'Action type', 'Action type labels'):
+                action_codes.add(cleaned)
+        # From Action type section blocks: "### Action type\n\n- `CODE`" or just "### Action type\n`CODE`"
+        action_codes.update(
+            re.findall(r'### Action type\n\n`([^`]+)`', content)
+        )
+
+        invalid = []
+        for code in sorted(action_codes):
+            if code in ALLOWED_ACTION_TYPES:
                 continue
-            # Some action types appear inline in tables rather than bullet lists
-            pass
-        # Table-based action types
-        table_types = re.findall(r'\|(`[^`]+`)\|', content)
-        for t in table_types:
-            cleaned = t.strip("` ")
-            if cleaned not in ALLOWED_ACTION_TYPES and cleaned not in ('', '-', 'Action type'):
-                # Check if it's a known short form
-                if cleaned in ('NEW_RULE', 'CHECKLIST_HARDENING', 'TEMPLATE_CHANGE',
-                               'NO_ACTION', 'DELIVERY_HARD_FAIL'):
+            # Allow compound forms like "NEW_RULE + CHECKLIST_HARDENING"
+            if ' + ' in code:
+                parts = [p.strip() for p in code.split(' + ')]
+                if all(p in ALLOWED_ACTION_TYPES for p in parts):
                     continue
-                if '+ CHECKLIST_HARDENING' in cleaned or '+CHECKLIST_HARDENING' in cleaned:
-                    continue
-                # If we see something unfamiliar, assert
-                pass  # Relaxed check — main validation is the action-section check
+            # Allow known legacy short forms
+            if code in ('DELIVERY_HARD_FAIL',):
+                continue
+            invalid.append(code)
+
+        assert not invalid, \
+            f"{path}: found invalid action type(s): {invalid}. Allowed: {sorted(ALLOWED_ACTION_TYPES)}"
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -330,6 +368,33 @@ def test_c10a_eval_files_tracked_in_git():
         )
         assert result.returncode == 0, \
             f"{path} not tracked by git: {result.stderr.strip()}"
+
+
+# ═══════════════════════════════════════════════════════════════════
+# C11: Cross-validation — registry candidate count matches distillation summary
+# ═══════════════════════════════════════════════════════════════════
+
+def test_c11a_provider_selection_distillation_candidate_count():
+    """C11a: provider-selection distillation has exactly 2 promoted candidates (matches R66-R67)."""
+    content = read(DISTILLATION_FILES[0])
+    # Count rows in Candidate-action summary table (exclude header and separator)
+    table_lines = re.findall(r'^\| \d+ \|', content, re.MULTILINE)
+    assert len(table_lines) == 2, \
+        f"Provider-selection distillation has {len(table_lines)} candidates, expected 2"
+
+def test_c11b_market_entry_distillation_candidate_count():
+    """C11b: market-entry distillation has exactly 3 promoted candidates (matches R68-R70)."""
+    content = read(DISTILLATION_FILES[1])
+    table_lines = re.findall(r'^\| \d+ \|', content, re.MULTILINE)
+    assert len(table_lines) == 3, \
+        f"Market-entry distillation has {len(table_lines)} candidates, expected 3"
+
+def test_c11c_market_outlook_distillation_candidate_count():
+    """C11c: market-outlook distillation has exactly 3 promoted candidates (matches R71-R73)."""
+    content = read(DISTILLATION_FILES[2])
+    table_lines = re.findall(r'^\| \d+ \|', content, re.MULTILINE)
+    assert len(table_lines) == 3, \
+        f"Market-outlook distillation has {len(table_lines)} candidates, expected 3"
 
 
 # ═══════════════════════════════════════════════════════════════════
