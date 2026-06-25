@@ -108,9 +108,38 @@ _ROUTE_ALIASES: dict[str, str] = {
     "market entry / regional expansion": "market-entry",
     "market entry": "market-entry",
     "regional expansion": "market-entry",
+    # ── Regulatory / Policy Impact Analysis ──────────────────
+    "regulatory / policy impact analysis": "regulatory-analysis",
+    "regulatory analysis": "regulatory-analysis",
+    "regulatory / policy impact": "regulatory-analysis",
+    # ── Equipment Selection / Procurement ────────────────────
+    "equipment selection / procurement / home-server planning": "equipment-selection",
+    "equipment selection": "equipment-selection",
+    "equipment selection / procurement": "equipment-selection",
+    "procurement": "equipment-selection",
+    "home-server planning": "equipment-selection",
+    "nas / home server": "equipment-selection",
+    "homelab": "equipment-selection",
+    # ── Startup / Private Company Evaluation ─────────────────
+    "startup / private company evaluation": "startup-evaluation",
+    "startup evaluation": "startup-evaluation",
+    "private company evaluation": "startup-evaluation",
+    "private company": "startup-evaluation",
+    "startup": "startup-evaluation",
+    # ── First-tier / Top-tier / Competitive Positioning ─────
+    "first-tier / top-tier / competitive positioning": "competitive-positioning",
+    "first-tier": "competitive-positioning",
+    "top-tier": "competitive-positioning",
+    "competitive positioning": "competitive-positioning",
+    # ── Shared-workflow (generic fallback) ───────────────────
+    "shared-workflow (no specialized route selected)": "shared-workflow",
+    "shared-workflow": "shared-workflow",
+    "shared workflow": "shared-workflow",
 }
 
-# Default route used when auto-detection fails or an unknown route is given.
+# Default route used when auto-detection fails (no route declared in report).
+# Unknown routes that are explicitly named but unsupported are now a blocking
+# error (exit 2) — they do NOT fall back to this default.
 _DEFAULT_ROUTE = "technical-deep-dive"
 
 # Minimum number of fully-defined monitoring signals required for
@@ -122,14 +151,22 @@ def _normalize_route(name: str) -> str:
     """Normalize a display route name to a canonical key.
 
     Strips leading/trailing whitespace, collapses internal whitespace,
-    lowercases, and checks the alias table.  Falls back to the canonical
-    version of the name itself (lowercased, spaces → hyphens) so that
-    ``--route technical-deep-dive`` works without an alias entry.
+    lowercases, strips trailing parenthetical notes, and checks the
+    alias table.  Falls back to the canonical version of the name
+    itself (lowercased, spaces → hyphens) so that ``--route
+    technical-deep-dive`` works without an alias entry.
     """
     normalized = " ".join(name.strip().lower().split())
     canon = _ROUTE_ALIASES.get(normalized)
     if canon is not None:
         return canon
+    # Strip trailing parenthetical notes (e.g. "shared-workflow (no specialized route selected)")
+    no_paren = re.sub(r"\s*\([^)]*\)\s*$", "", normalized).strip()
+    if no_paren and no_paren != normalized:
+        canon = _ROUTE_ALIASES.get(no_paren)
+        if canon is not None:
+            return canon
+        normalized = no_paren
     # Fallback heuristic: replace whitespace with hyphens
     return normalized.replace(" ", "-")
 
@@ -426,6 +463,81 @@ def _run_market_outlook_monitoring_actionability(
     )
 
 
+def _run_secondary_route_check(path: Path, **kwargs: bool) -> CheckResult:
+    """Check that declared secondary routes are supported.
+
+    Scans the Route and audit status block for secondary/auxiliary route
+    declarations.  If an unsupported secondary route is found, produces a
+    warning (not blocking).  Silence means either no secondary routes
+    declared or all are supported.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        return CheckResult(
+            name="secondary-route-check",
+            errors=[f"{path}: cannot read file — {exc}"],
+        )
+    cleaned = strip_fenced_code_blocks(text)
+
+    # Locate the Route and audit status block — use same patterns as
+    # validate_report_quality.ROUTE_AUDIT_HEADING for consistency.
+    block_start = -1
+    lines = cleaned.split("\n")
+    for i, line in enumerate(lines):
+        if re.match(
+            r"^#{2,3}\s+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)",
+            line,
+            re.IGNORECASE,
+        ):
+            block_start = i
+            break
+    if block_start < 0:
+        # No route block — nothing to check
+        return CheckResult(name="secondary-route-check", errors=[], warnings=[])
+
+    # Extract block text (until next ## heading or end)
+    block_lines: list[str] = []
+    for line in lines[block_start + 1:]:
+        if re.match(r"^#{2,3}\s", line):
+            break
+        block_lines.append(line)
+    block_text = "\n".join(block_lines)
+
+    # Search for secondary route declarations
+    secondary_patterns = [
+        r"\*\*[Ss]econdary\s+[Rr]outes?\*\*\s*[:\s]+\s*(.+)",
+        r"\*\*[Aa]dditional\s+[Rr]outes?\*\*\s*[:\s]+\s*(.+)",
+        r"\*\*辅助路由\*\*\s*[:\s]+\s*(.+)",
+        r"\*\*次级路由\*\*\s*[:\s]+\s*(.+)",
+        r"\*\*次要路由\*\*\s*[:\s]+\s*(.+)",
+    ]
+
+    warnings: list[str] = []
+    for pattern in secondary_patterns:
+        m = re.search(pattern, block_text)
+        if m:
+            raw_routes = m.group(1).strip().rstrip(".")
+            # Split on common delimiters: comma, /, 、,  or "and"
+            parts = re.split(r"\s*[,/、，]\s*|\s+and\s+|\s+和\s+|\s+与\s+", raw_routes)
+            for part in parts:
+                part = part.strip().rstrip(".")
+                if not part:
+                    continue
+                canon = _normalize_route(part)
+                if canon not in ROUTE_VALIDATORS:
+                    warnings.append(
+                        f"Declared secondary route '{part}' "
+                        f"(normalized: '{canon}') is not in the "
+                        f"supported routes list"
+                    )
+                # Even if supported, note that secondary route hard-fail
+                # is not independently verified (per ROUTING-MATRIX.md).
+            break  # Only process the first match
+
+    return CheckResult(name="secondary-route-check", errors=[], warnings=warnings)
+
+
 # ── Route → validator mapping ──────────────────────────────────────────────
 
 ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
@@ -434,6 +546,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_declared_execution,
         _run_table_role_labels,
         _run_source_label_consistency,
+        _run_secondary_route_check,
     ],
     "listed-company": [
         _run_report_quality,
@@ -441,12 +554,14 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_listed_company_delivery,
         _run_table_role_labels,
         _run_source_label_consistency,
+        _run_secondary_route_check,
     ],
     "academic-review": [
         _run_report_quality,
         _run_declared_execution,
         _run_table_role_labels,
         _run_source_label_consistency,
+        _run_secondary_route_check,
     ],
     "constrained-choice": [
         _run_report_quality,
@@ -454,6 +569,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_scoring_replicability,
+        _run_secondary_route_check,
     ],
     "market-outlook": [
         _run_report_quality,
@@ -461,6 +577,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_market_outlook_monitoring_actionability,
+        _run_secondary_route_check,
     ],
     "provider-selection": [
         _run_report_quality,
@@ -468,6 +585,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_scoring_replicability,
+        _run_secondary_route_check,
     ],
     "market-entry": [
         _run_report_quality,
@@ -475,6 +593,42 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_scoring_replicability,
+        _run_secondary_route_check,
+    ],
+    "regulatory-analysis": [
+        _run_report_quality,
+        _run_declared_execution,
+        _run_table_role_labels,
+        _run_source_label_consistency,
+        _run_secondary_route_check,
+    ],
+    "equipment-selection": [
+        _run_report_quality,
+        _run_declared_execution,
+        _run_table_role_labels,
+        _run_source_label_consistency,
+        _run_secondary_route_check,
+    ],
+    "startup-evaluation": [
+        _run_report_quality,
+        _run_declared_execution,
+        _run_table_role_labels,
+        _run_source_label_consistency,
+        _run_secondary_route_check,
+    ],
+    "competitive-positioning": [
+        _run_report_quality,
+        _run_declared_execution,
+        _run_table_role_labels,
+        _run_source_label_consistency,
+        _run_secondary_route_check,
+    ],
+    "shared-workflow": [
+        _run_report_quality,
+        _run_declared_execution,
+        _run_table_role_labels,
+        _run_source_label_consistency,
+        _run_secondary_route_check,
     ],
 }
 
@@ -487,7 +641,7 @@ def _auto_detect_route(path: Path) -> str | None:
         return None
     cleaned = strip_fenced_code_blocks(text)
     raw = get_route_name(cleaned)
-    if raw is None:
+    if raw is None or not raw.strip():
         return None
     return _normalize_route(raw)
 
@@ -592,6 +746,7 @@ def audit_report(
     path: Path,
     route: str | None = None,
     strict: bool = False,
+    allow_route_fallback: bool = False,
 ) -> AuditVerdict:
     """Run route-aware audit on a report and return the consolidated verdict.
 
@@ -601,8 +756,9 @@ def audit_report(
         Path to the Markdown report file.
     route : str | None
         Route name to select validators. If None, auto-detect from the report.
-        Falls back to 'technical-deep-dive' when auto-detection fails and no
-        route is specified.
+        Falls back to 'technical-deep-dive' when auto-detection fails (no route
+        declared at all).  Unknown routes (declared but unsupported) are a
+        blocking error (exit 2), not silently fallen back.
     strict : bool
         Enable strict mode warnings (additional route-specific checks).
 
@@ -635,14 +791,27 @@ def audit_report(
     # Look up validators for the resolved route
     validators = ROUTE_VALIDATORS.get(resolved_route)
     if validators is None:
-        # Unknown route — warn and fall back to default
-        print(
-            f"warning: unknown route '{resolved_route}', "
-            f"falling back to '{_DEFAULT_ROUTE}' validators",
-            file=sys.stderr,
-        )
-        resolved_route = _DEFAULT_ROUTE
-        validators = ROUTE_VALIDATORS.get(_DEFAULT_ROUTE, [])
+        if allow_route_fallback:
+            # Explicit opt-in: fall back to default route (legacy behavior)
+            print(
+                f"warning: unknown route '{resolved_route}', "
+                f"falling back to '{_DEFAULT_ROUTE}' validators "
+                f"(--allow-route-fallback enabled)",
+                file=sys.stderr,
+            )
+            resolved_route = _DEFAULT_ROUTE
+            validators = ROUTE_VALIDATORS.get(_DEFAULT_ROUTE, [])
+        else:
+            # Unknown route — blocking error, no fallback
+            supported = ", ".join(sorted(ROUTE_VALIDATORS.keys()))
+            return AuditVerdict(
+                route=resolved_route,
+                overall="fail",
+                blocking=[
+                    f"Unknown route '{resolved_route}'. "
+                    f"Supported routes: {supported}"
+                ],
+            )
 
     # Run each validator with shared flags as keyword arguments
     results: list[CheckResult] = []
@@ -672,10 +841,21 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Enable strict mode warnings",
     )
+    parser.add_argument(
+        "--allow-route-fallback",
+        action="store_true",
+        default=False,
+        help=(
+            "Allow unknown routes to fall back to 'technical-deep-dive' "
+            "validators (legacy behavior). By default, unknown routes are "
+            "a blocking error (exit 2)."
+        ),
+    )
     args = parser.parse_args(argv)
 
     path = Path(args.path)
-    verdict = audit_report(path, route=args.route, strict=args.strict)
+    verdict = audit_report(path, route=args.route, strict=args.strict,
+                           allow_route_fallback=args.allow_route_fallback)
 
     output = format_verdict(verdict)
     print(output)

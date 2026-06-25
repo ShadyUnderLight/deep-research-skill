@@ -824,6 +824,263 @@ Each dimension conclusion is backed by [S01] and [S02].
 """
 
 
+def _valid_regulatory_analysis_report() -> str:
+    """A minimal valid regulatory-analysis report that passes all checks."""
+    return """\
+# Regulatory Impact Analysis
+
+## Route and audit status
+
+**Primary route**: Regulatory / Policy Impact Analysis
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+
+## 执行摘要
+
+Executive summary with citation [S01].
+
+## Findings
+
+Body text with citation [S02].
+
+## 维度结论
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | Scenario A | Scenario B | 数字角色 |
+|--------|------------|------------|---------|
+| Impact | High | Medium | estimate |
+| Timeline | 2026 | 2027 | observed |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _valid_equipment_selection_report() -> str:
+    """A minimal valid equipment-selection report that passes all checks."""
+    return """\
+# Home Server Selection
+
+## Route and audit status
+
+**Primary route**: Equipment Selection / Procurement / Home-server Planning
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| option-selection-final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+| final-audit | ✅ Passed | §5 Comparison 表格含数字角色列 |
+
+## 执行摘要
+
+Executive summary with citation [S01].
+
+## Findings
+
+Body text with citation [S02].
+
+## 维度结论
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | Option A | Option B | 数字角色 |
+|--------|----------|----------|---------|
+| Cost | 5000 | 4000 | observed |
+| Power | 65W | 45W | observed |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _valid_startup_evaluation_report() -> str:
+    """A minimal valid startup-evaluation report that passes all checks."""
+    return """\
+# Startup Assessment
+
+## Route and audit status
+
+**Primary route**: Startup / Private Company Evaluation
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+
+## 执行摘要
+
+Executive summary with citation [S01].
+
+## Findings
+
+Body text with citation [S02].
+
+## 维度结论
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | Company A | Company B | 数字角色 |
+|--------|-----------|-----------|---------|
+| Revenue | 10M | 8M | estimated |
+| Growth | 80% | 60% | estimated |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _valid_competitive_positioning_report() -> str:
+    """A minimal valid competitive-positioning report that passes all checks."""
+    return """\
+# Competitive Positioning Analysis
+
+## Route and audit status
+
+**Primary route**: First-tier / Top-tier / Competitive Positioning
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+
+## 执行摘要
+
+Executive summary with citation [S01].
+
+## Findings
+
+Body text with citation [S02].
+
+## 维度结论
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | Company A | Company B | 数字角色 |
+|--------|-----------|-----------|---------|
+| Market Share | 35% | 28% | observed |
+| Growth | 15% | 12% | observed |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _report_with_secondary_routes() -> str:
+    """Report declaring primary + secondary routes (one supported, one not)."""
+    return """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+**Secondary routes**: Market Outlook, unknown-route-xyz
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+| quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
+
+## 执行摘要
+
+Executive summary with citation [S01].
+
+## Findings
+
+Body text with citation [S02].
+
+## 维度结论
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | System A | System B | 数字角色 |
+|--------|----------|----------|---------|
+| Cost | 100 | 80 | observed |
+| Speed | 200 | 150 | observed |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
+def _report_with_supported_secondary_routes() -> str:
+    """Report declaring primary + secondary routes (all supported)."""
+    return """\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+**Secondary routes**: Market Outlook, Constrained Choice
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+| quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
+
+## 执行摘要
+
+Executive summary with citation [S01].
+
+## Findings
+
+Body text with citation [S02].
+
+## 维度结论
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Comparison Table
+
+| Metric | System A | System B | 数字角色 |
+|--------|----------|----------|---------|
+| Cost | 100 | 80 | observed |
+| Speed | 200 | 150 | observed |
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+"""
+
+
 def _report_shared_workflow() -> str:
     """Report using shared-workflow path (no primary route).
 
@@ -1059,16 +1316,15 @@ class TestRouteOverride:
         result = _run_audit(_valid_report(), extra_args=["--route", "technical-deep-dive"])
         assert "technical-deep-dive" in result.stdout
 
-    def test_unknown_route_falls_back(self) -> None:
+    def test_unknown_route_is_blocking(self) -> None:
         result = _run_audit(_valid_report(), extra_args=["--route", "unknown-route"])
-        assert result.returncode == 0, (
-            f"Unknown route falls back to technical-deep-dive validators, "
-            f"expected pass, got exit {result.returncode}\n"
+        assert result.returncode == 2, (
+            f"Unknown route must block (exit 2), got {result.returncode}\n"
             f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
         )
-        # Warning should be printed to stderr about the fallback
-        assert "warning" in result.stderr.lower(), (
-            f"Expected fallback warning in stderr, got:\n{result.stderr}"
+        # Error message should identify the unknown route, not silently fall back
+        assert "unknown route" in (result.stdout + result.stderr).lower(), (
+            f"Expected 'unknown route' in output, got stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
         )
 
 
@@ -1099,6 +1355,10 @@ class TestProperties:
             (_report_with_audit_mismatch(), "mismatch"),
             (_report_with_table_missing_role_labels(), "no-roles"),
             (_report_no_route_block(), "no-route"),
+            (_valid_regulatory_analysis_report(), "reg-analysis"),
+            (_valid_equipment_selection_report(), "equip-sel"),
+            (_valid_startup_evaluation_report(), "startup-eval"),
+            (_valid_competitive_positioning_report(), "comp-pos"),
         ]:
             result = _run_audit(fixture)
             overall = _get_overall(result.stdout)
@@ -1123,7 +1383,23 @@ class TestProperties:
             (_report_with_declared_exec_pass_but_fail(), "declared-but-fail"),
             (_cc_scoring_table_no_rules(), "cc-scoring-no-rules"),
             (_cc_probability_no_method(), "cc-prob-no-method"),
+            (_valid_regulatory_analysis_report(), "reg-analysis"),
+            (_valid_equipment_selection_report(), "equip-sel"),
+            (_valid_startup_evaluation_report(), "startup-eval"),
+            (_valid_competitive_positioning_report(), "comp-pos"),
         ]:
+            result = _run_audit(fixture)
+            blocking_count = _count_blocking(result.stdout)
+            if result.returncode == 2:
+                assert blocking_count > 0, (
+                    f"[{label}] Exit 2 but no blocking errors\n"
+                    f"stdout:\n{result.stdout}"
+                )
+            if blocking_count > 0:
+                assert result.returncode == 2, (
+                    f"[{label}] {blocking_count} blocking errors but "
+                    f"exit={result.returncode}\nstdout:\n{result.stdout}"
+                )
             result = _run_audit(fixture)
             blocking_count = _count_blocking(result.stdout)
             if result.returncode == 2:
@@ -1145,7 +1421,15 @@ class TestProperties:
             (_report_with_6col_register(), "6col"),
             (_report_with_audit_mismatch(), "mismatch"),
             (_report_no_route_block(), "no-route"),
+            (_valid_regulatory_analysis_report(), "reg-analysis"),
+            (_valid_equipment_selection_report(), "equip-sel"),
+            (_valid_startup_evaluation_report(), "startup-eval"),
+            (_valid_competitive_positioning_report(), "comp-pos"),
         ]:
+            result = _run_audit(fixture)
+            assert "Route:" in result.stdout, (
+                f"[{label}] Missing Route: line\nstdout:\n{result.stdout}"
+            )
             result = _run_audit(fixture)
             assert "Route:" in result.stdout, (
                 f"[{label}] Missing Route: line\nstdout:\n{result.stdout}"
@@ -1161,6 +1445,10 @@ class TestProperties:
             (_report_with_table_missing_role_labels(), "no-roles"),
             (_report_no_route_block(), "no-route"),
             (_report_with_declared_exec_pass_but_fail(), "declared-but-fail"),
+            (_valid_regulatory_analysis_report(), "reg-analysis"),
+            (_valid_equipment_selection_report(), "equip-sel"),
+            (_valid_startup_evaluation_report(), "startup-eval"),
+            (_valid_competitive_positioning_report(), "comp-pos"),
         ]:
             result = _run_audit(fixture)
             overall = _get_overall(result.stdout)
@@ -1250,6 +1538,10 @@ Body with [S01].
             (_cc_scoring_table_no_rules(), "cc-scoring-no-rules"),
             (_cc_probability_no_method(), "cc-prob-no-method"),
             (_cc_scoring_table_with_rules(), "cc-scoring-with-rules"),
+            (_valid_regulatory_analysis_report(), "reg-analysis"),
+            (_valid_equipment_selection_report(), "equip-sel"),
+            (_valid_startup_evaluation_report(), "startup-eval"),
+            (_valid_competitive_positioning_report(), "comp-pos"),
         ]:
             # CC-specific fixtures have route in their block, so auto-detection works
             result = _run_audit(fixture)
@@ -1674,8 +1966,382 @@ class TestMarketEntryRoute:
             )
 
 
+class TestRegulatoryAnalysisRoute:
+    """Regulatory-analysis route must be recognized without fallback."""
+
+    def test_regulatory_analysis_route_recognized(self) -> None:
+        """--route regulatory-analysis should show 'regulatory-analysis' in output."""
+        result = _run_audit(
+            _valid_regulatory_analysis_report(),
+            extra_args=["--route", "regulatory-analysis"],
+        )
+        assert "regulatory-analysis" in result.stdout, (
+            f"Expected 'regulatory-analysis' in route output, got:\n{result.stdout}"
+        )
+
+    def test_regulatory_analysis_no_fallback_warning(self) -> None:
+        """stderr must NOT contain 'falling back' for --route regulatory-analysis."""
+        result = _run_audit(
+            _valid_regulatory_analysis_report(),
+            extra_args=["--route", "regulatory-analysis"],
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_regulatory_analysis_auto_detect(self) -> None:
+        """Report with 'Regulatory / Policy Impact Analysis' route auto-detects."""
+        result = _run_audit(_valid_regulatory_analysis_report())
+        assert "regulatory-analysis" in result.stdout, (
+            f"Expected auto-detected 'regulatory-analysis' in output, got:\n{result.stdout}"
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_regulatory_analysis_valid_report_passes(self) -> None:
+        """A valid report with --route regulatory-analysis must pass (exit 0)."""
+        result = _run_audit(
+            _valid_regulatory_analysis_report(),
+            extra_args=["--route", "regulatory-analysis"],
+        )
+        assert result.returncode == 0, (
+            f"Expected exit 0, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_regulatory_analysis_alias_no_fallback(self) -> None:
+        """Each alias must resolve without fallback warning."""
+        for alias in [
+            "regulatory-analysis",
+            "regulatory analysis",
+            "regulatory / policy impact analysis",
+            "regulatory / policy impact",
+        ]:
+            result = _run_audit(
+                _valid_regulatory_analysis_report(),
+                extra_args=["--route", alias],
+            )
+            assert "falling back" not in result.stderr.lower(), (
+                f"Alias '{alias}' triggered fallback:\n{result.stderr}"
+            )
+            assert "regulatory-analysis" in result.stdout, (
+                f"Alias '{alias}' did not show 'regulatory-analysis' in output:\n{result.stdout}"
+            )
+
+
+class TestEquipmentSelectionRoute:
+    """Equipment-selection route must be recognized without fallback."""
+
+    def test_equipment_selection_route_recognized(self) -> None:
+        """--route equipment-selection should show 'equipment-selection' in output."""
+        result = _run_audit(
+            _valid_equipment_selection_report(),
+            extra_args=["--route", "equipment-selection"],
+        )
+        assert "equipment-selection" in result.stdout, (
+            f"Expected 'equipment-selection' in route output, got:\n{result.stdout}"
+        )
+
+    def test_equipment_selection_no_fallback_warning(self) -> None:
+        """stderr must NOT contain 'falling back' for --route equipment-selection."""
+        result = _run_audit(
+            _valid_equipment_selection_report(),
+            extra_args=["--route", "equipment-selection"],
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_equipment_selection_auto_detect(self) -> None:
+        """Report with 'Equipment Selection / Procurement' route auto-detects."""
+        result = _run_audit(_valid_equipment_selection_report())
+        assert "equipment-selection" in result.stdout, (
+            f"Expected auto-detected 'equipment-selection' in output, got:\n{result.stdout}"
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_equipment_selection_valid_report_passes(self) -> None:
+        """A valid report with --route equipment-selection must pass (exit 0)."""
+        result = _run_audit(
+            _valid_equipment_selection_report(),
+            extra_args=["--route", "equipment-selection"],
+        )
+        assert result.returncode == 0, (
+            f"Expected exit 0, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_equipment_selection_alias_no_fallback(self) -> None:
+        """Each alias must resolve without fallback warning."""
+        for alias in [
+            "equipment-selection",
+            "equipment selection",
+            "equipment selection / procurement / home-server planning",
+            "equipment selection / procurement",
+            "procurement",
+            "home-server planning",
+        ]:
+            result = _run_audit(
+                _valid_equipment_selection_report(),
+                extra_args=["--route", alias],
+            )
+            assert "falling back" not in result.stderr.lower(), (
+                f"Alias '{alias}' triggered fallback:\n{result.stderr}"
+            )
+            assert "equipment-selection" in result.stdout, (
+                f"Alias '{alias}' did not show 'equipment-selection' in output:\n{result.stdout}"
+            )
+
+
+class TestStartupEvaluationRoute:
+    """Startup-evaluation route must be recognized without fallback."""
+
+    def test_startup_evaluation_route_recognized(self) -> None:
+        """--route startup-evaluation should show 'startup-evaluation' in output."""
+        result = _run_audit(
+            _valid_startup_evaluation_report(),
+            extra_args=["--route", "startup-evaluation"],
+        )
+        assert "startup-evaluation" in result.stdout, (
+            f"Expected 'startup-evaluation' in route output, got:\n{result.stdout}"
+        )
+
+    def test_startup_evaluation_no_fallback_warning(self) -> None:
+        """stderr must NOT contain 'falling back' for --route startup-evaluation."""
+        result = _run_audit(
+            _valid_startup_evaluation_report(),
+            extra_args=["--route", "startup-evaluation"],
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_startup_evaluation_auto_detect(self) -> None:
+        """Report with 'Startup / Private Company Evaluation' route auto-detects."""
+        result = _run_audit(_valid_startup_evaluation_report())
+        assert "startup-evaluation" in result.stdout, (
+            f"Expected auto-detected 'startup-evaluation' in output, got:\n{result.stdout}"
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_startup_evaluation_valid_report_passes(self) -> None:
+        """A valid report with --route startup-evaluation must pass (exit 0)."""
+        result = _run_audit(
+            _valid_startup_evaluation_report(),
+            extra_args=["--route", "startup-evaluation"],
+        )
+        assert result.returncode == 0, (
+            f"Expected exit 0, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_startup_evaluation_alias_no_fallback(self) -> None:
+        """Each alias must resolve without fallback warning."""
+        for alias in [
+            "startup-evaluation",
+            "startup evaluation",
+            "startup / private company evaluation",
+            "private company evaluation",
+            "private company",
+            "startup",
+        ]:
+            result = _run_audit(
+                _valid_startup_evaluation_report(),
+                extra_args=["--route", alias],
+            )
+            assert "falling back" not in result.stderr.lower(), (
+                f"Alias '{alias}' triggered fallback:\n{result.stderr}"
+            )
+            assert "startup-evaluation" in result.stdout, (
+                f"Alias '{alias}' did not show 'startup-evaluation' in output:\n{result.stdout}"
+            )
+
+
+class TestCompetitivePositioningRoute:
+    """Competitive-positioning route must be recognized without fallback."""
+
+    def test_competitive_positioning_route_recognized(self) -> None:
+        """--route competitive-positioning should show 'competitive-positioning' in output."""
+        result = _run_audit(
+            _valid_competitive_positioning_report(),
+            extra_args=["--route", "competitive-positioning"],
+        )
+        assert "competitive-positioning" in result.stdout, (
+            f"Expected 'competitive-positioning' in route output, got:\n{result.stdout}"
+        )
+
+    def test_competitive_positioning_no_fallback_warning(self) -> None:
+        """stderr must NOT contain 'falling back' for --route competitive-positioning."""
+        result = _run_audit(
+            _valid_competitive_positioning_report(),
+            extra_args=["--route", "competitive-positioning"],
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_competitive_positioning_auto_detect(self) -> None:
+        """Report with 'First-tier / Top-tier / Competitive Positioning' route auto-detects."""
+        result = _run_audit(_valid_competitive_positioning_report())
+        assert "competitive-positioning" in result.stdout, (
+            f"Expected auto-detected 'competitive-positioning' in output, got:\n{result.stdout}"
+        )
+        assert "falling back" not in result.stderr.lower(), (
+            f"Unexpected fallback warning in stderr:\n{result.stderr}"
+        )
+
+    def test_competitive_positioning_valid_report_passes(self) -> None:
+        """A valid report with --route competitive-positioning must pass (exit 0)."""
+        result = _run_audit(
+            _valid_competitive_positioning_report(),
+            extra_args=["--route", "competitive-positioning"],
+        )
+        assert result.returncode == 0, (
+            f"Expected exit 0, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_competitive_positioning_alias_no_fallback(self) -> None:
+        """Each alias must resolve without fallback warning."""
+        for alias in [
+            "competitive-positioning",
+            "competitive positioning",
+            "first-tier / top-tier / competitive positioning",
+            "first-tier",
+            "top-tier",
+        ]:
+            result = _run_audit(
+                _valid_competitive_positioning_report(),
+                extra_args=["--route", alias],
+            )
+            assert "falling back" not in result.stderr.lower(), (
+                f"Alias '{alias}' triggered fallback:\n{result.stderr}"
+            )
+            assert "competitive-positioning" in result.stdout, (
+                f"Alias '{alias}' did not show 'competitive-positioning' in output:\n{result.stdout}"
+            )
+
+
+class TestUnknownRouteBlocking:
+    """Unknown routes must be blocked (exit 2), not silently fall back."""
+
+    def test_unknown_route_exit_2(self) -> None:
+        """--route nonexistent-route-xyz must exit 2."""
+        result = _run_audit(_valid_report(), extra_args=["--route", "nonexistent-route-xyz"])
+        assert result.returncode == 2, (
+            f"Expected exit 2 for unknown route, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+    def test_unknown_route_overall_fail(self) -> None:
+        """Unknown route must produce overall 'fail'."""
+        result = _run_audit(_valid_report(), extra_args=["--route", "nonexistent-route-xyz"])
+        assert _get_overall(result.stdout) == "fail", (
+            f"Expected overall 'fail', got:\n{result.stdout}"
+        )
+
+    def test_unknown_route_shows_supported_routes(self) -> None:
+        """Error message must list supported routes."""
+        result = _run_audit(_valid_report(), extra_args=["--route", "nonexistent-route-xyz"])
+        assert "supported routes" in result.stdout.lower(), (
+            f"Expected 'supported routes' in error output, got:\n{result.stdout}"
+        )
+
+    def test_unknown_route_no_validator_runs(self) -> None:
+        """No validators should run for unknown route (no report-quality etc.)."""
+        result = _run_audit(_valid_report(), extra_args=["--route", "nonexistent-route-xyz"])
+        # No validator-specific output should appear in blocking errors
+        # The only blocking error should be the unknown-route message itself
+        blocking_lines = [
+            line for line in result.stdout.splitlines()
+            if line.startswith("- [")
+        ]
+        assert len(blocking_lines) == 0, (
+            f"Expected no validator-specific blocking, got:\n{result.stdout}"
+        )
+
+
+class TestSecondaryRouteCheck:
+    """Secondary route declarations must be checked for support status."""
+
+    def test_unsupported_secondary_route_warns(self) -> None:
+        """Report with unsupported secondary route → warning (not blocking)."""
+        result = _run_audit(_report_with_secondary_routes())
+        # Should have warnings about the unsupported secondary route
+        assert "secondary-route-check" in result.stdout, (
+            f"Expected secondary-route-check in output, got:\n{result.stdout}"
+        )
+        # Should NOT be blocking (secondary route unsupported = warning, not error)
+        blocking = _count_blocking(result.stdout)
+        secondary_blocking = [
+            line for line in result.stdout.splitlines()
+            if "[secondary-route-check]" in line and line.strip().startswith("- ")
+        ]
+        assert len(secondary_blocking) == 0, (
+            f"Secondary route unsupported should be warning, not blocking:\n{result.stdout}"
+        )
+
+    def test_supported_secondary_routes_no_warning(self) -> None:
+        """Report with all supported secondary routes → no warnings."""
+        result = _run_audit(_report_with_supported_secondary_routes())
+        # secondary-route-check should appear with pass status
+        assert "secondary-route-check" in result.stdout, (
+            f"Expected secondary-route-check in output, got:\n{result.stdout}"
+        )
+        # Should have no warnings for secondary routes
+        warning_lines = [
+            line for line in result.stdout.splitlines()
+            if "⚠" in line and "secondary" in line.lower()
+        ]
+        assert len(warning_lines) == 0, (
+            f"Expected no secondary-route warnings, got:\n{result.stdout}"
+        )
+
+    def test_no_secondary_routes_silent(self) -> None:
+        """Report with no secondary routes → silence (pass)."""
+        result = _run_audit(_valid_report())
+        # secondary-route-check should appear as pass
+        assert "secondary-route-check" in result.stdout, (
+            f"Expected secondary-route-check in output, got:\n{result.stdout}"
+        )
+
+
+class TestAllowRouteFallback:
+    """--allow-route-fallback flag restores legacy fallback behavior."""
+
+    def test_allow_fallback_passes_for_unknown_route(self) -> None:
+        """--route unknown-xyz --allow-route-fallback should exit 0 (not 2)."""
+        result = _run_audit(
+            _valid_report(),
+            extra_args=["--route", "nonexistent-fallback-test", "--allow-route-fallback"],
+        )
+        assert result.returncode == 0, (
+            f"Expected exit 0 with --allow-route-fallback, got {result.returncode}\n"
+            f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+        # Should show fallback warning in stderr
+        assert "falling back" in result.stderr.lower(), (
+            f"Expected fallback warning in stderr with --allow-route-fallback:\n{result.stderr}"
+        )
+
+    def test_allow_fallback_shows_default_route_in_output(self) -> None:
+        """With --allow-route-fallback, output should show technical-deep-dive."""
+        result = _run_audit(
+            _valid_report(),
+            extra_args=["--route", "nonexistent-fallback-test", "--allow-route-fallback"],
+        )
+        assert "technical-deep-dive" in result.stdout, (
+            f"Expected fallback to 'technical-deep-dive' in output, got:\n{result.stdout}"
+        )
+
+
 class TestSharedWorkflow:
-    """Shared-workflow reports should fall back to default validators."""
+    """Shared-workflow should be recognized as a valid route, not fall back."""
 
     def test_exit_code_zero_when_valid(self) -> None:
         """Shared-workflow report with valid structure should pass."""
@@ -1685,11 +2351,18 @@ class TestSharedWorkflow:
             f"stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
         )
 
-    def test_fallback_warning_in_stderr(self) -> None:
-        """Auto-detected route 'Shared-workflow' should trigger fallback warning."""
+    def test_no_fallback_warning_in_stderr(self) -> None:
+        """Shared-workflow should be recognized, not fall back."""
         result = _run_audit(_report_shared_workflow())
-        assert "warning" in result.stderr.lower() or "unknown route" in result.stderr.lower(), (
-            f"Expected fallback warning in stderr, got:\n{result.stderr}"
+        assert "falling back" not in result.stderr.lower(), (
+            f"Shared-workflow should be recognized, not fall back:\n{result.stderr}"
+        )
+
+    def test_shared_workflow_route_in_output(self) -> None:
+        """Output should contain 'shared-workflow' as the recognized route."""
+        result = _run_audit(_report_shared_workflow())
+        assert "shared-workflow" in result.stdout.lower(), (
+            f"Expected 'shared-workflow' in output, got:\n{result.stdout}"
         )
 
 
@@ -1732,6 +2405,7 @@ Primary company source S01 lacks the required caveat.
             "table-role-labels",
             "source-label-consistency",
             "scoring-replicability",
+            "secondary-route-check",
         ]
         for name in all_validator_names:
             marker_bracket = f"[{name}]"
@@ -1778,6 +2452,7 @@ Body text with citation [S01].
             "table-role-labels",
             "source-label-consistency",
             "market-outlook-monitoring",
+            "secondary-route-check",
         ]
         for prefix in expected_prefixes:
             marker_bracket = f"[{prefix}]"
@@ -1822,7 +2497,7 @@ if __name__ == "__main__":
         ("no route block missing section", TestNoRouteBlock().test_blocking_mentions_missing_section),
         # TestRouteOverride
         ("--route appears in output", TestRouteOverride().test_explicit_route_appears_in_output),
-        ("--route unknown falls back", TestRouteOverride().test_unknown_route_falls_back),
+        ("--route unknown is blocking", TestRouteOverride().test_unknown_route_is_blocking),
         # TestNonExistentFile
         ("non-existent file exit", TestNonExistentFile().test_exit_code_blocking),
         # TestConstrainedChoice
@@ -1887,7 +2562,69 @@ if __name__ == "__main__":
          TestMarketEntryRoute().test_market_entry_alias_no_fallback),
         # TestSharedWorkflow
         ("shared-workflow valid passes", TestSharedWorkflow().test_exit_code_zero_when_valid),
-        ("shared-workflow fallback warning", TestSharedWorkflow().test_fallback_warning_in_stderr),
+        ("shared-workflow no fallback warning", TestSharedWorkflow().test_no_fallback_warning_in_stderr),
+        ("shared-workflow route in output", TestSharedWorkflow().test_shared_workflow_route_in_output),
+        # TestSecondaryRouteCheck
+        ("secondary route unsupported warns",
+         TestSecondaryRouteCheck().test_unsupported_secondary_route_warns),
+        ("secondary route supported no warning",
+         TestSecondaryRouteCheck().test_supported_secondary_routes_no_warning),
+        ("secondary route none silent",
+         TestSecondaryRouteCheck().test_no_secondary_routes_silent),
+        # TestAllowRouteFallback
+        ("allow-route-fallback passes",
+         TestAllowRouteFallback().test_allow_fallback_passes_for_unknown_route),
+        ("allow-route-fallback shows default route",
+         TestAllowRouteFallback().test_allow_fallback_shows_default_route_in_output),
+        # TestRegulatoryAnalysisRoute
+        ("regulatory-analysis route recognized",
+         TestRegulatoryAnalysisRoute().test_regulatory_analysis_route_recognized),
+        ("regulatory-analysis no fallback warning",
+         TestRegulatoryAnalysisRoute().test_regulatory_analysis_no_fallback_warning),
+        ("regulatory-analysis auto-detect",
+         TestRegulatoryAnalysisRoute().test_regulatory_analysis_auto_detect),
+        ("regulatory-analysis valid report passes",
+         TestRegulatoryAnalysisRoute().test_regulatory_analysis_valid_report_passes),
+        ("regulatory-analysis alias no fallback",
+         TestRegulatoryAnalysisRoute().test_regulatory_analysis_alias_no_fallback),
+        # TestEquipmentSelectionRoute
+        ("equipment-selection route recognized",
+         TestEquipmentSelectionRoute().test_equipment_selection_route_recognized),
+        ("equipment-selection no fallback warning",
+         TestEquipmentSelectionRoute().test_equipment_selection_no_fallback_warning),
+        ("equipment-selection auto-detect",
+         TestEquipmentSelectionRoute().test_equipment_selection_auto_detect),
+        ("equipment-selection valid report passes",
+         TestEquipmentSelectionRoute().test_equipment_selection_valid_report_passes),
+        ("equipment-selection alias no fallback",
+         TestEquipmentSelectionRoute().test_equipment_selection_alias_no_fallback),
+        # TestStartupEvaluationRoute
+        ("startup-evaluation route recognized",
+         TestStartupEvaluationRoute().test_startup_evaluation_route_recognized),
+        ("startup-evaluation no fallback warning",
+         TestStartupEvaluationRoute().test_startup_evaluation_no_fallback_warning),
+        ("startup-evaluation auto-detect",
+         TestStartupEvaluationRoute().test_startup_evaluation_auto_detect),
+        ("startup-evaluation valid report passes",
+         TestStartupEvaluationRoute().test_startup_evaluation_valid_report_passes),
+        ("startup-evaluation alias no fallback",
+         TestStartupEvaluationRoute().test_startup_evaluation_alias_no_fallback),
+        # TestCompetitivePositioningRoute
+        ("competitive-positioning route recognized",
+         TestCompetitivePositioningRoute().test_competitive_positioning_route_recognized),
+        ("competitive-positioning no fallback warning",
+         TestCompetitivePositioningRoute().test_competitive_positioning_no_fallback_warning),
+        ("competitive-positioning auto-detect",
+         TestCompetitivePositioningRoute().test_competitive_positioning_auto_detect),
+        ("competitive-positioning valid report passes",
+         TestCompetitivePositioningRoute().test_competitive_positioning_valid_report_passes),
+        ("competitive-positioning alias no fallback",
+         TestCompetitivePositioningRoute().test_competitive_positioning_alias_no_fallback),
+        # TestUnknownRouteBlocking
+        ("unknown route exit 2", TestUnknownRouteBlocking().test_unknown_route_exit_2),
+        ("unknown route overall fail", TestUnknownRouteBlocking().test_unknown_route_overall_fail),
+        ("unknown route shows supported routes", TestUnknownRouteBlocking().test_unknown_route_shows_supported_routes),
+        ("unknown route no validator runs", TestUnknownRouteBlocking().test_unknown_route_no_validator_runs),
         # TestValidatorCount
         ("all 5 validators run on failing report", TestValidatorCount().test_all_validators_executed_on_failing_report),
         ("market-outlook all 5 validators run", TestValidatorCount().test_market_outlook_validators_all_run),
