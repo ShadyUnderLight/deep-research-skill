@@ -1,5 +1,8 @@
 __pycache__/
 *.pyc
+# Worktree isolation directory
+.worktrees/
+
 # Generated pipeline artifacts (PDF, HTML intermediates) — eval output only
 evals/cases/*.pdf
 evals/cases/*.html
