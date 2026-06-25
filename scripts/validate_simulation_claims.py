@@ -40,14 +40,15 @@ class KeywordRule(NamedTuple):
 
 
 KEYWORD_RULES: list[KeywordRule] = [
-    # p-value variants (fullwidth/halfwidth)
-    KeywordRule("p_value", re.compile(r"p\s*[<＜≪]\s*0?\.?\d+", re.IGNORECASE)),
-    KeywordRule("p_value", re.compile(r"p[\-\s]?value", re.IGNORECASE)),
+    # p-value variants (fullwidth/halfwidth) — requires non-letter prefix
+    # to avoid matching TCP<0.01, ASP<1000, HTTP<1.0 etc.
+    KeywordRule("p_value", re.compile(r"(?<![a-zA-Z])p\s*[<＜≪]\s*0?\.?\d+", re.IGNORECASE)),
+    KeywordRule("p_value", re.compile(r"\bp[\-\s]?value\b", re.IGNORECASE)),
     # confidence intervals
     KeywordRule("confidence_interval", re.compile(r"置信区间|confidence\s+interval", re.IGNORECASE)),
     KeywordRule("confidence_interval", re.compile(r"\d+\s*%\s*CI\b")),
     # simulation methods
-    KeywordRule("simulation", re.compile(r"[Mm]onte\s+[Cc]arlo")),
+    KeywordRule("simulation", re.compile(r"(?i)\bMonte\s+Carlo\b")),
     KeywordRule("simulation", re.compile(r"模拟\d*次|仿真\d*次|simulation", re.IGNORECASE)),
     # model names
     KeywordRule("model_name", re.compile(r"\b[Pp]oisson\b")),
@@ -105,7 +106,6 @@ EXECUTED_PATTERNS: list[re.Pattern[str]] = [
         r"输出.*结果",
         r"得到.*分布",
         r"recorded\s+output",
-        r"results?\s+(?:show|indicate)",
         # Model explicitly documented as run
         r"(?:运行|执行|实现)了\s*(?:该|上述|前述|以下)?(?:模型|模拟|仿真|分析|回归)",
     ]
@@ -128,22 +128,30 @@ ILLUSTRATIVE_PATTERNS: list[re.Pattern[str]] = [
 ]
 
 # ── False-positive exemptions ──────────────────────────────────────
-# Patterns that should NOT trigger keyword rules even if they match.
-# These are compound terms in non-methodological contexts.
-FALSE_POSITIVE_EXEMPTIONS: list[re.Pattern[str]] = [
-    # "simulation software" is a product/market category, not a method claim
-    re.compile(r"simulation\s+(software|platform|tool|engine|environment|system)", re.IGNORECASE),
-    # Institutional names containing "统计" but not making statistical claims
-    re.compile(r"国家统计局|统计局|统计年鉴|统计公报|统计部门"),
-]
+# Patterns that should suppress SPECIFIC keyword types.
+# Keyed by keyword_type; only exempts matches of that type, not all keywords on the line.
+FALSE_POSITIVE_EXEMPTIONS: dict[str, list[re.Pattern[str]]] = {
+    "simulation": [
+        # "simulation software/platform/tool" is a product category, not a method claim
+        re.compile(r"simulation\s+(software|platform|tool|engine|environment|system)", re.IGNORECASE),
+    ],
+    "statistical_test": [
+        # Institutional names containing "统计" but not making statistical claims
+        re.compile(r"国家统计局|统计局|统计年鉴|统计公报|统计部门"),
+    ],
+}
 
 SOURCE_REF_PATTERN = re.compile(r"\[S\d+\]")
 BLOCKQUOTE_NOTE_PATTERN = re.compile(r"^\s*>\s*(注|note|说明|disclaimer)[：:]", re.IGNORECASE)
 
 
-def _is_false_positive(line: str, keyword: str) -> bool:
-    """Check if a keyword match is a known false positive."""
-    for pattern in FALSE_POSITIVE_EXEMPTIONS:
+def _is_false_positive_for_type(line: str, keyword_type: str) -> bool:
+    """Check if a keyword match of *keyword_type* is a known false positive.
+
+    Returns True only for the specific keyword_type, not all keywords on the line.
+    """
+    patterns = FALSE_POSITIVE_EXEMPTIONS.get(keyword_type, [])
+    for pattern in patterns:
         if pattern.search(line):
             return True
     return False
@@ -254,8 +262,9 @@ def scan_text(text: str) -> list[Claim]:
             keyword = match.group(0)
             context = find_context_window(lines, line_idx)
 
-            # Skip known false positives (e.g., "simulation software", "统计局")
-            if _is_false_positive(line, keyword):
+            # Skip known false positives (e.g., "simulation software" for simulation type,
+            # "统计局" for statistical_test type) — only exempts the specific keyword type
+            if _is_false_positive_for_type(line, rule.type):
                 continue
 
             # Check if this line+type already has a claim (dedup: same type on same line)

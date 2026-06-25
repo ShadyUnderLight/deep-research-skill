@@ -236,6 +236,27 @@ def test_chinese_conceptual_suppresses() -> None:
 """)
 
 
+def test_monte_carlo_all_caps_detected() -> None:
+    """C1 fix: MONTE CARLO (all caps) should be detected."""
+    expect_warnings("MONTE CARLO all caps", """
+The MONTE CARLO simulation results indicate a significant effect.
+""")
+
+
+def test_tcp_protocol_not_misdetected_as_pvalue() -> None:
+    """C2 fix: TCP<0.01 and ASP<1000 should NOT trigger p-value warnings."""
+    expect_pass("TCP/ASP not p-value", """
+TCP<0.01 和 ASP<1000 是网络性能指标，不属于统计检验。
+""")
+
+
+def test_stats_bureau_exempts_only_statistical_test() -> None:
+    """C3 fix: 统计局 exempts only statistical_test, not p_value on same line."""
+    expect_warnings("统计局 + p<0.01 still triggers", """
+国家统计局数据显示两组间存在显著差异（p<0.01）。
+""", min_warnings=1)
+
+
 # ============================================================
 # Property-based tests (Hypothesis)
 # ============================================================
