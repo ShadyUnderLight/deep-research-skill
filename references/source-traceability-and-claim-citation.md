@@ -208,9 +208,11 @@ The source register appendix must use the following 7-column structure. This tem
 | Date | Source publication date or retrieval date in `YYYY-MM-DD` format |
 | DOI/URL | Resolvable link where available; for offline sources, note the limitation |
 | Reliability | One of: `high` (独立可验证官方源), `medium` (可靠第三方), `low` (厂商自述/推断/未确认) |
-| Claims Supported | Body section references (e.g. `§3.2, §4.1`) that this entry supports — establishes reverse traceability from register to body |
+| Claims Supported | Body section references + brief claim summaries (e.g. `§3.2: 2026 R32 对阵中 A1/B1 等组第一对阵最佳第三；§2.1: 第三名排名规则`). Must include at least a brief description of what each section reference supports — pure section numbers (`§3.2, §4.1`) without claim summaries are insufficient and will be flagged by the validator. |
 
 **Cross-reference rule:** Body `[S#]` citations point to the ID column; the `Claims Supported` column points back to body sections. This creates bidirectional traceability between register entries and body claims.
+
+**Claims Supported semantic requirement:** Each entry in the Claims Supported column must include at least a brief claim-level description beyond section numbers. Acceptable: `§1.1: 2026 R32 对阵中 A1/B1 等组第一对阵最佳第三`。Unacceptable: `§1.1, §2.1` (section-only, no claim summary). A register where all Claims Supported entries are section-only is a hard-fail; a register where some are section-only triggers a warning.
 
 **Source Type notes:**
 - `primary` — official regulatory filings, annual reports, company press releases, government data
@@ -220,6 +222,8 @@ The source register appendix must use the following 7-column structure. This tem
 - `unconfirmed` — found in one or more sources but cannot be independently verified
 
 **Reliability consistency rule:** If Source Type is `vendor-claim`, `inferred`, or `unconfirmed`, Reliability must be `low`. These source types are inherently non-independent or unverified; marking them `medium` or `high` would misrepresent the evidence strength.
+
+**CROWDSOURCED reliability calibration:** CROWDSOURCED sources (Wikipedia, crowdsourced compilations, tertiary sources) must not be rated `high` reliability. The maximum allowed reliability for CROWDSOURCED is `medium`. Default: `medium` for stable/factual consensus articles or `low` for controversial or rapidly-edited topics. A register entry with Source Type = CROWDSOURCED and Reliability = `high` is a hard-fail.
 
 If the existing granular classification (`PRIMARY_FILING`, `SECONDARY_MEDIA`, etc. — see §Source type classification below) better suits a specific entry, use it instead; the template can accommodate either level of detail.
 
@@ -232,6 +236,24 @@ Every source register entry must satisfy two additional rules beyond basic metad
 2. **Every entry should include a URL or DOI where available.** For primary filings, company disclosures, news articles, and analyst reports, a resolvable link enables readers to independently verify the source. For offline sources (printed books, internal data), note the limitation explicitly. For high-reliability government or academic sources where a specific URL cannot be provided, the entry should include enough retrieval information (institution, publication, date, archive location) for a reader to locate the source.
 
 These rules prevent the "register theatre" problem where a source list looks comprehensive but contains dead or unreferenced entries.
+
+### Source-strength purity gate
+
+The Source Register is not only about format completeness and body coverage — it must also ensure that sources are strong enough for the claims they support. A report can pass all format checks (7 columns, body [Sxx] references, zero inflation) but still fail audit if the sources themselves are too weak.
+
+**Severity scale for Wikipedia/crowdsourced concentration:**
+
+| Ratio of cited sources that are CROWDSOURCED | Severity | Action |
+|----------------------------------------------|----------|--------|
+| 100% | 🔴 Hard-fail | Source-traceability may not be marked ✅ Passed. Load-bearing claims must have primary/secondary anchors; Wikipedia is tertiary and cannot serve as the sole source for official rules, current statistics, or strong claims. |
+| >50% | 🟡 Warning | More than half of load-bearing claims rely on tertiary sources. Review register: can weak sources be replaced with primary/secondary anchors? |
+| ≤50% | 🟢 Pass | Acceptable as long as load-bearing claims are anchored in non-tertiary sources. |
+
+**Counting rules:**
+- Only count cited entries (entries whose ID appears as a body `[Sxx]` reference). Uncited Wikipedia entries used for background are not flagged.
+- "CROWDSOURCED" is determined by matching the Source Type column against the canonical `CROWDSOURCED` type and its free-text aliases (`Wikipedia`, `wiki`, `crowdsourced`, etc.).
+
+This gate prevents "traceability theatre" — reports where every claim has a citation and every citation has a register entry, but the underlying evidence is too weak to be auditable.
 
 ### Register discipline and inflation
 
