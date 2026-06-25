@@ -40,6 +40,7 @@ These items verify that the report's front page provides a trustworthy temporal 
 - [ ] performance table 有数字角色列或表注（见 `references/quantitative-role-labeling.md` §表格中的角色标签）
 - [ ] patent claims cite patent numbers or specific filings, not just counts
 - [ ] （非阻塞）厂商自述在正文中明确标注了来源角色（如 `(厂商自述)` 或 `(来源：厂商自述，非独立验证)`），见 `references/source-traceability-and-claim-citation.md` §来源标注一致性
+- [ ] 若报告包含 simulation / Monte Carlo / p-value / 置信区间 / Elo / Poisson / 回归显著 等统计/仿真声明，已运行 `scripts/validate_simulation_claims.py` 并处理其输出；未标注 status（conceptual / executed / illustrative）的声明需在交付前解释或降级，见 `references/model-output-and-simulation-discipline.md`
 - [ ] （非阻塞）涉及厂商自述的行内引用附加了标准格式 caveat `(来源：厂商自述，非独立验证)` 或等效说明
 - [ ] source register must use the 7-column template (ID / Source Name / Source Type / Date / DOI or URL / Reliability / Claims Supported) defined in `references/source-traceability-and-claim-citation.md` (§Structured Source Register Template). 来源注册表必须使用该 7 列模板。
 

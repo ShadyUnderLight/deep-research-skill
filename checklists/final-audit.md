@@ -201,6 +201,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 - [ ] when evidence buckets are used, the report does not stop at `confirmed / inference / unknown` if important numbers still function as proxy / assumption / planning-model output
 - [ ] heuristic timing, cost, payback, or ROI-style claims are not written as if they were directly observed facts when they are closer to assumptions or planning-model outputs
 - [ ] （非阻塞）所有比较表、评分表、估算表包含数字角色列（或等效的表头角色行/表注），读者无需回正文即可从表格行判断数字性质（观察值/代理指标/假设/模型输出）。单角色表可以在表注声明；多角色表必须有独立列或表头角色行。见 `references/quantitative-role-labeling.md` §表格中的角色标签
+- [ ] 若报告中出现 simulation / Monte Carlo / p-value / 置信区间 等统计/仿真关键词，已运行 `scripts/validate_simulation_claims.py`；所有未标注 status（conceptual / executed / illustrative）的声明已在交付前解释或降级，见 `references/model-output-and-simulation-discipline.md`
 
 ## Metric-scope audit
 

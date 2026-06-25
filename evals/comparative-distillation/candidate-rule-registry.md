@@ -107,6 +107,8 @@ Two new distillation cases (issue #320) produced **5 new PROMOTE_NOW candidates 
 | R71 | Add inference-register disconnected-from-body detection method | CHECKLIST_HARDENING | agent-api-market-outlook | 1 | PROMOTE_NOW | `checklists/final-audit.md` (new) via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
 | R72 | Add monitoring signal actionability 4-field verification (threshold, cadence, source, trigger-to-action) | CHECKLIST_HARDENING | agent-api-market-outlook | 1 | PROMOTE_NOW | `checklists/market-outlook-audit.md` via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
 | R73 | Add route-boundary check: market-outlook reports containing competitive-positioning content must document rationale | NEW_RULE | agent-api-market-outlook | 1 | PROMOTE_NOW | `checklists/market-outlook-audit.md` via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
+| R74 | Add simulation/model-output status disclosure requirement (conceptual / executed / illustrative) | NEW_RULE | world-cup-constrained-choice | 1 | WAIT_FOR_SECOND_CASE | `references/model-output-and-simulation-discipline.md` via [#342](https://github.com/ShadyUnderLight/deep-research-skill/issues/342); `scripts/validate_simulation_claims.py` | 新规则（观察中） |
+| R75 | P-value / CI / Elo / Poisson / Monte Carlo without execution evidence triggers validator warning | NEW_RULE | world-cup-constrained-choice | 1 | WAIT_FOR_SECOND_CASE | `scripts/validate_simulation_claims.py` via [#342](https://github.com/ShadyUnderLight/deep-research-skill/issues/342) | 新规则（观察中） |
 
 ---
 
@@ -114,12 +116,12 @@ Two new distillation cases (issue #320) produced **5 new PROMOTE_NOW candidates 
 
 | Metric | Count |
 |---|---|---|
-| Total candidate rules (all 18 files) | 73 |
+| Total candidate rules (all files) | 75 |
 | PROMOTE_NOW | 56 |
-| WAIT_FOR_SECOND_CASE | 3 |
+| WAIT_FOR_SECOND_CASE | 5 |
 | (unlabeled, implicitly actionable) | 14 |
-| **Covered by existing code** | **62 / 73** (85%) |
-| Pending / WAIT_FOR_SECOND_CASE | 3 (R10, R57, R58) |
+| **Covered by existing code** | **62 / 75** (83%) |
+| Pending / WAIT_FOR_SECOND_CASE | 5 (R10, R57, R58, R74, R75) |
 | Pending / #331 implementation | 8 (R66-R73: new candidates from three GPT-vs-local comparisons) |
 | **Truly uncovered PROMOTE_NOW** | **8** (R66-R73) — new candidates from issue #331, pending checklist/template updates |
 
