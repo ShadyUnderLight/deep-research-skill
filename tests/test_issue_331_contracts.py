@@ -70,6 +70,7 @@ KNOWN_FAILURE_FAMILIES = frozenset({
     "sensitivity-gap",
     "secondary-route-verification",
     "aggregation-replicability",
+    "source-strength",
 })
 
 DISTILLATION_FILES = [
