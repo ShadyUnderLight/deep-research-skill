@@ -7,7 +7,7 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
 - Commit anchor: `b180815`
-- Case count: 94 tracked Markdown cases
+- Case count: 95 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -133,6 +133,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/tsmc-valuation-time-horizon-stratification-case.md` | listed-company | N/A | N/A | N/A | N/A | N/A | N/A | Triggered | Triggered | New time-horizon stratification eval case (issue #277); pending formal audit. |
 | `evals/cases/unitree-competitive-positioning-secondary-route-case.md` | competitive-positioning | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Secondary route, label, strong-claim, and valuation gaps. |
 | `evals/cases/world-cup-constrained-choice-wrong-route-case.md` | constrained-choice / wrong-route | Triggered | Missing trigger | Failed execution | Failed execution | N/A | Missing trigger | Triggered | Triggered | Evidence labels good; wrong route and no inline citations. |
+| `evals/cases/world-cup-info-advantage-technical-deep-dive-source-strength-case.md` | technical-deep-dive / source-strength | N/A | Failed execution | N/A | Failed execution | N/A | N/A | Triggered | Triggered | Source strength hard-fail: 100% Wikipedia sourcing with full traceability infrastructure (traceability theatre). New for #341. |
 | `evals/cases/world-cup-prediction-constrained-choice-probability-method-case.md` | constrained-choice | Triggered | Failed execution | N/A | Failed execution | Triggered | Triggered | Failed execution | Triggered | Probability distribution without replicable method; no [Sxx] citations; aggregator sources uncaveated; self-assessment overclaims. |
 | `evals/cases/xiaohongshu-competitive-positioning-register-gap-case.md` | competitive-positioning | Triggered | Failed execution | N/A | Failed execution | Triggered | Triggered | Failed execution | Triggered | Register completeness and delivery residue issues. |
 | `evals/cases/xiaohongshu-startup-evaluation-traceability-benchmark-case.md` | startup-evaluation | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Near-pass with traceability/register and sensitivity gaps. |

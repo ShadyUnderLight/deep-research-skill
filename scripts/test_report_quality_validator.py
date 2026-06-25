@@ -36,7 +36,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
 
 # ── Valid baseline (should pass all checks) ──────────────────────────────
@@ -63,8 +63,8 @@ Companies are investing heavily in R&D to capture market share [S01][S02].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example market report | secondary | 2026-01-01 | https://example.com | medium | §3 |
-| S02 | Industry filing | primary | 2026-02-01 | https://example.com/filing | high | §3 |
+| S01 | Example market report | secondary | 2026-01-01 | https://example.com | medium | §3: documented evidence |
+| S02 | Industry filing | primary | 2026-02-01 | https://example.com/filing | high | §3: documented evidence |
 """
 
 # ── Shared-workflow baseline ─────────────────────────────────────────────
@@ -89,7 +89,7 @@ The analysis shows clear patterns [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-15 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-15 | https://example.com | medium | §2: documented evidence |
 """
 
 # ── Helpers ──────────────────────────────────────────────────────────────
@@ -149,7 +149,7 @@ def test_missing_route_declaration_fails() -> None:
 
 | Audit | Status | 证据 |
 |-------|--------|------|
-| source-traceability | ✅ Passed | §3 |
+| source-traceability | ✅ Passed | §3: documented evidence |
 
 ## Findings
 
@@ -159,7 +159,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_fail("missing route declaration fails", text)
 
@@ -185,7 +185,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_fail("passed row empty evidence fails", text)
 
@@ -213,7 +213,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
         expect_fail(f"passed row vague evidence '{vague}' fails", text)
 
@@ -289,7 +289,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_fail("annotated passed row with empty evidence fails", text)
 
@@ -314,7 +314,7 @@ The transformer architecture revolutionized NLP (Vaswani et al., 2017, NeurIPS).
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported | Publication Type | Peer-review Status | Venue | Venue Prestige |
 |----|-------------|-------------|------|---------|-------------|------------------|-----------------|--------------------|-------|----------------|
-| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 | published | peer-reviewed | NeurIPS | top-tier |
+| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2: academic evidence | published | peer-reviewed | NeurIPS | top-tier |
 """
     expect_pass("author-year ref passes", text)
 
@@ -339,7 +339,7 @@ The architecture is described in arXiv:1706.03762.
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Attention is All You Need | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 |
+| S01 | Attention is All You Need | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2: documented evidence |
 """
     expect_pass("arxiv id ref passes", text)
 
@@ -364,7 +364,7 @@ The findings are documented (doi:10.1038/s41586-023-06747-5).
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Nature paper 2023 | secondary | 2023-11-01 | https://doi.org/10.1038/s41586-023-06747-5 | high | §2 |
+| S01 | Nature paper 2023 | secondary | 2023-11-01 | https://doi.org/10.1038/s41586-023-06747-5 | high | §2: documented evidence |
 """
     expect_pass("doi ref passes", text)
 
@@ -389,7 +389,7 @@ def test_natural_language_unique_ref_passes() -> None:
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | FY2025 年报 | primary | 2026-03-15 | https://example.com/annual-report | high | §2 |
+| S01 | FY2025 年报 | primary | 2026-03-15 | https://example.com/annual-report | high | §2: documented evidence |
 """
     expect_pass("natural language unique ref passes", text)
 
@@ -414,7 +414,7 @@ The key finding is supported by prior work [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported | Publication Type | Peer-review Status | Venue | Venue Prestige |
 |----|-------------|-------------|------|---------|-------------|------------------|-----------------|--------------------|-------|----------------|
-| S01 | Example academic paper | secondary | 2025-06-01 | https://example.com | high | §2 | published | peer-reviewed | NeurIPS | top-tier |
+| S01 | Example academic paper | secondary | 2025-06-01 | https://example.com | high | §2: academic evidence | published | peer-reviewed | NeurIPS | top-tier |
 """
     # Should still pass (exit 0) since warnings are not hard errors
     expect_pass("strict warning only", text, "--strict")
@@ -448,9 +448,9 @@ Regulatory compliance is mandatory for all options [S03].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Vendor pricing analysis | secondary | 2026-01-10 | https://example.com/pricing | medium | §3 |
-| S02 | Industry lock-in report | secondary | 2026-01-15 | https://example.com/lock-in | medium | §3 |
-| S03 | Regulatory framework 2026 | primary | 2026-01-01 | https://example.com/regs | high | §3 |
+| S01 | Vendor pricing analysis | secondary | 2026-01-10 | https://example.com/pricing | medium | §3: documented evidence |
+| S02 | Industry lock-in report | secondary | 2026-01-15 | https://example.com/lock-in | medium | §3: documented evidence |
+| S03 | Regulatory framework 2026 | primary | 2026-01-01 | https://example.com/regs | high | §3: documented evidence |
 """
     expect_pass("all checks together passes", text)
 
@@ -482,7 +482,7 @@ No source references in the actual body text.
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     result = run_validator(text)
     # Hard error from check_body_references still fires
@@ -523,7 +523,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     result = run_validator(text)
     # Now hard-fail (exit 2) instead of pass with warning (exit 0)
@@ -563,7 +563,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     result = run_validator(text)
     assert result.returncode == 0, (
@@ -596,7 +596,7 @@ The transformer architecture revolutionized NLP (Vaswani et al., 2017, NeurIPS).
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported | Publication Type | Peer-review Status | Venue | Venue Prestige |
 |----|-------------|-------------|------|---------|-------------|------------------|-----------------|--------------------|-------|----------------|
-| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 | published | peer-reviewed | NeurIPS | top-tier |
+| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2: academic evidence | published | peer-reviewed | NeurIPS | top-tier |
 """
     result = run_validator(text)
     assert result.returncode == 0, (
@@ -629,7 +629,7 @@ The findings are documented (doi:10.1038/s41586-023-06747-5).
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Nature paper 2023 | secondary | 2023-11-01 | https://doi.org/10.1038/s41586-023-06747-5 | high | §2 |
+| S01 | Nature paper 2023 | secondary | 2023-11-01 | https://doi.org/10.1038/s41586-023-06747-5 | high | §2: documented evidence |
 """
     result = run_validator(text)
     assert result.returncode == 0, (
@@ -665,8 +665,8 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
-|  | Empty ID entry | secondary | 2026-02-01 | https://example.com/2 | low | §3 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
+|  | Empty ID entry | secondary | 2026-02-01 | https://example.com/2 | low | §3: documented evidence |
 """
     expect_fail("register row missing ID fails", text)
 
@@ -691,8 +691,8 @@ Body text with citations [S01][S02].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | First source | secondary | 2026-01-01 | https://example.com/1 | medium | §2 |
-| S02 | Second source | primary | 2026-02-01 | https://example.com/2 | high | §2 |
+| S01 | First source | secondary | 2026-01-01 | https://example.com/1 | medium | §2: documented evidence |
+| S02 | Second source | primary | 2026-02-01 | https://example.com/2 | high | §2: documented evidence |
 """
     expect_pass("register rows all valid pass", text)
 
@@ -717,9 +717,9 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | First source | secondary | 2026-01-01 |  | medium | §2 |
-| S02 | Second source | primary | 2026-02-01 |  | high | §2 |
-| S03 | Third source | secondary | 2026-03-01 | https://example.com | medium | §3 |
+| S01 | First source | secondary | 2026-01-01 |  | medium | §2: documented evidence |
+| S02 | Second source | primary | 2026-02-01 |  | high | §2: documented evidence |
+| S03 | Third source | secondary | 2026-03-01 | https://example.com | medium | §3: documented evidence |
 """
     result = run_validator(text)
     assert result.returncode == 0, (
@@ -761,7 +761,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_fail("exec summary no ref fails", text)
 
@@ -794,7 +794,7 @@ The recommendation is clear [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     result = run_validator(text)
     assert result.returncode == 0, (
@@ -835,7 +835,7 @@ This analysis supports continued development [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported | Publication Type | Peer-review Status | Venue | Venue Prestige |
 |----|-------------|-------------|------|---------|-------------|------------------|-----------------|--------------------|-------|----------------|
-| S01 | Vaswani et al. 2017 | primary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 | published | peer-reviewed | NeurIPS | top-tier |
+| S01 | Vaswani et al. 2017 | primary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2: academic evidence | published | peer-reviewed | NeurIPS | top-tier |
 """
     result = run_validator(text)
     assert result.returncode == 0, (
@@ -868,7 +868,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     result = run_validator(text)
     assert result.returncode == 0, (
@@ -901,7 +901,7 @@ Body text with citation [S01][S99].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_fail("body ref not in register fails", text)
 
@@ -926,8 +926,8 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | First entry | secondary | 2026-01-01 | https://example.com/1 | medium | §2 |
-| S01 | Duplicate ID | primary | 2026-02-01 | https://example.com/2 | high | §2 |
+| S01 | First entry | secondary | 2026-01-01 | https://example.com/1 | medium | §2: documented evidence |
+| S01 | Duplicate ID | primary | 2026-02-01 | https://example.com/2 | high | §2: documented evidence |
 """
     expect_fail("register duplicate ID fails", text)
 
@@ -952,7 +952,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 
 ## 综合结论
 
@@ -984,7 +984,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | {doi_value} | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | {doi_value} | medium | §2: documented evidence |
 """
 
 
@@ -1066,11 +1066,11 @@ def _make_academic_register_fixture(num_cols: int, route: str = "Academic / Lite
     if num_cols >= 11:
         header = "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported | Publication Type | Peer-review Status | Venue | Venue Prestige |"
         sep = "|----|-------------|-------------|------|---------|-------------|------------------|-----------------|--------------------|-------|----------------|"
-        data = "| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 | published | peer-reviewed | NeurIPS | top-tier |"
+        data = "| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2: academic evidence | published | peer-reviewed | NeurIPS | top-tier |"
     else:
         header = "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |"
         sep = "|----|-------------|-------------|------|---------|-------------|------------------|"
-        data = "| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2 |"
+        data = "| S01 | Vaswani et al. 2017 | secondary | 2017-06-12 | https://arxiv.org/abs/1706.03762 | high | §2: academic evidence |"
     return f"""\
 ## Route and audit status
 
@@ -1161,7 +1161,7 @@ Hard-fail verification content [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_pass("evidence subsection ref valid passes", text)
 
@@ -1199,7 +1199,7 @@ Analysis text [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_fail("evidence subsection ref phantom fails", text)
 
@@ -1230,7 +1230,7 @@ Supplementary data [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_pass("evidence appendix ref valid passes", text)
 
@@ -1261,7 +1261,7 @@ Previous data [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_fail("evidence appendix ref phantom fails", text)
 
@@ -1297,7 +1297,7 @@ Key findings [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_pass("evidence no numbered headings skips section refs", text)
 
@@ -1324,7 +1324,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_fail("evidence multiple phantom refs all reported", text)
 
@@ -1355,7 +1355,7 @@ Analysis content [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_pass("evidence phantom ref not passed row skipped", text)
 
@@ -1382,7 +1382,7 @@ Body text with citation [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_pass("evidence subsection ref unnumbered doc passes", text)
 # These import get_route_name directly for precise unit-level testing.
@@ -1416,7 +1416,7 @@ Hard-fail verification content [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_pass("evidence spaced subsection ref passes", text)
 
@@ -1447,7 +1447,7 @@ Supplementary data [S01].
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_pass("evidence chinese appendix no space passes", text)
 
@@ -1480,7 +1480,7 @@ Only sub-subsection exists, no §7.2 heading itself.
 
 | ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
 |----|-------------|-------------|------|---------|-------------|------------------|
-| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2 |
+| S01 | Example source | secondary | 2026-01-01 | https://example.com | medium | §2: documented evidence |
 """
     expect_pass("evidence subsection ref prefix matches subsubsection", text)
 
