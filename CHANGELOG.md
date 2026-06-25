@@ -11,6 +11,12 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `scripts/audit_report.py`, `scripts/test_audit_report.py`: extended audit orchestrator to cover 4 remaining mature routes (`regulatory-analysis`, `equipment-selection`, `startup-evaluation`, `competitive-positioning`) and `shared-workflow` — each now runs the generic validator chain (report-quality + declared-execution + table-role-labels + source-label-consistency) instead of silently falling back to `technical-deep-dive`.  Added route aliases covering common display names and Chinese/mixed naming patterns.  Added `_run_secondary_route_check` validator that warns when declared secondary routes are unsupported.  Added `--allow-route-fallback` CLI flag for opt-in legacy fallback behavior (#340).
+
+### Changed
+- `scripts/audit_report.py`: **BREAKING** — unknown routes now produce a blocking error (exit 2) with a list of supported routes, instead of silently falling back to `technical-deep-dive` validators.  The auto-detection-failure case (no route declared at all) still falls back to the default route unchanged.  `_normalize_route` now strips trailing parenthetical notes before alias matching (#340).
+
+### Added
 - `references/option-selection-and-shortlist-discipline.md`, `checklists/option-selection-final-audit.md`, `evals/cases/career-skill-selection-proxy-discipline-case.md`, `tests/test_issue_308_contracts.py`: added career/skill selection proxy evidence discipline — requires default market/reader scope declaration, proxy indicator role labeling for TIOBE/SO Survey/GitHub/LinkedIn/salary pages/package repos/roadmaps, Source Register Claims Supported claim-type specification, and US-vs-global scope boundary; BLOCKER for compound violation (missing scope + >3 unlabeled proxies) (#308).
 
 ### Fixed
