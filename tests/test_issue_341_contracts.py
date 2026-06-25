@@ -325,43 +325,48 @@ class TestWikipediaRatio:
 # ═══════════════════════════════════════════════════════════════════════════
 
 class TestClaimsSupportedSemantics:
-    """Contract: check_claims_supported_semantics(cleaned_text) -> list[str]"""
+    """Contract: check_claims_supported_semantics(cleaned_text)
+       -> tuple[list[str], list[str]]  (errors, warnings)"""
 
     def test_all_section_only_triggers_error(self):
         """All Claims Supported are pure section numbers → BLOCKING error."""
         _, check, _ = _import_functions()
         text = _report_all_section_only_claims()
-        errors = check(text)
+        errors, warnings = check(text)
         assert len(errors) > 0, (
-            f"Expected errors for all-section-only Claims Supported, got: {errors}"
+            f"Expected errors for all-section-only, got errors={errors}"
+        )
+        assert len(warnings) == 0, (
+            f"All-section-only should be error not warning: warnings={warnings}"
         )
 
     def test_all_claim_level_passes_cleanly(self):
-        """All Claims Supported have claim descriptions → empty error list."""
+        """All Claims Supported have claim descriptions → both lists empty."""
         _, check, _ = _import_functions()
         text = _report_claims_with_rich_text()
-        errors = check(text)
-        assert len(errors) == 0, (
-            f"Expected no errors for claim-level Claims Supported, got: {errors}"
-        )
+        errors, warnings = check(text)
+        assert len(errors) == 0, f"Expected no errors: {errors}"
+        assert len(warnings) == 0, f"Expected no warnings: {warnings}"
 
     def test_mixed_claims_triggers_warning(self):
-        """Mixed section-only + claim-level → warning (non-empty errors)."""
+        """Mixed section-only + claim-level → warning, NOT error."""
         _, check, _ = _import_functions()
         text = _report_mixed_claims()
-        errors = check(text)
-        # Mixed should generate warnings but not necessarily block
-        # We check it's non-empty and mentions something about sections
-        assert len(errors) > 0, (
-            f"Expected warnings for mixed Claims Supported, got empty: {errors}"
+        errors, warnings = check(text)
+        assert len(errors) == 0, (
+            f"Mixed claims should NOT be blocking errors: {errors}"
+        )
+        assert len(warnings) > 0, (
+            f"Expected warnings for mixed Claims Supported, got: {warnings}"
         )
 
     def test_no_source_register_returns_empty(self):
-        """No Source Register → empty list, no crash."""
+        """No Source Register → both lists empty, no crash."""
         _, check, _ = _import_functions()
         text = "# Just a report\n"
-        errors = check(text)
+        errors, warnings = check(text)
         assert len(errors) == 0
+        assert len(warnings) == 0
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -491,75 +496,72 @@ class TestPropertyInvariants:
         """All 3 functions must handle None-like/malformed input without crashing."""
         check_wiki, check_claims, check_reli = _import_functions()
 
-        # Empty string — wiki returns tuple, others return list
-        for fn in [check_claims, check_reli]:
-            result = fn("")
-            assert isinstance(result, list), f"{fn.__name__}('') did not return list"
+        # Empty string — wiki and claims return tuple, reli returns list
+        result = check_reli("")
+        assert isinstance(result, list), f"check_reli('') did not return list"
 
         errors, warnings = check_wiki("")
-        assert isinstance(errors, list)
-        assert isinstance(warnings, list)
+        assert isinstance(errors, list) and isinstance(warnings, list)
+
+        errors, warnings = check_claims("")
+        assert isinstance(errors, list) and isinstance(warnings, list)
 
         # Whitespace only
-        for fn in [check_claims, check_reli]:
-            result = fn("   \n\n   ")
-            assert isinstance(result, list)
+        result = check_reli("   \n\n   ")
+        assert isinstance(result, list)
 
         errors, warnings = check_wiki("   \n\n   ")
-        assert isinstance(errors, list)
-        assert isinstance(warnings, list)
+        assert isinstance(errors, list) and isinstance(warnings, list)
+
+        errors, warnings = check_claims("   \n\n   ")
+        assert isinstance(errors, list) and isinstance(warnings, list)
 
         # Very long text without register
         long_text = "x" * 100000
-        for fn in [check_claims, check_reli]:
-            result = fn(long_text)
-            assert isinstance(result, list)
+        result = check_reli(long_text)
+        assert isinstance(result, list)
 
         errors, warnings = check_wiki(long_text)
-        assert isinstance(errors, list)
-        assert isinstance(warnings, list)
+        assert isinstance(errors, list) and isinstance(warnings, list)
+
+        errors, warnings = check_claims(long_text)
+        assert isinstance(errors, list) and isinstance(warnings, list)
 
     def test_all_functions_return_list_of_strings(self):
         """Contract: every check function returns list[str] (or tuple of list[str])."""
         check_wiki, check_claims, check_reli = _import_functions()
-        for name, fn in [
-            ("claims_supported", check_claims),
-            ("reliability_crowd", check_reli),
-        ]:
-            result = fn(_report_zero_wikipedia())
-            assert isinstance(result, list), (
-                f"{name} returned {type(result)}, expected list"
-            )
-            for item in result:
-                assert isinstance(item, str), (
-                    f"{name} returned non-string item: {item!r}"
-                )
 
-        # Wikipedia function returns tuple
-        errors, warnings = check_wiki(_report_zero_wikipedia())
-        assert isinstance(errors, list)
-        assert isinstance(warnings, list)
+        # check_reli returns simple list
+        result = check_reli(_report_zero_wikipedia())
+        assert isinstance(result, list)
+        for item in result:
+            assert isinstance(item, str)
+
+        # Wikipedia and claims functions return tuples
+        for name, fn in [("wikipedia_ratio", check_wiki), ("claims_supported", check_claims)]:
+            result = fn(_report_zero_wikipedia())
+            assert isinstance(result, tuple), f"{name} returned {type(result)}, expected tuple"
+            assert len(result) == 2, f"{name} returned {len(result)}-tuple, expected 2"
+            errors, warnings = result
+            assert isinstance(errors, list), f"{name} errors not a list: {type(errors)}"
+            assert isinstance(warnings, list), f"{name} warnings not a list: {type(warnings)}"
 
     def test_idempotent(self):
         """Same input → same output (no side effects, no randomness)."""
         check_wiki, check_claims, check_reli = _import_functions()
         text = _report_wiki_100pct()
 
-        for name, fn in [
-            ("claims_supported", check_claims),
-            ("reliability_crowd", check_reli),
-        ]:
-            r1 = fn(text)
-            r2 = fn(text)
-            assert r1 == r2, (
-                f"{name} is not idempotent: {r1} != {r2}"
-            )
+        # reli returns simple list
+        r1 = check_reli(text)
+        r2 = check_reli(text)
+        assert r1 == r2, f"reliability_crowd not idempotent: {r1} != {r2}"
 
-        # Wikipedia function returns tuple
-        e1, w1 = check_wiki(text)
-        e2, w2 = check_wiki(text)
-        assert e1 == e2, f"wikipedia_ratio errors not idempotent: {e1} != {e2}"
-        assert w1 == w2, f"wikipedia_ratio warnings not idempotent: {w1} != {w2}"
+        # wiki and claims return tuples
+        for name, fn in [("wikipedia_ratio", check_wiki), ("claims_supported", check_claims)]:
+            e1, w1 = fn(text)
+            e2, w2 = fn(text)
+            assert e1 == e2, f"{name} errors not idempotent: {e1} != {e2}"
+            assert w1 == w2, f"{name} warnings not idempotent: {w1} != {w2}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

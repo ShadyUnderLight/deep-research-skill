@@ -1163,9 +1163,19 @@ def _normalize_source_type_from_quality(source_type: str) -> str:
 
 
 def _is_crowdsourced(source_type: str) -> bool:
-    """Check if a normalized source type is CROWDSOURCED."""
+    """Check if a normalized source type is CROWDSOURCED.
+
+    Also matches Chinese Wikipedia/encyclopedia patterns that the
+    free-text type map might not cover (e.g. 维基百科, 百度百科).
+    """
     norm = _normalize_source_type_from_quality(source_type)
-    return norm.upper() == "CROWDSOURCED"
+    if norm.upper() == "CROWDSOURCED":
+        return True
+    # Direct Chinese patterns (in case _FREETEXT_TYPE_MAP misses them)
+    st_lower = source_type.strip().lower()
+    return any(term in st_lower for term in (
+        "维基百科", "百度百科", "wiki百科", "wikipedia", "crowdsourced",
+    ))
 
 
 def _get_body_cited_ids(cleaned: str) -> set[str]:
@@ -1231,7 +1241,30 @@ def check_source_register_wikipedia_ratio(cleaned: str) -> tuple[list[str], list
             wiki_ids.append(sid)
 
     if cited_total == 0:
-        return ([], [])  # No cited register entries → nothing to check
+        # No body [Sxx] references found. The report may use Author-Year,
+        # DOI, arXiv, or natural-language attribution instead — these
+        # cannot be automatically cross-referenced with register IDs.
+        # Return a warning if the register contains Wikipedia entries
+        # that cannot be verified against body citations.
+        uncited_wiki = 0
+        for row in data_rows:
+            if len(row) <= max(id_col, type_col):
+                continue
+            sid = row[id_col].strip()
+            if not sid or sid == "-":
+                continue
+            stype = row[type_col].strip()
+            if _is_crowdsourced(stype):
+                uncited_wiki += 1
+        if uncited_wiki > 0:
+            return ([], [
+                f"Source Register: {uncited_wiki} Wikipedia/crowdsourced "
+                f"entries detected, but no body [Sxx] references found "
+                f"for automatic ratio check. Report may use Author-Year "
+                f"or other citation format — manually verify source "
+                f"strength for load-bearing claims."
+            ])
+        return ([], [])
 
     ratio = cited_wiki / cited_total
     wiki_preview = ", ".join(wiki_ids[:8])
@@ -1257,24 +1290,25 @@ def check_source_register_wikipedia_ratio(cleaned: str) -> tuple[list[str], list
     return ([], [])
 
 
-def check_claims_supported_semantics(cleaned: str) -> list[str]:
+def check_claims_supported_semantics(cleaned: str) -> tuple[list[str], list[str]]:
     """Check that Claims Supported entries are claim-level, not just section numbers.
 
     Detects entries where the Claims Supported column contains only section
     references (e.g., "§1.1, §2.1", "§3.1") without any claim summary text.
 
     Severity:
-    - All entries are section-only → BLOCKING error
-    - Some entries are section-only → warning
+    - All entries are section-only → BLOCKING error (first list)
+    - Some entries are section-only → warning (second list)
+    - All have claim summaries → pass (both lists empty)
 
-    Returns error list (non-empty = issue found).
+    Returns (errors, warnings) tuple.
     """
     sec = section_text(cleaned, SOURCE_REGISTER_HEADING)
     if sec is None:
-        return []
+        return ([], [])
     table = parse_table(sec)
     if table is None or len(table) < 2:
-        return []
+        return ([], [])
 
     header = table[0]
     data_rows = table[1:]
@@ -1285,7 +1319,7 @@ def check_claims_supported_semantics(cleaned: str) -> list[str]:
     ])
 
     if claims_col == -1:
-        return []  # Can't find the column — not an issue for this check
+        return ([], [])  # Can't find the column — not an issue for this check
 
     # Pattern: pure section references (§X.Y, §X, with commas/semicolons/spaces/dashes)
     # Covers: ASCII hyphen (-), em dash (— U+2014), en dash (– U+2013), minus (− U+2212)
@@ -1312,29 +1346,29 @@ def check_claims_supported_semantics(cleaned: str) -> list[str]:
 
     total = len(section_only) + len(claim_level)
     if total == 0:
-        return []
+        return ([], [])
 
     if len(claim_level) == 0 and len(section_only) > 0:
         preview = "; ".join(section_only[:3])
         if len(section_only) > 3:
             preview += f" (+{len(section_only) - 3} more)"
-        return [
+        return ([
             f"Source Register: All {len(section_only)} Claims Supported "
             f"entries are section-only (no claim summaries): {preview}. "
             f"Each entry must include at least a brief claim description, "
             f"e.g. '§1.1: 2026 R32 对阵…' not just '§1.1, §2.1'."
-        ]
+        ], [])
 
     if len(section_only) > 0:
         preview = "; ".join(section_only[:3])
         if len(section_only) > 3:
             preview += f" (+{len(section_only) - 3} more)"
-        return [
+        return ([], [
             f"Source Register: {len(section_only)}/{total} Claims Supported "
             f"entries are section-only (no claim summaries): {preview}."
-        ]
+        ])
 
-    return []
+    return ([], [])
 
 
 def check_source_register_reliability_crowdsourced(cleaned: str) -> list[str]:
@@ -1371,7 +1405,8 @@ def check_source_register_reliability_crowdsourced(cleaned: str) -> list[str]:
             continue
 
         reli = row[reli_col].strip().lower()
-        if reli == "high":
+        # Match "high" and Chinese "高" (common in Chinese-language reports)
+        if reli in ("high", "高"):
             sid = row[0].strip() if len(row) > 0 else f"row {i}"
             mismatches.append(
                 f"row {i}: {sid} ({stype}) has reliability='high' — "
@@ -1424,7 +1459,9 @@ def validate_file(path: Path, strict: bool = False) -> int:
     errors.extend(wiki_errors)
     warnings.extend(wiki_warnings)
     # Claims Supported semantics: all-section-only → error, partial → warning
-    errors.extend(check_claims_supported_semantics(cleaned))
+    claims_errors, claims_warnings = check_claims_supported_semantics(cleaned)
+    errors.extend(claims_errors)
+    warnings.extend(claims_warnings)
     # CROWDSOURCED + high reliability → error
     errors.extend(check_source_register_reliability_crowdsourced(cleaned))
 
