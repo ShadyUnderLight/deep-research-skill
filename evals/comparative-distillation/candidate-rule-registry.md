@@ -109,6 +109,8 @@ Two new distillation cases (issue #320) produced **5 new PROMOTE_NOW candidates 
 | R73 | Add route-boundary check: market-outlook reports containing competitive-positioning content must document rationale | NEW_RULE | agent-api-market-outlook | 1 | PROMOTE_NOW | `checklists/market-outlook-audit.md` via [#331](https://github.com/ShadyUnderLight/deep-research-skill/issues/331) | 待实现 |
 | R74 | Add simulation/model-output status disclosure requirement (conceptual / executed / illustrative) | NEW_RULE | world-cup-constrained-choice | 1 | WAIT_FOR_SECOND_CASE | `references/model-output-and-simulation-discipline.md` via [#342](https://github.com/ShadyUnderLight/deep-research-skill/issues/342); `scripts/validate_simulation_claims.py` | 新规则（观察中） |
 | R75 | P-value / CI / Elo / Poisson / Monte Carlo without execution evidence triggers validator warning | NEW_RULE | world-cup-constrained-choice | 1 | WAIT_FOR_SECOND_CASE | `scripts/validate_simulation_claims.py` via [#342](https://github.com/ShadyUnderLight/deep-research-skill/issues/342) | 新规则（观察中） |
+| R76 | When tournament/event data does not yet exist, require explicit placeholder variables with assumption boundaries (event-count, sample-size, lookback-window, known constraints) instead of fabricating data or dismissing the question | CHECKLIST_HARDENING | world-cup-transition-vs-possession-gpt-vs-local-comparative-distillation | 1 | PROMOTE_NOW | `checklists/forward-looking-claims.md` via [#344](https://github.com/ShadyUnderLight/deep-research-skill/issues/344) (pending) | 新规则（待实现） |
+| R77 | When combining crowd-sourced structural data (Wikipedia format/history) with externally sourced quantitative models (Elo ratings, Monte Carlo), separate data layers with explicit provenance per layer in the Source Register | CHECKLIST_HARDENING | world-cup-group-winner-path-advantage-gpt-vs-local-comparative-distillation | 1 | PROMOTE_NOW | `checklists/final-audit.md` via [#344](https://github.com/ShadyUnderLight/deep-research-skill/issues/344) (pending) | 新规则（待实现） |
 
 ---
 
@@ -116,14 +118,15 @@ Two new distillation cases (issue #320) produced **5 new PROMOTE_NOW candidates 
 
 | Metric | Count |
 |---|---|---|
-| Total candidate rules (all files) | 75 |
-| PROMOTE_NOW | 56 |
+| Total candidate rules (all files) | 77 |
+| PROMOTE_NOW | 58 |
 | WAIT_FOR_SECOND_CASE | 5 |
 | (unlabeled, implicitly actionable) | 14 |
-| **Covered by existing code** | **62 / 75** (83%) |
+| **Covered by existing code** | **62 / 77** (81%) |
 | Pending / WAIT_FOR_SECOND_CASE | 5 (R10, R57, R58, R74, R75) |
 | Pending / #331 implementation | 8 (R66-R73: new candidates from three GPT-vs-local comparisons) |
-| **Truly uncovered PROMOTE_NOW** | **8** (R66-R73) — new candidates from issue #331, pending checklist/template updates |
+| Pending / #344 implementation | 2 (R76-R77: new candidates from four World Cup GPT-vs-local comparisons) |
+| **Truly uncovered PROMOTE_NOW** | **10** (R66-R73 from #331 + R76-R77 from #344) — pending checklist/template updates |
 
 ---
 
@@ -167,6 +170,18 @@ Three new comparative-distillation cases were added as part of issue #331:
 - **Agent API market-outlook** (`agent-api-market-outlook-gpt-vs-local-comparative-distillation.md`): Identified mixed gaps — route boundary for market-outlook + positioning content (missing rule, R73), inference register disconnected-from-body detection and monitoring actionability 4-field verification (execution reinforcement, R71, R72). Structural gaps confirmed covered by #329 and #330.
 
 All three cases track real reports with verified failure patterns. Together they produce **8 new candidates** (R66-R73), of which 6 are `CHECKLIST_HARDENING` and 2 are `NEW_RULE`.
+
+Four new comparative-distillation cases were added as part of issue #344:
+
+- **World Cup best-third-rule** (`world-cup-best-third-rule-gpt-vs-local-comparative-distillation.md`): Route self-declaration mismatch (Shared-workflow vs regulatory-analysis). All 6 candidate actions are `NO_ACTION` — gaps closed by [#340](https://github.com/ShadyUnderLight/deep-research-skill/issues/340) and [#343](https://github.com/ShadyUnderLight/deep-research-skill/issues/343). Serves as regression baseline.
+
+- **World Cup info-advantage** (`world-cup-info-advantage-gpt-vs-local-comparative-distillation.md`): Source strength failure (100% Wikipedia with full traceability infrastructure = traceability theatre). All 6 candidate actions are `NO_ACTION` — gaps closed by [#341](https://github.com/ShadyUnderLight/deep-research-skill/issues/341). Serves as regression baseline.
+
+- **World Cup transition-vs-possession** (`world-cup-transition-vs-possession-gpt-vs-local-comparative-distillation.md`): Method-scaffold with false statistics + stale "data not yet generated" claims. 5 dimensions `NO_ACTION`, 1 dimension `CHECKLIST_HARDENING` → **R76** (data-unavailable method-scaffold pattern). Distinct from #342 simulation contract: covers the case where data genuinely doesn't exist, not where simulation was claimed but not executed.
+
+- **World Cup group-winner path-advantage** (`world-cup-group-winner-path-advantage-gpt-vs-local-comparative-distillation.md`): Simulation claims without execution evidence + Wikipedia-only + cross-source contamination. 5 dimensions `NO_ACTION`, 1 dimension `CHECKLIST_HARDENING` → **R77** (cross-source model contamination pattern). Extends beyond #341 (per-source strength) and #342 (simulation contract): requires layer separation when combining fundamentally different data reliability tiers.
+
+Together they produce **2 new candidates** (R76, R77), both `CHECKLIST_HARDENING`, with companion eval cases at `evals/cases/world-cup-transition-vs-possession-method-scaffold-case.md` and `evals/cases/world-cup-group-winner-simulation-contract-case.md`.
 
 ---
 
