@@ -70,3 +70,4 @@ If load-bearing numbers materially affect the conclusion, their roles should be 
 - A model output is written as a fact.
 - An unlabeled assumption carries the recommendation.
 - Numbers from different epistemic roles are mixed without distinction.
+- Simulation / p-value / CI / Elo / Poisson / Monte Carlo claims appear without status disclosure (conceptual / executed / illustrative), and the report does not resolve the `validate_simulation_claims.py` warnings. See `references/model-output-and-simulation-discipline.md`.
