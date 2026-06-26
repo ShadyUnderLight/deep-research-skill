@@ -183,6 +183,19 @@ Four new comparative-distillation cases were added as part of issue #344:
 
 Together they produce **2 new candidates** (R76, R77), both `CHECKLIST_HARDENING`, with companion eval cases at `evals/cases/world-cup-transition-vs-possession-method-scaffold-case.md` and `evals/cases/world-cup-group-winner-simulation-contract-case.md`.
 
+### 链路原因：本地已有但未执行
+
+本轮四组对比暴露出 **规则存在但执行链未触发** 的系统性问题，其根因链路如下：
+
+| # | 链路原因 | 具体表现 | 修复 | 在本轮中的证据 |
+|---|---|---|---|---|
+| 1 | **总控未覆盖** | `audit_report.py` 的 `ROUTE_VALIDATORS` 未包含 `regulatory-analysis`、`competition-positioning` 等成熟路线；报告选对路线也无法触发对应 checklist/validator | [#340](https://github.com/ShadyUnderLight/deep-research-skill/issues/340) 将所有路线加入总控映射 | 最佳第三名报告：内容属 regulatory 但路线未在总控中 → 无法触发 regulatory contract |
+| 2 | **unknown route 静默回退** | 当报告的 route 声明不在 `ROUTE_VALIDATORS` 中时，`audit_report.py` fallback 到 `technical-deep-dive` validators → 错误路线通过错误的审计链 | [#340](https://github.com/ShadyUnderLight/deep-research-skill/issues/340) 禁止静默回退，输出明确的 "unsupported route" error | 最佳第三名报告：若通过旧版总控，Shared-workflow 不在映射中，会 fallback 到 tech-dive，regulatory 缺陷不会被发现 |
+| 3 | **自评块未被 validator 约束** | 报告的自评 audit status 声称所有 ✅ 通过，但 body 执行缺 `[Sxx]` 引用、Wikipedia-only 来源、数字角色缺失 → process-integrity hard-fail 未触发 | [#340](https://github.com/ShadyUnderLight/deep-research-skill/issues/340) 路线接入总控后，`check_audit_self_assessment_consistency` 对所有路线强制执行 | 信息优势报告：8/8 Wikipedia 来源标注 high reliability，自评仍声称全部 ✅ |
+| 4 | **untracked eval 未进入 CI** | 本轮的两个 eval case 在 issue 创建时为本地草稿，未纳入 `evals/INDEX.md`，因此未进入 `test_eval_index.py` 的回归测试覆盖 | 本 PR ([#344](https://github.com/ShadyUnderLight/deep-research-skill/issues/344)) 将两个已有 eval case + 两个新 eval case 全部纳入 INDEX.md，通过 `test_eval_index.py` 和 `test_issue_344_contracts.py` 验证进入回归链 | `world-cup-rule-regulatory-route-mismatch-case.md` 和 `world-cup-info-advantage-technical-deep-dive-source-strength-case.md` 在 INDEX.md 中已注册为 active/fail，但在本 PR 前缺少 CI 级别的 index coverage 验证 |
+
+**关键教训：** 这四个问题不是独立 bug，而是同一根因链路的四个环节——总控覆盖不完整 → 未知路线静默回退 → 自评不受约束 → 回归资产未 CI。每个环节在本轮四组报告中都有具体证据。修复 [#340](https://github.com/ShadyUnderLight/deep-research-skill/issues/340) 切断了前三个环节的链路，本 PR 切断第四个。
+
 ---
 
 ## Conclusion for issue #96
