@@ -7,7 +7,7 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
 - Commit anchor: `b180815`
-- Case count: 95 tracked Markdown cases
+- Case count: 99 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -137,6 +137,10 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/world-cup-prediction-constrained-choice-probability-method-case.md` | constrained-choice | Triggered | Failed execution | N/A | Failed execution | Triggered | Triggered | Failed execution | Triggered | Probability distribution without replicable method; no [Sxx] citations; aggregator sources uncaveated; self-assessment overclaims. |
 | `evals/cases/xiaohongshu-competitive-positioning-register-gap-case.md` | competitive-positioning | Triggered | Failed execution | N/A | Failed execution | Triggered | Triggered | Failed execution | Triggered | Register completeness and delivery residue issues. |
 | `evals/cases/xiaohongshu-startup-evaluation-traceability-benchmark-case.md` | startup-evaluation | Triggered | Failed execution | Failed execution | Failed execution | Triggered | Triggered | Triggered | Triggered | Near-pass with traceability/register and sensitivity gaps. |
+| `evals/cases/dc-power-market-outlook-inflation-and-monitoring-case.md` | market-outlook | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | New case (issue #331) |
+| `evals/cases/small-team-agent-constrained-choice-tech-dive-secondary-case.md` | constrained-choice | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | New case (issue #331) |
+| `evals/cases/world-cup-rule-regulatory-route-mismatch-case.md` | regulatory-analysis | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | New case (issue #341) |
+| `evals/cases/simulation-pseudocode-as-executed-case.md` | technical-deep-dive | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | New case (issue #342) |
 
 ## Route-level observations
 
