@@ -445,6 +445,7 @@ Use when the task is mainly about:
 - `references/forward-looking-discipline.md` (when predicting regulatory changes)
 - `references/source-quality.md` (regulatory sources: official gazette vs news interpretation vs analyst speculation)
 - `references/data-conflict-resolution.md` (when regulatory interpretations conflict across sources)
+- `references/rule-system-and-mechanism-add-on.md` — when the task involves how a rule system changes participant incentives, strategy space, or path advantage (e.g., tournament rules, auction mechanisms, incentive design). Provides state taxonomy and intervention matrix templates; does not replace the regulatory artifact contract.
 
 ### Attach
 - current-state verification (current regulatory state)
@@ -468,6 +469,7 @@ The final report should visibly show:
 - **Scenario analysis**: optimistic / base / pessimistic scenarios
 - **Business/industry implications**: actionable conclusions for decision-makers
 - **Monitoring signals**: what to watch for regulatory changes
+- **For rule-system / incentive analysis:** when the core burden involves how a rule system changes participant incentives, strategy space, or path advantage, additionally apply `references/rule-system-and-mechanism-add-on.md` — provides state taxonomy and intervention matrix templates to supplement the regulatory artifact contract
 
 ### Hard fail
 Fail if the report:
@@ -614,6 +616,7 @@ The final report should visibly show:
 - **For patent analysis:** patent landscape, technical coverage areas, freedom-to-operate assessment, filing trends
 - **For security-sensitive architecture analysis:** assets, trust boundaries, threat actors, attack paths, risk prioritization, engineering controls, detection signals, short/medium/long-term roadmap — see `references/technical-analysis-discipline.md` §Security deep-dive (threat modeling add-on)
 - **For agentic / workflow architecture comparison:** control-plane profile covering state/action boundary, failure/recovery model, observability and permission model — see `references/technical-analysis-discipline.md` §Control-plane / workflow-system architecture add-on
+- **For rule-system / tournament mechanism analysis:** when the core mechanism involves rules, incentives, or strategy constraints that change participant behavior, additionally apply `references/rule-system-and-mechanism-add-on.md` — provides state taxonomy and intervention matrix templates to supplement the core mechanism and architecture comparison output blocks
 
 ### Hard fail
 Fail if the report:

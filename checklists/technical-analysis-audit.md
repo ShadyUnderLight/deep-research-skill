@@ -116,6 +116,18 @@ Fail if any of these are true:
 
 ---
 
+## Rule-system analysis (activate when rule/incentive/mechanism is the main burden)
+
+这些检查项只对**规则系统改变参与者激励、策略约束或路径优势**是主负担的技术 deep-dive 报告启用。如果任务以纯技术原理/架构比较为主（不涉及策略博弈或机制设计评估），跳过本小节。（激活条件与 `references/rule-system-and-mechanism-add-on.md` §启用条件一致。）
+
+- [ ] 如果赛制/机制/规则架构是核心分析对象，报告是否用**状态分类**（state taxonomy）细化了 core mechanism 分析——将参与者处境建模为有限状态机，而非仅描述规则文本
+- [ ] 状态分类是否说明了每个状态的策略约束和信息条件（参与者知道什么、不知道什么）
+- [ ] 是否包含了与替代架构/赛制的比较，并在比较中包含**激励效果和策略均衡偏移**的分析
+- [ ] 是否包含了**干预矩阵**（intervention matrix）——对于规则/赛制/机制设计问题，列出至少 2 个可比较的调整方案，每个方案包含预期改善、副作用、实施难度、反转条件（与 D3 模式一致，但侧重机制架构层面的比较）
+- [ ] （非阻塞）规则/机制分析的 claim 是否引用了官方来源（如官方规则文本、赛程安排文件），而非仅依赖 Wikipedia 等聚合来源
+
+---
+
 ## Final sign-off
 
 - [ ] all items above are checked

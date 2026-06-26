@@ -63,6 +63,16 @@ Fail if any of these are true:
 
 ---
 
+## Rule-system analysis (activate when rule/incentive/mechanism is the main burden)
+
+这些检查项只对**规则系统改变参与者激励、策略空间或路径优势**是主负担的 regulatory 报告启用。如果任务以传统合规/政策影响分析为主（不涉及策略博弈或机制设计评估），跳过本小节。（激活条件与 `references/rule-system-and-mechanism-add-on.md` §启用条件一致。）
+
+- [ ] 如果规则/赛制/激励机制是核心分析对象，报告是否包含了**状态分类**（state taxonomy）——用有限状态描述参与者在规则下的不同处境，而非泛泛的"有利/不利"
+- [ ] 状态分类的每个状态是否说明了：参与者可用的策略空间、信息条件、可选动作路径
+- [ ] 是否包含了**干预矩阵**（intervention matrix）——列出至少 2 个可比较的规则调整方案，每个方案包含：预期改善、副作用/意外后果、实施难度、需监测指标、反转条件
+- [ ] 干预矩阵的每个方案是否具有可验证的反转条件（而非"可能需要进一步研究"）
+- [ ] （非阻塞）如果干预矩阵中涉及定量估计，是否标注了 estimation method 和 confidence
+
 ## Final sign-off
 
 - [ ] all items above are checked

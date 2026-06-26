@@ -7,7 +7,7 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
 - Commit anchor: `b180815`
-- Case count: 99 tracked Markdown cases
+- Case count: 100 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -121,6 +121,7 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/ranking-and-current-claims-xiaomi-update-case.md` | ranking/current-claims | Triggered | Triggered | N/A | Triggered | Triggered | Triggered | Triggered | Triggered | Current ranking/source/metric discipline is explicit. |
 | `evals/cases/regulatory-analysis-route-activation-case.md` | regulatory-analysis activation | Triggered | Triggered | Triggered | N/A | Triggered | Triggered | Triggered | Triggered | Route activation fixture for regulatory impact tasks. |
 | `evals/cases/reporting-period-and-ttm-confusion-case.md` | finance-date discipline | Failed execution | Triggered | Failed execution | Failed execution | N/A | Failed execution | Triggered | Triggered | Time-layer and metric-role confusion are central. |
+| `evals/cases/rule-system-add-on-activation-case.md` | regulatory-analysis / add-on-activation | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | New add-on-activation eval for rule-system / tournament-mechanism add-on (issue #343); pending formal audit. |
 | `evals/cases/source-traceability-moore-threads-case.md` | source-traceability | Triggered | Triggered | Triggered | Failed execution | N/A | Triggered | Triggered | Triggered | Traceability and inference chain are explicit pass criteria. |
 | `evals/cases/startup-evaluation-route-activation-case.md` | startup-evaluation activation | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Route activation fixture for startup evaluation. |
 | `evals/cases/storage-chip-listed-company-deep-dive-pass-case.md` | listed-company + technical-deep-dive | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Triggered | Pass-level dual-route benchmark. |
