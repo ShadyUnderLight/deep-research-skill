@@ -34,6 +34,7 @@ import sys
 import textwrap
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(REPO_ROOT, "scripts"))
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -266,6 +267,38 @@ def _sports_fixture_confirmed_label_mismatch() -> str:
     return body + header + "\n".join(rows) + "\n"
 
 
+def _sports_fixture_clean() -> str:
+    """Well-formed sports fixture with proper sources — should pass all validators."""
+    body = textwrap.dedent("""\
+        # World Cup Match Analysis
+
+        FIFA official statistics show strong performance [S01].
+        Recent form analysis confirms the trend [S02].
+
+        ## Route and audit status
+
+        **Primary route:** Constrained Choice / Option Selection
+
+        | Audit | Status | 证据 |
+        |-------|--------|------|
+        | source-traceability | ✅ Passed | §Body: [S01][S02] |
+
+        ## Source Register
+
+    """)
+    header = (
+        "| ID | Source Name | Source Type | Date | DOI/URL "
+        "| Reliability | Claims Supported |\n"
+        "|----|-------------|-------------|------|--------"
+        "|-------------|-----------------|\n"
+    )
+    rows = [
+        "| S01 | FIFA Official Match Report | PRIMARY_INSTITUTION | 2026-06-01 | https://fifa.com/report | high | §Analysis: match statistics and performance data |",
+        "| S02 | UEFA Technical Report | PRIMARY_INSTITUTION | 2026-06-01 | https://uefa.com/tech | high | §Analysis: team form and tactical patterns |",
+    ]
+    return body + header + "\n".join(rows) + "\n"
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # Tests: C1 — Distillation artifacts exist
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -451,6 +484,39 @@ class TestC5SportsSourceStrengthRegression:
             f"should produce errors, got: {errors}"
         )
 
+    # ── Happy path: well-formed sports fixture passes ──────────────
+
+    def test_c5_sports_clean_passes_all(self) -> None:
+        """Well-formed sports fixture with PRIMARY_INSTITUTION sources → passes."""
+        text = _sports_fixture_clean()
+        # Wikipedia ratio: no Wikipedia → no errors/warnings
+        check_wiki = self._import_wikipedia_ratio()
+        errors, warnings = check_wiki(text)
+        assert len(errors) == 0, (
+            f"Clean sports fixture should have no Wikipedia ratio errors: {errors}"
+        )
+        assert len(warnings) == 0, (
+            f"Clean sports fixture should have no Wikipedia ratio warnings: {warnings}"
+        )
+        # Claims supported: descriptive entries → no errors/warnings
+        check_claims = self._import_claims_supported()
+        errors, warnings = check_claims(text)
+        assert len(errors) == 0, (
+            f"Clean sports fixture should have no Claims Supported errors: {errors}"
+        )
+        # CROWDSOURCED reliability: no crowdsourced → no errors
+        check_reli = self._import_reliability_crowd()
+        errors = check_reli(text)
+        assert len(errors) == 0, (
+            f"Clean sports fixture should have no CROWDSOURCED reliability errors: {errors}"
+        )
+        # Label consistency: no [确认事实] on crowdsourced → no errors
+        check_label = self._import_label_consistency()
+        errors = check_label(text)
+        assert len(errors) == 0, (
+            f"Clean sports fixture should have no label consistency errors: {errors}"
+        )
+
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Main
@@ -481,8 +547,6 @@ def main() -> int:
     print("=" * 70)
     print("Issue #353 Phase C — Contract Tests")
     print("=" * 70)
-
-    sys.path.insert(0, os.path.join(REPO_ROOT, "scripts"))
 
     for group_name, test_class in ALL_TEST_CLASSES:
         print(f"\n── {group_name} ──")
