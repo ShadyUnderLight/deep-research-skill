@@ -388,7 +388,30 @@ If the report cannot answer these cleanly, it is probably still doing descriptio
 
 ---
 
-## Best home for related fixes
+## Sports prediction / match outcome specialisation
+
+When the constrained-choice task involves pre-match prediction, outcome probability, or upset-path ranking for sport matches or competitive events, the general option-selection discipline above must be supplemented with domain-specific input requirements.
+
+### Why a separate gate is needed
+
+Sports prediction is a rare case where **the report can be structurally complete (outcome shortlist, load-bearing variables, ranking, reversal conditions) and still fail** because core pre-match inputs are missing. Unlike market-entry (where market data can often be sourced retroactively) or vendor selection (where product specs are relatively stable), match prediction is time-critical: odds move, injuries are confirmed at the last minute, weather changes.
+
+A structurally sound probability distribution published without current odds, injury confirmation, or lineup information has **false precision** — it uses the right constrained-choice form for content that the author acknowledges is incomplete.
+
+### The sports prediction gate
+
+See `checklists/option-selection-final-audit.md` §Sports prediction / outcome probability gate for the complete checklist. Key requirements:
+
+1. **Six pre-match inputs** must be sourced or declared unavailable: odds, injury/suspension, lineup/rotation, weather/venue, recent form data, tactical/statistical data.
+2. **Downgrade rules** when inputs are missing: probability output must be qualitative scenario, directional band, or model-output with explicit caveat. Precise percentages without core inputs are blocked.
+3. **Role labels** on all probability numbers: `observed market-implied` / `proxy` / `assumption` / `model-output`.
+4. **At least one worked example** showing market-implied probability → adjustment factors → final probability band.
+
+### Relationship to Decision Scope block
+
+The sports prediction gate does not replace the Decision Scope block (`references/decision-report-template.md` §Recommended structure, option-selection/shortlist 子结构). It extends it by specifying the minimum current-state inputs that the Decision Scope must address for pre-match prediction tasks. The Decision Scope's "输入边界 / 未指定项" field becomes load-bearing: if it lists odds, injuries, or weather as missing, the downgrade rules above must apply.
+
+### Best home for related fixes
 
 When a new selection-case failure appears:
 

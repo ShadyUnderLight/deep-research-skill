@@ -65,6 +65,53 @@ Run this checklist before delivery.
 - [ ] **[Phase B] Country Diligence Card** — each shortlisted country is evaluated through a consistent diligence card that includes: target customer/payer, first-revenue path, localization depth, regulatory/data status, competitive landscape, channel/partner readiness, entry motion, cost and timeline, legal/tax/IP, and expansion/exit scenario
 - [ ] **[Phase B] two-level decision funnel** — the report explicitly separates regional screening (option universe → region shortlist) from country competition (winning region → country shortlist → single beachhead); winning region must compare at least 2–3 realistic country candidates or explain exclusivity
 
+## Sports prediction / outcome probability gate
+
+This gate activates when the constrained-choice task involves **pre-match prediction, outcome probability estimation, upset-path ranking, or any explicit win/draw/loss probability distribution for a sport match or competitive event**.
+
+### Required current-state inputs
+
+Before producing probability outputs, the report must source or explicitly declare unavailable:
+
+- [ ] **market odds / market-implied probability** — odds from one or more bookmakers or betting exchanges, converted to implied probability as a baseline
+- [ ] **injury and suspension status** — current confirmed absences and doubts for both sides
+- [ ] **expected lineup / rotation risk** — likely starting XI, key player availability, rotation patterns
+- [ ] **weather / venue / travel or surface factors** — forecast conditions, stadium location, travel burden, pitch surface
+- [ ] **recent match data / form window** — results, goals scored/conceded, form trend over an appropriate window (e.g. last 5–10 matches)
+- [ ] **tactical or statistical data relevant to the prediction** — such as xG, shots, set-piece threat, pressing intensity, defensive block indicators, head-to-head record
+
+### Downgrade rules for missing inputs
+
+If one or more of the above inputs are absent or sourced only from low-reliability sources:
+
+- [ ] **probability output must be downgraded** — do not present precise percentages (`60%`, `25%`, `15%`) if core inputs (especially odds, injuries, lineup) are missing. Acceptable outputs are limited to:
+  - **qualitative scenario** — directional descriptions ("more likely to win", "upset possible under specific conditions")
+  - **directional probability band** — broad ranges without false precision ("low / medium / high", "unlikely / plausible / as likely as not")
+  - **model-output with explicit caveat** — only if the method is disclosed and the missing-input limitation is stated in the same visual context as the output
+
+- [ ] **probability table must include role labels** — every numeric probability, percentage range, or score distribution in a scoring/comparison table must carry one of:
+  - `observed market-implied` — derived from actual odds
+  - `proxy` — estimated from comparable events or historical baserates
+  - `assumption` — author judgment or scenario assumption
+  - `model-output` — result of a disclosed quantitative model (Poisson, logit, Monte Carlo, etc.)
+
+### Worked example
+
+For a match-level prediction where odds are available but lineup and weather are not confirmed:
+
+> **Market-implied probability baseline**: odds of 1.50 / 4.00 / 7.00 → implied probabilities 67% / 25% / 14%.
+> **Adjustment factors** (assumption): historical upset rate in similar tournament stages (~15%), key defender doubt (assumption: −5% to win probability).
+> **Final band**: win probability 55–65% (assumption-adjusted, not confirmed).
+> **Role labels**: `observed market-implied` for the 67/25/14 baseline; `assumption` for the −5% adjustment and for missing lineup confirmation.
+
+Without the worked example, the reader cannot see how inputs were combined to produce the final probability.
+
+### Integration with existing rules
+
+- The scoring-replicability validator (`scripts/validate_scoring_replicability.py`) already enforces probability-to-evidence mapping and blocks opaque probability statements. This gate adds domain-specific input requirements that trigger before the replicability check.
+- Source-strength gate (#341) enforces source quality for the inputs listed above. Odds from aggregators, injury news from press, and weather from general forecasts must carry appropriate reliability labels.
+- Decision Scope block (#309) requires listing what would change the conclusion. This gate adds the pre-match input checklist as the minimum scope baseline for sports prediction tasks.
+
 ## Shortlist structure
 
 - [ ] the shortlist or ranking appears before long option-by-option detail
