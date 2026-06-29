@@ -7,7 +7,7 @@ First baseline run for the periodic audit defined in `evals/meta/rule-trigger-au
 - Period: 2026-06 baseline
 - Audit date: 2026-06-11
 - Commit anchor: `b180815`
-- Case count: 102 tracked Markdown cases
+- Case count: 105 tracked Markdown cases
 - Data source: `git ls-files evals/cases/*.md`
 - Scope: tracked eval-case Markdown files only; local untracked eval assets are intentionally excluded.
 
@@ -144,6 +144,9 @@ For the aggregate rate below, `Triggered` and `Failed execution` both count as a
 | `evals/cases/simulation-pseudocode-as-executed-case.md` | technical-deep-dive | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | New case (issue #342) |
 | `evals/cases/world-cup-group-winner-simulation-contract-case.md` | technical-deep-dive | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | New case (issue #344) |
 | `evals/cases/world-cup-transition-vs-possession-method-scaffold-case.md` | technical-deep-dive | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | New case (issue #344) |
+| `evals/cases/world-cup-expansion-regulatory-contract-and-source-fail-case.md` | regulatory-analysis | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | New case (issue #353) |
+| `evals/cases/world-cup-sports-broadcasting-market-outlook-source-and-monitoring-case.md` | market-outlook | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | New case (issue #353) |
+| `evals/cases/argentina-cape-verde-constrained-choice-route-and-source-fail-case.md` | constrained-choice | N/A | N/A | N/A | N/A | N/A | N/A | N/A | N/A | New case (issue #353) |
 
 ## Route-level observations
 
