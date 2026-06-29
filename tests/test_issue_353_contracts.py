@@ -43,9 +43,9 @@ def file_exists(path: str) -> bool:
 
 ROUTING_MATRIX = "ROUTING-MATRIX.md"
 
-# Expected keyword groups in the constrained-choice trigger section.
-# At least ONE keyword from each group must be present to satisfy the
-# sports-prediction catch-all contract.
+# Expected keywords in the constrained-choice trigger section.
+# At least ONE keyword must be present (flat `any()` check) to satisfy
+# the sports-prediction catch-all contract.
 _SPORTS_KEYWORDS = [
     r"sport",
     r"match\s+(outcome|prediction|result)",
@@ -199,6 +199,7 @@ def test_c3_eval_index_regression_passes() -> None:
         cwd=REPO_ROOT,
         capture_output=True,
         text=True,
+        timeout=30,
     )
     assert result.returncode == 0, (
         f"test_eval_index.py failed with exit code {result.returncode}.\n"
