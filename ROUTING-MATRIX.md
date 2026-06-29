@@ -368,12 +368,25 @@ Use when the task is mainly about:
 - ranking or shortlist construction
 - destination / venue / city / office / vendor choice
 - practical decision memo under constraints
+- sports match outcome prediction with probability distributions, upset path ranking, or win/draw/loss likelihood assessment
 
 **Choose this route when:** the task is to choose among defined options using a visible comparison unit, shortlist logic, and ranking-change conditions.
 
 **Do not use this route when:** the real task is market-entry gating, expansion sequencing, or broad market scanning.
 
 **Often confused with:** market entry / regional expansion, equipment selection / procurement.
+
+> **Route activation note — sports prediction and outcome ranking:**
+> Tasks that require outcome ranking, probability distributions, path selection, or any structured comparison of defined options **must** use `constrained-choice`. `Shared-workflow` must not be used as an escape hatch for constrained-choice tasks. If the task genuinely has no option universe, ranking, probability, or selection burden, Shared-workflow may apply.
+>
+> **Concrete boundary examples:**
+> - "哪支球队最可能夺冠" → Constrained Choice (ranking burden)
+> - "阿根廷 vs 佛得角爆冷路径分析" → Constrained Choice (probability distribution + path ranking)
+> - "Cabo Verde 首次淘汰赛是否有爆冷路径" → Constrained Choice (outcome ranking + upset scenario with probability)
+> - "世界杯足球产业链的商业前景" → Market Outlook (market evolution without ranking)
+> - "人形机器人产业链未来 12 个月如何演化" → Market Outlook (trajectory question)
+>
+> The presence of sport-domain framing does not change the route contract. If the output must include win/draw/loss probabilities, upset-path ranking, or scenario probabilities for defined match outcomes, the correct route is `constrained-choice` regardless of domain.
 
 ### Read
 - `references/option-selection-and-shortlist-discipline.md`

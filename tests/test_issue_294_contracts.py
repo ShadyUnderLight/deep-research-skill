@@ -305,7 +305,12 @@ def test_c6_only_intended_files_changed():
         "checklists/academic-analysis-audit.md",
         "evals/cases/ai-agent-planning-academic-review-compounded-case.md",
         "evals/cases/mllm-visual-reasoning-academic-review-narrow-fail-case.md",
+        "evals/cases/argentina-cape-verde-constrained-choice-route-and-source-fail-case.md",
+        "evals/cases/world-cup-expansion-regulatory-contract-and-source-fail-case.md",
+        "evals/cases/world-cup-sports-broadcasting-market-outlook-source-and-monitoring-case.md",
         "tests/test_issue_294_contracts.py",
+        "tests/test_issue_353_contracts.py",
+        "ROUTING-MATRIX.md",
     }
     unexpected = changed_files - allowed
     assert not unexpected, (
