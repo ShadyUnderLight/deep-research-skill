@@ -27,6 +27,18 @@ CAVEAT_RE = re.compile(
     r"(?:（来源：厂商自述，非独立验证）|\(来源：厂商自述，非独立验证\))"
 )
 
+# Filed-data aggregators cited with confirmed labels need both:
+# 1) source-role language (aggregated / non-original / filed-data platform), and
+# 2) metric or snapshot basis (date, TTM/FY,口径). A bare "TTM" is not enough.
+FILED_DATA_AGGREGATOR_ROLE_RE = re.compile(
+    r"(?:filed data|filed-data|aggregator|aggregated|聚合数据|非原始披露)",
+    re.IGNORECASE,
+)
+FILED_DATA_AGGREGATOR_BASIS_RE = re.compile(
+    r"(?:快照日期|snapshot date|TTM|fiscal year|口径|metric basis)",
+    re.IGNORECASE,
+)
+
 # Heading patterns for Source Register section.
 HEADING_RE = re.compile(
     r"^#{1,6}\s+.*(?:Source Register|来源注册表)", re.IGNORECASE
@@ -39,6 +51,19 @@ _SECONDARY_TYPES: frozenset[str] = frozenset({
     "SECONDARY_ANALYST",
     "SECONDARY_FEED",
     "SECONDARY",
+})
+
+# Financial data platforms that re-present filed/regulatory data. These are not
+# primary filings, but may support financial snapshots when cited with an inline
+# source-role / metric-basis caveat.
+_FILED_DATA_AGGREGATOR_TYPES: frozenset[str] = frozenset({
+    "FILED_DATA_AGGREGATOR",
+})
+
+# Portals/compilations mixing analyst estimates, market data, news, and/or auto
+# aggregation. Treat as secondary-like for confirmed-label checks.
+_ANALYST_PORTAL_COMPILATION_TYPES: frozenset[str] = frozenset({
+    "ANALYST_PORTAL_COMPILATION",
 })
 
 # Primary company source types that need a self-reporting caveat.
@@ -95,6 +120,25 @@ _FREETEXT_TYPE_MAP: dict[str, str] = {
     "招股说明书": "PRIMARY_FILING",
     "年报": "PRIMARY_FILING",
     "年度报告": "PRIMARY_FILING",
+    # Financial filed-data aggregators
+    "reuters lseg filed data": "FILED_DATA_AGGREGATOR",
+    "lseg filed data": "FILED_DATA_AGGREGATOR",
+    "reuters filed data": "FILED_DATA_AGGREGATOR",
+    "bloomberg filed data": "FILED_DATA_AGGREGATOR",
+    "wind filed data": "FILED_DATA_AGGREGATOR",
+    "choice filed data": "FILED_DATA_AGGREGATOR",
+    "东方财富 choice api filed data": "FILED_DATA_AGGREGATOR",
+    "stockanalysis filed data": "FILED_DATA_AGGREGATOR",
+    "macrotrends filed data": "FILED_DATA_AGGREGATOR",
+    "filed data aggregator": "FILED_DATA_AGGREGATOR",
+    "聚合数据": "FILED_DATA_AGGREGATOR",
+    "财务聚合数据": "FILED_DATA_AGGREGATOR",
+    # Analyst/market/news portal compilations
+    "finviz": "ANALYST_PORTAL_COMPILATION",
+    "seeking alpha": "ANALYST_PORTAL_COMPILATION",
+    "yahoo finance": "ANALYST_PORTAL_COMPILATION",
+    "analyst portal compilation": "ANALYST_PORTAL_COMPILATION",
+    "金融门户": "ANALYST_PORTAL_COMPILATION",
     # Blog / media
     "技术博客": "SECONDARY_MEDIA",
     "官方博客": "PRIMARY_COMPANY",
@@ -308,6 +352,24 @@ def _is_unconfirmed_type(source_type: str) -> bool:
     return _is_type_in(source_type, _UNCONFIRMED_TYPES)
 
 
+def _is_filed_data_aggregator_type(source_type: str) -> bool:
+    """Check if a source type is a filed/regulatory data aggregator."""
+    return _is_type_in(source_type, _FILED_DATA_AGGREGATOR_TYPES)
+
+
+def _is_analyst_portal_compilation_type(source_type: str) -> bool:
+    """Check if a source type is an analyst/market/news portal compilation."""
+    return _is_type_in(source_type, _ANALYST_PORTAL_COMPILATION_TYPES)
+
+
+def _has_filed_data_aggregator_caveat(sentence: str) -> bool:
+    """Return True when sentence has both source-role and metric-basis notes."""
+    return bool(
+        FILED_DATA_AGGREGATOR_ROLE_RE.search(sentence)
+        and FILED_DATA_AGGREGATOR_BASIS_RE.search(sentence)
+    )
+
+
 def _source_ref_re(source_id: str) -> re.Pattern:
     """Build a regex to find a source ID reference (word-boundary match)."""
     return re.compile(r"\b" + re.escape(source_id) + r"\b")
@@ -371,7 +433,8 @@ def _is_unknown_type(source_type: str) -> bool:
 
     Returns True if the type is not secondary, not primary-company, and not a
     recognized exempt type (PRIMARY_FILING, PRIMARY_DEV, INFERRED, UNCONFIRMED,
-    WEAK_SIGNAL, TRANSCRIPT).
+    WEAK_SIGNAL, TRANSCRIPT, FILED_DATA_AGGREGATOR,
+    ANALYST_PORTAL_COMPILATION).
 
     Note: _is_secondary_type and _is_primary_company_type are checked first
     by the caller (check_source_consistency's elif chain). The checks here
@@ -386,10 +449,15 @@ def _is_unknown_type(source_type: str) -> bool:
         "PRIMARY_FILING", "PRIMARY_DEV", "INFERRED",
         "UNCONFIRMED", "WEAK_SIGNAL", "TRANSCRIPT",
         "PRIMARY_INSTITUTION", "CROWDSOURCED",
+        "FILED_DATA_AGGREGATOR", "ANALYST_PORTAL_COMPILATION",
     })
     if _is_secondary_type(source_type):
         return False
     if _is_primary_company_type(source_type):
+        return False
+    if _is_filed_data_aggregator_type(source_type):
+        return False
+    if _is_analyst_portal_compilation_type(source_type):
         return False
     if upper in _KNOWN_OTHER_TYPES:
         return False
@@ -405,7 +473,10 @@ def check_source_consistency(text: str, strict: bool = False) -> list[str]:
     3. Primary company sources must have a self-reporting caveat nearby.
     4. Crowdsourced/tertiary sources must not be referenced with confirmed labels.
     5. Unconfirmed/rumor/leak sources must not be referenced with confirmed labels.
-    6. Unknown source types generate a warning (or error in strict mode).
+    6. Analyst portal compilations must not be referenced with confirmed labels.
+    7. Filed-data aggregators require a same-sentence caveat when referenced
+       with confirmed labels.
+    8. Unknown source types generate a warning (or error in strict mode).
 
     When strict=True, unknown source types cause errors (not just warnings).
     """
@@ -488,8 +559,38 @@ def check_source_consistency(text: str, strict: bool = False) -> list[str]:
                         f"but referenced with confirmed label: {sent[:100]}"
                     )
 
+        elif _is_analyst_portal_compilation_type(norm_type):
+            # Check 6: Analyst/market/news portal compilations are secondary-like.
+            for sent in sentences:
+                if not ref_re.search(sent):
+                    continue
+                if CONFIRMED_LABEL_RE.search(sent):
+                    errors.append(
+                        f"source {source_id} ({source_type}) is an analyst "
+                        f"portal compilation but referenced with confirmed "
+                        f"label: {sent[:100]}"
+                    )
+
+        elif _is_filed_data_aggregator_type(norm_type):
+            # Check 7: Filed-data aggregators can support confirmed snapshots only
+            # when the same sentence marks source role or metric/snapshot basis.
+            for sent in sentences:
+                if not ref_re.search(sent):
+                    continue
+                has_confirmed_label = CONFIRMED_LABEL_RE.search(sent)
+                if (
+                    has_confirmed_label
+                    and not _has_filed_data_aggregator_caveat(sent)
+                ):
+                    errors.append(
+                        f"source {source_id} ({source_type}) is a filed-data "
+                        f"aggregator with confirmed label but lacks same-sentence "
+                        f"filed-data/aggregation/snapshot/metric-basis caveat: "
+                        f"{sent[:100]}"
+                    )
+
         elif _is_unknown_type(norm_type):
-            # Check 6: Unknown source type detection.
+            # Check 8: Unknown source type detection.
             msg = (
                 f"source {source_id} has unrecognized source type "
                 f"'{source_type}': map to a canonical type or correct the entry"

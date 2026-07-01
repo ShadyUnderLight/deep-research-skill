@@ -80,7 +80,7 @@ The existing TSMC report demonstrated a clear failure mode: a well-structured li
 
 Issue #277 proposes template rules to close this gap. This eval validates that those rules actually produce the behavioral change. Without this eval, the new template rules could be added but never verified to actually fire during report generation.
 
-This eval is distinct from the existing TSMC eval case (`evals/cases/tsmc-listed-company-aggregator-source-and-moat-case.md`), which focuses on aggregator source discipline and moat classification. This case focuses on valuation judgment structure.
+This eval is distinct from related listed-company cases such as `evals/cases/reporting-period-and-ttm-confusion-case.md`, which focuses on reporting-period and snapshot discipline. This case focuses on valuation judgment structure.
 
 ## Current rule verdict
 
@@ -97,7 +97,7 @@ This eval directly tests the behavioral impact of three new rules proposed in is
 
 ## Related evals
 
-- `evals/cases/tsmc-listed-company-aggregator-source-and-moat-case.md` — same company, different discipline (aggregator source + moat)
+- `evals/cases/reporting-period-and-ttm-confusion-case.md` — listed-company reporting-period discipline
 - `evals/cases/pop-mart-listed-company-traceability-hard-fail-case.md` — same route, traceability focus
 - `evals/cases/consensus-and-forward-pe-misuse-case.md` — same route, forward-PE discipline
 - `evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md` — comparative distillation showing GPT's stronger calibration, which this rule closes

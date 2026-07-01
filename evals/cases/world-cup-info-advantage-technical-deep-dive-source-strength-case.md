@@ -86,7 +86,7 @@ The unique contributions:
 - `evals/cases/mcp-technical-deep-dive-timeline-roadmap-case.md` — same route, timeline and roadmap discipline
 - `evals/cases/agentic-rag-technical-deep-dive-compounded-case.md` — same route, compounded vendor/source fail
 - `evals/cases/world-cup-rule-regulatory-route-mismatch-case.md` — same topic domain, route self-declaration error
-- `evals/cases/tsmc-listed-company-aggregator-source-and-moat-case.md` — same aggregator/source strength issue, different route
+- `evals/cases/finance-and-market-share-cambricon-case.md` — same source-strength calibration issue, different route
 - `evals/cases/dc-power-market-outlook-inflation-and-monitoring-case.md` — same Wikipedia source strength issue
 
 ## Reviewer checklist

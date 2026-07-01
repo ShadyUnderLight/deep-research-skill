@@ -9,6 +9,8 @@ Run through every item before delivering the final report.
 - [ ] 市场快照表已填入完整数据（对照模板必填列：当前股价/快照日期/市值/PE (TTM)/PE (Forward)/PB/PS/52周区间/股息率）
 - [ ] 每项指标都标注了具体数据来源和快照日期
 - [ ] 数据来源优先使用实时金融数据平台或交易所披露，而非过时或间接来源
+- [ ] 若市场快照/财务快照使用 `FILED_DATA_AGGREGATOR`（Reuters LSEG/Bloomberg/Wind/Choice/StockAnalysis/Macrotrends filed data），正文同句说明其为聚合/非原始披露来源，并标注 snapshot date、TTM/fiscal year、metric basis/口径；否则不得用 confirmed labels
+- [ ] `ANALYST_PORTAL_COMPILATION`（Finviz/Seeking Alpha/Yahoo Finance 等未明确 filed-data 的门户聚合）不得承载 confirmed labels；用于估计、新闻流或方向性参考时标为 secondary-like / 推断
 
 ## Reporting discipline
 

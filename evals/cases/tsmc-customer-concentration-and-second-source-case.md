@@ -96,7 +96,7 @@ Issue #280 proposes checklist items, template table, and moat linkage rules to c
 This eval is distinct from existing TSMC eval cases:
 - `tsmc-valuation-dcf-and-sensitivity-case.md` — focuses on DCF/reverse DCF and sensitivity matrix
 - `tsmc-valuation-time-horizon-stratification-case.md` — focuses on time-stratified valuation judgment
-- `tsmc-listed-company-aggregator-source-and-moat-case.md` — focuses on aggregator source discipline
+- `lotes-listed-company-moat-snapshot-case.md` — focuses on moat boundary discipline
 - This case focuses on **customer concentration as an independent valuation variable**
 
 ## Current rule verdict
@@ -122,7 +122,7 @@ This eval directly tests the behavioral impact of the rules proposed in issue #2
 
 - `evals/cases/tsmc-valuation-dcf-and-sensitivity-case.md` — same company, DCF/sensitivity focus (issue #278)
 - `evals/cases/tsmc-valuation-time-horizon-stratification-case.md` — same company, time-horizon stratification focus (issue #277)
-- `evals/cases/tsmc-listed-company-aggregator-source-and-moat-case.md` — same company, aggregator source + moat classification focus
+- `evals/cases/lotes-listed-company-moat-snapshot-case.md` — moat boundary discipline
 - `evals/cases/emc-listed-company-strong-claims-moat-case.md` — moat-style claims evidence gates
 - `evals/cases/lotes-listed-company-moat-snapshot-case.md` — moat boundary discipline
 

@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - 'scripts/**'
+      - 'tests/**'
       - 'schemas/**'
       - 'examples/**'
       - 'checklists/**'
@@ -15,6 +16,7 @@ on:
     branches: [$default-branch]
     paths:
       - 'scripts/**'
+      - 'tests/**'
       - 'schemas/**'
       - 'examples/**'
       - 'checklists/**'
@@ -51,6 +53,8 @@ jobs:
       - run: python3 scripts/test_md_to_pdf_preflight.py
       - run: python3 scripts/test_control_plane_architecture_discipline.py
       - run: python3 scripts/test_quantitative_role_audit.py
+      - run: python3 scripts/test_source_label_consistency.py
+      - run: python3 tests/test_issue_350_contracts.py
       - run: python3 scripts/test_audit_report.py
       - run: python3 scripts/test_issue_pr_acceptance.py
 

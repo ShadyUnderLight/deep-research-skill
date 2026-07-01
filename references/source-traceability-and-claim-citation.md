@@ -283,6 +283,8 @@ Classify every source in the register by type. Use these types consistently:
 - `SECONDARY_MEDIA` — news article, industry report, analyst commentary
 - `SECONDARY_ANALYST` — analyst report, investment bank research
 - `SECONDARY_FEED` — RSS feed, newsletter, curated content stream
+- `FILED_DATA_AGGREGATOR` — financial data platform re-presenting filed/regulatory data (Reuters LSEG filed data, Bloomberg filed data, Wind filed data, Choice filed data, StockAnalysis/Macrotrends filed data). Not a primary filing; may support a financial snapshot only when the body marks both (1) source role/caveat such as aggregated filed data or non-original disclosure, and (2) snapshot / metric basis such as snapshot date, fiscal year/TTM, or metric basis.
+- `ANALYST_PORTAL_COMPILATION` — portal/compilation mixing analyst estimates, market data, news, or auto aggregation (Finviz, Seeking Alpha, Yahoo Finance when not specifically filed-data). Treat as secondary-like; do not use confirmed labels for claims sourced only to these portals.
 - `TRANSCRIPT` — verbatim or near-verbatim transcript of an interview, press conference, earnings call, podcast, tutorial, or presentation
 - `INFERRED` — model inference with explicit reasoning chain documented
 - `CROWDSOURCED` — Wikipedia, crowdsourced compilation, tertiary sources (must not carry confirmed labels)
@@ -313,6 +315,8 @@ Classify every source in the register by type. Use these types consistently:
 | 专家访谈 / 访谈 / 财报电话会 | TRANSCRIPT | [确认事实] or [推断] | verbatim → confirmed; summary → inferred |
 | Primary (multilateral) / Primary (US govt agency) / government agency / regulator / public agency | PRIMARY_INSTITUTION | [确认事实] | 机构/政府来源，非厂商自述，不需 caveat |
 | Primary (vendor) | PRIMARY_COMPANY | [确认事实] + caveat | 厂商自述需 caveat，同其他公司来源处理 |
+| Reuters LSEG filed data / Bloomberg filed data / Wind filed data / Choice filed data / StockAnalysis filed data / Macrotrends filed data | FILED_DATA_AGGREGATOR | [确认事实] only with role + basis note | 非 primary filing；可用于 financial snapshot，但正文同句必须同时标明 filed data / aggregated / 非原始披露等来源角色，以及 snapshot date / TTM / fiscal year / metric basis 等口径 |
+| Finviz / Seeking Alpha / Yahoo Finance | ANALYST_PORTAL_COMPILATION | [推断]/[未知] | 混合 analyst estimates、market data、news 或 auto aggregation；不得承载 confirmed labels，除非另行证明为 filed-data 口径并改列 FILED_DATA_AGGREGATOR |
 | Secondary (crowdsourced) / crowdsourced / Wikipedia / wiki | CROWDSOURCED | [推断]/[未知] | 不可承载 [确认事实] |
 | rumor / leak / 传闻 / unconfirmed | UNCONFIRMED | [未知]/[推断] | 不可承载 [确认事实] |
 
@@ -441,6 +445,8 @@ If a thesis-bearing claim cannot be made auditable in the body without awkwardne
 
 - 当 register 标注某来源为 **厂商自述 / manufacturer self-reported**（如 `PRIMARY_COMPANY`、`PRIMARY_PARTNER`、简化类型的 `vendor-claim`、或 register Notes 列注明"厂商自述"），正文引用该来源的数据时必须附加内联说明，如 `(来源：厂商自述，非独立验证)`，不得单独使用 `[已确认事实]`
 - 当来源为 **媒体估计**（SECONDARY_MEDIA 类型，如彭博、券商研究报告等第三方推断），正文不得标注为 `[已确认事实]`；应使用 `[推断]` 或具体角色如 `[彭博 estimate]`
+- 当来源为 `ANALYST_PORTAL_COMPILATION`（Finviz、Seeking Alpha、Yahoo Finance 等混合门户/自动聚合），正文不得使用 `[CONF]` / `[确认事实]` / `[Confirmed]` / `[确认]` 等 confirmed labels。
+- 当来源为 `FILED_DATA_AGGREGATOR`（Reuters LSEG filed data、Bloomberg filed data、Wind/Choice filed data、StockAnalysis/Macrotrends filed data），它不是 primary filing；若正文使用 confirmed labels，只能确认“该平台 re-presented filed/regulatory data”，且同句必须同时说明两类信息：source role / caveat（如 `filed data`、`aggregated`、`聚合数据`、`非原始披露`）和 snapshot / metric basis（如 `snapshot date`、`TTM`、`fiscal year`、`口径`、`metric basis`）。
 - 核心原则：**正文标签强度 ≤ register 标签强度**。register 标注弱于正文时视为标签通胀，应修正
 
 > 注：正文标签 `[已确认事实]` 通常对应 register 中的 `PRIMARY_FILING` 或等效高可靠性类型；`[推断]` 对应 `SECONDARY_MEDIA`、`SECONDARY_ANALYST`、`INFERRED`；`[未知]` 对应 `UNCONFIRMED`、`WEAK_SIGNAL`。此映射为经验性参考，具体 case 由审计员根据证据强度判断。
