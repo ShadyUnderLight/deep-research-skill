@@ -19,7 +19,7 @@ from pathlib import Path
 
 # Confirmed label patterns — these should NOT be used with secondary sources.
 CONFIRMED_LABEL_RE = re.compile(
-    r"\[(?:确认事实|CONF|Confirmed|确认)\]", re.IGNORECASE
+    r"\[(?:已确认事实|确认事实|CONF|Confirmed|确认)\]", re.IGNORECASE
 )
 
 # Self-reporting caveat patterns required for primary company sources.
@@ -31,11 +31,12 @@ CAVEAT_RE = re.compile(
 # 1) source-role language (aggregated / non-original / filed-data platform), and
 # 2) metric or snapshot basis (date, TTM/FY,口径). A bare "TTM" is not enough.
 FILED_DATA_AGGREGATOR_ROLE_RE = re.compile(
-    r"(?:filed data|filed-data|aggregator|aggregated|聚合数据|非原始披露)",
+    r"(?:filed data|filed-data|aggregator|aggregated|aggregation|aggregate|"
+    r"non-original|聚合数据|非原始披露)",
     re.IGNORECASE,
 )
 FILED_DATA_AGGREGATOR_BASIS_RE = re.compile(
-    r"(?:快照日期|snapshot date|TTM|fiscal year|口径|metric basis)",
+    r"(?:快照日期|snapshot date|TTM|fiscal year|FY\d{4}|口径|metric basis)",
     re.IGNORECASE,
 )
 

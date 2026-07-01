@@ -103,7 +103,7 @@ def test_no_tracked_markdown_references_missing_tsmc_aggregator_eval() -> None:
         return
 
     offenders: list[str] = []
-    for path in git_ls_files("*.md") + git_ls_files("**/*.md"):
+    for path in git_ls_files("*.md"):
         full = os.path.join(REPO_ROOT, path)
         if not os.path.exists(full):
             continue

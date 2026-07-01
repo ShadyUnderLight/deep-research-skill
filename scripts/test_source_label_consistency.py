@@ -493,6 +493,36 @@ def test_filed_data_aggregator_without_confirmed_label_passes() -> None:
     )
 
 
+def test_filed_data_aggregator_chinese_confirmed_label_fails() -> None:
+    """[已确认事实] without caveat also fails for filed-data aggregator."""
+    expect_fail(
+        "filed data aggregator chinese confirmed label without caveat",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Wind filed data | FILED_DATA_AGGREGATOR | 2026-06-30 | "
+        "https://wind.example | Medium | §1: FY2025 revenue |\n\n"
+        "[已确认事实] S01 报告营收为 100 亿元。\n",
+    )
+
+
+def test_filed_data_aggregator_chinese_confirmed_with_caveat_passes() -> None:
+    """[已确认事实] with role+basis caveat passes for filed-data aggregator."""
+    expect_pass(
+        "filed data aggregator chinese confirmed with caveat",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Wind filed data | FILED_DATA_AGGREGATOR | 2026-06-30 | "
+        "https://wind.example | Medium | §1: FY2025 revenue |\n\n"
+        "[已确认事实] S01 提供聚合数据，快照日期 2026-06-30，口径为 FY2025 营收。\n",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Property-based test: _normalize_source_type idempotency and roundtrip
 # ---------------------------------------------------------------------------
@@ -600,6 +630,8 @@ def main() -> int:
         test_filed_data_aggregator_confirmed_with_metric_only_fails,
         test_filed_data_aggregator_confirmed_with_caveat_passes,
         test_filed_data_aggregator_without_confirmed_label_passes,
+        test_filed_data_aggregator_chinese_confirmed_label_fails,
+        test_filed_data_aggregator_chinese_confirmed_with_caveat_passes,
         test_normalize_source_type_property,
     ]
     failures = []
