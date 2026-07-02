@@ -231,6 +231,11 @@ The assumption is named ("assume 15% growth"), but the conditions that must hold
 - 不得标注为 `[已确认事实]`
 - 应使用 `[推断]` 或具体来源角色如 `[彭博 estimate]`
 
+### Filed-data aggregators and analyst portals
+
+- `FILED_DATA_AGGREGATOR`（Reuters LSEG filed data、Bloomberg filed data、Wind/Choice filed data、StockAnalysis/Macrotrends filed data）是 aggregated filed data / 非原始披露。若用于 `[CONF]` financial snapshot，正文同句必须写明 snapshot date、TTM 或 fiscal year、metric basis/口径，避免把平台聚合值误读为 primary filing。
+- `ANALYST_PORTAL_COMPILATION`（Finviz、Seeking Alpha、Yahoo Finance 未明确为 filed-data 时）混合 analyst estimates、market data、news 或自动聚合；不得用 confirmed labels，应用 `[推断]` / `[未知]` 或更具体的估计角色。
+
 ### 何时需要标注
 
 判断标准：如果删除这行内说明后，读者无法区分"独立验证的事实"和"来源主动声称但未独立验证的数字"，就需要标注。
@@ -256,6 +261,8 @@ The assumption is named ("assume 15% growth"), but the conditions that must hold
 | `SECONDARY_MEDIA`（媒体/行业报告） | `[推断]` | 必须标注"（据XX报道）"如 `[推断]（据路透社报道）` |
 | `SECONDARY_ANALYST`（券商研报） | `[推断]` | 必须标注"（据XX分析师）"如 `[推断]（据高盛分析师）` |
 | `SECONDARY_FEED`（RSS 摘要/聚合内容流） | `[推断]` | 必须标注来源名称 |
+| `FILED_DATA_AGGREGATOR`（金融 filed/regulatory 数据聚合） | `[已确认事实]` + 来源/口径说明 | 仅限 financial snapshot；必须同句说明 aggregated filed data / snapshot date / TTM / fiscal year / metric basis / 口径 |
+| `ANALYST_PORTAL_COMPILATION`（分析师/市场/新闻门户聚合） | `[推断]` / `[未知]` | 不得使用 confirmed labels；如证明为 filed-data 口径，应改列 `FILED_DATA_AGGREGATOR` 并加口径说明 |
 | `TRANSCRIPT`（转录/访谈/电话会） | `[已确认事实]` 或 `[推断]` | verbatim（逐字记录，经录音核对）→ `[已确认事实]`；summary/paraphrase → `[推断]`。无论哪种情况，必须标注来源场景（"据公司年报电话会"） |
 | `INFERRED`（报告自身推断） | `[推断]` | 必须附推理链（见 `references/source-traceability-and-claim-citation.md` §Inference documentation） |
 | `UNCONFIRMED`（无法独立验证） | `[未知]` | 必须标注"未经独立验证" |

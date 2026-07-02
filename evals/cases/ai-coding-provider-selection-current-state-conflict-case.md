@@ -94,7 +94,7 @@ The unique contributions:
 
 - `evals/cases/ai-coding-tools-provider-selection-traceability-fail-case.md` — same route/topic, unverifiable freshness (vs verified stale)
 - `evals/cases/rag-api-provider-selection-traceability-fail-case.md` — same route, traceability fail
-- `evals/cases/tsmc-listed-company-aggregator-source-and-moat-case.md` — same vendor/manufacturer claim discipline, different route
+- `evals/cases/aaeon-listed-company-label-inflation-case.md` — same label-inflation discipline, different route
 - `evals/cases/dc-power-market-outlook-inflation-and-monitoring-case.md` — same register inflation severity, different route
 
 ## Reviewer checklist

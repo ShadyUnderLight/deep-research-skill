@@ -13,12 +13,16 @@ SCRIPT = str(
 )
 
 
-def run_lint(text: str) -> subprocess.CompletedProcess:
+def run_lint(text: str, *, strict: bool = False) -> subprocess.CompletedProcess:
     with tempfile.TemporaryDirectory() as d:
         path = Path(d) / "fixture.md"
         path.write_text(text, encoding="utf-8")
+        cmd = [sys.executable, SCRIPT]
+        if strict:
+            cmd.append("--strict")
+        cmd.append(str(path))
         return subprocess.run(
-            [sys.executable, SCRIPT, str(path)],
+            cmd,
             capture_output=True,
             text=True,
         )
@@ -37,6 +41,15 @@ def expect_fail(name: str, text: str) -> None:
     result = run_lint(text)
     assert result.returncode == 2, (
         f"{name}: expected lint failure, got {result.returncode}\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    print(f"  PASS  {name}")
+
+
+def expect_strict_pass(name: str, text: str) -> None:
+    result = run_lint(text, strict=True)
+    assert result.returncode == 0, (
+        f"{name}: expected strict pass, got {result.returncode}\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
     print(f"  PASS  {name}")
@@ -385,6 +398,132 @@ def test_unconfirmed_canonical_type_with_confirmed_fails() -> None:
 
 
 # ---------------------------------------------------------------------------
+# Issue #350: financial aggregator source classification
+# ---------------------------------------------------------------------------
+
+
+def test_filed_data_aggregator_is_known_type_in_strict_mode() -> None:
+    """FILED_DATA_AGGREGATOR must be a recognized canonical type."""
+    expect_strict_pass(
+        "FILED_DATA_AGGREGATOR known in strict mode",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Bloomberg filed data | FILED_DATA_AGGREGATOR | 2026-06-30 | "
+        "https://bloomberg.example | Medium | §1: FY revenue snapshot |\n\n"
+        "[INFER] S01 provides a financial snapshot for comparison.\n",
+    )
+
+
+def test_analyst_portal_compilation_with_confirmed_label_fails() -> None:
+    """ANALYST_PORTAL_COMPILATION behaves like secondary evidence."""
+    expect_fail(
+        "analyst portal compilation with confirmed label",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Yahoo Finance profile | ANALYST_PORTAL_COMPILATION | 2026-06-30 | "
+        "https://finance.yahoo.example | Medium | §1: market data snapshot |\n\n"
+        "[Confirmed] According to S01, revenue was $10B.\n",
+    )
+
+
+def test_filed_data_aggregator_confirmed_without_caveat_fails() -> None:
+    """Confirmed filed-data aggregator citations require same-sentence caveat."""
+    expect_fail(
+        "filed data aggregator confirmed without caveat",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Reuters LSEG Data | FILED_DATA_AGGREGATOR | 2026-06-30 | "
+        "https://lseg.example | Medium | §1: TTM revenue |\n\n"
+        "[CONF] S01 reports TSMC revenue at $10B.\n",
+    )
+
+
+def test_filed_data_aggregator_confirmed_with_metric_only_fails() -> None:
+    """Metric words alone do not establish aggregator/non-original role."""
+    expect_fail(
+        "filed data aggregator confirmed with metric only",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Reuters LSEG Data | FILED_DATA_AGGREGATOR | 2026-06-30 | "
+        "https://lseg.example | Medium | §1: TTM revenue |\n\n"
+        "[CONF] S01 reports TTM revenue at $10B.\n",
+    )
+
+
+def test_filed_data_aggregator_confirmed_with_caveat_passes() -> None:
+    """Filed-data aggregator with caveat/role note can support snapshots."""
+    expect_pass(
+        "filed data aggregator confirmed with caveat",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | StockAnalysis financials | FILED_DATA_AGGREGATOR | 2026-06-30 | "
+        "https://stockanalysis.example | Medium | §1: market snapshot |\n\n"
+        "[CONF] S01 provides aggregated filed data with snapshot date 2026-06-30 "
+        "and TTM metric basis for the financial snapshot.\n",
+    )
+
+
+def test_filed_data_aggregator_without_confirmed_label_passes() -> None:
+    """Caveat is only mandatory when confirmed labels are used."""
+    expect_pass(
+        "filed data aggregator without confirmed label",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Wind filed data | FILED_DATA_AGGREGATOR | 2026-06-30 | "
+        "https://wind.example | Medium | §1: financial snapshot |\n\n"
+        "[INFER] S01 is used as a directional financial snapshot.\n",
+    )
+
+
+def test_filed_data_aggregator_chinese_confirmed_label_fails() -> None:
+    """[已确认事实] without caveat also fails for filed-data aggregator."""
+    expect_fail(
+        "filed data aggregator chinese confirmed label without caveat",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Wind filed data | FILED_DATA_AGGREGATOR | 2026-06-30 | "
+        "https://wind.example | Medium | §1: FY2025 revenue |\n\n"
+        "[已确认事实] S01 报告营收为 100 亿元。\n",
+    )
+
+
+def test_filed_data_aggregator_chinese_confirmed_with_caveat_passes() -> None:
+    """[已确认事实] with role+basis caveat passes for filed-data aggregator."""
+    expect_pass(
+        "filed data aggregator chinese confirmed with caveat",
+        "## Source Register\n\n"
+        "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | "
+        "Claims Supported |\n"
+        "|----|-------------|-------------|------|---------|-------------|-"
+        "-----------------|\n"
+        "| S01 | Wind filed data | FILED_DATA_AGGREGATOR | 2026-06-30 | "
+        "https://wind.example | Medium | §1: FY2025 revenue |\n\n"
+        "[已确认事实] S01 提供聚合数据，快照日期 2026-06-30，口径为 FY2025 营收。\n",
+    )
+
+
+# ---------------------------------------------------------------------------
 # Property-based test: _normalize_source_type idempotency and roundtrip
 # ---------------------------------------------------------------------------
 
@@ -394,7 +533,8 @@ _VALID_CANONICAL_TYPES: frozenset[str] = frozenset({
     "PRIMARY_INSTITUTION", "PRIMARY_DEV", "SECONDARY_MEDIA",
     "SECONDARY_ANALYST", "SECONDARY_FEED", "SECONDARY",
     "TRANSCRIPT", "INFERRED", "UNCONFIRMED", "WEAK_SIGNAL",
-    "CROWDSOURCED", "PRIMARY",
+    "CROWDSOURCED", "PRIMARY", "FILED_DATA_AGGREGATOR",
+    "ANALYST_PORTAL_COMPILATION",
 })
 
 
@@ -420,6 +560,17 @@ _VALID_CANONICAL_TYPES: frozenset[str] = frozenset({
     "CROWDSOURCED",
     "PRIMARY_COMPANY",
     "SECONDARY_MEDIA",
+    "Reuters LSEG filed data",
+    "Bloomberg filed data",
+    "Wind filed data",
+    "Choice filed data",
+    "StockAnalysis filed data",
+    "Macrotrends filed data",
+    "Finviz",
+    "Seeking Alpha",
+    "Yahoo Finance",
+    "ANALYST_PORTAL_COMPILATION",
+    "FILED_DATA_AGGREGATOR",
 ]))
 def test_normalize_source_type_property(source_type: str) -> None:
     """Property: normalized canonical type is idempotent and valid.
@@ -472,6 +623,15 @@ def main() -> int:
         test_multilateral_source_with_confirmed_passes,
         test_crowdsourced_canonical_type_with_confirmed_fails,
         test_unconfirmed_canonical_type_with_confirmed_fails,
+        # Issue #350 tests
+        test_filed_data_aggregator_is_known_type_in_strict_mode,
+        test_analyst_portal_compilation_with_confirmed_label_fails,
+        test_filed_data_aggregator_confirmed_without_caveat_fails,
+        test_filed_data_aggregator_confirmed_with_metric_only_fails,
+        test_filed_data_aggregator_confirmed_with_caveat_passes,
+        test_filed_data_aggregator_without_confirmed_label_passes,
+        test_filed_data_aggregator_chinese_confirmed_label_fails,
+        test_filed_data_aggregator_chinese_confirmed_with_caveat_passes,
         test_normalize_source_type_property,
     ]
     failures = []

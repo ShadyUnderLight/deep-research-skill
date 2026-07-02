@@ -106,7 +106,7 @@ The unique contributions:
 - `evals/cases/content-platform-constrained-choice-compounded-fail-case.md` — same route, compounded fail with body traceability and numeric roles
 - `evals/cases/indie-dev-constrained-choice-delivery-fail-case.md` — same route, delivery fail with no source register and no roles
 - `evals/cases/world-cup-constrained-choice-wrong-route-case.md` — same topic domain, different failure (wrong route entirely)
-- `evals/cases/tsmc-listed-company-aggregator-source-and-moat-case.md` — same aggregator source discipline pattern, different route
+- `evals/cases/reporting-period-and-ttm-confusion-case.md` — same numeric role/snapshot discipline pattern, different route
 
 ## Reviewer checklist
 

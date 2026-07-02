@@ -34,13 +34,15 @@ This tier hierarchy is a specialized refinement for financial and market data co
 
 When sources conflict, use this hierarchy to determine which source takes precedence:
 
+Tier 2 maps to `FILED_DATA_AGGREGATOR` when the platform re-presents filed/regulatory data. Tier 5 maps to `ANALYST_PORTAL_COMPILATION` when the platform mixes analyst estimates, market data, news, or auto aggregation.
+
 | Tier | Source type | Description | When to prefer |
 |------|------------|-------------|----------------|
 | **1** | Official filing | SEC 10-K/10-Q, CSRC/HKEX filings, audited annual/interim reports | Historical financials, regulatory disclosures, restated figures |
-| **2** | Exchange / regulatory aggregator | Reuters LSEG, Bloomberg filed data, Wind/Choice API filed data | When primary filing is not directly accessible but data is sourced from filings |
+| **2** | Exchange / regulatory aggregator (`FILED_DATA_AGGREGATOR`) | Reuters LSEG filed data, Bloomberg filed data, Wind/Choice API filed data, StockAnalysis/Macrotrends filed data | When primary filing is not directly accessible but data is sourced from filings; cite with snapshot date and metric basis because it is not original disclosure |
 | **3** | Company disclosure (unaudited) | Earnings releases, investor presentations, press releases, management commentary | Latest quarter before full report; forward guidance |
 | **4** | Reputable third-party dataset | IDC, Counterpoint, Canalys, Gartner (when methodology is transparent) | Market size, market share, industry benchmarks |
-| **5** | Secondary media / analyst | Seeking Alpha, Reuters news, broker research, industry media | News flow, interpretation, synthesis |
+| **5** | Secondary media / analyst / portal compilation (`ANALYST_PORTAL_COMPILATION`) | Seeking Alpha, Finviz, Yahoo Finance (unless specifically filed-data), Reuters news, broker research, industry media | News flow, interpretation, synthesis; must not override filed data or carry confirmed labels |
 | **6** | Social / forum | Retail investor forums, social media, anonymous commentary | Discovery only; never as sole evidence for load-bearing claims |
 
 ### Chinese-language source mapping
@@ -50,7 +52,7 @@ When researching Chinese-listed companies, Chinese-market topics, or cross-borde
 | Tier | Chinese-language source | Mainland accessibility | Mapping rationale |
 |------|------------------------|----------------------|-------------------|
 | **1** | 上交所/深交所/港交所 official filings (年报、半年报、季报) | ✅ | Official regulatory filing, equivalent to SEC 10-K/10-Q |
-| **2** | 东方财富 Choice API (filed data), Wind (filed data), 巨潮资讯网 | ✅ | Exchange/regulatory aggregator when data is sourced from filings |
+| **2** | 东方财富 Choice API (filed data), Wind (filed data), 巨潮资讯网 | ✅ | Exchange/regulatory aggregator / `FILED_DATA_AGGREGATOR` when data is sourced from filings；需标注快照日期、TTM/fiscal year、metric basis/口径 |
 | **3** | 公司官网公告、投资者互动平台、业绩说明会 | ✅ | Company disclosure (unaudited), same as earnings releases / investor presentations |
 | **4** | 财新、证券时报、21 经济、第一财经 | ✅ (财新部分内容需付费) | Reputable financial media with editorial standards; stronger than general industry media |
 | **5** | 36 氪、动点科技、半导体行业观察、新浪财经、同花顺 | ✅ | Industry media / news aggregation; useful for news flow and discovery |

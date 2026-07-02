@@ -90,7 +90,7 @@ Issue #278 proposes DCF/reverse DCF trigger rules, assumption table templates, a
 
 This eval is distinct from the existing TSMC eval cases:
 - `evals/cases/tsmc-valuation-time-horizon-stratification-case.md` focuses on time-horizon stratification of the valuation judgment
-- `evals/cases/tsmc-listed-company-aggregator-source-and-moat-case.md` focuses on aggregator source discipline and moat classification
+- `evals/cases/reporting-period-and-ttm-confusion-case.md` focuses on reporting-period and snapshot discipline
 - This case focuses on **valuation methodology completeness**: DCF/sensitivity as structural requirements for any listed-company valuation
 
 ## Current rule verdict
@@ -109,7 +109,7 @@ This eval directly tests the behavioral impact of three new rules proposed in is
 ## Related evals
 
 - `evals/cases/tsmc-valuation-time-horizon-stratification-case.md` — same company, time-horizon stratification focus (issue #277)
-- `evals/cases/tsmc-listed-company-aggregator-source-and-moat-case.md` — same company, aggregator source + moat classification focus
+- `evals/cases/reporting-period-and-ttm-confusion-case.md` — reporting-period and TTM discipline
 - `evals/cases/pop-mart-listed-company-traceability-hard-fail-case.md` — same route, traceability focus
 - `evals/cases/xiaohongshu-startup-evaluation-traceability-benchmark-case.md` — sensitivity analysis requirement for load-bearing assumptions (startup route)
 - `evals/cases/startup-evaluation-route-activation-case.md` — startup route's DCF avoidance rule (inverse of listed-company DCF requirement)
