@@ -17,7 +17,7 @@
       "category": "specialized",
       "aliases": ["market entry", "regional expansion", "market entry / regional expansion"],
       "required_audits": ["option-selection-final-audit", "source-traceability", "final-audit"],
-      "hard_fail_keywords": ["generic market overview", "country notes without unified comparison", "expansion without hard gates", "hub/beachhead/expansion collapsed", "skips country-competition stage", "inconsistent country diligence", "recommendation-constraint mismatch"]
+      "hard_fail_keywords": ["generic market overview", "country notes without unified comparison", "expansion without hard gates", "collapses hub beachhead expansion", "skips country-competition stage", "inconsistent country diligence", "recommendation-constraint mismatch"]
     },
     {
       "id": "market-outlook",
@@ -73,7 +73,7 @@
       "category": "specialized",
       "aliases": ["listed company", "investment-style research", "listed company / investment-style research"],
       "required_audits": ["listed-company-report", "source-traceability", "final-audit"],
-      "hard_fail_keywords": ["mixed reported and forward estimates", "undated financial numbers", "missing research anchor", "missing market snapshot", "market-position without scope", "valuation substitutes for business evidence", "strong claims without evidence", "mixed moat/monopoly/scarcity"]
+      "hard_fail_keywords": ["mixed reported and forward estimates", "undated financial numbers", "missing research anchor", "missing market snapshot", "market-position without scope", "valuation substitutes for business evidence", "strong claims without evidence", "mixes monopoly moat scarcity"]
     },
     {
       "id": "startup-evaluation",

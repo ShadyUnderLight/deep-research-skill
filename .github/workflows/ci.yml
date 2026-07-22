@@ -10,6 +10,7 @@ on:
       - 'checklists/**'
       - 'references/**'
       - 'evals/**'
+      - 'ROUTING-MATRIX.md'
       - 'requirements.txt'
       - '.github/workflows/ci.yml'
   push:
@@ -22,6 +23,7 @@ on:
       - 'checklists/**'
       - 'references/**'
       - 'evals/**'
+      - 'ROUTING-MATRIX.md'
       - 'requirements.txt'
       - '.github/workflows/ci.yml'
   workflow_dispatch:

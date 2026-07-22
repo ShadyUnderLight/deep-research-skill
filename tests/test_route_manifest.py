@@ -300,6 +300,67 @@ class TestValidatorRejectsDrift:
         finally:
             tmp.unlink(missing_ok=True)
 
+    def test_audit_list_drift_is_detected(self) -> None:
+        """P1-2b: Manifest audit list not matching ROUTING-MATRIX.md.
+
+        Uses the real manifest but modifies a route's required_audits
+        to differ from what's in ROUTING-MATRIX.md.
+        """
+        real = _load_manifest(MANIFEST_PATH)
+        routes = []
+        for r in real["routes"]:
+            r_copy = dict(r)
+            if r_copy["id"] == "market-outlook":
+                r_copy["required_audits"] = [
+                    "market-outlook-audit", "source-traceability",
+                    "final-audit",
+                ]
+            routes.append(r_copy)
+        tmp = _make_temp_manifest(routes)
+        try:
+            result = _run_validator(tmp)
+            output = result.stdout + result.stderr
+            assert result.returncode != 0, (
+                f"Should fail (audit drift), got exit {result.returncode}\n"
+                f"output:\n{output}"
+            )
+            assert "audit list mismatch" in output.lower(), (
+                f"Expected audit mismatch message, got:\n{output}"
+            )
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_empty_route_validators_is_detected(self) -> None:
+        """P2-2: Extra route not in ROUTE_VALIDATORS should fail."""
+        routes = [
+            {"id": rid, "display_name": rid, "category": "specialized",
+             "aliases": [rid], "required_audits": ["final-audit"],
+             "hard_fail_keywords": ["test"]}
+            for rid in sorted(EXPECTED_CANONICAL_IDS)
+        ] + [
+            {"id": "empty-validator-route", "display_name": "EVR",
+             "category": "specialized", "aliases": ["empty-validator"],
+             "required_audits": ["final-audit"],
+             "hard_fail_keywords": ["test"]}
+        ]
+        tmp = _make_temp_manifest(routes)
+        try:
+            result = _run_validator(tmp)
+            assert result.returncode != 0, (
+                f"Should fail (extra route not in ROUTE_VALIDATORS), "
+                f"got exit {result.returncode}"
+            )
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_evals_index_check_no_false_positive(self) -> None:
+        """P2-1: evals/INDEX.md check against real manifest must not crash."""
+        result = _run_validator(MANIFEST_PATH)
+        output = result.stdout
+        assert "OK" in output, (
+            f"Validator should pass on real manifest+index:\n{output}"
+        )
+
 
 class TestValidatorReturnsCorrectExitCodes:
     """Validator exit codes must be well-defined."""
