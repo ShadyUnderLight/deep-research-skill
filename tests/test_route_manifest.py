@@ -330,8 +330,14 @@ class TestValidatorRejectsDrift:
         finally:
             tmp.unlink(missing_ok=True)
 
-    def test_empty_route_validators_is_detected(self) -> None:
-        """P2-2: Extra route not in ROUTE_VALIDATORS should fail."""
+    def test_extra_route_not_in_route_validators(self) -> None:
+        """A manifest route not in ROUTE_VALIDATORS must fail (Check 1).
+
+        Note: Check 11 (empty ROUTE_VALIDATORS entry) is a structural
+        guard against manually created empty lists in audit_report.py.
+        It cannot be tested via temp manifest — it reads directly from
+        the real ROUTE_VALIDATORS source and would only trigger if
+        someone writes `"route-key": []` with zero validators."""
         routes = [
             {"id": rid, "display_name": rid, "category": "specialized",
              "aliases": [rid], "required_audits": ["final-audit"],

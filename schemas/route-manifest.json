@@ -33,7 +33,7 @@
       "category": "specialized",
       "aliases": ["first-tier", "top-tier", "competitive positioning", "first-tier / top-tier / competitive positioning"],
       "required_audits": ["source-traceability", "final-audit"],
-      "hard_fail_keywords": ["loose tier labels", "dimensions collapsed into prestige", "unequally treated evidence types"]
+      "hard_fail_keywords": ["loose tier labels", "dimensions collapsed into prestige", "treats all evidence equally"]
     },
     {
       "id": "constrained-choice",
@@ -57,7 +57,7 @@
       "category": "specialized",
       "aliases": ["equipment selection", "equipment selection / procurement", "equipment selection / procurement / home-server planning", "procurement", "home-server planning", "nas", "nas / home server", "homelab"],
       "required_audits": ["option-selection-final-audit", "final-audit"],
-      "hard_fail_keywords": ["hardware overview instead of procurement", "budget without inclusion assumptions", "hardware and system not bound", "operating costs as side notes", "missing workload segmentation", "benchmark performance without method disclosure"]
+      "hard_fail_keywords": ["hardware overview instead of procurement", "budget without inclusion assumptions", "hardware and system not bound", "operating costs as side notes", "fails to segment workload", "benchmark performance without method disclosure"]
     },
     {
       "id": "technical-deep-dive",

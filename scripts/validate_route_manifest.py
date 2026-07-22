@@ -420,12 +420,15 @@ def validate(path: Path | None = None) -> int:
                 sig_words = [w for w in kw.lower().split() if len(w) > 3]
                 if not sig_words:
                     continue
-                if not any(w in hf_text for w in sig_words):
+                matched = sum(1 for w in sig_words if w in hf_text)
+                # Require >50% of significant words to match; <50% = probable deletion
+                if matched == 0 or (len(sig_words) >= 3 and matched < len(sig_words) / 2):
                     missing_keywords.append(kw)
             if missing_keywords:
-                warnings.append(
-                    f"Route '{route_id}': hard_fail_keywords not found in "
-                    f"ROUTING-MATRIX.md hard-fail section: {missing_keywords}"
+                errors.append(
+                    f"Route '{route_id}': hard_fail_keywords with insufficient "
+                    f"match in ROUTING-MATRIX.md hard-fail section: "
+                    f"{missing_keywords}"
                 )
 
     # ═══ Check 8: Manifest required fields per route ══════════════════════════
@@ -467,15 +470,21 @@ def validate(path: Path | None = None) -> int:
                     val = cells[col_idx] if col_idx < len(cells) else ""
                     if not val or val == "-":
                         continue
-                    # The value may be a case file path or a discipline name
-                    if "/" in val or val.endswith(".md"):
-                        continue  # file path, not a route name
-                    if val not in known_disciplines:
-                        warnings.append(
-                            f"evals/INDEX.md: '{val}' in {col_name} route column "
-                            f"for {cells[0]} is not a known canonical route or "
-                            f"cross-cutting discipline"
-                        )
+                    # Skip only actual eval case file paths
+                    if val.startswith("evals/cases/") or val.endswith(".md"):
+                        continue
+                    # Split on '/' for multi-discipline values
+                    # (e.g., "current-state/source-traceability")
+                    parts = [p.strip() for p in val.split("/")]
+                    for part in parts:
+                        if not part or part == "-":
+                            continue
+                        if part not in known_disciplines:
+                            warnings.append(
+                                f"evals/INDEX.md: '{part}' in {col_name} route "
+                                f"column for {cells[0]} is not a known canonical "
+                                f"route or cross-cutting discipline"
+                            )
 
     # ═══ Check 11 (P2-2): ROUTE_VALIDATORS entries must be non-empty ═════════
     # Parse the validator lists to verify each has at least one entry
