@@ -10,6 +10,9 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ## Unreleased
 
+### Changed
+- `SKILL.md`: Phase 1 progressive-disclosure refactoring — extracted environment-specific degraded-search fallback policy, execution discipline, evidence log format, and tool capability mapping (100+ lines) to `references/search-provider-fallback.md`; moved PDF delivery trigger keywords and pipeline steps to `references/delivery-operator-note.md`; added `references/route-index.md` as a compact route selection index (34 lines, all 12 routes from `schemas/route-manifest.json`, ≤80 line limit) for one-read route identification before deep-diving into `ROUTING-MATRIX.md`; SKILL.md reduced from 542 to ~443 lines while retaining all workflow spine, Research Pack lifecycle, evidence standards, current-state verification, mid-research review, counter-evidence, synthesis, parallelization, final discipline, and output quality bar sections. Updated cross-references in `external-channel-preflight.md`, `ARCHITECTURE.md`, `SYSTEM-MAP.md`, and `README.md` (#361).
+
 ### Added
 - `scripts/audit_report.py`, `scripts/test_audit_report.py`: extended audit orchestrator to cover 4 remaining mature routes (`regulatory-analysis`, `equipment-selection`, `startup-evaluation`, `competitive-positioning`) and `shared-workflow` — each now runs the generic validator chain (report-quality + declared-execution + table-role-labels + source-label-consistency) instead of silently falling back to `technical-deep-dive`.  Added route aliases covering common display names and Chinese/mixed naming patterns.  Added `_run_secondary_route_check` validator that warns when declared secondary routes are unsupported.  Added `--allow-route-fallback` CLI flag for opt-in legacy fallback behavior (#340).
 

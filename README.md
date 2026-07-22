@@ -106,10 +106,13 @@ python -m playwright install chromium
 ```text
 .
 ├── SKILL.md                # 主工作流脊柱：给 Agent 的入口说明
-├── ROUTING-MATRIX.md       # 任务路由、附加 discipline、审计绑定
+├── ROUTING-MATRIX.md       # 任务路由完整合约 (hard-fail, artifact, audits)
 ├── ARCHITECTURE.md         # 分层架构视图
 ├── SYSTEM-MAP.md           # 全仓库结构地图 / 问题域地图
-├── references/             # 可复用研究方法、模板、纪律说明
+├── references/
+│   ├── route-index.md      # 紧凑路由选择索引 (读 ROUTING-MATRIX 前先读此)
+│   ├── search-provider-fallback.md  # 降级搜索 fallback 策略和执行纪律
+│   └── ...                 # 可复用研究方法、模板、纪律说明
 ├── checklists/             # 交付前审计门槛
 ├── evals/                  # 坏例子、回归资产、对比蒸馏沉淀
 ├── examples/               # 代表性任务形状示例
@@ -126,10 +129,11 @@ python -m playwright install chromium
 
 1. **`README.md`**：看清仓库目标与结构
 2. **`SKILL.md`**：看 Agent 实际执行时的工作流脊柱
-3. **`ROUTING-MATRIX.md`**：看任务如何分流，以及每类任务挂什么 discipline / audit
-4. **`ARCHITECTURE.md`**：看仓库分层与职责边界
-5. **`SYSTEM-MAP.md`**：看问题域、失败族和干预路径
-6. 按任务需要再进入 `references/`、`checklists/`、`evals/`、`scripts/`
+3. **`references/route-index.md`**：紧凑路由选择索引（一屏读完，快速定位候选路由）
+4. **`ROUTING-MATRIX.md`**：看任务如何分流，以及每类任务挂什么 discipline / audit（完整合约）
+5. **`ARCHITECTURE.md`**：看仓库分层与职责边界
+6. **`SYSTEM-MAP.md`**：看问题域、失败族和干预路径
+7. 按任务需要再进入 `references/`、`checklists/`、`evals/`、`scripts/`
 
 ---
 
@@ -138,11 +142,12 @@ python -m playwright install chromium
 它的大致执行顺序是：
 
 1. **`SKILL.md`** 定义通用工作流脊柱
-2. **`ROUTING-MATRIX.md`** 识别当前任务族，并挂上对应 discipline / audit
-3. **`references/`** 提供方法、模板、claim discipline 与研究约束
-4. **`checklists/`** 检查最终产物是否真的达到交付标准
-5. **`evals/`** 把真实失败沉淀成可复盘、可回归的资产
-6. **`scripts/`** 负责 markdown → PDF 等交付层问题
+2. **`references/route-index.md`** 提供紧凑路由选择（先读此定位候选 route）
+3. **`ROUTING-MATRIX.md`** 识别当前任务族，并挂上对应 discipline / audit（完整合约）
+4. **`references/`** 提供方法、模板、claim discipline 与研究约束
+5. **`checklists/`** 检查最终产物是否真的达到交付标准
+6. **`evals/`** 把真实失败沉淀成可复盘、可回归的资产
+7. **`scripts/`** 负责 markdown → PDF 等交付层问题
 
 一句话概括：
 **route 决定你该怎么研究，checklist 决定你能不能交付，eval 决定你会不会重复犯错。**

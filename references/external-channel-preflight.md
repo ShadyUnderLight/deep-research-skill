@@ -65,7 +65,7 @@ If preflight is not run explicitly, record `api_available: not-checked` and the 
 If the local Research API is unavailable or reports degraded channel status:
 
 1. **Record explicitly** — note `api_available: false` or `degraded_channels: [...]` in the channel availability snapshot
-2. **Adjust search strategy** — return to the environment's existing search, fetch, and browser capabilities (see `SKILL.md` §Tool strategy)
+2. **Adjust search strategy** — return to the environment's existing search, fetch, and browser capabilities (see `SKILL.md` §Tool strategy and `references/search-provider-fallback.md` for the degraded-search fallback policy)
 3. **Do not silently assume** — never proceed as if Agent-Reach is available when it is not
 4. **Update the evidence log** — record which channel was expected, what the status was, and what impact on research scope or confidence results
 
@@ -162,6 +162,7 @@ The `DISCOVERY` type from `POST /search` does **not** appear in this table becau
 ## Relationship to other references
 
 - `SKILL.md` §Tool strategy — preflight is part of the tooling preflight step (step 5); this file provides the reference for Agent-Reach-aware environments
+- `references/search-provider-fallback.md` — degraded-search fallback policy, execution discipline, evidence log format, and tool capability mapping
 - `references/research-pack-contract.md` — channel availability snapshot records the preflight output
 - `references/source-quality.md` — source quality rules apply after a candidate is fetched and reclassified
 - `references/source-traceability-and-claim-citation.md` — DISCOVERY is not a valid Source Register source type; only reclassified entries qualify

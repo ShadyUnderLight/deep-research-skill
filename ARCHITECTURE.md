@@ -52,7 +52,7 @@ Its job is to define the shared workflow that applies across research tasks:
 - synthesize a decision-oriented report
 - run final discipline before delivery
 
-`SKILL.md` should stay focused on workflow and shared execution discipline.
+`SKILL.md` should stay focused on workflow and shared execution discipline. Environment-specific provider fallback details live in `references/search-provider-fallback.md`; delivery trigger details live in `references/delivery-operator-note.md`.
 
 It should not keep absorbing every mature route-specific rule.
 
@@ -60,7 +60,8 @@ It should not keep absorbing every mature route-specific rule.
 
 ## Layer 2: routing layer
 
-**Primary file:** `ROUTING-MATRIX.md`
+**Primary file:** `ROUTING-MATRIX.md` (full contracts)
+**Compact index:** `references/route-index.md` (quick route selection — one short read to locate the candidate route before deep-diving into `ROUTING-MATRIX.md`)
 
 This layer answers:
 

@@ -82,6 +82,7 @@ Makes mature task families explicit so the right discipline set and delivery con
 
 ### Primary files
 - `ROUTING-MATRIX.md`
+- `references/route-index.md` (compact route selection index — read first for quick route identification)
 - `references/route-activation-and-preflight.md`
 - `evals/meta/rule-activation-and-execution-discipline.md`
 
