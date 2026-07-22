@@ -97,6 +97,10 @@ Before searching, write a compact internal plan with:
 
 Prefer a small number of high-value questions over a long list of generic ones.
 
+When creating a Research Pack (see below), it absorbs the Research Plan —
+do not write a separate plan. For tasks not requiring a Research Pack,
+use this lightweight plan as described.
+
 ## Research Pack
 
 For tasks that carry significant route, audit, recommendation, or uncertainty burden,
@@ -123,7 +127,8 @@ A Research Pack is optional (but recommended as an internal aid — use
 ### Lifecycle
 
 1. **After route selection and before evidence collection** (workflow step 3–4):
-   Create the Research Pack. Write at minimum:
+   Create the Research Pack as a `.md` file alongside the final report
+   (e.g., `<report-name>-research-pack.md`). Write at minimum:
    - Objective, Decision context, Primary route, Secondary disciplines
    - Core subquestions, Stop condition
    - Artifact contract, Required audits (as listed in `ROUTING-MATRIX.md` for the selected route)
@@ -138,7 +143,7 @@ A Research Pack is optional (but recommended as an internal aid — use
      what remains unverified)
    - Updated Uncertainty register (unresolved items and why they matter)
 
-3. **Before final audit** (workflow step 9, before running audits in Final discipline):
+3. **Before final audit** (after synthesis, before running the Final discipline audits below):
    Close the remaining registers:
    - Claim register: load-bearing claims with evidence references ([Sxx], [Uxx])
    - Counter-evidence log: what could weaken, delay, qualify, or overturn the answer
@@ -147,12 +152,13 @@ A Research Pack is optional (but recommended as an internal aid — use
 
 ### Validation
 
-Validate the Research Pack after creation and after each update:
+After mid-research update, run a basic structural check:
 ```bash
 python3 scripts/validate_research_pack.py <pack-file>.md
 ```
 
-Before delivery, run strict validation:
+Before delivery, run strict validation that checks source IDs, claim references,
+and audit status consistency:
 ```bash
 python3 scripts/validate_research_pack.py <pack-file>.md --strict
 ```
@@ -496,4 +502,5 @@ A strong final answer should:
 If confidence is limited, say exactly why.
 
 If a Research Pack should have been created under the trigger conditions but was not,
-include this as a noted gap in the audit status block rather than silently omitting it.
+record this in the internal Research Pack (or in the Final discipline log if no pack exists)
+as a noted gap — do not silently omit it.
