@@ -1,0 +1,103 @@
+{
+  "version": 1,
+  "description": "Single source of truth for deep-research route identity and execution bindings. Each route maps to a ROUTING-MATRIX.md section, _ROUTE_ALIASES entries, and ROUTE_VALIDATORS keys. DO NOT edit without syncing code and docs.",
+  "last_reviewed": "2026-07-22",
+  "routes": [
+    {
+      "id": "provider-selection",
+      "display_name": "Provider / Vendor Selection",
+      "category": "specialized",
+      "aliases": ["provider selection", "vendor selection", "provider / vendor selection"],
+      "required_audits": ["option-selection-final-audit", "source-traceability", "final-audit"],
+      "hard_fail_keywords": ["stale anchor products", "accessibility as side note", "vendor overview instead of choice memo"]
+    },
+    {
+      "id": "market-entry",
+      "display_name": "Market Entry / Regional Expansion",
+      "category": "specialized",
+      "aliases": ["market entry", "regional expansion", "market entry / regional expansion"],
+      "required_audits": ["option-selection-final-audit", "source-traceability", "final-audit"],
+      "hard_fail_keywords": ["generic market overview", "country notes without unified comparison", "expansion without hard gates", "hub/beachhead/expansion collapsed", "skips country-competition stage", "inconsistent country diligence", "recommendation-constraint mismatch"]
+    },
+    {
+      "id": "market-outlook",
+      "display_name": "Market Outlook / Industry Evolution",
+      "category": "specialized",
+      "aliases": ["market outlook", "industry evolution", "market outlook / industry evolution"],
+      "required_audits": ["market-outlook-audit", "forward-looking-claims", "source-traceability", "final-audit"],
+      "hard_fail_keywords": ["industry overview instead of outlook", "mixed facts and scenario assumptions", "forecasts without scenario structure", "hidden stakeholder implications", "wrong route for ranking/selection tasks"]
+    },
+    {
+      "id": "competitive-positioning",
+      "display_name": "First-tier / Top-tier / Competitive Positioning",
+      "category": "specialized",
+      "aliases": ["first-tier", "top-tier", "competitive positioning", "first-tier / top-tier / competitive positioning"],
+      "required_audits": ["source-traceability", "final-audit"],
+      "hard_fail_keywords": ["loose tier labels", "dimensions collapsed into prestige", "unequally treated evidence types"]
+    },
+    {
+      "id": "constrained-choice",
+      "display_name": "Constrained Choice / Shortlist / Option Selection",
+      "category": "specialized",
+      "aliases": ["constrained choice", "constrained choice / shortlist", "shortlist", "option selection", "constrained choice / shortlist / option selection"],
+      "required_audits": ["option-selection-final-audit", "final-audit"],
+      "hard_fail_keywords": ["recommendation without shortlist", "unlabeled numbers", "descriptive blurbs instead of choice memo", "background-first drift"]
+    },
+    {
+      "id": "regulatory-analysis",
+      "display_name": "Regulatory / Policy Impact Analysis",
+      "category": "specialized",
+      "aliases": ["regulatory analysis", "regulatory / policy impact", "regulatory / policy impact analysis"],
+      "required_audits": ["regulatory-analysis-audit", "source-traceability", "final-audit"],
+      "hard_fail_keywords": ["regulations without business impact", "regulatory text confused with media", "false precision on timing", "ignored enforcement reality", "jurisdictions treated as equivalent", "binary risk instead of graduated"]
+    },
+    {
+      "id": "equipment-selection",
+      "display_name": "Equipment Selection / Procurement / Home-server Planning",
+      "category": "specialized",
+      "aliases": ["equipment selection", "equipment selection / procurement", "equipment selection / procurement / home-server planning", "procurement", "home-server planning", "nas", "nas / home server", "homelab"],
+      "required_audits": ["option-selection-final-audit", "final-audit"],
+      "hard_fail_keywords": ["hardware overview instead of procurement", "budget without inclusion assumptions", "hardware and system not bound", "operating costs as side notes", "missing workload segmentation", "benchmark performance without method disclosure"]
+    },
+    {
+      "id": "technical-deep-dive",
+      "display_name": "Technical Deep-dive / Architecture Analysis",
+      "category": "specialized",
+      "aliases": ["technical deep-dive", "architecture analysis", "technical-deep-dive"],
+      "required_audits": ["technical-analysis-audit", "source-traceability", "final-audit"],
+      "hard_fail_keywords": ["technical survey without judgment", "compares architectures without dimensions", "stale technical state", "vendor claims as confirmed facts", "feasibility without viability evidence", "roadmaps without announced vs shipped separation"]
+    },
+    {
+      "id": "listed-company",
+      "display_name": "Listed Company / Investment-style Research",
+      "category": "specialized",
+      "aliases": ["listed company", "investment-style research", "listed company / investment-style research"],
+      "required_audits": ["listed-company-report", "source-traceability", "final-audit"],
+      "hard_fail_keywords": ["mixed reported and forward estimates", "undated financial numbers", "missing research anchor", "missing market snapshot", "market-position without scope", "valuation substitutes for business evidence", "strong claims without evidence", "mixed moat/monopoly/scarcity"]
+    },
+    {
+      "id": "startup-evaluation",
+      "display_name": "Private Company / Startup Evaluation",
+      "category": "specialized",
+      "aliases": ["startup", "private company", "startup evaluation", "private company evaluation", "startup / private company evaluation"],
+      "required_audits": ["startup-company-report", "source-traceability", "final-audit"],
+      "hard_fail_keywords": ["listed-company valuation for private", "unverified founder claims", "weak financials as audited", "unlabeled source reliability", "mini listed-company analysis"]
+    },
+    {
+      "id": "academic-review",
+      "display_name": "Academic / Literature Review",
+      "category": "specialized",
+      "aliases": ["academic review", "literature review", "academic / literature review"],
+      "required_audits": ["academic-analysis-audit", "source-traceability", "final-audit"],
+      "hard_fail_keywords": ["preprints as peer-reviewed", "cherry-picked papers", "causation from observation", "p-values without effect sizes", "outdated research", "unlabeled venue status", "ignored publication bias"]
+    },
+    {
+      "id": "shared-workflow",
+      "display_name": "Shared-workflow (no specialized route selected)",
+      "category": "shared-workflow",
+      "aliases": ["shared-workflow", "shared workflow", "shared-workflow (no specialized route selected)"],
+      "required_audits": ["workflow-spine-audit", "final-audit"],
+      "hard_fail_keywords": ["specialized route escape hatch misuse", "missing workflow-spine-audit"]
+    }
+  ]
+}
