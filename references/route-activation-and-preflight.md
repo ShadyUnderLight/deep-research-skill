@@ -37,6 +37,8 @@ Choose the route that most strongly determines:
 
 If one route mainly changes wording while another changes structure and audit expectations, choose the latter.
 
+When multiple candidate routes remain after checking their individual "Do not use" and "Often confused with" clauses, use the **Route selection decision tree** in `ROUTING-MATRIX.md` (Steps 1-3: action burden → weight-bearing object → boundary hard-fails) before falling back to the fixed tie-breaker priority list.
+
 ## Preflight steps
 
 After identifying candidate routes and before finalizing route selection, execute these verification steps.
