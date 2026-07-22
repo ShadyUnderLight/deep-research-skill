@@ -1064,15 +1064,15 @@ Classify what the user is asking to deliver:
 
 | Action category | What the task output must do | Example question phrasings |
 |---|---|---|
-| **Select / rank / predict** | Choose among defined options; produce ranked shortlist; predict outcome or probability | "which provider should we choose", "rank these teams", "predict the winner" |
-| **Enter / phase / sequence** | Decide whether/when/where to enter; produce go/no-go with gates and sequencing | "should we enter market X", "which country first", "how to phase expansion" |
-| **Judge direction / scenario** | Explain how a market or industry will evolve; produce base case + scenarios | "how will this market evolve", "what's the 12-month outlook", "industry trajectory" |
-| **Judge regulation / policy impact** | Assess regulatory environment; analyze compliance impact on business | "impact of EU AI Act on industry", "export control effects on revenue" |
-| **Judge listed-company value** | Evaluate investment thesis; assess valuation; produce public-market judgment | "is XYZ stock fairly valued", "investment memo for ABC", "should we hold or sell" |
-| **Judge private-company quality** | Evaluate startup/private company; assess PMF, team, funding | "evaluate this startup", "PMF signal strength", "Series B due diligence" |
-| **Judge technical mechanism / feasibility** | Explain how technology works; compare architectures; assess feasibility | "how does X work", "compare architecture A vs B", "is Y technically feasible" |
-| **Judge academic evidence / research** | Survey literature; evaluate research quality; trace technology origins | "literature review on Z", "state of research in field W", "compare paper methodologies" |
-| **Judge positioning / tier** | Determine whether entity belongs in a top tier; assess competitive standing | "is company X first-tier", "competitive positioning analysis" |
+| **Select / rank / predict** | Choose among defined options; produce ranked shortlist; predict outcome or probability | "which provider should we choose", "rank these teams", "predict the winner" / "选哪个供应商", "哪支球队最可能夺冠" |
+| **Enter / phase / sequence** | Decide whether/when/where to enter; produce go/no-go with gates and sequencing | "should we enter market X", "which country first", "how to phase expansion" / "是否进入某市场", "如何分阶段扩张" |
+| **Judge direction / scenario** | Explain how a market or industry will evolve; produce base case + scenarios | "how will this market evolve", "what's the 12-month outlook", "industry trajectory" / "市场未来如何演化", "行业趋势" |
+| **Judge regulation / policy impact** | Assess regulatory environment; analyze compliance impact on business | "impact of EU AI Act on industry", "export control effects on revenue" / "某法规对行业的影响" |
+| **Judge listed-company value** | Evaluate investment thesis; assess valuation; produce public-market judgment | "is XYZ stock fairly valued", "investment memo for ABC", "should we hold or sell" / "某股票是否合理估值" |
+| **Judge private-company quality** | Evaluate startup/private company; assess PMF, team, funding | "evaluate this startup", "PMF signal strength", "Series B due diligence" / "评估某创业公司", "PMF 怎么样" |
+| **Judge technical mechanism / feasibility** | Explain how technology works; compare architectures; assess feasibility | "how does X work", "compare architecture A vs B", "is Y technically feasible" / "某技术原理是什么", "技术可行性分析" |
+| **Judge academic evidence / research** | Survey literature; evaluate research quality; trace technology origins | "literature review on Z", "state of research in field W", "compare paper methodologies" / "某领域文献综述", "某研究方向进展" |
+| **Judge positioning / tier** | Determine whether entity belongs in a top tier; assess competitive standing | "is company X first-tier", "competitive positioning analysis" / "某公司是不是第一梯队" |
 
 ### Step 2 — Identify weight-bearing object
 
@@ -1080,7 +1080,9 @@ Identify what the conclusion fundamentally rests on. Match to the route whose ev
 
 | Weight-bearing object | Primary route candidate |
 |---|---|
-| Defined options / teams / providers / devices | `constrained-choice`, `provider-selection`, or `equipment-selection` |
+| Defined options / teams / ranking | `constrained-choice` |
+| Providers / vendors / APIs / models | `provider-selection` |
+| Devices / hardware / build | `equipment-selection` |
 | Market / category trajectory | `market-outlook` |
 | Regulation / rules / policy | `regulatory-analysis` |
 | Listed / public company | `listed-company` |
@@ -1090,7 +1092,13 @@ Identify what the conclusion fundamentally rests on. Match to the route whose ev
 | Positioning / tier label | `competitive-positioning` |
 | Entry decision / sequencing / gates | `market-entry` |
 
-The action from Step 1 and the object from Step 2 must be consistent. If Step 1 says "select/rank" and Step 2 points to "market trajectory," stop and re-examine — the task likely requires `constrained-choice`, not `market-outlook`.
+The action from Step 1 and the object from Step 2 must be consistent. Conflict examples — stop and re-examine when:
+
+- Step 1 says "select/rank" but Step 2 points to "market trajectory" → likely `constrained-choice`, not `market-outlook`
+- Step 1 says "enter/phase" but Step 2 points to "defined options / teams" → likely `market-entry`, not `constrained-choice`
+- Step 1 says "judge listed-company value" but Step 2 points to "architecture / mechanism" → likely `listed-company` (primary) + `technical-deep-dive` (secondary), not the reverse
+- Step 1 says "judge academic evidence" but Step 2 points to "architecture / mechanism" → likely `academic-review`, not `technical-deep-dive`
+- Step 1 says "judge regulation/policy" but Step 2 points to "market trajectory" → likely `regulatory-analysis` (primary) + `market-outlook` (secondary), not the reverse
 
 ### Step 3 — Check route boundary hard-fails
 
