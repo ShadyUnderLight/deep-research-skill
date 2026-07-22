@@ -27,6 +27,11 @@ A minimal Research Pack should include:
 - objective
 - decision context
 - primary route
+- closest alternative route and boundary judgment
+- action burden (from route selection decision tree Step 1)
+- weight-bearing object (from route selection decision tree Step 2)
+- decision tree path (which steps resolved; "not needed" if per-route clauses sufficed)
+- tie-break rationale (only if Step 4 was reached)
 - secondary disciplines
 - core subquestions
 - stop condition
@@ -57,6 +62,31 @@ Which route determines structure and audit burden. Include the closest
 alternative route and boundary judgment — why this route was chosen over the
 alternative, what "Do not use" / "Often confused with" clauses were checked,
 and what would trigger a route change.
+
+### Action burden
+The action category from Step 1 of the route selection decision tree
+in `ROUTING-MATRIX.md` (e.g., "Select / rank / predict", "Judge direction
+/ scenario"). Records what the user asked the system to *do*, not just
+what topic they asked about. Note "not needed" if per-route clauses alone
+resolved the route without invoking the decision tree.
+
+### Weight-bearing object
+The object from Step 2 of the decision tree that the conclusion rests on
+(e.g., "Defined options / teams / ranking", "Market / category trajectory").
+Records what the analysis fundamentally depends on. Note "not needed" if
+the decision tree was not invoked.
+
+### Decision tree path
+A compact record of which decision tree steps produced the route
+selection. Format: "Steps 1-2 resolved to `<route-id>`; Step 3 verified;
+Step 4 not reached" or "Per-route clauses resolved without decision tree."
+If Step 4 was reached, document the exhaustion of Steps 1-3.
+
+### Tie-break rationale
+Only required when Step 4 of the decision tree was reached. Documents why
+Steps 1-3 were exhausted (two candidate routes were genuinely equivalent
+on action burden, weight-bearing object, and per-route boundary clauses)
+and how the fixed tie-breaker priority list resolved the selection.
 
 ### Secondary disciplines
 Which cross-cutting disciplines are required for this task.
@@ -139,6 +169,11 @@ A compact Research Pack may use this shape:
 - Objective
 - Decision context
 - Primary route
+- Closest alternative and boundary judgment
+- Action burden
+- Weight-bearing object
+- Decision tree path
+- Tie-break rationale (if applicable)
 - Secondary disciplines
 - Core subquestions
 - Stop condition

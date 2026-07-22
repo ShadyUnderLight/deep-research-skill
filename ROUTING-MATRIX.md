@@ -1092,6 +1092,8 @@ Identify what the conclusion fundamentally rests on. Match to the route whose ev
 | Positioning / tier label | `competitive-positioning` |
 | Entry decision / sequencing / gates | `market-entry` |
 
+When an object matches multiple rows, prefer the **most specific** row: "Providers / vendors / APIs / models" is more specific than "Defined options / teams / ranking"; "Devices / hardware / build" is more specific than "Defined options / teams / ranking". Only fall back to the general "Defined options" row when the object is not clearly a provider or a device.
+
 The action from Step 1 and the object from Step 2 must be consistent. Conflict examples — stop and re-examine when:
 
 - Step 1 says "select/rank" but Step 2 points to "market trajectory" → likely `constrained-choice`, not `market-outlook`

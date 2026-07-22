@@ -130,11 +130,16 @@ A Research Pack is optional (but recommended as an internal aid — use
    Create the Research Pack as a `.md` file alongside the final report
    (e.g., `<report-name>-research-pack.md`). Write at minimum:
    - Objective, Decision context
-   - Primary route, Closest alternative route and boundary judgment
-     (why the primary route was chosen over the alternative; verify the alternative's
-     "Do not use" / "Often confused with" clauses per
-     `references/route-activation-and-preflight.md`)
-   - Secondary disciplines
+    - Primary route, Closest alternative route and boundary judgment
+      (why the primary route was chosen over the alternative; verify the alternative's
+      "Do not use" / "Often confused with" clauses per
+      `references/route-activation-and-preflight.md`)
+    - Action burden, Weight-bearing object (from route selection decision tree
+      Steps 1-2 in `ROUTING-MATRIX.md`; note "not needed" if per-route clauses
+      alone resolved the route)
+    - Decision tree path (which steps resolved the route; if Step 4 was reached,
+      include Tie-break rationale)
+    - Secondary disciplines
    - Core subquestions, Stop condition
    - Artifact contract, Required audits (as listed in `ROUTING-MATRIX.md` for the selected route)
    - Channel availability snapshot (if API preflight was run — see `references/external-channel-preflight.md`)
