@@ -83,8 +83,11 @@ reason), or partial (with reason for incomplete execution).
 ### Final audit status
 Mark Pass, Partial, or Fail with a short reason. The status must be
 consistent with the individual audit run statuses in Required audits:
-Pass requires all audits to have run status "passed"; Fail is required
-when any audit is not-run without reason or when strict validation fails.
+Pass requires all audits to have run status "passed" or "skipped" (with
+documented reason); Partial is appropriate when some audits are not-run
+or partial with reason, or when validator has warnings but no errors;
+Fail is required when any audit is not-run without reason or when strict
+validation fails.
 
 ## Minimal example shape
 

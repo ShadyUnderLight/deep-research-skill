@@ -525,9 +525,31 @@ V4_NO_ALTERNATIVE = re.sub(
 
 V4_PASS_BUT_NOT_RUN = re.sub(
     r"- final audit — passed\n- quantitative role audit — passed",
-    "- final audit — not-run: task completed before audit available\n"
-    "- quantitative role audit — passed",
+    "- final audit — not-run\n- quantitative role audit — passed",
     V4_BASELINE,
+)
+
+V4_PASS_BUT_PARTIAL = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — partial: incomplete execution\n- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+V4_PARTIAL_NOT_RUN_NO_REASON = re.sub(
+    r"## Required audits\n- final audit — passed\n- quantitative role audit — passed\n\n## Final audit status\nPass",
+    "## Required audits\n- final audit — not-run\n- quantitative role audit — passed\n\n## Final audit status\nPartial",
+    V4_BASELINE,
+)
+
+V4_PARTIAL_VALID = re.sub(
+    r"## Final audit status\nPass",
+    "## Final audit status\nPartial",
+    re.sub(
+        r"- final audit — passed\n- quantitative role audit — passed",
+        "- final audit — not-run: task completed before audit available\n"
+        "- quantitative role audit — passed",
+        V4_BASELINE,
+    ),
 )
 
 
@@ -560,9 +582,42 @@ def test_strict_v4_pass_but_audit_not_run(d: str) -> None:
         f"V4 Pass but audit not-run: expected exit 4, got {result.returncode}\n"
         f"stdout: {result.stdout}"
     )
-    assert "not-run" in result.stdout.lower() or \
-           "inconsistent" in result.stdout.lower(), (
-        f"expected not-run/inconsistent error in output: {result.stdout}"
+    assert "not-run" in result.stdout.lower(), (
+        f"expected not-run error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_pass_but_audit_partial(d: str) -> None:
+    path = write(os.path.join(d, "v4_partial_audit.md"), V4_PASS_BUT_PARTIAL)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Pass but audit partial: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "partial" in result.stdout.lower(), (
+        f"expected partial error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_partial_not_run_no_reason(d: str) -> None:
+    path = write(os.path.join(d, "v4_p_nr_nr.md"), V4_PARTIAL_NOT_RUN_NO_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Partial + not-run no reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "should be Fail" in result.stdout.lower() or \
+           "without" in result.stdout.lower(), (
+        f"expected 'should be Fail' / 'without' error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_partial_valid(d: str) -> None:
+    path = write(os.path.join(d, "v4_partial_valid.md"), V4_PARTIAL_VALID)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V4 Partial valid (not-run with reason): expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
     )
 
 
@@ -600,6 +655,9 @@ def main() -> int:
             ("V4 valid baseline (closest alt + per-audit)", test_strict_v4_valid_baseline),
             ("V4 missing closest alternative", test_strict_v4_missing_closest_alternative),
             ("V4 Pass but audit not-run", test_strict_v4_pass_but_audit_not_run),
+            ("V4 Pass but audit partial", test_strict_v4_pass_but_audit_partial),
+            ("V4 Partial + not-run no reason", test_strict_v4_partial_not_run_no_reason),
+            ("V4 Partial valid (not-run with reason)", test_strict_v4_partial_valid),
         ]
         failures = []
         for name, fn in tests:

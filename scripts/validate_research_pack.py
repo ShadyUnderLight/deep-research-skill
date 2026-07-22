@@ -345,7 +345,7 @@ def run_strict_checks(cleaned: str) -> list[str]:
     for issue in run_issues:
         errors.append(issue)
 
-    # Audit consistency (Pass vs not-run, Fail vs all-passed)
+    # Audit consistency (Pass vs not-run/partial, Partial vs not-run-no-reason, Fail vs all-ok)
     cons_issues = _check_audit_consistency(cleaned)
     for issue in cons_issues:
         if "consider Partial" in issue:
@@ -403,6 +403,18 @@ _AUDIT_NOT_RUN_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Matches "not-run" / "未运行" NOT followed by a reason (colon, parenthesis)
+_AUDIT_NOT_RUN_NO_REASON_RE = re.compile(
+    r"\b(?:not-run|未运行)\b(?!\s*[:：（(]\s*\S)",
+    re.IGNORECASE,
+)
+
+# Matches "partial" / "部分通过" — incomplete execution
+_AUDIT_PARTIAL_RE = re.compile(
+    r"\b(?:partial|部分通过)\b",
+    re.IGNORECASE,
+)
+
 
 def _check_closest_alternative(cleaned: str) -> list[str]:
     """Check Primary route section contains boundary judgment language."""
@@ -413,6 +425,14 @@ def _check_closest_alternative(cleaned: str) -> list[str]:
         return [
             "Primary route section lacks closest-alternative / "
             "boundary judgment language"
+        ]
+    # Reject trivial hits: boundary needs substance beyond the keyword
+    stripped = " ".join(body.split())
+    if len(stripped) < 60:
+        return [
+            "Primary route section boundary judgment too brief "
+            f"({len(stripped)} chars) — must include route identity, "
+            "alternative, and reason for exclusion or switching"
         ]
     return []
 
@@ -448,29 +468,49 @@ def _check_audit_consistency(cleaned: str) -> list[str]:
     m = re.match(r"^(Pass|Partial|Fail)\b", first_line)
     if not m:
         return []
-    declared_status = m.group(1)
+    declared = m.group(1)
 
     req_body = _section_body(cleaned, "Required audits")
     issues: list[str] = []
 
-    if declared_status == "Pass" and req_body:
-        # Find any not-run audit
-        not_run_hits = _AUDIT_NOT_RUN_RE.findall(req_body)
-        if not_run_hits:
+    if not req_body:
+        return issues
+
+    has_partial = bool(_AUDIT_PARTIAL_RE.search(req_body))
+    has_not_run = bool(_AUDIT_NOT_RUN_RE.search(req_body))
+    has_not_run_no_reason = bool(_AUDIT_NOT_RUN_NO_REASON_RE.search(req_body))
+
+    if declared == "Pass":
+        if has_partial:
             issues.append(
-                f"Final audit status is 'Pass' but Required audits "
-                f"contain not-run item(s) — status inconsistent"
+                "Final audit status is 'Pass' but Required audits "
+                "contain partial item(s) — Pass requires all audits "
+                "fully executed (passed or skipped)"
+            )
+        if has_not_run:
+            issues.append(
+                "Final audit status is 'Pass' but Required audits "
+                "contain not-run item(s) — Pass requires all audits "
+                "to be executed (passed or skipped)"
             )
 
-    if declared_status == "Fail" and req_body:
-        # Warn if Fail is declared without any not-run audit or validator error
-        has_not_run = bool(_AUDIT_NOT_RUN_RE.search(req_body))
-        has_run_status = bool(_AUDIT_STATUS_RE.search(req_body))
-        if has_run_status and not has_not_run:
+    if declared == "Partial":
+        if has_not_run_no_reason:
             issues.append(
-                "Final audit status is 'Fail' but all Required audits "
-                "have run statuses — consider Partial if audits passed "
-                "but validator has warnings"
+                "Final audit status is 'Partial' but Required audits "
+                "contain not-run item(s) without documented reason — "
+                "should be Fail"
+            )
+
+    if declared == "Fail":
+        # Fail is appropriate when validator has errors or audits are
+        # not-run without reason. If neither condition is met, suggest
+        # Partial instead.
+        if not has_not_run_no_reason:
+            issues.append(
+                "Final audit status is 'Fail' but no not-run-without-reason "
+                "audit found — verify validator errors exist; otherwise "
+                "consider Partial"
             )
 
     return issues

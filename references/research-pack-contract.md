@@ -53,7 +53,10 @@ What the work is actually trying to answer.
 Why the answer matters and what burden the task carries.
 
 ### Primary route
-Which route determines structure and audit burden.
+Which route determines structure and audit burden. Include the closest
+alternative route and boundary judgment — why this route was chosen over the
+alternative, what "Do not use" / "Often confused with" clauses were checked,
+and what would trigger a route change.
 
 ### Secondary disciplines
 Which cross-cutting disciplines are required for this task.
@@ -91,10 +94,18 @@ This snapshot is distinct from the degraded-search log — it captures channel a
 What the final report must visibly contain.
 
 ### Required audits
-Which audits should run before delivery.
+Which audits should run before delivery. For each audit, record its run
+status — one of: passed, skipped (with reason), not-run (with reason), or
+partial (with reason for incomplete execution). The run status documents
+whether the audit was actually executed, not just listed.
 
 ### Final audit status
 Whether the report passed, partially passed, or failed audit readiness.
+The status must be consistent with the individual audit run statuses in
+Required audits: Pass requires all audits to be passed or skipped (with
+reason); Partial is for not-run/partial with reason, or validator warnings
+without errors; Fail is required when any audit is not-run without reason,
+or when strict validation fails.
 
 ## Scope
 
