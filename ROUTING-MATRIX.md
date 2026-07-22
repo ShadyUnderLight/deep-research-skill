@@ -1066,7 +1066,7 @@ Classify what the user is asking to deliver:
 |---|---|---|
 | **Select / rank / predict** | Choose among defined options; produce ranked shortlist; predict outcome or probability | "which provider should we choose", "rank these teams", "predict the winner" / "选哪个供应商", "哪支球队最可能夺冠" |
 | **Enter / phase / sequence** | Decide whether/when/where to enter; produce go/no-go with gates and sequencing | "should we enter market X", "which country first", "how to phase expansion" / "是否进入某市场", "如何分阶段扩张" |
-| **Judge direction / scenario** | Explain how a market or industry will evolve; produce base case + scenarios | "how will this market evolve", "what's the 12-month outlook", "industry trajectory" / "市场未来如何演化", "行业趋势" |
+| **Judge direction / scenario** | Explain how a market or industry will evolve; produce base case + scenarios | "how will this market evolve", "what's the 12-month outlook", "industry trajectory" / "市场未来如何演化", "怎么看这个行业", "行业趋势" |
 | **Judge regulation / policy impact** | Assess regulatory environment; analyze compliance impact on business | "impact of EU AI Act on industry", "export control effects on revenue" / "某法规对行业的影响" |
 | **Judge listed-company value** | Evaluate investment thesis; assess valuation; produce public-market judgment | "is XYZ stock fairly valued", "investment memo for ABC", "should we hold or sell" / "某股票是否合理估值" |
 | **Judge private-company quality** | Evaluate startup/private company; assess PMF, team, funding | "evaluate this startup", "PMF signal strength", "Series B due diligence" / "评估某创业公司", "PMF 怎么样" |

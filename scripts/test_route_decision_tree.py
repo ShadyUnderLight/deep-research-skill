@@ -139,20 +139,23 @@ def test_route_index_tie_breaker_annotation():
 
 def test_route_activation_references_decision_tree():
     """references/route-activation-and-preflight.md MUST reference
-    the decision tree in 'How to choose the primary route' section."""
+    the decision tree (in any section — Preflight Step 1 is the expected location)."""
     content = read_file(REPO_ROOT / "references/route-activation-and-preflight.md")
 
-    section = _section_after_heading(content, "## How to choose the primary route")
-    assert section, "'How to choose the primary route' section not found"
-
+    # Decision tree reference may be in Preflight Step 1 (after the "Do not use"
+    # clause check), not necessarily in "How to choose the primary route" section.
+    # Search the entire file.
     has_reference = (
-        "decision tree" in section.lower()
-        or "route selection decision tree" in section.lower()
-        or "ROUTING-MATRIX.md" in section
+        "decision tree" in content.lower()
+        or "route selection decision tree" in content.lower()
     )
     assert has_reference, (
-        "route-activation-and-preflight.md 'How to choose the primary route' section "
-        "must reference the decision tree in ROUTING-MATRIX.md"
+        "route-activation-and-preflight.md must reference the decision tree"
+    )
+
+    # Also verify ROUTING-MATRIX.md is mentioned (the decision tree lives there)
+    assert "ROUTING-MATRIX.md" in content, (
+        "route-activation-and-preflight.md must reference ROUTING-MATRIX.md"
     )
 
 

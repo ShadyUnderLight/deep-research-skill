@@ -37,8 +37,6 @@ Choose the route that most strongly determines:
 
 If one route mainly changes wording while another changes structure and audit expectations, choose the latter.
 
-When multiple candidate routes remain after checking their individual "Do not use" and "Often confused with" clauses, use the **Route selection decision tree** in `ROUTING-MATRIX.md` (Steps 1-3: action burden → weight-bearing object → boundary hard-fails) before falling back to the fixed tie-breaker priority list.
-
 ## Preflight steps
 
 After identifying candidate routes and before finalizing route selection, execute these verification steps.
@@ -52,6 +50,8 @@ Before committing to a route, check the route's **"Do not use"** and **"Often co
 - If the task matches a "Do not use" condition → do not use this route. Reconsider route selection.
 - If the boundary is ambiguous (the task partially overlaps with "Often confused with" routes) → document the boundary judgment: why this route still wins despite the overlap, or switch to the more appropriate route. The documentation must follow the (a)(b)(c) requirement defined in `ROUTING-MATRIX.md`'s "Route boundary resolution requirement" section — which hard-fail conditions of the alternative route were checked, why they don't apply, and under what conditions the route should be switched.
 - Do not skip this check because the route "feels right" for the topic — topic label is not the same as decision burden.
+
+After Step 1, if multiple candidate routes remain, use the **Route selection decision tree** in `ROUTING-MATRIX.md` (Steps 1-3: action burden → weight-bearing object → boundary hard-fails). The decision tree re-checks "Do not use" clauses against Step 1-2 classifications before falling back to the fixed tie-breaker priority list.
 
 ### Step 2: Secondary-route hard-fail verification
 
