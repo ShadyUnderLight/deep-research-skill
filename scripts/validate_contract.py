@@ -92,6 +92,12 @@ def _get_discipline_ids() -> set[str]:
 # ── Contract extraction ─────────────────────────────────────────────────────
 
 
+def has_contract_block(text: str) -> bool:
+    """Check whether a ```contract fenced block exists in the text,
+    regardless of whether its content is valid JSON."""
+    return bool(re.search(r"```contract\s*\n", text))
+
+
 def extract_contract_from_markdown(text: str) -> dict | None:
     """Extract a contract from a ```contract fenced code block in Markdown.
 
@@ -241,16 +247,42 @@ def validate_contract(contract: dict) -> ContractValidationResult:
                 f"boundary_judgment must be an object, got {type(boundary).__name__}"
             )
         else:
-            # Check the three required sub-fields
-            for sub_field in ["checked_conditions", "why_not_alternative", "switch_conditions"]:
-                val = boundary.get(sub_field)
-                if val is None or (isinstance(val, str) and not val.strip()) or (
-                    isinstance(val, list) and len(val) == 0
-                ):
-                    errors.append(
-                        f"boundary_judgment.{sub_field} is missing or empty. "
-                        f"This field is required when closest_alternative is declared."
-                    )
+            # Validate each sub-field with proper type checks
+            checked = boundary.get("checked_conditions")
+            if not isinstance(checked, list):
+                errors.append(
+                    f"boundary_judgment.checked_conditions must be an array, "
+                    f"got {type(checked).__name__}"
+                )
+            elif len(checked) == 0:
+                errors.append(
+                    "boundary_judgment.checked_conditions is empty. "
+                    "Must list which hard-fail conditions of the alternative were checked."
+                )
+
+            why_not = boundary.get("why_not_alternative")
+            if not isinstance(why_not, str):
+                errors.append(
+                    f"boundary_judgment.why_not_alternative must be a string, "
+                    f"got {type(why_not).__name__}"
+                )
+            elif not why_not.strip():
+                errors.append(
+                    "boundary_judgment.why_not_alternative is empty. "
+                    "Must explain why the alternative route's conditions don't apply."
+                )
+
+            switch = boundary.get("switch_conditions")
+            if not isinstance(switch, str):
+                errors.append(
+                    f"boundary_judgment.switch_conditions must be a string, "
+                    f"got {type(switch).__name__}"
+                )
+            elif not switch.strip():
+                errors.append(
+                    "boundary_judgment.switch_conditions is empty. "
+                    "Must state under what conditions the route should be switched."
+                )
 
     # 4c. Duplicate secondary routes detection
     seen_secondary: set[str] = set()
@@ -316,8 +348,11 @@ def validate_contract(contract: dict) -> ContractValidationResult:
                 f"Evidence must reference a concrete location in the artifact."
             )
 
-    # 6b. Duplicate audit ID detection
-    audit_id_list = [a.get("id", "") for a in audits if isinstance(a, dict)]
+    # 6b. Duplicate audit ID detection — only string ids
+    audit_id_list_raw = [
+        a.get("id", "") for a in audits if isinstance(a, dict)
+    ]
+    audit_id_list = [aid for aid in audit_id_list_raw if isinstance(aid, str) and aid]
     seen_audit_ids: set[str] = set()
     for aid in audit_id_list:
         if aid in seen_audit_ids:

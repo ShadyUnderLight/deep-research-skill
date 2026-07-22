@@ -58,7 +58,7 @@ from validate_table_role_labels import validate_file as vtr_validate_file
 from validate_source_label_consistency import validate_file as vsl_validate_file
 from validate_listed_company_delivery import validate_file as vlc_validate_file
 from validate_scoring_replicability import validate_file as vsr_validate_file
-from validate_contract import extract_contract_from_markdown, validate_contract
+from validate_contract import extract_contract_from_markdown, has_contract_block, validate_contract
 
 
 # ── Exit codes ──────────────────────────────────────────────────────────────
@@ -564,9 +564,18 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
 
     contract = extract_contract_from_markdown(text)
     if contract is None:
-        # No contract block — silently skip (backward compat).
-        # The standalone validate_contract.py --require-contract flag
-        # provides opt-in enforcement for CI pipelines.
+        if has_contract_block(text):
+            # A ```contract fenced block exists but the JSON is malformed
+            # or not a dict — this is a broken contract, not a missing one.
+            return CheckResult(
+                name="contract-check",
+                errors=[
+                    "Route activation contract block found but JSON is malformed "
+                    "or not a valid object. Fix the ```contract fenced block "
+                    "or remove it if not needed."
+                ],
+            )
+        # No contract block at all — silently skip (backward compat).
         return CheckResult(name="contract-check", errors=[], warnings=[])
 
     result = validate_contract(contract)
