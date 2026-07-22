@@ -37,14 +37,31 @@ For every task:
 6. run the required audits before delivery
 7. ensure target-language coherence in the final artifact when the report is user-facing
 
-If multiple routes apply, choose one primary route and attach the others as secondary disciplines.
+If multiple routes apply, choose one primary route and attach the others as secondary routes.
 
 Use the smallest complete set:
 
 - one primary route
-- up to 2–3 secondary disciplines
+- up to 2–3 cross-cutting disciplines (NOT secondary routes — see type definitions below)
+- up to 2 secondary routes (specialized routes with independent hard-fail verification)
 
 Do not activate everything. Activate the smallest set that produces a decision-useful, auditable, current, and clean final artifact.
+
+### Entity type definitions
+
+The routing system distinguishes four entity types. Use canonical ids from the registries where available.
+
+| Entity | Definition | Canonical ID Source | Examples |
+|--------|-----------|-------------------|----------|
+| **Primary Route** | Determines report structure, evidence burden, and audit burden | `schemas/route-manifest.json` | `listed-company`, `market-outlook` |
+| **Secondary Route** | A specialized route attached to the primary; has independent hard-fail verification | Same as Primary Route | `regulatory-analysis` attached to `market-outlook` |
+| **Cross-cutting Discipline** | Reusable method/rule applied across multiple routes; does NOT determine report structure | `schemas/discipline-registry.json` | `current-state`, `source-traceability` |
+| **Audit** | Verification action run against the artifact at delivery time | `checklists/*.md` (file stem) | `final-audit`, `listed-company-report` |
+
+**Key rules:**
+- Discipline ids must NOT be confused with route ids. A discipline is not a secondary route.
+- When declaring secondary routes, do NOT list cross-cutting disciplines as secondary routes.
+- When in doubt, check `schemas/discipline-registry.json` to confirm whether an id refers to a discipline or a route.
 
 ### Secondary route hard-fail requirement
 
@@ -75,7 +92,7 @@ Rules to prevent route inflation:
 
 When in doubt, declare fewer routes with verified hard-fails rather than more routes with unchecked assumptions.
 
-> **Note on terms:** "Secondary routes" in this section refers only to specialized routes used as secondary disciplines (e.g., Provider Selection attached to a Market Outlook primary), not to cross-cutting disciplines like source traceability or current-state verification. The distinction is defined in `references/route-activation-and-preflight.md` Step 2.
+> **Terminology:** See [Entity type definitions](#entity-type-definitions) above for the canonical separation of primary routes, secondary routes, cross-cutting disciplines, and audits. Cross-cutting disciplines such as `current-state` and `source-traceability` are NOT secondary routes. Their canonical ids are registered in `schemas/discipline-registry.json`.
 
 ## Route execution contract
 
