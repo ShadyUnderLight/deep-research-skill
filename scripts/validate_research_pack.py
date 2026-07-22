@@ -393,7 +393,6 @@ _STATUS_EXTRACT_RE = re.compile(
 )
 
 # Detect reason after status (colon followed by non-whitespace content)
-_REASON_AFTER_RE = re.compile(r"[:：]\s*\S")
 
 
 def _parse_audit_statuses(cleaned: str) -> list[dict]:
@@ -417,7 +416,12 @@ def _parse_audit_statuses(cleaned: str) -> list[dict]:
             continue
         status = m.group(1).lower()
         after = line[m.end():]
-        has_reason = bool(_REASON_AFTER_RE.search(after))
+        # Reason must immediately follow the status with non-trivial content.
+        # Anchored match prevents distant colons (e.g. "skipped — no; note: x").
+        # \w + CJK range requires at least one letter/ideograph, not just punctuation.
+        has_reason = bool(re.match(
+            r"\s*[:：]\s*[a-zA-Z0-9_\u4e00-\u9fff]", after
+        ))
         records.append({"line": line, "status": status, "has_reason": has_reason})
     return records
 

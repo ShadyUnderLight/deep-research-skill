@@ -601,6 +601,22 @@ V4_NOT_RUN_REASON_MENTIONS_STATUS = re.sub(
     V4_BASELINE,
 )
 
+# Distant colon must not fake a reason (anchored match)
+V4_DISTANT_COLON_FAKE_REASON = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — skipped — no reason; note: none\n"
+    "- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+# Punctuation-only reason must not count as documented reason
+V4_PUNCT_ONLY_REASON = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — skipped: ; note: none\n"
+    "- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
 
 def test_strict_v4_valid_baseline(d: str) -> None:
     path = write(os.path.join(d, "v4_valid.md"), V4_BASELINE)
@@ -759,6 +775,35 @@ def test_strict_v4_not_run_reason_mentions_status(d: str) -> None:
     )
 
 
+def test_strict_v4_distant_colon_fake_reason(d: str) -> None:
+    """Distant colon (after 'note:') must not fake a reason. Reason must be
+    immediately after the status separator."""
+    path = write(os.path.join(d, "v4_dcfr.md"), V4_DISTANT_COLON_FAKE_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 distant colon fake reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "reason" in result.stdout.lower() or \
+           "skipped" in result.stdout.lower(), (
+        f"expected reason/skipped error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_punct_only_reason(d: str) -> None:
+    """Punctuation-only 'reason' (: ;) must not count as documented reason."""
+    path = write(os.path.join(d, "v4_por.md"), V4_PUNCT_ONLY_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 punct-only reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "reason" in result.stdout.lower() or \
+           "skipped" in result.stdout.lower(), (
+        f"expected reason/skipped error in output: {result.stdout}"
+    )
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as d:
         tests = [
@@ -803,6 +848,8 @@ def main() -> int:
             ("V4 closest-alt without identity", test_strict_v4_alt_no_identity),
             ("V4 reason contains status keyword", test_strict_v4_reason_contains_status_keyword),
             ("V4 not-run reason mentions status", test_strict_v4_not_run_reason_mentions_status),
+            ("V4 distant colon fake reason", test_strict_v4_distant_colon_fake_reason),
+            ("V4 punct-only reason not valid", test_strict_v4_punct_only_reason),
         ]
         failures = []
         for name, fn in tests:
