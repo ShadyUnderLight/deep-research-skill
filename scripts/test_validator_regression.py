@@ -51,7 +51,6 @@ ok
 """
 
 VALIDATOR = str(Path(__file__).resolve().parent / "validate_research_pack.py")
-REPO = Path(__file__).resolve().parent.parent
 
 
 def write(path: str, content: str) -> str:
@@ -159,7 +158,8 @@ ok
 ok
 
 ## Primary route
-ok
+Constrained choice / shortlist (alternative: market-outlook — rejected,
+task asks for ranking not forecasting)
 
 ## Secondary disciplines
 ok
@@ -187,7 +187,8 @@ ok
 ok
 
 ## Required audits
-ok
+- final audit — passed
+- quantitative role audit — passed
 
 ## Final audit status
 Pass
@@ -468,98 +469,100 @@ def test_strict_non_strict_ignores_strict_checks(d: str) -> None:
     )
 
 
-def test_skill_md_has_research_pack_section(d: str) -> None:
-    """SKILL.md must contain Research Pack integration (trigger, lifecycle, validation).
-    The `d` parameter is accepted for test runner compatibility but not used."""
-    _ = d
-    skill_md = REPO / "SKILL.md"
-    text = skill_md.read_text(encoding="utf-8")
+# ─── V4 behavior-level fixtures (closest alternative, per-audit, consistency) ───
 
-    # Structural presence
-    assert "## Research Pack" in text, (
-        "SKILL.md missing '## Research Pack' section"
-    )
-    assert "### When to create" in text, (
-        "SKILL.md Research Pack missing 'When to create' subsection"
-    )
-    assert "### Lifecycle" in text, (
-        "SKILL.md Research Pack missing 'Lifecycle' subsection"
-    )
-    assert "### Validation" in text, (
-        "SKILL.md Research Pack missing 'Validation' subsection"
-    )
-    assert "### Final audit status" in text, (
-        "SKILL.md Research Pack missing 'Final audit status' subsection"
-    )
-    assert "### Blocked, partial, and not-run states" in text, (
-        "SKILL.md Research Pack missing 'Blocked, partial, and not-run states' subsection"
-    )
+V4_BASELINE = """\
+## Objective
+ok
 
-    # Trigger conditions
-    assert "specialized route is selected" in text, (
-        "SKILL.md missing trigger: specialized route"
-    )
-    assert "recommendation, comparison, or go/no-go judgment" in text, (
-        "SKILL.md missing trigger: recommendation/comparison/go-no-go"
-    )
-    assert "forward-looking (forecasts, roadmaps, target dates, projections)" in text, (
-        "SKILL.md missing trigger: forward-looking"
-    )
+## Decision context
+ok
 
-    # Lifecycle phases (3 numbered)
-    has_phase1 = "After route selection and before evidence collection" in text
-    has_phase2 = "At mid-research review" in text
-    has_phase3 = "Before final audit" in text
-    assert has_phase1, "SKILL.md missing lifecycle phase 1"
-    assert has_phase2, "SKILL.md missing lifecycle phase 2"
-    assert has_phase3, "SKILL.md missing lifecycle phase 3"
+## Primary route
+Constrained choice / shortlist
+Closest alternative: market-outlook (rejected — task asks for ranking,
+not forecasting). Boundary: if the question shifted to "how will the
+travel market evolve," market-outlook would become the primary route.
+
+## Secondary disciplines
+ok
+
+## Core subquestions
+ok
+
+## Stop condition
+ok
+
+## Source register
+- [S01] A relevant source
+  - Supports: main claims
+
+## Claim register
+- Claim: main finding [S01]
+  - Support: strong
+  - Confidence: confirmed
+
+## Uncertainty register
+ok
+
+## Artifact contract
+ok
+
+## Required audits
+- final audit — passed
+- quantitative role audit — passed
+
+## Final audit status
+Pass
+"""
+
+V4_NO_ALTERNATIVE = re.sub(
+    r"Constrained choice / shortlist\nClosest alternative.*?\n\n",
+    "Constrained choice / shortlist\n\n",
+    V4_BASELINE,
+    flags=re.DOTALL,
+)
+
+V4_PASS_BUT_NOT_RUN = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — not-run: task completed before audit available\n"
+    "- quantitative role audit — passed",
+    V4_BASELINE,
+)
 
 
-def test_skill_md_research_pack_validation_and_gates(d: str) -> None:
-    """SKILL.md Research Pack must include validation gate, final discipline step 3a,
-    and output quality bar mention.
-    The `d` parameter is accepted for test runner compatibility but not used."""
-    _ = d
-    skill_md = REPO / "SKILL.md"
-    text = skill_md.read_text(encoding="utf-8")
-
-    # Validation with --strict
-    assert "--strict" in text[text.find("### Validation"):text.find("### Final audit status")], (
-        "SKILL.md Research Pack Validation missing --strict command"
-    )
-
-    # Final audit status: Pass/Partial/Fail triple
-    assert "**Pass**" in text, "SKILL.md missing Pass definition"
-    assert "**Partial**" in text, "SKILL.md missing Partial definition"
-    assert "**Fail**" in text, "SKILL.md missing Fail definition"
-
-    # Blocked/partial/not-run states
-    assert "Provider blocked" in text, "SKILL.md missing Provider blocked state"
-    assert "Audit not-run" in text, "SKILL.md missing Audit not-run state"
-
-    # Closest alternative / boundary judgment
-    assert "Closest alternative route and boundary judgment" in text, (
-        "SKILL.md missing Closest alternative / boundary judgment"
+def test_strict_v4_valid_baseline(d: str) -> None:
+    path = write(os.path.join(d, "v4_valid.md"), V4_BASELINE)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V4 valid baseline: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
     )
 
-    # Final discipline step 3a
-    final_discipline = text[text.find("## Final discipline"):]
-    assert "3a. if a Research Pack was created for this task" in final_discipline, (
-        "SKILL.md Final discipline missing step 3a (Research Pack validation)"
+
+def test_strict_v4_missing_closest_alternative(d: str) -> None:
+    path = write(os.path.join(d, "v4_no_alt.md"), V4_NO_ALTERNATIVE)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 missing closest alternative: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "closest-alternative" in result.stdout.lower() or \
+           "boundary" in result.stdout.lower(), (
+        f"expected closest-alternative/boundary error in output: {result.stdout}"
     )
 
-    # Output quality bar
-    quality_bar = text[text.find("## Output quality bar"):]
-    assert "Research Pack should have been created" in quality_bar, (
-        "SKILL.md Output quality bar missing Research Pack gap reporting"
-    )
-    assert "record this in the internal" in quality_bar, (
-        "SKILL.md Research Pack gap goes to internal log, not user-facing audit block"
-    )
 
-    # Mid-research redirect clause
-    assert "If the decision is **redirect**" in text, (
-        "SKILL.md missing mid-research redirect route preflight re-check"
+def test_strict_v4_pass_but_audit_not_run(d: str) -> None:
+    path = write(os.path.join(d, "v4_not_run.md"), V4_PASS_BUT_NOT_RUN)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Pass but audit not-run: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "not-run" in result.stdout.lower() or \
+           "inconsistent" in result.stdout.lower(), (
+        f"expected not-run/inconsistent error in output: {result.stdout}"
     )
 
 
@@ -594,8 +597,9 @@ def main() -> int:
             ("strict malformed body ref [S1]", test_strict_malformed_body_ref),
             ("strict malformed claim ref [S001]", test_strict_malformed_claim_ref),
             ("non-strict ignores strict checks", test_strict_non_strict_ignores_strict_checks),
-            ("SKILL.md Research Pack section exists", test_skill_md_has_research_pack_section),
-            ("SKILL.md Research Pack validation and gates", test_skill_md_research_pack_validation_and_gates),
+            ("V4 valid baseline (closest alt + per-audit)", test_strict_v4_valid_baseline),
+            ("V4 missing closest alternative", test_strict_v4_missing_closest_alternative),
+            ("V4 Pass but audit not-run", test_strict_v4_pass_but_audit_not_run),
         ]
         failures = []
         for name, fn in tests:

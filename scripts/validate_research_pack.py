@@ -335,6 +335,24 @@ def run_strict_checks(cleaned: str) -> list[str]:
         else:
             errors.append(issue)
 
+    # Closest alternative / boundary judgment
+    alt_issues = _check_closest_alternative(cleaned)
+    for issue in alt_issues:
+        errors.append(issue)
+
+    # Per-audit run statuses
+    run_issues = _check_audit_run_statuses(cleaned)
+    for issue in run_issues:
+        errors.append(issue)
+
+    # Audit consistency (Pass vs not-run, Fail vs all-passed)
+    cons_issues = _check_audit_consistency(cleaned)
+    for issue in cons_issues:
+        if "consider Partial" in issue:
+            warnings.append(issue)
+        else:
+            errors.append(issue)
+
     result: list[str] = []
     for e in errors:
         result.append(f"  ✗ {e}")
@@ -364,6 +382,98 @@ def _check_audit_status(text: str) -> list[str]:
             "Final audit status is 'Partial' — pack may not be ready for delivery"
         ]
     return []
+
+
+# ─── Strict mode: closest-alternative, per-audit, consistency ──────────────────
+
+_CLOSEST_ALT_RE = re.compile(
+    r"\b(?:alternative|closest|boundary|instead of|rather than|chosen over"
+    r"|vs\.?|versus|区别于|替代|备选|边界)\b",
+    re.IGNORECASE,
+)
+
+_AUDIT_STATUS_RE = re.compile(
+    r"\b(?:passed|skipped|not-run|partial"
+    r"|已通过|已跳过|未运行|部分通过)\b",
+    re.IGNORECASE,
+)
+
+_AUDIT_NOT_RUN_RE = re.compile(
+    r"\b(?:not-run|未运行)\b",
+    re.IGNORECASE,
+)
+
+
+def _check_closest_alternative(cleaned: str) -> list[str]:
+    """Check Primary route section contains boundary judgment language."""
+    body = _section_body(cleaned, "Primary route")
+    if not body:
+        return ["Primary route section is empty — missing route declaration"]
+    if not _CLOSEST_ALT_RE.search(body):
+        return [
+            "Primary route section lacks closest-alternative / "
+            "boundary judgment language"
+        ]
+    return []
+
+
+def _check_audit_run_statuses(cleaned: str) -> list[str]:
+    """Check Required audits section lists per-audit run statuses."""
+    body = _section_body(cleaned, "Required audits")
+    if not body:
+        return ["Required audits section is empty"]
+    lines = [l.strip() for l in body.split("\n") if l.strip()]
+
+    # Each non-empty, non-subheading line in Required audits should have a status
+    audit_lines = [l for l in lines if not l.startswith("#")]
+    unstamped: list[str] = []
+    for line in audit_lines:
+        if not _AUDIT_STATUS_RE.search(line):
+            unstamped.append(line[:60])
+
+    issues: list[str] = []
+    for u in unstamped:
+        issues.append(
+            f"Required audit missing run status: {u}"
+        )
+    return issues
+
+
+def _check_audit_consistency(cleaned: str) -> list[str]:
+    """Check Final audit status is consistent with per-audit run statuses."""
+    audit_body = _section_body(cleaned, "Final audit status")
+    if not audit_body:
+        return []
+    first_line = audit_body.split("\n")[0].strip()
+    m = re.match(r"^(Pass|Partial|Fail)\b", first_line)
+    if not m:
+        return []
+    declared_status = m.group(1)
+
+    req_body = _section_body(cleaned, "Required audits")
+    issues: list[str] = []
+
+    if declared_status == "Pass" and req_body:
+        # Find any not-run audit
+        not_run_hits = _AUDIT_NOT_RUN_RE.findall(req_body)
+        if not_run_hits:
+            issues.append(
+                f"Final audit status is 'Pass' but Required audits "
+                f"contain not-run item(s) — status inconsistent"
+            )
+
+    if declared_status == "Fail" and req_body:
+        # Warn if Fail is declared without any not-run audit or validator error
+        has_not_run = bool(_AUDIT_NOT_RUN_RE.search(req_body))
+        has_run_status = bool(_AUDIT_STATUS_RE.search(req_body))
+        if has_run_status and not has_not_run:
+            issues.append(
+                "Final audit status is 'Fail' but all Required audits "
+                "have run statuses — consider Partial if audits passed "
+                "but validator has warnings"
+            )
+
+    return issues
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
