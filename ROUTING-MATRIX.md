@@ -1133,6 +1133,8 @@ If you reach this step, explicitly state that Steps 1-3 were exhausted and docum
 
 **Borderline case — academic vs technical deep-dive:** Use academic route when the core question is about research evidence, methodology, or field progress through literature. Use technical deep-dive when the core question is about how technology works, comparing architectures, or evaluating feasibility — even if academic papers are used as sources.
 
+**Borderline case — listed-company vs technical deep-dive:** When a task about a listed company's technology is ambiguous (e.g., "analyze Nvidia's GPU architecture and competitive implications"), trace the primary question: if the user asks "how does this technology work" first → `technical-deep-dive`; if the user asks "what does this mean for the investment case" first → `listed-company`. When the question genuinely carries both investment and technical burdens equally, default to `listed-company` (primary) + `technical-deep-dive` (secondary) per conflict pair #3 — the investment judgment structurally dominates the report shape.
+
 ---
 
 ## Final check
