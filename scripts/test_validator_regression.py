@@ -585,6 +585,22 @@ V4_ALT_NO_IDENTITY = re.sub(
     flags=re.DOTALL,
 )
 
+# Reason text contains status keyword — must NOT be confused with a second status
+V4_REASON_CONTAINS_STATUS = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — skipped: partial provider outage prevented execution\n"
+    "- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+# Not-run with reason containing "not-run" in explanation
+V4_NOT_RUN_REASON_MENTIONS_STATUS = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — not-run: audit was not-run because task completed early\n"
+    "- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
 
 def test_strict_v4_valid_baseline(d: str) -> None:
     path = write(os.path.join(d, "v4_valid.md"), V4_BASELINE)
@@ -715,6 +731,34 @@ def test_strict_v4_alt_no_identity(d: str) -> None:
     )
 
 
+def test_strict_v4_reason_contains_status_keyword(d: str) -> None:
+    """Reason 'partial provider outage' must not be confused with partial status."""
+    path = write(os.path.join(d, "v4_rcs.md"), V4_REASON_CONTAINS_STATUS)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V4 reason contains status keyword: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+
+
+def test_strict_v4_not_run_reason_mentions_status(d: str) -> None:
+    """Reason mentioning 'not-run' must not trigger false 'without reason' error.
+    Pass+not-run IS an error, but it should be 'contain not-run', not 'without reason'."""
+    path = write(os.path.join(d, "v4_nrrs.md"), V4_NOT_RUN_REASON_MENTIONS_STATUS)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 not-run reason mentions status: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    # Error should come from 'contain not-run' consistency, NOT from reason scanning
+    assert "contain not-run" in result.stdout.lower(), (
+        f"expected 'contain not-run' error, got: {result.stdout}"
+    )
+    assert "without" not in result.stdout.lower(), (
+        f"unexpected 'without reason' error (reason text confused as status): {result.stdout}"
+    )
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as d:
         tests = [
@@ -757,6 +801,8 @@ def main() -> int:
             ("V4 Partial + skipped no reason", test_strict_v4_partial_skipped_no_reason),
             ("V4 fake status name (passed-source audit)", test_strict_v4_fake_status_name),
             ("V4 closest-alt without identity", test_strict_v4_alt_no_identity),
+            ("V4 reason contains status keyword", test_strict_v4_reason_contains_status_keyword),
+            ("V4 not-run reason mentions status", test_strict_v4_not_run_reason_mentions_status),
         ]
         failures = []
         for name, fn in tests:

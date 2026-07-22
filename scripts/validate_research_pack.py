@@ -384,6 +384,44 @@ def _check_audit_status(text: str) -> list[str]:
     return []
 
 
+# ─── Structured audit status parsing ────────────────────────────────────────────
+
+# Extract status after em dash separator (standard format: "audit-name — STATUS")
+_STATUS_EXTRACT_RE = re.compile(
+    r"[–—]\s*(passed|skipped|not-run|partial|已通过|已跳过|未运行|部分通过)\b",
+    re.IGNORECASE,
+)
+
+# Detect reason after status (colon followed by non-whitespace content)
+_REASON_AFTER_RE = re.compile(r"[:：]\s*\S")
+
+
+def _parse_audit_statuses(cleaned: str) -> list[dict]:
+    """Parse Required audits into structured status records.
+
+    Each record: {"line": str, "status": str|None, "has_reason": bool}
+    Status is extracted from the first em-dash-separated token.
+    has_reason is True when the status is followed by colon with content.
+    """
+    body = _section_body(cleaned, "Required audits")
+    if not body:
+        return []
+    records: list[dict] = []
+    for raw in body.split("\n"):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        m = _STATUS_EXTRACT_RE.search(line)
+        if not m:
+            records.append({"line": line, "status": None, "has_reason": False})
+            continue
+        status = m.group(1).lower()
+        after = line[m.end():]
+        has_reason = bool(_REASON_AFTER_RE.search(after))
+        records.append({"line": line, "status": status, "has_reason": has_reason})
+    return records
+
+
 # ─── Strict mode: closest-alternative, per-audit, consistency ──────────────────
 
 _CLOSEST_ALT_RE = re.compile(
@@ -404,29 +442,6 @@ _AUDIT_STATUS_RE = re.compile(
 _AUDIT_STATUS_STRUCTURED_RE = re.compile(
     r"[–—:]\s*(?:passed|skipped|not-run|partial"
     r"|已通过|已跳过|未运行|部分通过)\b",
-    re.IGNORECASE,
-)
-
-_AUDIT_NOT_RUN_RE = re.compile(
-    r"\b(?:not-run|未运行)\b",
-    re.IGNORECASE,
-)
-
-# Matches "not-run" / "未运行" NOT followed by a reason (colon, parenthesis)
-_AUDIT_NOT_RUN_NO_REASON_RE = re.compile(
-    r"\b(?:not-run|未运行)\b(?!\s*[:：（(]\s*\S)",
-    re.IGNORECASE,
-)
-
-# Matches "skipped" / "partial" / "已跳过" / "部分通过" NOT followed by a reason
-_AUDIT_SKIPPED_PARTIAL_NO_REASON_RE = re.compile(
-    r"\b(?:skipped|partial|已跳过|部分通过)\b(?!\s*[:：（(]\s*\S)",
-    re.IGNORECASE,
-)
-
-# Matches "partial" / "部分通过" with or without reason
-_AUDIT_PARTIAL_RE = re.compile(
-    r"\b(?:partial|部分通过)\b",
     re.IGNORECASE,
 )
 
@@ -489,41 +504,36 @@ def _check_closest_alternative(cleaned: str) -> list[str]:
 
 
 def _check_audit_run_statuses(cleaned: str) -> list[str]:
-    """Check Required audits section lists per-audit run statuses.
+    """Check Required audits section: each line has a status, and
+    skipped/partial/not-run statuses have a documented reason.
     Returns (errors, warnings) tuple."""
-    body = _section_body(cleaned, "Required audits")
-    if not body:
+    records = _parse_audit_statuses(cleaned)
+    if not records:
         return (["Required audits section is empty"], [])
-    lines = [l.strip() for l in body.split("\n") if l.strip()]
-
-    # Each non-empty, non-subheading line in Required audits should have a status
-    audit_lines = [l for l in lines if not l.startswith("#")]
-    unstamped: list[str] = []
-    for line in audit_lines:
-        if not _AUDIT_STATUS_STRUCTURED_RE.search(line):
-            unstamped.append(line[:60])
 
     errors: list[str] = []
-    for u in unstamped:
-        errors.append(
-            f"Required audit missing run status: {u}"
-        )
-
-    # Schema requires skipped/partial to have a documented reason
     warnings: list[str] = []
-    for line in audit_lines:
-        has_skipped_partial = _AUDIT_SKIPPED_PARTIAL_NO_REASON_RE.search(line)
-        if has_skipped_partial:
+
+    NO_REASON_STATUSES = {"skipped", "partial", "not-run",
+                          "已跳过", "部分通过", "未运行"}
+
+    for r in records:
+        if r["status"] is None:
+            errors.append(
+                f"Required audit missing run status: {r['line'][:60]}"
+            )
+        elif r["status"] in NO_REASON_STATUSES and not r["has_reason"]:
             warnings.append(
-                f"Required audit has {has_skipped_partial.group()} "
-                f"without documented reason: {line[:60]}"
+                f"Required audit has {r['status']} "
+                f"without documented reason: {r['line'][:60]}"
             )
 
     return (errors, warnings)
 
 
 def _check_audit_consistency(cleaned: str) -> list[str]:
-    """Check Final audit status is consistent with per-audit run statuses."""
+    """Check Final audit status is consistent with per-audit run statuses.
+    Uses structured status parsing to avoid false matches on reason text."""
     audit_body = _section_body(cleaned, "Final audit status")
     if not audit_body:
         return []
@@ -533,18 +543,27 @@ def _check_audit_consistency(cleaned: str) -> list[str]:
         return []
     declared = m.group(1)
 
-    req_body = _section_body(cleaned, "Required audits")
-    issues: list[str] = []
+    records = _parse_audit_statuses(cleaned)
+    if not records:
+        return []
 
-    if not req_body:
-        return issues
+    statuses = [r["status"] for r in records if r["status"] is not None]
 
-    has_partial = bool(_AUDIT_PARTIAL_RE.search(req_body))
-    has_not_run = bool(_AUDIT_NOT_RUN_RE.search(req_body))
-    has_not_run_no_reason = bool(_AUDIT_NOT_RUN_NO_REASON_RE.search(req_body))
-    has_skipped_partial_no_reason = bool(
-        _AUDIT_SKIPPED_PARTIAL_NO_REASON_RE.search(req_body)
+    has_partial = "partial" in statuses or "部分通过" in statuses
+    has_not_run = "not-run" in statuses or "未运行" in statuses
+
+    def _no_reason(*sts: str) -> bool:
+        return any(
+            r["status"] in sts and not r["has_reason"]
+            for r in records if r["status"]
+        )
+
+    has_not_run_no_reason = _no_reason("not-run", "未运行")
+    has_skipped_partial_no_reason = _no_reason(
+        "skipped", "partial", "已跳过", "部分通过"
     )
+
+    issues: list[str] = []
 
     if declared == "Pass":
         if has_partial:
@@ -582,9 +601,6 @@ def _check_audit_consistency(cleaned: str) -> list[str]:
             )
 
     if declared == "Fail":
-        # Fail is appropriate when validator has errors or audits are
-        # not-run without reason. If neither condition is met, suggest
-        # Partial instead.
         if not has_not_run_no_reason:
             issues.append(
                 "Final audit status is 'Fail' but no not-run-without-reason "
