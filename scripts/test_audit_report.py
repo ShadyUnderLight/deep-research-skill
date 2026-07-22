@@ -2467,6 +2467,50 @@ Body text with citation [S01].
             )
 
 
+class TestManifestConsistency:
+    """Verify audit_report.py ROUTE_VALIDATORS stays in sync with route-manifest.json."""
+
+    def test_routes_exist_in_manifest(self):
+        """Every route in ROUTE_VALIDATORS must exist in route-manifest.json."""
+        import json
+        manifest_path = (
+            Path(__file__).resolve().parent.parent / "schemas" / "route-manifest.json"
+        )
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        from audit_report import ROUTE_VALIDATORS
+        manifest_ids = {r["id"] for r in manifest["routes"]}
+
+        extra = set(ROUTE_VALIDATORS.keys()) - manifest_ids
+        assert not extra, (
+            f"ROUTE_VALIDATORS has routes not in manifest: {sorted(extra)}. "
+            f"Either add them to route-manifest.json or remove from ROUTE_VALIDATORS."
+        )
+
+    def test_manifest_routes_exist_in_validators(self):
+        """Every route in manifest must have a validator mapping."""
+        import json
+        manifest_path = (
+            Path(__file__).resolve().parent.parent / "schemas" / "route-manifest.json"
+        )
+        with open(manifest_path, "r", encoding="utf-8") as f:
+            manifest = json.load(f)
+
+        from audit_report import ROUTE_VALIDATORS
+
+        missing: list[str] = []
+        for route in manifest["routes"]:
+            rid = route["id"]
+            if rid not in ROUTE_VALIDATORS:
+                missing.append(rid)
+
+        assert not missing, (
+            f"Manifest routes without ROUTE_VALIDATORS mapping: {sorted(missing)}. "
+            f"Add them to audit_report.py ROUTE_VALIDATORS dict."
+        )
+
+
 if __name__ == "__main__":
     # Self-contained test runner (no external dependencies).
     # Follows the same pattern as test_report_quality_validator.py and other
@@ -2637,6 +2681,9 @@ if __name__ == "__main__":
         ("property: route normalization", TestProperties().test_route_normalization),
         ("property: explicit route matches auto", TestProperties().test_explicit_route_matches_auto),
         ("property: blocking count matches exit", TestProperties().test_blocking_count_matches_exit_code),
+        # TestManifestConsistency
+        ("consistency: all validators in manifest", TestManifestConsistency().test_routes_exist_in_manifest),
+        ("consistency: all manifest routes in validators", TestManifestConsistency().test_manifest_routes_exist_in_validators),
     ]
 
     failures: list[str] = []
