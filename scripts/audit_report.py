@@ -89,6 +89,7 @@ ValidatorFn = Callable[..., CheckResult]
 # with whitespace collapsed, so we can match regardless of formatting.
 _ROUTE_ALIASES: dict[str, str] = {
     "technical deep-dive": "technical-deep-dive",
+    "architecture analysis": "technical-deep-dive",
     "listed company / investment-style research": "listed-company",
     "listed company": "listed-company",
     "investment-style research": "listed-company",
@@ -120,6 +121,7 @@ _ROUTE_ALIASES: dict[str, str] = {
     "home-server planning": "equipment-selection",
     "nas / home server": "equipment-selection",
     "homelab": "equipment-selection",
+    "nas": "equipment-selection",
     # ── Startup / Private Company Evaluation ─────────────────
     "startup / private company evaluation": "startup-evaluation",
     "startup evaluation": "startup-evaluation",
@@ -131,6 +133,10 @@ _ROUTE_ALIASES: dict[str, str] = {
     "first-tier": "competitive-positioning",
     "top-tier": "competitive-positioning",
     "competitive positioning": "competitive-positioning",
+    # ── Academic / Literature Review ─────────────────────────
+    "academic / literature review": "academic-review",
+    "academic review": "academic-review",
+    "literature review": "academic-review",
     # ── Shared-workflow (generic fallback) ───────────────────
     "shared-workflow (no specialized route selected)": "shared-workflow",
     "shared-workflow": "shared-workflow",
