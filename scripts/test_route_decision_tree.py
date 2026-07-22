@@ -70,10 +70,19 @@ def test_decision_tree_has_four_steps():
 
 def test_tie_breaker_retains_all_routes():
     """The tie-breaker table (step 4) MUST list all 11 specialized routes
-    in the original priority order."""
+    in the original priority order, within the Step 4 subsection only."""
     content = read_file(REPO_ROOT / "ROUTING-MATRIX.md")
     section = _section_after_heading(content, "## Route selection decision tree")
     assert section, "Decision tree section not found"
+
+    # Narrow to the Step 4 subsection only
+    step4_start = section.find("### Step 4")
+    assert step4_start != -1, "Step 4 subsection not found in decision tree"
+    step4_section = section[step4_start:]
+    # Cut at next ### heading if any
+    next_h3 = re.search(r"\n### ", step4_section[1:])
+    if next_h3:
+        step4_section = step4_section[:next_h3.start() + 1]
 
     expected_routes = [
         "listed-company",
@@ -91,7 +100,7 @@ def test_tie_breaker_retains_all_routes():
 
     positions = {}
     for route_id in expected_routes:
-        pos = section.find(route_id)
+        pos = step4_section.find(route_id)
         if pos != -1:
             positions[route_id] = pos
 

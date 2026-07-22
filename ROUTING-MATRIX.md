@@ -1054,23 +1054,72 @@ Fail if:
 
 ---
 
-## Routing priority
+## Route selection decision tree
 
-If multiple primary-looking routes apply, use this order:
+When per-route boundary clauses ("Choose this route when" / "Do not use this route when" / "Often confused with") narrow candidate routes to two or more that still appear equally applicable, use this decision tree. The goal is to select the route that most strongly determines report structure, evidence burden, and audit burden — not the route with the highest fixed rank.
 
-1. listed-company / investment-style
-2. private company / startup evaluation
-3. market entry / regional expansion
-4. regulatory / policy impact analysis
-5. provider / vendor selection
-6. first-tier / competitive positioning
-7. technical deep-dive / architecture analysis
-8. equipment selection / procurement / home-server planning
-9. market outlook / industry evolution
-10. constrained choice / shortlist
-11. academic / literature review
+### Step 1 — Identify action burden
 
-Choose the route that most strongly determines report structure and audit burden.
+Classify what the user is asking to deliver:
+
+| Action category | What the task output must do | Example question phrasings |
+|---|---|---|
+| **Select / rank / predict** | Choose among defined options; produce ranked shortlist; predict outcome or probability | "which provider should we choose", "rank these teams", "predict the winner" |
+| **Enter / phase / sequence** | Decide whether/when/where to enter; produce go/no-go with gates and sequencing | "should we enter market X", "which country first", "how to phase expansion" |
+| **Judge direction / scenario** | Explain how a market or industry will evolve; produce base case + scenarios | "how will this market evolve", "what's the 12-month outlook", "industry trajectory" |
+| **Judge regulation / policy impact** | Assess regulatory environment; analyze compliance impact on business | "impact of EU AI Act on industry", "export control effects on revenue" |
+| **Judge listed-company value** | Evaluate investment thesis; assess valuation; produce public-market judgment | "is XYZ stock fairly valued", "investment memo for ABC", "should we hold or sell" |
+| **Judge private-company quality** | Evaluate startup/private company; assess PMF, team, funding | "evaluate this startup", "PMF signal strength", "Series B due diligence" |
+| **Judge technical mechanism / feasibility** | Explain how technology works; compare architectures; assess feasibility | "how does X work", "compare architecture A vs B", "is Y technically feasible" |
+| **Judge academic evidence / research** | Survey literature; evaluate research quality; trace technology origins | "literature review on Z", "state of research in field W", "compare paper methodologies" |
+| **Judge positioning / tier** | Determine whether entity belongs in a top tier; assess competitive standing | "is company X first-tier", "competitive positioning analysis" |
+
+### Step 2 — Identify weight-bearing object
+
+Identify what the conclusion fundamentally rests on. Match to the route whose evidence burden and artifact contract is designed for that object:
+
+| Weight-bearing object | Primary route candidate |
+|---|---|
+| Defined options / teams / providers / devices | `constrained-choice`, `provider-selection`, or `equipment-selection` |
+| Market / category trajectory | `market-outlook` |
+| Regulation / rules / policy | `regulatory-analysis` |
+| Listed / public company | `listed-company` |
+| Private / startup company | `startup-evaluation` |
+| Architecture / mechanism / patent | `technical-deep-dive` |
+| Academic literature / research evidence | `academic-review` |
+| Positioning / tier label | `competitive-positioning` |
+| Entry decision / sequencing / gates | `market-entry` |
+
+The action from Step 1 and the object from Step 2 must be consistent. If Step 1 says "select/rank" and Step 2 points to "market trajectory," stop and re-examine — the task likely requires `constrained-choice`, not `market-outlook`.
+
+### Step 3 — Check route boundary hard-fails
+
+For the top candidate route(s) from Steps 1-2:
+
+1. Read the route's **"Do not use this route when"** clause in the full route contract.
+2. If the task matches a "Do not use" condition → eliminate that route.
+3. Read the closest alternative route's **"Do not use"** and **"Often confused with"** clauses.
+4. If the boundary is ambiguous, document the boundary judgment per the [Route boundary resolution requirement](#route-boundary-resolution-requirement): which hard-fail conditions were checked, why they don't apply, and under what conditions the route should be switched.
+
+Do not skip this step because a route "feels right" from Steps 1-2. The per-route clauses contain domain-specific boundary rules that the decision tree's general categories cannot replace.
+
+### Step 4 — Tie-breaker (only when Steps 1-3 don't resolve)
+
+Use this fixed priority order **only** after confirming that Steps 1-3 did not produce a clear winner. This order reflects the default assumption that some evidence burdens (listed-company valuation) structurally dominate others (academic survey) when the task genuinely carries both burdens equally:
+
+1. `listed-company` / investment-style
+2. `startup-evaluation` / private company
+3. `market-entry` / regional expansion
+4. `regulatory-analysis` / policy impact
+5. `provider-selection` / vendor selection
+6. `competitive-positioning` / first-tier
+7. `technical-deep-dive` / architecture analysis
+8. `equipment-selection` / procurement / home-server planning
+9. `market-outlook` / industry evolution
+10. `constrained-choice` / shortlist
+11. `academic-review` / literature review
+
+If you reach this step, explicitly state that Steps 1-3 were exhausted and document why neither candidate route's clauses produced a clear winner.
 
 **Borderline case — private company filing for IPO:** Use private company route if not yet trading. Use listed-company route if trading has begun. Note IPO status explicitly in either case.
 
