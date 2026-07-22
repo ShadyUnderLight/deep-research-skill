@@ -15,6 +15,25 @@
       "type": "string",
       "description": "Canonical id of the closest alternative route considered and rejected"
     },
+    "boundary_judgment": {
+      "type": "object",
+      "description": "Why the primary route was chosen over the closest alternative. Required when closest_alternative is set.",
+      "properties": {
+        "checked_conditions": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Hard-fail conditions of the alternative route that were checked"
+        },
+        "why_not_alternative": {
+          "type": "string",
+          "description": "Why the alternative route's conditions do not apply to this task"
+        },
+        "switch_conditions": {
+          "type": "string",
+          "description": "Under what conditions the route should be switched to the alternative"
+        }
+      }
+    },
     "secondary_routes": {
       "type": "array",
       "description": "Specialized routes used as secondary — each has independent hard-fail verification. Must be route ids (NOT discipline ids).",
@@ -58,6 +77,12 @@
   "examples": [
     {
       "primary_route": "listed-company",
+      "closest_alternative": "competitive-positioning",
+      "boundary_judgment": {
+        "checked_conditions": ["uses prestige labels loosely", "collapses dimensions without aggregation logic"],
+        "why_not_alternative": "Task requires investment-style judgment with valuation, not just positioning classification",
+        "switch_conditions": "If the task shifts from investment memo to pure tier classification without valuation burden"
+      },
       "secondary_routes": ["regulatory-analysis"],
       "disciplines": ["current-state", "source-traceability", "forward-looking"],
       "audits": [

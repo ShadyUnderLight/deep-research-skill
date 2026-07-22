@@ -7,11 +7,15 @@ Tests validate_contract() and extract_contract_from_markdown() across:
 - Edge cases (empty contracts, malformed JSON, missing registries)
 """
 import json
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # Add scripts/ to path for imports
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+SCRIPT = str(Path(__file__).resolve().parent / "validate_contract.py")
 
 import pytest
 from validate_contract import (
@@ -415,6 +419,11 @@ def test_validate_closest_alternative_valid():
     contract = {
         "primary_route": "listed-company",
         "closest_alternative": "competitive-positioning",
+        "boundary_judgment": {
+            "checked_conditions": ["uses prestige labels loosely"],
+            "why_not_alternative": "Task needs valuation, not just positioning",
+            "switch_conditions": "If valuation burden is removed",
+        },
         "secondary_routes": [],
         "disciplines": [],
         "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
@@ -500,19 +509,38 @@ def test_validate_secondary_without_hard_fail_audit():
                or "has no" in e.lower() for e in result.errors)
 
 
-def test_validate_secondary_with_evidence_reference():
-    """Secondary hard-fail tracking can be via evidence reference."""
+def test_validate_secondary_with_audit_id_tracking():
+    """Secondary hard-fail tracking requires an audit whose id contains the route name."""
     contract = {
         "primary_route": "market-outlook",
         "secondary_routes": ["regulatory-analysis"],
         "disciplines": [],
         "audits": [
-            {"id": "final-audit", "status": "passed",
-             "evidence": "regulatory-analysis hard-fail verified in §6"},
+            {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed",
+             "evidence": "§6 all hard-fail conditions verified"},
+            {"id": "final-audit", "status": "passed", "evidence": "§2"},
         ],
     }
     result = validate_contract(contract)
     assert result.is_valid, f"Errors: {result.errors}"
+
+
+def test_validate_secondary_hard_fail_not_run():
+    """Secondary hard-fail tracking with status=not_run should be an error."""
+    contract = {
+        "primary_route": "market-outlook",
+        "secondary_routes": ["regulatory-analysis"],
+        "disciplines": [],
+        "audits": [
+            {"id": "regulatory-analysis-secondary-hard-fail", "status": "not_run",
+             "evidence": ""},
+            {"id": "final-audit", "status": "passed", "evidence": "§2"},
+        ],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("not_run" in e.lower() or "none with status='passed'" in e.lower()
+               for e in result.errors)
 
 
 def test_validate_secondary_array_not_list():
@@ -525,6 +553,118 @@ def test_validate_secondary_array_not_list():
     result = validate_contract(contract)
     assert not result.is_valid
     assert any("array" in e.lower() for e in result.errors)
+
+
+# ── boundary_judgment tests ────────────────────────────────────────────────
+
+
+def test_boundary_judgment_missing_when_closest_set():
+    contract = {
+        "primary_route": "listed-company",
+        "closest_alternative": "competitive-positioning",
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("boundary_judgment" in e.lower() for e in result.errors)
+
+
+def test_boundary_judgment_empty_fields():
+    contract = {
+        "primary_route": "listed-company",
+        "closest_alternative": "competitive-positioning",
+        "boundary_judgment": {
+            "checked_conditions": [],
+            "why_not_alternative": "",
+            "switch_conditions": "",
+        },
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    # Should have errors for empty checked_conditions and empty strings
+    assert len(result.errors) >= 2
+
+
+def test_boundary_judgment_valid():
+    contract = {
+        "primary_route": "listed-company",
+        "closest_alternative": "competitive-positioning",
+        "boundary_judgment": {
+            "checked_conditions": ["uses prestige labels loosely", "collapses dimensions"],
+            "why_not_alternative": "Task needs investment judgment with valuation",
+            "switch_conditions": "If valuation burden is removed from task",
+        },
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+    }
+    result = validate_contract(contract)
+    assert result.is_valid, f"Errors: {result.errors}"
+
+
+def test_boundary_judgment_not_required_without_closest():
+    contract = {
+        "primary_route": "listed-company",
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+    }
+    result = validate_contract(contract)
+    assert result.is_valid, f"Errors: {result.errors}"
+
+
+# ── Audit type guard tests ─────────────────────────────────────────────────
+
+
+def test_audit_missing_id():
+    contract = {
+        "primary_route": "listed-company",
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [
+            {"status": "passed", "evidence": "§2"},
+            {"id": "final-audit", "status": "passed", "evidence": "§2"},
+        ],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("missing" in e.lower() or "id" in e.lower() for e in result.errors)
+
+
+def test_audit_evidence_non_string():
+    contract = {
+        "primary_route": "listed-company",
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [
+            {"id": "final-audit", "status": "passed", "evidence": 1},
+        ],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("evidence" in e.lower() for e in result.errors)
+
+
+# ── --require-contract flag tests ──────────────────────────────────────────
+
+
+def test_cli_require_contract_missing():
+    """--require-contract should exit 2 when no contract block found."""
+    import subprocess
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
+        f.write("# No contract\n\nJust text.")
+        f.flush()
+        result = subprocess.run(
+            [sys.executable, str(SCRIPT), f.name, "--require-contract"],
+            capture_output=True, text=True,
+        )
+    assert "Error" in result.stdout or "Error" in result.stderr
+    assert result.returncode == 2
 
 
 # ── ContractValidationResult tests ─────────────────────────────────────────

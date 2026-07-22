@@ -58,6 +58,7 @@ from validate_table_role_labels import validate_file as vtr_validate_file
 from validate_source_label_consistency import validate_file as vsl_validate_file
 from validate_listed_company_delivery import validate_file as vlc_validate_file
 from validate_scoring_replicability import validate_file as vsr_validate_file
+from validate_contract import extract_contract_from_markdown, validate_contract
 
 
 # ── Exit codes ──────────────────────────────────────────────────────────────
@@ -544,6 +545,49 @@ def _run_secondary_route_check(path: Path, **kwargs: bool) -> CheckResult:
     return CheckResult(name="secondary-route-check", errors=[], warnings=warnings)
 
 
+def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
+    """Validate route activation contract if present in the report.
+
+    When a ```contract fenced block is found, runs full validation
+    (route/discipline separation, boundary judgment, secondary hard-fail
+    tracking, audit evidence).  When no contract block is present, this
+    is a warning (not blocking) to avoid breaking existing reports that
+    don't yet embed contracts.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        return CheckResult(
+            name="contract-check",
+            errors=[f"{path}: cannot read file — {exc}"],
+        )
+
+    contract = extract_contract_from_markdown(text)
+    if contract is None:
+        # No contract block — silently skip (backward compat).
+        # The standalone validate_contract.py --require-contract flag
+        # provides opt-in enforcement for CI pipelines.
+        return CheckResult(name="contract-check", errors=[], warnings=[])
+
+    result = validate_contract(contract)
+    if result.errors:
+        return CheckResult(
+            name="contract-check",
+            errors=[
+                f"Route activation contract is invalid ({len(result.errors)} error(s))",
+                *(f"  {e}" for e in result.errors[:5]),  # cap at 5 for readability
+            ],
+            warnings=[w for w in result.warnings],
+        )
+    if result.warnings:
+        return CheckResult(
+            name="contract-check",
+            errors=[],
+            warnings=[w for w in result.warnings],
+        )
+    return CheckResult(name="contract-check", errors=[], warnings=[])
+
+
 # ── Route → validator mapping ──────────────────────────────────────────────
 
 ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
@@ -553,6 +597,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "listed-company": [
         _run_report_quality,
@@ -561,6 +606,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "academic-review": [
         _run_report_quality,
@@ -568,6 +614,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "constrained-choice": [
         _run_report_quality,
@@ -576,6 +623,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_source_label_consistency,
         _run_scoring_replicability,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "market-outlook": [
         _run_report_quality,
@@ -584,6 +632,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_source_label_consistency,
         _run_market_outlook_monitoring_actionability,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "provider-selection": [
         _run_report_quality,
@@ -592,6 +641,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_source_label_consistency,
         _run_scoring_replicability,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "market-entry": [
         _run_report_quality,
@@ -600,6 +650,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_source_label_consistency,
         _run_scoring_replicability,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "regulatory-analysis": [
         _run_report_quality,
@@ -607,6 +658,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "equipment-selection": [
         _run_report_quality,
@@ -614,6 +666,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "startup-evaluation": [
         _run_report_quality,
@@ -621,6 +674,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "competitive-positioning": [
         _run_report_quality,
@@ -628,6 +682,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "shared-workflow": [
         _run_report_quality,
@@ -635,6 +690,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
 }
 

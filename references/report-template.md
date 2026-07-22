@@ -487,10 +487,17 @@ Status block 中涉及四类实体，使用统一的 canonical id：
     ```contract
     {
       "primary_route": "listed-company",
+      "closest_alternative": "competitive-positioning",
+      "boundary_judgment": {
+        "checked_conditions": ["uses prestige labels loosely", "collapses dimensions without aggregation"],
+        "why_not_alternative": "Task requires investment judgment with valuation, not tier classification",
+        "switch_conditions": "If task shifts from investment memo to pure positioning without valuation"
+      },
       "secondary_routes": ["regulatory-analysis"],
       "disciplines": ["current-state", "source-traceability", "forward-looking"],
       "audits": [
         {"id": "listed-company-report", "status": "passed", "evidence": "§2-§6"},
+        {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "§6 verified 4 hard-fail conditions; 2 inapplicable"},
         {"id": "final-audit", "status": "passed", "evidence": "§2-§8"}
       ]
     }

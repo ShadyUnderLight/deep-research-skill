@@ -227,6 +227,31 @@ def validate_contract(contract: dict) -> ContractValidationResult:
                 f"Closest alternative must be a different route."
             )
 
+    # 4c. Boundary judgment — required when closest_alternative is set
+    boundary = contract.get("boundary_judgment")
+    if closest is not None and isinstance(closest, str) and closest in route_ids and closest != primary:
+        if boundary is None:
+            errors.append(
+                "boundary_judgment is required when closest_alternative is set. "
+                "Must include: checked_conditions (array), why_not_alternative (string), "
+                "switch_conditions (string)."
+            )
+        elif not isinstance(boundary, dict):
+            errors.append(
+                f"boundary_judgment must be an object, got {type(boundary).__name__}"
+            )
+        else:
+            # Check the three required sub-fields
+            for sub_field in ["checked_conditions", "why_not_alternative", "switch_conditions"]:
+                val = boundary.get(sub_field)
+                if val is None or (isinstance(val, str) and not val.strip()) or (
+                    isinstance(val, list) and len(val) == 0
+                ):
+                    errors.append(
+                        f"boundary_judgment.{sub_field} is missing or empty. "
+                        f"This field is required when closest_alternative is declared."
+                    )
+
     # 4c. Duplicate secondary routes detection
     seen_secondary: set[str] = set()
     for sr in secondary:
@@ -257,9 +282,26 @@ def validate_contract(contract: dict) -> ContractValidationResult:
         if not isinstance(audit, dict):
             errors.append(f"Audit entry is not an object: {audit}")
             continue
-        audit_id = audit.get("id", "(unknown)")
+
+        # Guard against missing/malformed audit fields
+        audit_id = audit.get("id")
+        if not audit_id or not isinstance(audit_id, str):
+            errors.append(
+                f"Audit entry is missing a valid string 'id': {audit!r}"
+            )
+            continue
+
         status = audit.get("status", "")
+        if not isinstance(status, str):
+            status = ""
+
         evidence = audit.get("evidence", "")
+        if not isinstance(evidence, str):
+            errors.append(
+                f"Audit '{audit_id}' evidence must be a string, "
+                f"got {type(evidence).__name__}"
+            )
+            evidence = ""
 
         if status not in VALID_AUDIT_STATUSES:
             errors.append(
@@ -283,24 +325,51 @@ def validate_contract(contract: dict) -> ContractValidationResult:
         seen_audit_ids.add(aid)
 
     # 6c. Secondary route hard-fail audit enforcement
-    # Each declared secondary route should have a corresponding audit entry
-    # that tracks its hard-fail verification (e.g., "regulatory-analysis-secondary-hard-fail")
+    # Each declared secondary route must have a corresponding audit entry
+    # with status="passed" whose id contains the secondary route name.
+    # (e.g., "regulatory-analysis-secondary-hard-fail")
     if secondary:
-        audit_ids_set = set(audit_id_list)
+        # Build map: audit_id -> status for all valid audit entries
+        audit_status_map: dict[str, str] = {}
+        for a in audits:
+            if not isinstance(a, dict):
+                continue
+            aid = a.get("id", "")
+            if isinstance(aid, str) and aid:
+                st = a.get("status", "")
+                audit_status_map[aid] = st if isinstance(st, str) else ""
+
         for sr in secondary:
             if not isinstance(sr, str):
                 continue
-            # Check if any audit references this secondary route
-            has_tracking = any(
-                sr in aid or sr in a.get("evidence", "")
-                for a in audits if isinstance(a, dict)
-                for aid in [a.get("id", "")]
-            )
-            if not has_tracking:
-                errors.append(
-                    f"Secondary route '{sr}' has no hard-fail audit tracking. "
-                    f"Add an audit entry with id containing '{sr}' or referencing "
-                    f"it in the evidence column."
+            # Find audits whose id contains the secondary route name
+            matching = [
+                (aid, st) for aid, st in audit_status_map.items()
+                if sr in aid
+            ]
+            passed = [(aid, st) for aid, st in matching if st == "passed"]
+            not_passed = [(aid, st) for aid, st in matching if st != "passed"]
+
+            if not passed:
+                if not_passed:
+                    errors.append(
+                        f"Secondary route '{sr}' has audit tracking but none with "
+                        f"status='passed' (found: {[aid for aid, _ in not_passed]} "
+                        f"with statuses {[st for _, st in not_passed]}). "
+                        f"Hard-fail verification must be independently executed."
+                    )
+                else:
+                    errors.append(
+                        f"Secondary route '{sr}' has no hard-fail audit tracking. "
+                        f"Add an audit entry with status='passed' whose id contains "
+                        f"'{sr}' (e.g., '{sr}-secondary-hard-fail')."
+                    )
+            elif not_passed:
+                warnings.append(
+                    f"Secondary route '{sr}' has passed tracking "
+                    f"({[aid for aid, _ in passed]}) but also non-passed "
+                    f"entries ({[aid for aid, _ in not_passed]}). "
+                    f"All hard-fail tracking entries should be 'passed'."
                 )
 
     # 7. Shared-workflow must have at least workflow-spine-audit or final-audit
@@ -349,6 +418,12 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Treat warnings as errors (exit code 2)",
     )
+    parser.add_argument(
+        "--require-contract",
+        action="store_true",
+        help="Treat missing contract block as an error (exit code 2). "
+             "Use in CI to enforce contract presence.",
+    )
     args = parser.parse_args(argv)
 
     path = Path(args.path)
@@ -364,6 +439,9 @@ def main(argv: list[str] | None = None) -> int:
 
     contract = extract_contract_from_markdown(text)
     if contract is None:
+        if args.require_contract:
+            print(f"Error: No contract block found in {path} (--require-contract set).")
+            return 2
         print(f"No contract block found in {path}. Skipping validation.")
         return 0
 
