@@ -552,6 +552,18 @@ V4_PARTIAL_VALID = re.sub(
     ),
 )
 
+V4_PASS_SKIPPED_NO_REASON = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — skipped\n- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+V4_PASS_PARTIAL_NO_REASON = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — partial\n- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
 
 def test_strict_v4_valid_baseline(d: str) -> None:
     path = write(os.path.join(d, "v4_valid.md"), V4_BASELINE)
@@ -621,6 +633,30 @@ def test_strict_v4_partial_valid(d: str) -> None:
     )
 
 
+def test_strict_v4_pass_skipped_no_reason(d: str) -> None:
+    path = write(os.path.join(d, "v4_skip_nr.md"), V4_PASS_SKIPPED_NO_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Pass + skipped no reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "skipped" in result.stdout.lower(), (
+        f"expected skipped error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_pass_partial_no_reason(d: str) -> None:
+    path = write(os.path.join(d, "v4_part_nr.md"), V4_PASS_PARTIAL_NO_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Pass + partial no reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "partial" in result.stdout.lower(), (
+        f"expected partial error in output: {result.stdout}"
+    )
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as d:
         tests = [
@@ -658,6 +694,8 @@ def main() -> int:
             ("V4 Pass but audit partial", test_strict_v4_pass_but_audit_partial),
             ("V4 Partial + not-run no reason", test_strict_v4_partial_not_run_no_reason),
             ("V4 Partial valid (not-run with reason)", test_strict_v4_partial_valid),
+            ("V4 Pass + skipped no reason", test_strict_v4_pass_skipped_no_reason),
+            ("V4 Pass + partial no reason", test_strict_v4_pass_partial_no_reason),
         ]
         failures = []
         for name, fn in tests:

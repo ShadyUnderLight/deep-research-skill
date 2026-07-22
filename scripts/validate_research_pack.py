@@ -341,9 +341,9 @@ def run_strict_checks(cleaned: str) -> list[str]:
         errors.append(issue)
 
     # Per-audit run statuses
-    run_issues = _check_audit_run_statuses(cleaned)
-    for issue in run_issues:
-        errors.append(issue)
+    run_errs, run_warns = _check_audit_run_statuses(cleaned)
+    errors.extend(run_errs)
+    warnings.extend(run_warns)
 
     # Audit consistency (Pass vs not-run/partial, Partial vs not-run-no-reason, Fail vs all-ok)
     cons_issues = _check_audit_consistency(cleaned)
@@ -409,9 +409,22 @@ _AUDIT_NOT_RUN_NO_REASON_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Matches "partial" / "部分通过" — incomplete execution
+# Matches "skipped" / "partial" / "已跳过" / "部分通过" NOT followed by a reason
+_AUDIT_SKIPPED_PARTIAL_NO_REASON_RE = re.compile(
+    r"\b(?:skipped|partial|已跳过|部分通过)\b(?!\s*[:：（(]\s*\S)",
+    re.IGNORECASE,
+)
+
+# Matches "partial" / "部分通过" with or without reason
 _AUDIT_PARTIAL_RE = re.compile(
     r"\b(?:partial|部分通过)\b",
+    re.IGNORECASE,
+)
+
+# Require exclusion/rejection language in boundary judgment, not just keywords
+_CLOSEST_ALT_EXCLUDE_RE = re.compile(
+    r"\b(?:rejected|excluded|not applicable|not (?:a |an )?(?:fit|match|suitable)"
+    r"|排除|不适用|不适合|排除在外|改用|改为)\b",
     re.IGNORECASE,
 )
 
@@ -426,7 +439,7 @@ def _check_closest_alternative(cleaned: str) -> list[str]:
             "Primary route section lacks closest-alternative / "
             "boundary judgment language"
         ]
-    # Reject trivial hits: boundary needs substance beyond the keyword
+    # Reject trivial hits: need substance beyond the keyword
     stripped = " ".join(body.split())
     if len(stripped) < 60:
         return [
@@ -434,14 +447,23 @@ def _check_closest_alternative(cleaned: str) -> list[str]:
             f"({len(stripped)} chars) — must include route identity, "
             "alternative, and reason for exclusion or switching"
         ]
+    # Require exclusion/rejection language, not just boundary keywords
+    if not _CLOSEST_ALT_EXCLUDE_RE.search(body):
+        return [
+            "Primary route section mentions alternative/boundary but "
+            "lacks exclusion/rejection language (e.g. rejected, excluded, "
+            "not applicable, not a fit, 排除, 不适用) — boundary judgment "
+            "must explain why the alternative was not chosen"
+        ]
     return []
 
 
 def _check_audit_run_statuses(cleaned: str) -> list[str]:
-    """Check Required audits section lists per-audit run statuses."""
+    """Check Required audits section lists per-audit run statuses.
+    Returns (errors, warnings) tuple."""
     body = _section_body(cleaned, "Required audits")
     if not body:
-        return ["Required audits section is empty"]
+        return (["Required audits section is empty"], [])
     lines = [l.strip() for l in body.split("\n") if l.strip()]
 
     # Each non-empty, non-subheading line in Required audits should have a status
@@ -451,12 +473,23 @@ def _check_audit_run_statuses(cleaned: str) -> list[str]:
         if not _AUDIT_STATUS_RE.search(line):
             unstamped.append(line[:60])
 
-    issues: list[str] = []
+    errors: list[str] = []
     for u in unstamped:
-        issues.append(
+        errors.append(
             f"Required audit missing run status: {u}"
         )
-    return issues
+
+    # Schema requires skipped/partial to have a documented reason
+    warnings: list[str] = []
+    for line in audit_lines:
+        has_skipped_partial = _AUDIT_SKIPPED_PARTIAL_NO_REASON_RE.search(line)
+        if has_skipped_partial:
+            warnings.append(
+                f"Required audit has {has_skipped_partial.group()} "
+                f"without documented reason: {line[:60]}"
+            )
+
+    return (errors, warnings)
 
 
 def _check_audit_consistency(cleaned: str) -> list[str]:
@@ -479,6 +512,9 @@ def _check_audit_consistency(cleaned: str) -> list[str]:
     has_partial = bool(_AUDIT_PARTIAL_RE.search(req_body))
     has_not_run = bool(_AUDIT_NOT_RUN_RE.search(req_body))
     has_not_run_no_reason = bool(_AUDIT_NOT_RUN_NO_REASON_RE.search(req_body))
+    has_skipped_partial_no_reason = bool(
+        _AUDIT_SKIPPED_PARTIAL_NO_REASON_RE.search(req_body)
+    )
 
     if declared == "Pass":
         if has_partial:
@@ -492,6 +528,12 @@ def _check_audit_consistency(cleaned: str) -> list[str]:
                 "Final audit status is 'Pass' but Required audits "
                 "contain not-run item(s) — Pass requires all audits "
                 "to be executed (passed or skipped)"
+            )
+        if has_skipped_partial_no_reason:
+            issues.append(
+                "Final audit status is 'Pass' but Required audits "
+                "contain skipped/partial item(s) without documented "
+                "reason — Pass requires reason for skipped/partial"
             )
 
     if declared == "Partial":
