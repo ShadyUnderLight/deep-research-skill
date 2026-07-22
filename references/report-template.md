@@ -464,6 +464,49 @@ This symmetry matters because asymmetric structure signals to the reader that on
 - 如果路由未选择（shared-workflow 路径），列出 `workflow-spine-audit.md` 和 `final-audit.md` 的运行状态
 - **审计状态应由 validator 输出驱动**：技术类报告交付前，应使用 `scripts/audit_report.py`（route-aware 审计编排器）对报告运行一次 consolidated audit。该工具的 verdict 输出应作为最终 Route and Audit Status 区块的客观依据。如果未运行 audit wrapper，不得将任意状态默认为 ✅ Passed；必须标注为 ⚠️ Manual 或 ❌ Not Run，并附理由。
 
+#### 类型化实体说明
+
+Status block 中涉及四类实体，使用统一的 canonical id：
+
+| 实体类型 | Canonical ID 来源 | Status Block 中表现 | 示例 |
+|---------|-------------------|-------------------|------|
+| **Primary Route** | `schemas/route-manifest.json` | `**Primary route**: ...` | `listed-company` |
+| **Secondary Route** | `schemas/route-manifest.json` | `**Secondary route**: ...` + hard-fail 验证行 | `regulatory-analysis` |
+| **Discipline** (跨路由方法) | `schemas/discipline-registry.json` | 不直接显示在 status block；通过 audit 间接体现 | `current-state`, `source-traceability` |
+| **Audit** (验证动作) | `checklists/*.md` (文件 stem) | 表格行：`\| audit-name \| status \| 证据 \|` | `final-audit` |
+
+**关键区分：**
+- Secondary Route ≠ Discipline。Secondary Route 是完整路由（有独立 hard-fail），Discipline 是跨路由复用的方法/规则。
+- 不要把 `current-state`、`source-traceability` 等 discipline 误计为 secondary route。
+- 如果报告中嵌入了 ` ```contract` fenced block（JSON 格式），可以在交付前用 `scripts/validate_contract.py` 验证实体之间的一致性。
+
+#### Contract block（可选，推荐）
+
+对于需要程序化验证实体分离的场景，报告可在 Route and audit status block 附近嵌入 contract：
+
+    ```contract
+    {
+      "primary_route": "listed-company",
+      "closest_alternative": "competitive-positioning",
+      "boundary_judgment": {
+        "checked_conditions": ["uses prestige labels loosely", "collapses dimensions without aggregation"],
+        "why_not_alternative": "Task requires investment judgment with valuation, not tier classification",
+        "switch_conditions": "If task shifts from investment memo to pure positioning without valuation"
+      },
+      "secondary_routes": ["regulatory-analysis"],
+      "disciplines": ["current-state", "source-traceability", "forward-looking"],
+      "audits": [
+        {"id": "listed-company-report", "status": "passed", "evidence": "§2-§6"},
+        {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "§6 verified 4 hard-fail conditions; 2 inapplicable"},
+        {"id": "final-audit", "status": "passed", "evidence": "§2-§8"}
+      ]
+    }
+    ```
+
+验证命令：`python3 scripts/validate_contract.py report.md --require-contract`
+
+（建议在 CI 和交付前验证中始终使用 `--require-contract`。不带该 flag 时，缺失 contract 的报告会静默跳过以兼容旧报告。）
+
 ### 9. Sources
 
 - list the most important sources

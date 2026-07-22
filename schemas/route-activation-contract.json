@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deep-research-skill/schemas/route-activation-contract.json",
+  "title": "Route Activation Contract",
+  "description": "Typed, verifiable contract that separates primary route, secondary routes, cross-cutting disciplines, and audits. Generated at preflight, re-verified at delivery. Designed for embedding in Markdown ```contract fenced blocks.",
+  "version": 1,
+  "type": "object",
+  "required": ["primary_route", "secondary_routes", "disciplines", "audits"],
+  "properties": {
+    "primary_route": {
+      "type": "string",
+      "description": "Canonical route id from route-manifest.json"
+    },
+    "closest_alternative": {
+      "type": "string",
+      "description": "Canonical id of the closest alternative route considered and rejected"
+    },
+    "boundary_judgment": {
+      "type": "object",
+      "description": "Why the primary route was chosen over the closest alternative. Required when closest_alternative is set.",
+      "properties": {
+        "checked_conditions": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Hard-fail conditions of the alternative route that were checked"
+        },
+        "why_not_alternative": {
+          "type": "string",
+          "description": "Why the alternative route's conditions do not apply to this task"
+        },
+        "switch_conditions": {
+          "type": "string",
+          "description": "Under what conditions the route should be switched to the alternative"
+        }
+      }
+    },
+    "secondary_routes": {
+      "type": "array",
+      "description": "Specialized routes used as secondary — each has independent hard-fail verification. Must be route ids (NOT discipline ids).",
+      "items": {
+        "type": "string",
+        "description": "Canonical route id from route-manifest.json"
+      }
+    },
+    "disciplines": {
+      "type": "array",
+      "description": "Cross-cutting disciplines applied to this task. These are NOT routes and NOT secondary routes.",
+      "items": {
+        "type": "string",
+        "description": "Canonical discipline id from discipline-registry.json"
+      }
+    },
+    "audits": {
+      "type": "array",
+      "description": "Verification actions run against the final artifact or process artifact",
+      "items": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Audit identifier (checklist file stem without .md extension, or special audit name)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["passed", "skipped", "not_run"],
+            "description": "Execution status of this audit"
+          },
+          "evidence": {
+            "type": "string",
+            "description": "Concrete reference to evidence location in artifact. Must be non-empty when status=passed."
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "primary_route": "listed-company",
+      "closest_alternative": "competitive-positioning",
+      "boundary_judgment": {
+        "checked_conditions": ["uses prestige labels loosely", "collapses dimensions without aggregation logic"],
+        "why_not_alternative": "Task requires investment-style judgment with valuation, not just positioning classification",
+        "switch_conditions": "If the task shifts from investment memo to pure tier classification without valuation burden"
+      },
+      "secondary_routes": ["regulatory-analysis"],
+      "disciplines": ["current-state", "source-traceability", "forward-looking"],
+      "audits": [
+        {"id": "listed-company-report", "status": "passed", "evidence": "§2-§6"},
+        {"id": "source-traceability", "status": "passed", "evidence": "[S01]-[S15]"},
+        {"id": "final-audit", "status": "passed", "evidence": "§2-§8"},
+        {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "§6 verified 4 hard-fail conditions; 2 inapplicable"}
+      ]
+    }
+  ]
+}

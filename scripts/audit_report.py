@@ -58,6 +58,7 @@ from validate_table_role_labels import validate_file as vtr_validate_file
 from validate_source_label_consistency import validate_file as vsl_validate_file
 from validate_listed_company_delivery import validate_file as vlc_validate_file
 from validate_scoring_replicability import validate_file as vsr_validate_file
+from validate_contract import extract_contract_from_markdown, has_contract_block, validate_contract
 
 
 # ── Exit codes ──────────────────────────────────────────────────────────────
@@ -544,6 +545,71 @@ def _run_secondary_route_check(path: Path, **kwargs: bool) -> CheckResult:
     return CheckResult(name="secondary-route-check", errors=[], warnings=warnings)
 
 
+def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
+    """Validate route activation contract if present in the report.
+
+    When a ```contract fenced block is found, runs full validation
+    (route/discipline separation, boundary judgment, secondary hard-fail
+    tracking, audit evidence).
+
+    When no contract block is present:
+    - With require_contract=True → blocking error.
+    - With require_contract=False → silent skip (migration opt-out
+      for reports that haven't yet adopted the contract format).
+    """
+    require_contract = kwargs.get("require_contract", False)
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        return CheckResult(
+            name="contract-check",
+            errors=[f"{path}: cannot read file — {exc}"],
+        )
+
+    contract = extract_contract_from_markdown(text)
+    if contract is None:
+        if has_contract_block(text):
+            # A ```contract fenced block exists but the JSON is malformed
+            # or not a dict — this is a broken contract, not a missing one.
+            return CheckResult(
+                name="contract-check",
+                errors=[
+                    "Route activation contract block found but JSON is malformed "
+                    "or not a valid object. Fix the ```contract fenced block "
+                    "or remove it if not needed."
+                ],
+            )
+        # No contract block at all.
+        if require_contract:
+            return CheckResult(
+                name="contract-check",
+                errors=[
+                    "No route activation contract found in report "
+                    "(--require-contract is set)."
+                ],
+            )
+        # Migration opt-out: silently skip for reports without contracts.
+        return CheckResult(name="contract-check", errors=[], warnings=[])
+
+    result = validate_contract(contract)
+    if result.errors:
+        return CheckResult(
+            name="contract-check",
+            errors=[
+                f"Route activation contract is invalid ({len(result.errors)} error(s))",
+                *(f"  {e}" for e in result.errors[:5]),  # cap at 5 for readability
+            ],
+            warnings=[w for w in result.warnings],
+        )
+    if result.warnings:
+        return CheckResult(
+            name="contract-check",
+            errors=[],
+            warnings=[w for w in result.warnings],
+        )
+    return CheckResult(name="contract-check", errors=[], warnings=[])
+
+
 # ── Route → validator mapping ──────────────────────────────────────────────
 
 ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
@@ -553,6 +619,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "listed-company": [
         _run_report_quality,
@@ -561,6 +628,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "academic-review": [
         _run_report_quality,
@@ -568,6 +636,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "constrained-choice": [
         _run_report_quality,
@@ -576,6 +645,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_source_label_consistency,
         _run_scoring_replicability,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "market-outlook": [
         _run_report_quality,
@@ -584,6 +654,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_source_label_consistency,
         _run_market_outlook_monitoring_actionability,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "provider-selection": [
         _run_report_quality,
@@ -592,6 +663,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_source_label_consistency,
         _run_scoring_replicability,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "market-entry": [
         _run_report_quality,
@@ -600,6 +672,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_source_label_consistency,
         _run_scoring_replicability,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "regulatory-analysis": [
         _run_report_quality,
@@ -607,6 +680,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "equipment-selection": [
         _run_report_quality,
@@ -614,6 +688,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "startup-evaluation": [
         _run_report_quality,
@@ -621,6 +696,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "competitive-positioning": [
         _run_report_quality,
@@ -628,6 +704,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
     "shared-workflow": [
         _run_report_quality,
@@ -635,6 +712,7 @@ ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
         _run_table_role_labels,
         _run_source_label_consistency,
         _run_secondary_route_check,
+        _run_contract_check,
     ],
 }
 
@@ -753,6 +831,7 @@ def audit_report(
     route: str | None = None,
     strict: bool = False,
     allow_route_fallback: bool = False,
+    require_contract: bool = False,
 ) -> AuditVerdict:
     """Run route-aware audit on a report and return the consolidated verdict.
 
@@ -822,7 +901,7 @@ def audit_report(
     # Run each validator with shared flags as keyword arguments
     results: list[CheckResult] = []
     for validator in validators:
-        result = validator(path, strict=strict)
+        result = validator(path, strict=strict, require_contract=require_contract)
         results.append(result)
 
     return _compute_verdict(resolved_route, results)
@@ -857,11 +936,22 @@ def main(argv: list[str] | None = None) -> int:
             "a blocking error (exit 2)."
         ),
     )
+    parser.add_argument(
+        "--require-contract",
+        action="store_true",
+        default=False,
+        help=(
+            "Require a valid route activation contract in the report. "
+            "When set, missing or malformed contract blocks are blocking errors. "
+            "Use in CI to enforce contract adoption."
+        ),
+    )
     args = parser.parse_args(argv)
 
     path = Path(args.path)
     verdict = audit_report(path, route=args.route, strict=args.strict,
-                           allow_route_fallback=args.allow_route_fallback)
+                           allow_route_fallback=args.allow_route_fallback,
+                           require_contract=args.require_contract)
 
     output = format_verdict(verdict)
     print(output)
