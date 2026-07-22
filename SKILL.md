@@ -97,6 +97,114 @@ Before searching, write a compact internal plan with:
 
 Prefer a small number of high-value questions over a long list of generic ones.
 
+When creating a Research Pack (see below), it absorbs the Research Plan —
+do not write a separate plan. For tasks not requiring a Research Pack,
+use this lightweight plan as described.
+
+## Research Pack
+
+For tasks that carry significant route, audit, recommendation, or uncertainty burden,
+create a Research Pack as a process artifact.
+Read `references/research-pack-contract.md` for the contract and `schemas/research-pack.md` for the field schema.
+
+The Research Pack is not the user-facing deliverable. It is a compact internal record that makes
+route selection, source decisions, claim support, uncertainty handling, counter-evidence
+consideration, and audit readiness more recoverable than final prose alone.
+
+### When to create
+
+Create a Research Pack when the task meets **any** of:
+- a specialized route is selected (any of the 11 routes in `ROUTING-MATRIX.md`)
+- the task involves recommendation, comparison, or go/no-go judgment
+- the task is forward-looking (forecasts, roadmaps, target dates, projections)
+- the task is uncertainty-sensitive (high stakes, ambiguous data, conflicting sources)
+
+A Research Pack is optional (but recommended as an internal aid — use
+`references/research-pack-contract.md` as a guide) when:
+- the task is a lightweight fact query with no route or audit burden
+- the task clearly fits shared-workflow with minimal discipline requirements
+
+### Lifecycle
+
+1. **After route selection and before evidence collection** (workflow step 3–4):
+   Create the Research Pack as a `.md` file alongside the final report
+   (e.g., `<report-name>-research-pack.md`). Write at minimum:
+   - Objective, Decision context
+   - Primary route, Closest alternative route and boundary judgment
+     (why the primary route was chosen over the alternative; verify the alternative's
+     "Do not use" / "Often confused with" clauses per
+     `references/route-activation-and-preflight.md`)
+   - Secondary disciplines
+   - Core subquestions, Stop condition
+   - Artifact contract, Required audits (as listed in `ROUTING-MATRIX.md` for the selected route)
+   - Channel availability snapshot (if API preflight was run — see `references/external-channel-preflight.md`)
+   - Leave Source register, Claim register, Uncertainty register, Counter-evidence log blank for now
+
+2. **At mid-research review** (workflow step 7):
+   After reading `references/mid-research-review.md`, update the Research Pack with:
+   - Current best answer and search decision (confirm / narrow / redirect / stop)
+   - If the decision is **redirect**, re-run route preflight:
+     check "Do not use" / "Often confused with" clauses in
+     `references/route-activation-and-preflight.md`, update Primary route,
+     Closest alternative, and Required audits accordingly, and document the
+     redirect reason in the Research Pack.
+   - Source register (key sources found so far, with what each supports)
+   - Degraded-search log (if fallback was used — record provider path, trigger reason, and
+     what remains unverified)
+   - Populate the Uncertainty register (unresolved items and why they matter)
+
+ 3. **Before final audit** (after synthesis, before running the Final discipline audits below):
+    Close the remaining registers:
+    - Claim register: load-bearing claims with evidence references ([Sxx], [Uxx])
+    - Counter-evidence log: what could weaken, delay, qualify, or overturn the answer
+    - Final audit status: see below
+
+### Validation
+
+Before delivery (as part of Final discipline, after all registers are closed),
+run strict validation that checks source IDs, claim references, and audit status
+consistency:
+```bash
+python3 scripts/validate_research_pack.py <pack-file>.md --strict
+```
+
+If strict validation fails, fix the issues before proceeding. A validator-based audit
+check takes precedence over prose self-assessment. Do not claim Pass in the final
+report's Route and audit status block without validator evidence.
+
+### Final audit status
+
+Set the Final audit status based on **both** validator evidence and audit execution
+evidence — not on validator alone:
+
+- **Pass**: strict validation passes AND every Required audit was executed with
+  documented evidence (passed / skipped-with-reason).
+- **Partial**: strict validation passes but some Required audits were skipped or not run
+  with documented reason, OR strict validation has warnings but no errors.
+- **Fail**: strict validation fails (structural or semantic errors) OR a Required audit
+  was not run without documented reason.
+
+If a Required audit was declared but never executed, do not claim Pass regardless of
+validator outcome. Record each Required audit with its run status — passed, skipped
+(with reason), or not-run (with reason) — in the Required audits section of the
+Research Pack.
+
+### Blocked, partial, and not-run states
+
+Distinguish these status types so tool failures are not misrecorded as evidence failures:
+
+| State type | Where recorded | Format example |
+|---|---|---|
+| Provider blocked | Degraded-search log | `provider blocked: Agent-Reach API unreachable (connection refused)` |
+| Channel degraded | Degraded-search log | `channel degraded: Exa search quota exhausted, fell back to browser-based discovery` |
+| Audit not-run | Required audits | `regulatory-analysis-audit — not-run: task completed before audit was available` |
+| Audit partial | Required audits | `source-traceability checklist — partial: [S02] source page 404, cannot verify claim C3` |
+| Content quality failure | Final audit status | `Fail: 3 undefined source IDs ([S05], [S07], [S09])` |
+
+These states are distinct from "evidence is weak" or "confidence is low" — they record
+why a tool, channel, audit, or validation step could not complete, not why the evidence
+itself is insufficient.
+
 ## Evidence standards
 
 For key claims, prefer:
@@ -388,6 +496,12 @@ Before delivery:
 1. run the route-specific audits required by `ROUTING-MATRIX.md`
 2. run `checklists/route-activation-audit.md` when a specialized route was selected
 3. run `checklists/workflow-spine-audit.md`
+3a. if a Research Pack was created for this task, validate it before proceeding:
+    ```bash
+    python3 scripts/validate_research_pack.py <pack-file>.md --strict
+    ```
+    if validation fails, fix the Research Pack before continuing; the Final audit
+    status in the Research Pack must not claim Pass without passing strict validation
 4. run `checklists/final-audit.md`
 5. confirm that the required artifact contract is visibly satisfied:
    - if a specialized route was selected, confirm the route's artifact contract is visibly executed in the final artifact
@@ -422,3 +536,7 @@ A strong final answer should:
 - help the user decide what to do next
 
 If confidence is limited, say exactly why.
+
+If a Research Pack should have been created under the trigger conditions but was not,
+record this in the internal Research Pack (or in the Final discipline log if no pack exists)
+as a noted gap — do not silently omit it.

@@ -50,6 +50,9 @@ State why the answer matters and what decision or judgment burden it carries.
 
 ### Primary route
 State the route that most strongly determines structure and audit burden.
+Include the closest alternative route and boundary judgment — why this
+route was chosen over the alternative (verify "Do not use" / "Often confused
+with" clauses from `references/route-activation-and-preflight.md`).
 
 ### Secondary disciplines
 List only the disciplines that materially matter to the task.
@@ -73,10 +76,18 @@ Show why each unresolved point matters to the answer.
 State what the final report must visibly contain.
 
 ### Required audits
-List the audits that should run before delivery.
+List the audits that should run before delivery. For each audit, record
+its run status — one of: passed, skipped (with reason), not-run (with
+reason), or partial (with reason for incomplete execution).
 
 ### Final audit status
-Mark pass, partial, or fail with a short reason.
+Mark Pass, Partial, or Fail with a short reason. The status must be
+consistent with the individual audit run statuses in Required audits:
+Pass requires all audits to have run status "passed" or "skipped" (with
+documented reason); Partial is appropriate when some audits are not-run
+or partial with reason, or when validator has warnings but no errors;
+Fail is required when any audit is not-run without reason or when strict
+validation fails.
 
 ## Minimal example shape
 
@@ -126,6 +137,7 @@ Mark pass, partial, or fail with a short reason.
 ...
 
 ## Required audits
+- audit name — passed | skipped (reason) | not-run (reason) | partial (reason)
 ...
 
 ## Final audit status

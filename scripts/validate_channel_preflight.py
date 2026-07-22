@@ -216,7 +216,8 @@ ok
 ok
 
 ## Primary route
-ok
+Constrained choice / shortlist (alternative: market-outlook — rejected because task type mismatch; would switch if question changed,
+task type mismatch)
 
 ## Secondary disciplines
 ok
@@ -252,7 +253,7 @@ ok
 ok
 
 ## Required audits
-ok
+- channel preflight audit — passed
 
 ## Final audit status
 Pass
@@ -269,7 +270,7 @@ ok
 ok
 
 ## Primary route
-ok
+Constrained choice / shortlist (alternative: market-outlook — rejected because task type mismatch; would switch if question changed)
 
 ## Secondary disciplines
 ok
@@ -295,7 +296,7 @@ ok
 ok
 
 ## Required audits
-ok
+- final audit — passed
 
 ## Final audit status
 Pass
@@ -310,7 +311,7 @@ ok
 ok
 
 ## Primary route
-ok
+Constrained choice / shortlist (alternative: market-outlook — rejected because task type mismatch; would switch if question changed)
 
 ## Secondary disciplines
 ok
@@ -338,7 +339,7 @@ ok
 ok
 
 ## Required audits
-ok
+- final audit — passed
 
 ## Final audit status
 Pass

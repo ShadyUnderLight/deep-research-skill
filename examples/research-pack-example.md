@@ -15,6 +15,11 @@ The task is a constrained-choice memo, not a travel overview. The answer should 
 ## Primary route
 Constrained choice / shortlist
 
+Closest alternative: market-outlook (rejected — task asks "which city" not
+"what will happen to the travel market"). Boundary: if the question shifted
+to "how will travel patterns change across candidate cities," market-outlook
+would become the primary route.
+
 ## Secondary disciplines
 - source traceability
 - quantitative role labeling
@@ -70,8 +75,8 @@ Stop when the top choice, runner-up logic, and ranking-change conditions are sup
 The final memo should visibly show the comparison unit, top choice, runner-up logic, ranking-change conditions, and uncertainty that can move the decision.
 
 ## Required audits
-- final audit
-- quantitative role audit
+- final audit — passed
+- quantitative role audit — passed
 
 ## Final audit status
 Pass

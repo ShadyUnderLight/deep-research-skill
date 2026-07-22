@@ -158,7 +158,9 @@ ok
 ok
 
 ## Primary route
-ok
+Constrained choice / shortlist (alternative: market-outlook — rejected
+because task asks for ranking not forecasting; would become primary
+route if question shifted to trend projection)
 
 ## Secondary disciplines
 ok
@@ -186,7 +188,8 @@ ok
 ok
 
 ## Required audits
-ok
+- final audit — passed
+- quantitative role audit — passed
 
 ## Final audit status
 Pass
@@ -467,6 +470,340 @@ def test_strict_non_strict_ignores_strict_checks(d: str) -> None:
     )
 
 
+# ─── V4 behavior-level fixtures (closest alternative, per-audit, consistency) ───
+
+V4_BASELINE = """\
+## Objective
+ok
+
+## Decision context
+ok
+
+## Primary route
+Constrained choice / shortlist
+Closest alternative: market-outlook (rejected — task asks for ranking,
+not forecasting). Boundary: if the question shifted to "how will the
+travel market evolve," market-outlook would become the primary route.
+
+## Secondary disciplines
+ok
+
+## Core subquestions
+ok
+
+## Stop condition
+ok
+
+## Source register
+- [S01] A relevant source
+  - Supports: main claims
+
+## Claim register
+- Claim: main finding [S01]
+  - Support: strong
+  - Confidence: confirmed
+
+## Uncertainty register
+ok
+
+## Artifact contract
+ok
+
+## Required audits
+- final audit — passed
+- quantitative role audit — passed
+
+## Final audit status
+Pass
+"""
+
+V4_NO_ALTERNATIVE = re.sub(
+    r"Constrained choice / shortlist\nClosest alternative.*?\n\n",
+    "Constrained choice / shortlist\n\n",
+    V4_BASELINE,
+    flags=re.DOTALL,
+)
+
+V4_PASS_BUT_NOT_RUN = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — not-run\n- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+V4_PASS_BUT_PARTIAL = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — partial: incomplete execution\n- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+V4_PARTIAL_NOT_RUN_NO_REASON = re.sub(
+    r"## Required audits\n- final audit — passed\n- quantitative role audit — passed\n\n## Final audit status\nPass",
+    "## Required audits\n- final audit — not-run\n- quantitative role audit — passed\n\n## Final audit status\nPartial",
+    V4_BASELINE,
+)
+
+V4_PARTIAL_VALID = re.sub(
+    r"## Final audit status\nPass",
+    "## Final audit status\nPartial",
+    re.sub(
+        r"- final audit — passed\n- quantitative role audit — passed",
+        "- final audit — not-run: task completed before audit available\n"
+        "- quantitative role audit — passed",
+        V4_BASELINE,
+    ),
+)
+
+V4_PASS_SKIPPED_NO_REASON = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — skipped\n- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+V4_PASS_PARTIAL_NO_REASON = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — partial\n- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+V4_PARTIAL_SKIPPED_NO_REASON = re.sub(
+    r"## Final audit status\nPass",
+    "## Final audit status\nPartial",
+    V4_PASS_SKIPPED_NO_REASON,
+)
+
+V4_FAKE_STATUS_NAME = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- passed-source audit\n- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+V4_ALT_NO_IDENTITY = re.sub(
+    r"Closest alternative: market-outlook \(rejected.*?route\.\n",
+    "Closest alternative: was rejected. Boundary: applies to the "
+    "current domain only.\n\n",
+    V4_BASELINE,
+    flags=re.DOTALL,
+)
+
+# Reason text contains status keyword — must NOT be confused with a second status
+V4_REASON_CONTAINS_STATUS = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — skipped: partial provider outage prevented execution\n"
+    "- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+# Not-run with reason containing "not-run" in explanation
+V4_NOT_RUN_REASON_MENTIONS_STATUS = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — not-run: audit was not-run because task completed early\n"
+    "- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+# Distant colon must not fake a reason (anchored match)
+V4_DISTANT_COLON_FAKE_REASON = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — skipped — no reason; note: none\n"
+    "- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+# Punctuation-only reason must not count as documented reason
+V4_PUNCT_ONLY_REASON = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- final audit — skipped: ; note: none\n"
+    "- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+
+def test_strict_v4_valid_baseline(d: str) -> None:
+    path = write(os.path.join(d, "v4_valid.md"), V4_BASELINE)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V4 valid baseline: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+
+
+def test_strict_v4_missing_closest_alternative(d: str) -> None:
+    path = write(os.path.join(d, "v4_no_alt.md"), V4_NO_ALTERNATIVE)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 missing closest alternative: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "closest-alternative" in result.stdout.lower() or \
+           "boundary" in result.stdout.lower(), (
+        f"expected closest-alternative/boundary error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_pass_but_audit_not_run(d: str) -> None:
+    path = write(os.path.join(d, "v4_not_run.md"), V4_PASS_BUT_NOT_RUN)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Pass but audit not-run: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "not-run" in result.stdout.lower(), (
+        f"expected not-run error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_pass_but_audit_partial(d: str) -> None:
+    path = write(os.path.join(d, "v4_partial_audit.md"), V4_PASS_BUT_PARTIAL)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Pass but audit partial: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "partial" in result.stdout.lower(), (
+        f"expected partial error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_partial_not_run_no_reason(d: str) -> None:
+    path = write(os.path.join(d, "v4_p_nr_nr.md"), V4_PARTIAL_NOT_RUN_NO_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Partial + not-run no reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "should be Fail" in result.stdout.lower() or \
+           "without" in result.stdout.lower(), (
+        f"expected 'should be Fail' / 'without' error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_partial_valid(d: str) -> None:
+    path = write(os.path.join(d, "v4_partial_valid.md"), V4_PARTIAL_VALID)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V4 Partial valid (not-run with reason): expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+
+
+def test_strict_v4_pass_skipped_no_reason(d: str) -> None:
+    path = write(os.path.join(d, "v4_skip_nr.md"), V4_PASS_SKIPPED_NO_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Pass + skipped no reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "skipped" in result.stdout.lower(), (
+        f"expected skipped error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_pass_partial_no_reason(d: str) -> None:
+    path = write(os.path.join(d, "v4_part_nr.md"), V4_PASS_PARTIAL_NO_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Pass + partial no reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "partial" in result.stdout.lower(), (
+        f"expected partial error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_partial_skipped_no_reason(d: str) -> None:
+    path = write(os.path.join(d, "v4_psnr.md"), V4_PARTIAL_SKIPPED_NO_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Partial + skipped no reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "reason" in result.stdout.lower(), (
+        f"expected 'reason' error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_fake_status_name(d: str) -> None:
+    path = write(os.path.join(d, "v4_fake.md"), V4_FAKE_STATUS_NAME)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 fake status name: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "missing run status" in result.stdout.lower(), (
+        f"expected 'missing run status' error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_alt_no_identity(d: str) -> None:
+    path = write(os.path.join(d, "v4_no_id.md"), V4_ALT_NO_IDENTITY)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 alt without identity: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "identity" in result.stdout.lower() or \
+           "specific" in result.stdout.lower(), (
+        f"expected identity-related error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_reason_contains_status_keyword(d: str) -> None:
+    """Reason 'partial provider outage' must not be confused with partial status."""
+    path = write(os.path.join(d, "v4_rcs.md"), V4_REASON_CONTAINS_STATUS)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V4 reason contains status keyword: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+
+
+def test_strict_v4_not_run_reason_mentions_status(d: str) -> None:
+    """Reason mentioning 'not-run' must not trigger false 'without reason' error.
+    Pass+not-run IS an error, but it should be 'contain not-run', not 'without reason'."""
+    path = write(os.path.join(d, "v4_nrrs.md"), V4_NOT_RUN_REASON_MENTIONS_STATUS)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 not-run reason mentions status: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    # Error should come from 'contain not-run' consistency, NOT from reason scanning
+    assert "contain not-run" in result.stdout.lower(), (
+        f"expected 'contain not-run' error, got: {result.stdout}"
+    )
+    assert "without" not in result.stdout.lower(), (
+        f"unexpected 'without reason' error (reason text confused as status): {result.stdout}"
+    )
+
+
+def test_strict_v4_distant_colon_fake_reason(d: str) -> None:
+    """Distant colon (after 'note:') must not fake a reason. Reason must be
+    immediately after the status separator."""
+    path = write(os.path.join(d, "v4_dcfr.md"), V4_DISTANT_COLON_FAKE_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 distant colon fake reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "reason" in result.stdout.lower() or \
+           "skipped" in result.stdout.lower(), (
+        f"expected reason/skipped error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_punct_only_reason(d: str) -> None:
+    """Punctuation-only 'reason' (: ;) must not count as documented reason."""
+    path = write(os.path.join(d, "v4_por.md"), V4_PUNCT_ONLY_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 punct-only reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "reason" in result.stdout.lower() or \
+           "skipped" in result.stdout.lower(), (
+        f"expected reason/skipped error in output: {result.stdout}"
+    )
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as d:
         tests = [
@@ -498,6 +835,21 @@ def main() -> int:
             ("strict malformed body ref [S1]", test_strict_malformed_body_ref),
             ("strict malformed claim ref [S001]", test_strict_malformed_claim_ref),
             ("non-strict ignores strict checks", test_strict_non_strict_ignores_strict_checks),
+            ("V4 valid baseline (closest alt + per-audit)", test_strict_v4_valid_baseline),
+            ("V4 missing closest alternative", test_strict_v4_missing_closest_alternative),
+            ("V4 Pass but audit not-run", test_strict_v4_pass_but_audit_not_run),
+            ("V4 Pass but audit partial", test_strict_v4_pass_but_audit_partial),
+            ("V4 Partial + not-run no reason", test_strict_v4_partial_not_run_no_reason),
+            ("V4 Partial valid (not-run with reason)", test_strict_v4_partial_valid),
+            ("V4 Pass + skipped no reason", test_strict_v4_pass_skipped_no_reason),
+            ("V4 Pass + partial no reason", test_strict_v4_pass_partial_no_reason),
+            ("V4 Partial + skipped no reason", test_strict_v4_partial_skipped_no_reason),
+            ("V4 fake status name (passed-source audit)", test_strict_v4_fake_status_name),
+            ("V4 closest-alt without identity", test_strict_v4_alt_no_identity),
+            ("V4 reason contains status keyword", test_strict_v4_reason_contains_status_keyword),
+            ("V4 not-run reason mentions status", test_strict_v4_not_run_reason_mentions_status),
+            ("V4 distant colon fake reason", test_strict_v4_distant_colon_fake_reason),
+            ("V4 punct-only reason not valid", test_strict_v4_punct_only_reason),
         ]
         failures = []
         for name, fn in tests:

@@ -335,6 +335,24 @@ def run_strict_checks(cleaned: str) -> list[str]:
         else:
             errors.append(issue)
 
+    # Closest alternative / boundary judgment
+    alt_issues = _check_closest_alternative(cleaned)
+    for issue in alt_issues:
+        errors.append(issue)
+
+    # Per-audit run statuses
+    run_errs, run_warns = _check_audit_run_statuses(cleaned)
+    errors.extend(run_errs)
+    warnings.extend(run_warns)
+
+    # Audit consistency (Pass vs not-run/partial, Partial vs not-run-no-reason, Fail vs all-ok)
+    cons_issues = _check_audit_consistency(cleaned)
+    for issue in cons_issues:
+        if "consider Partial" in issue:
+            warnings.append(issue)
+        else:
+            errors.append(issue)
+
     result: list[str] = []
     for e in errors:
         result.append(f"  ✗ {e}")
@@ -364,6 +382,237 @@ def _check_audit_status(text: str) -> list[str]:
             "Final audit status is 'Partial' — pack may not be ready for delivery"
         ]
     return []
+
+
+# ─── Structured audit status parsing ────────────────────────────────────────────
+
+# Extract status after em dash separator (standard format: "audit-name — STATUS")
+_STATUS_EXTRACT_RE = re.compile(
+    r"[–—]\s*(passed|skipped|not-run|partial|已通过|已跳过|未运行|部分通过)\b",
+    re.IGNORECASE,
+)
+
+# Detect reason after status (colon followed by non-whitespace content)
+
+
+def _parse_audit_statuses(cleaned: str) -> list[dict]:
+    """Parse Required audits into structured status records.
+
+    Each record: {"line": str, "status": str|None, "has_reason": bool}
+    Status is extracted from the first em-dash-separated token.
+    has_reason is True when the status is followed by colon with content.
+    """
+    body = _section_body(cleaned, "Required audits")
+    if not body:
+        return []
+    records: list[dict] = []
+    for raw in body.split("\n"):
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        m = _STATUS_EXTRACT_RE.search(line)
+        if not m:
+            records.append({"line": line, "status": None, "has_reason": False})
+            continue
+        status = m.group(1).lower()
+        after = line[m.end():]
+        # Reason must immediately follow the status with non-trivial content.
+        # Anchored match prevents distant colons (e.g. "skipped — no; note: x").
+        # \w + CJK range requires at least one letter/ideograph, not just punctuation.
+        has_reason = bool(re.match(
+            r"\s*[:：]\s*[a-zA-Z0-9_\u4e00-\u9fff]", after
+        ))
+        records.append({"line": line, "status": status, "has_reason": has_reason})
+    return records
+
+
+# ─── Strict mode: closest-alternative, per-audit, consistency ──────────────────
+
+_CLOSEST_ALT_RE = re.compile(
+    r"\b(?:alternative|closest|boundary|instead of|rather than|chosen over"
+    r"|vs\.?|versus|区别于|替代|备选|边界)\b",
+    re.IGNORECASE,
+)
+
+_AUDIT_STATUS_RE = re.compile(
+    r"\b(?:passed|skipped|not-run|partial"
+    r"|已通过|已跳过|未运行|部分通过)\b",
+    re.IGNORECASE,
+)
+
+# Structured status: status must follow an em dash or colon separator.
+# The regular hyphen [-] is excluded — it matches list bullets (e.g.
+# "passed-source audit" with leading "- " is not a status stamp)
+_AUDIT_STATUS_STRUCTURED_RE = re.compile(
+    r"[–—:]\s*(?:passed|skipped|not-run|partial"
+    r"|已通过|已跳过|未运行|部分通过)\b",
+    re.IGNORECASE,
+)
+
+# Require exclusion/rejection language in boundary judgment, not just keywords
+_CLOSEST_ALT_EXCLUDE_RE = re.compile(
+    r"\b(?:rejected|excluded|not applicable|not (?:a |an )?(?:fit|match|suitable)"
+    r"|排除|不适用|不适合|排除在外|改用|改为)\b",
+    re.IGNORECASE,
+)
+
+# Require specific alternative-identity or switching-condition language.
+# Checks that the boundary judgment contains more than just "rejected" —
+# must explain why or describe when the alternative would apply.
+_CLOSEST_ALT_IDENTITY_RE = re.compile(
+    r"\b(?:would become|would apply|if\b.*\b(?:then|would|will)\b|"
+    r"when\b.*\bchanges?\b|switch to|instead would be|"
+    r"改用|转为|切换|如果.*则|当.*时|"
+    r"rejected\s*[–—]\s*(?:task|because|since|due|as)\b|"
+    r"rejected because|rejected since|rejected as|"
+    r"alternative (?:is|would be)|boundary: if)\b",
+    re.IGNORECASE,
+)
+
+
+def _check_closest_alternative(cleaned: str) -> list[str]:
+    """Check Primary route section contains boundary judgment language."""
+    body = _section_body(cleaned, "Primary route")
+    if not body:
+        return ["Primary route section is empty — missing route declaration"]
+    if not _CLOSEST_ALT_RE.search(body):
+        return [
+            "Primary route section lacks closest-alternative / "
+            "boundary judgment language"
+        ]
+    # Reject trivial hits: need substance beyond the keyword
+    stripped = " ".join(body.split())
+    if len(stripped) < 60:
+        return [
+            "Primary route section boundary judgment too brief "
+            f"({len(stripped)} chars) — must include route identity, "
+            "alternative, and reason for exclusion or switching"
+        ]
+    # Require exclusion/rejection language, not just boundary keywords
+    if not _CLOSEST_ALT_EXCLUDE_RE.search(body):
+        return [
+            "Primary route section mentions alternative/boundary but "
+            "lacks exclusion/rejection language (e.g. rejected, excluded, "
+            "not applicable, not a fit, 排除, 不适用) — boundary judgment "
+            "must explain why the alternative was not chosen"
+        ]
+    # Require specific alternative identity (named route or switching condition)
+    if not _CLOSEST_ALT_IDENTITY_RE.search(body):
+        return [
+            "Primary route section has boundary/exclusion language but "
+            "lacks specific alternative identity — must name the "
+            "alternative route or describe switching condition "
+            "(e.g. 'would become', 'if X then Y', '改用', '转为')"
+        ]
+    return []
+
+
+def _check_audit_run_statuses(cleaned: str) -> list[str]:
+    """Check Required audits section: each line has a status, and
+    skipped/partial/not-run statuses have a documented reason.
+    Returns (errors, warnings) tuple."""
+    records = _parse_audit_statuses(cleaned)
+    if not records:
+        return (["Required audits section is empty"], [])
+
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    NO_REASON_STATUSES = {"skipped", "partial", "not-run",
+                          "已跳过", "部分通过", "未运行"}
+
+    for r in records:
+        if r["status"] is None:
+            errors.append(
+                f"Required audit missing run status: {r['line'][:60]}"
+            )
+        elif r["status"] in NO_REASON_STATUSES and not r["has_reason"]:
+            warnings.append(
+                f"Required audit has {r['status']} "
+                f"without documented reason: {r['line'][:60]}"
+            )
+
+    return (errors, warnings)
+
+
+def _check_audit_consistency(cleaned: str) -> list[str]:
+    """Check Final audit status is consistent with per-audit run statuses.
+    Uses structured status parsing to avoid false matches on reason text."""
+    audit_body = _section_body(cleaned, "Final audit status")
+    if not audit_body:
+        return []
+    first_line = audit_body.split("\n")[0].strip()
+    m = re.match(r"^(Pass|Partial|Fail)\b", first_line)
+    if not m:
+        return []
+    declared = m.group(1)
+
+    records = _parse_audit_statuses(cleaned)
+    if not records:
+        return []
+
+    statuses = [r["status"] for r in records if r["status"] is not None]
+
+    has_partial = "partial" in statuses or "部分通过" in statuses
+    has_not_run = "not-run" in statuses or "未运行" in statuses
+
+    def _no_reason(*sts: str) -> bool:
+        return any(
+            r["status"] in sts and not r["has_reason"]
+            for r in records if r["status"]
+        )
+
+    has_not_run_no_reason = _no_reason("not-run", "未运行")
+    has_skipped_partial_no_reason = _no_reason(
+        "skipped", "partial", "已跳过", "部分通过"
+    )
+
+    issues: list[str] = []
+
+    if declared == "Pass":
+        if has_partial:
+            issues.append(
+                "Final audit status is 'Pass' but Required audits "
+                "contain partial item(s) — Pass requires all audits "
+                "fully executed (passed or skipped)"
+            )
+        if has_not_run:
+            issues.append(
+                "Final audit status is 'Pass' but Required audits "
+                "contain not-run item(s) — Pass requires all audits "
+                "to be executed (passed or skipped)"
+            )
+        if has_skipped_partial_no_reason:
+            issues.append(
+                "Final audit status is 'Pass' but Required audits "
+                "contain skipped/partial item(s) without documented "
+                "reason — Pass requires reason for skipped/partial"
+            )
+
+    if declared == "Partial":
+        if has_not_run_no_reason:
+            issues.append(
+                "Final audit status is 'Partial' but Required audits "
+                "contain not-run item(s) without documented reason — "
+                "should be Fail"
+            )
+        if has_skipped_partial_no_reason:
+            issues.append(
+                "Final audit status is 'Partial' but Required audits "
+                "contain skipped/partial item(s) without documented "
+                "reason — Partial requires reason for all non-passed "
+                "statuses"
+            )
+
+    if declared == "Fail":
+        if not has_not_run_no_reason:
+            issues.append(
+                "Final audit status is 'Fail' but no not-run-without-reason "
+                "audit found — verify validator errors exist; otherwise "
+                "consider Partial"
+            )
+
+    return issues
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
