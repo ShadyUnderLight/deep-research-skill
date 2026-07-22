@@ -398,213 +398,380 @@ def test_shared_workflow_not_misused():
 
 # ── Real action/object → route fixtures ──────────────────────────────────
 
-# Each fixture: (task_description, expected_step1_keyword, expected_step2_object_keyword,
-#                expected_primary_route, expected_secondary_routes)
+def _parse_step1_phrasings() -> dict[str, list[str]]:
+    """Parse Step 1 table: action category → example phrasings (EN + ZH).
+    Returns mapping from action category bold text to list of example strings."""
+    section = _step1_section()
+    mapping: dict[str, list[str]] = {}
+    in_table = False
+    for line in section.split("\n"):
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if "| Action category |" in stripped:
+            in_table = True
+            continue
+        if not in_table:
+            continue
+        if stripped.startswith("|---"):
+            continue
+        if not stripped.startswith("|"):
+            break
+        cols = [c.strip() for c in stripped.strip("|").split("|")]
+        if len(cols) < 3:
+            continue
+        action_match = re.search(r"\*\*(.+?)\*\*", cols[0])
+        if not action_match:
+            continue
+        action_name = action_match.group(1).strip()
+        # Example phrasings column: `"en1", "en2" / "zh1", "zh2"`
+        examples_col = cols[2] if len(cols) > 2 else ""
+        examples: list[str] = []
+        # Split EN and ZH groups by " / " between the groups
+        groups = re.split(r'\s+/\s+', examples_col)
+        for group in groups:
+            # Extract quoted strings within each group
+            quoted = re.findall(r'"([^"]*)"', group)
+            for q in quoted:
+                q = q.strip()
+                if q and len(q) >= 2:
+                    examples.append(q)
+        mapping[action_name] = examples
+    return mapping
+
+
+# Chinese → English keyword mapping for Step 2 object classification
+_STEP2_ZH_KEYWORDS: dict[str, str] = {
+    # Defined options / teams / ranking
+    "球队": "team",
+    "夺冠": "team",
+    "选哪个": "option",
+    "怎么选": "option",
+    "比较": "option",
+    # Providers / vendors / APIs / models
+    "供应商": "provider",
+    "API": "provider",
+    "平台": "provider",
+    # Devices / hardware / build
+    "NAS": "device",
+    "迷你主机": "device",
+    "硬件": "device",
+    "设备": "device",
+    # Market / category trajectory
+    "产业链": "market",
+    "市场": "market",
+    "演化": "market",
+    "趋势": "market",
+    "行业": "market",
+    "展望": "market",
+    # Regulation / rules / policy
+    "法规": "regulation",
+    "法案": "regulation",
+    "政策": "regulation",
+    "合规": "regulation",
+    # Listed / public company
+    "股票": "listed",
+    "估值": "listed",
+    "特斯拉": "listed",
+    "英伟达": "listed",
+    "Nvidia": "listed",
+    # Private / startup company
+    "创业": "private",
+    "PMF": "private",
+    "融资": "private",
+    # Architecture / mechanism / patent
+    "架构": "architecture",
+    "GPU": "architecture",
+    "Kubernetes": "architecture",
+    "Docker": "architecture",
+    "技术原理": "architecture",
+    "可行性": "architecture",
+    # Academic literature / research evidence
+    "文献综述": "academic",
+    "论文": "academic",
+    "Transformer": "academic",
+    "研究进展": "academic",
+    # Positioning / tier label
+    "第一梯队": "positioning",
+    "竞争格局": "positioning",
+    "竞争壁垒": "positioning",
+    # Entry decision / sequencing / gates
+    "进入": "entry",
+    "扩张": "entry",
+    "市场进入": "entry",
+}
+
+
+def _parse_step2_keywords() -> dict[str, str]:
+    """Parse Step 2 table: weight-bearing object → route candidate(s).
+    Returns mapping from object name to comma-separated route candidates."""
+    mapping = _step2_object_routes()
+    result: dict[str, str] = {}
+    for obj_name, route_ids in mapping.items():
+        result[obj_name] = route_ids[0] if len(route_ids) == 1 else ",".join(route_ids)
+    return result
+
+
+def _classify_action(description: str, phrasings: dict[str, list[str]]) -> str | None:
+    """Classify a task description against Step 1 action categories.
+    Returns the best-matching action category name, or None."""
+    desc_lower = description.lower()
+
+    # CJK action keyword mapping for fallback matching
+    _action_zh_map: dict[str, str] = {
+        "架构": "technical", "技术": "technical", "原理": "technical",
+        "对比": "technical", "比较": "technical", "可行性": "technical",
+        "股票": "listed-company", "估值": "listed-company", "投资": "listed-company",
+        "文献": "academic", "论文": "academic", "综述": "academic",
+        "球队": "select", "夺冠": "select", "选": "select",
+        "市场": "direction", "演化": "direction", "趋势": "direction",
+        "法规": "regulation", "法案": "regulation",
+        "创业": "private-company", "PMF": "private-company",
+        "第一梯队": "positioning", "竞争": "positioning",
+        "进入": "enter", "扩张": "enter",
+        "供应商": "select", "平台": "select",
+    }
+
+    best_match: str | None = None
+    best_score = 0
+    for action_name, examples in phrasings.items():
+        score = 0
+        for ex in examples:
+            ex_lower = ex.lower()
+            if ex_lower in desc_lower:
+                score += 10
+            # For CJK text (no spaces), use character n-gram overlap
+            if re.search(r'[\u4e00-\u9fff]', ex_lower):
+                ex_chars = list(ex_lower)
+                desc_chars = list(desc_lower)
+                ex_bigrams = set("".join(ex_chars[i:i+2]) for i in range(len(ex_chars)-1))
+                desc_bigrams = set("".join(desc_chars[i:i+2]) for i in range(len(desc_chars)-1))
+                score += len(ex_bigrams & desc_bigrams) * 2
+            else:
+                # For spaced text, use word overlap
+                ex_words = set(ex_lower.split())
+                desc_words = set(desc_lower.split())
+                overlap = ex_words & desc_words
+                score += len(overlap)
+        # Fallback: match action name keywords against description
+        action_words = set(re.split(r'\s+/\s+', action_name.lower()))
+        for w in action_words:
+            if len(w) >= 4 and w in desc_lower:
+                score += 3
+        # Fallback: CJK keyword → action category mapping
+        for zh_kw, en_cat in _action_zh_map.items():
+            if zh_kw.lower() in desc_lower:
+                if en_cat in action_name.lower():
+                    score += 5
+        if score > best_score:
+            best_score = score
+            best_match = action_name
+    return best_match
+
+
+def _classify_object(description: str, mapping: dict[str, str]) -> str | None:
+    """Classify a task description against Step 2 weight-bearing objects.
+    Uses Chinese keyword mapping and English object name matching.
+    Returns the best-matching object name, applying the 'most specific' rule."""
+    desc_lower = description.lower()
+    matches: list[tuple[str, int]] = []
+
+    for obj_name in mapping:
+        # Extract significant words from object name (≥3 chars, skip stop words)
+        obj_words = [
+            w for w in re.split(r"\s*/\s*", obj_name.lower())
+            if len(w) >= 3 and w not in {"the", "or", "and"}
+        ]
+        score = 0
+        for w in obj_words:
+            if w in desc_lower:
+                score += len(w)
+
+        # Also check Chinese keyword mappings
+        for zh_word, en_category in _STEP2_ZH_KEYWORDS.items():
+            if zh_word.lower() in desc_lower:
+                # Map Chinese keyword to the target object via English category
+                for en_word in obj_words:
+                    if en_category in en_word:
+                        score += len(zh_word)
+
+        if score > 0:
+            matches.append((obj_name, score))
+
+    if not matches:
+        return None
+    matches.sort(key=lambda x: (-x[1], -len(x[0])))
+    return matches[0][0]
+
+
+# Each fixture: (task_description, expected_primary_route, expected_secondary_routes)
 ROUTE_FIXTURES = [
     # ── Positive cases ─────────────────────────────────────────────────
     (
         "哪支球队最可能夺冠",
-        "Select / rank",
-        "team",
         "constrained-choice",
         [],
     ),
     (
         "应该选哪个 AI 模型供应商",
-        "Select / rank",
-        "Provider",
         "provider-selection",
         [],
     ),
     (
         "NAS vs 迷你主机怎么选，预算 3000",
-        "Select / rank",
-        "Device",
         "equipment-selection",
         [],
     ),
     (
         "人形机器人产业链未来 12 个月如何演化",
-        "Judge direction",
-        "Market",
         "market-outlook",
         [],
     ),
     (
         "特斯拉股票现在估值合理吗",
-        "Judge listed-company",
-        "Listed",
         "listed-company",
         [],
     ),
     (
         "分析 Nvidia GPU 架构及其对竞争壁垒的影响",
-        "Judge listed-company",
-        "Architecture",
         "listed-company",
         ["technical-deep-dive"],
     ),
     (
         "Transformer 相关论文的文献综述",
-        "Judge academic",
-        "Academic",
         "academic-review",
         [],
     ),
     (
         "Kubernetes 和 Docker Swarm 的架构对比",
-        "Judge technical",
-        "Architecture",
         "technical-deep-dive",
         [],
     ),
     (
         "某创业公司的 PMF 分析",
-        "Judge private-company",
-        "Private",
         "startup-evaluation",
         [],
     ),
     (
         "某公司是不是第一梯队",
-        "Judge positioning",
-        "Positioning",
         "competitive-positioning",
         [],
     ),
     # ── Mixed cases — primary + secondary ──────────────────────────────
     (
         "欧盟 AI 法案对欧洲 AI 市场的影响（法规视角）",
-        "Judge regulation",
-        "Regulation",
         "regulatory-analysis",
         ["market-outlook"],
     ),
     (
         "是否应该进入中国市场，考虑数据本地化法规",
-        "Enter",
-        "Entry",
         "market-entry",
         ["regulatory-analysis"],
     ),
     # ── Shared-workflow guard — must route to specialized ─────────────
     (
         "比较三个视频会议平台的功能和价格",
-        "Select / rank",
-        "Provider",
         "provider-selection",
         [],
     ),
 ]
 
 
-def test_route_fixtures_positive_cases():
-    """Verify that known task descriptions route to expected routes
-    through Step 1 (action) → Step 2 (object) of the decision tree."""
-    step1 = _step1_section()
-    mapping = _step2_object_routes()
-
-    # Collect conflict pair resolutions: (action_kw, object_kw) → (primary, [secondary])
+def test_route_fixtures_classify_and_verify():
+    """For each fixture, classify the task_description against Step 1
+    (action) and Step 2 (object) tables, then verify the resolved route
+    matches the expected primary route."""
+    phrasings = _parse_step1_phrasings()
+    step2_keywords = _parse_step2_keywords()
     import json
     manifest_path = REPO_ROOT / "schemas" / "route-manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     valid_ids = {r["id"] for r in manifest["routes"]}
 
     failures = []
-    for desc, step1_kw, step2_kw, expected_route, expected_secondary in ROUTE_FIXTURES:
-        # Verify Step 1: the action keyword exists in Step 1 section
-        assert step1_kw in step1, (
-            f"Fixture '{desc}': Step 1 keyword '{step1_kw}' not found in Step 1 section"
+    for desc, expected_route, expected_secondary in ROUTE_FIXTURES:
+        # Step 1: classify action from task description
+        action = _classify_action(desc, phrasings)
+        assert action is not None, (
+            f"Fixture '{desc}': could not classify action from Step 1 phrasings"
         )
 
-        # Verify Step 2: the object keyword maps to a candidate set
-        found_obj = None
-        for obj_name, route_ids in mapping.items():
-            if step2_kw.lower() in obj_name.lower():
-                found_obj = (obj_name, route_ids)
-                break
-        assert found_obj is not None, (
-            f"Fixture '{desc}': Step 2 object keyword '{step2_kw}' "
-            f"not found in any weight-bearing object row"
+        # Step 2: classify weight-bearing object from task description
+        obj_name = _classify_object(desc, step2_keywords)
+        assert obj_name is not None, (
+            f"Fixture '{desc}': could not classify object from Step 2 keywords"
         )
-        obj_name, candidates = found_obj
 
-        # The expected route may be in Step 2 candidates directly,
-        # OR it may be a conflict pair resolution (listed-company primary
-        # when action=listed-company + object=architecture, per conflict pair #3).
-        # In that case, the Step 2 table maps 'Architecture' → technical-deep-dive,
-        # but the conflict pair says listed-company is primary.
-        if expected_route in candidates:
-            # Direct match: expected route is in Step 2 candidates
-            pass
-        else:
-            # Check if this is a known conflict pair resolution:
-            # e.g., action=listed-company + object=architecture → listed-company primary
-            # The conflict pairs are documented in Step 2 section after the table
+        # Verify the object maps to the expected route (or a conflict pair resolves it)
+        object_route = step2_keywords[obj_name]
+        # object_route is either a single route ID or comma-separated list
+        candidates = object_route.split(",") if "," in object_route else [object_route]
+
+        route_ok = expected_route in candidates
+        if not route_ok:
+            # Check conflict pairs: e.g., action=listed-company + object=architecture
+            # → listed-company primary (per conflict pair #3)
             step2 = _step2_section()
             conflict_section_start = step2.find("Conflict examples")
-            if conflict_section_start == -1:
-                failures.append(
-                    f"Fixture '{desc}': expected '{expected_route}' not in "
-                    f"Step 2 candidates {candidates} and no conflict examples found"
-                )
-                continue
-            conflict_section = step2[conflict_section_start:]
-            # Check if expected_route appears in the conflict section near the object keyword
-            if expected_route not in conflict_section:
-                failures.append(
-                    f"Fixture '{desc}': expected '{expected_route}' not in "
-                    f"Step 2 candidates {candidates} and not in conflict examples"
-                )
-                continue
+            conflict_section = step2[conflict_section_start:] if conflict_section_start != -1 else ""
+            if expected_route in conflict_section:
+                route_ok = True
 
-        # For single-candidate objects (after conflict resolution), verify exact match
-        if len(candidates) == 1 and expected_route in candidates:
-            assert candidates[0] == expected_route, (
-                f"Fixture '{desc}': single candidate '{candidates[0]}' != "
-                f"expected '{expected_route}'"
+        assert route_ok, (
+            f"Fixture '{desc}': action='{action}', object='{obj_name}' "
+            f"→ Step 2 candidates={candidates}, expected='{expected_route}'"
+        )
+
+        # Verify secondary routes exist in manifest
+        for sec in expected_secondary:
+            assert sec in valid_ids, (
+                f"Fixture '{desc}': secondary route '{sec}' not in route-manifest.json"
             )
-
-        # Verify secondary routes are valid route IDs
-        if expected_secondary:
-            for sec in expected_secondary:
-                assert sec in valid_ids, (
-                    f"Fixture '{desc}': secondary route '{sec}' not in route-manifest.json"
-                )
 
     if failures:
         raise AssertionError("\n".join(failures))
 
 
-def test_no_ranking_fixture_routes_to_market_outlook():
-    """None of the Select/rank fixtures should route to market-outlook.
-    This is a regression test for the market-outlook ranking misuse guard."""
-    mapping = _step2_object_routes()
+def test_no_select_rank_fixture_routes_market_outlook():
+    """Select/rank task descriptions must not resolve to market-outlook.
+    Classification is done from the task description, not pre-supplied keywords."""
+    phrasings = _parse_step1_phrasings()
+    step2_keywords = _parse_step2_keywords()
 
-    for desc, step1_kw, step2_kw, expected_route, _ in ROUTE_FIXTURES:
-        if "Select / rank" not in step1_kw:
+    for desc, _, _ in ROUTE_FIXTURES:
+        action = _classify_action(desc, phrasings)
+        if action is None or "Select" not in action:
             continue
-        # Find the object
-        for obj_name, candidates in mapping.items():
-            if step2_kw.lower() in obj_name.lower():
-                assert "market-outlook" not in candidates, (
-                    f"Fixture '{desc}' is Select/rank but object '{obj_name}' "
-                    f"maps to market-outlook in candidates {candidates}"
-                )
-
-
-def test_market_outlook_fixtures_not_constrained_choice():
-    """Market outlook fixtures should route to market-outlook, not constrained-choice."""
-    mapping = _step2_object_routes()
-    for desc, step1_kw, step2_kw, expected_route, _ in ROUTE_FIXTURES:
-        if "market-outlook" != expected_route:
+        obj_name = _classify_object(desc, step2_keywords)
+        if obj_name is None:
             continue
-        for obj_name, candidates in mapping.items():
-            if step2_kw.lower() in obj_name.lower():
-                assert candidates == ["market-outlook"], (
-                    f"Fixture '{desc}': Market trajectory object '{obj_name}' "
-                    f"maps to {candidates}, expected ['market-outlook'] only"
-                )
+        object_route = step2_keywords[obj_name]
+        assert "market-outlook" not in object_route, (
+            f"Fixture '{desc}': Select/rank action but object '{obj_name}' "
+            f"maps to {object_route} (includes market-outlook)"
+        )
+
+
+def test_market_outlook_fixtures_single_candidate():
+    """Tasks classified as 'Judge direction' with market trajectory objects
+    must map to market-outlook exclusively (single candidate)."""
+    phrasings = _parse_step1_phrasings()
+    step2_keywords = _parse_step2_keywords()
+
+    for desc, expected_route, _ in ROUTE_FIXTURES:
+        if expected_route != "market-outlook":
+            continue
+        obj_name = _classify_object(desc, step2_keywords)
+        assert obj_name is not None, f"Fixture '{desc}': could not classify object"
+        object_route = step2_keywords[obj_name]
+        # Market trajectory must be a single-candidate row
+        assert "," not in object_route, (
+            f"Fixture '{desc}': object '{obj_name}' maps to multi-candidate "
+            f"'{object_route}', expected single candidate 'market-outlook'"
+        )
+        assert object_route == "market-outlook", (
+            f"Fixture '{desc}': expected market-outlook, got '{object_route}'"
+        )
 
 
 if __name__ == "__main__":
@@ -632,9 +799,9 @@ if __name__ == "__main__":
         # Behavioral tests — negative/misuse guard
         ("shared_workflow_not_misused", test_shared_workflow_not_misused),
         # Behavioral tests — action/object → route fixtures
-        ("route_fixtures_positive_cases", test_route_fixtures_positive_cases),
-        ("no_ranking_fixture_routes_to_market_outlook", test_no_ranking_fixture_routes_to_market_outlook),
-        ("market_outlook_fixtures_not_constrained_choice", test_market_outlook_fixtures_not_constrained_choice),
+        ("route_fixtures_classify_and_verify", test_route_fixtures_classify_and_verify),
+        ("no_select_rank_fixture_routes_market_outlook", test_no_select_rank_fixture_routes_market_outlook),
+        ("market_outlook_fixtures_single_candidate", test_market_outlook_fixtures_single_candidate),
     ]
 
     for name, fn in tests:

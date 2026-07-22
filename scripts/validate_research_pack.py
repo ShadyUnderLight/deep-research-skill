@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import re
 from pathlib import Path
 
@@ -26,6 +27,7 @@ DECISION_TREE_HEADINGS = [
     "## Action burden",
     "## Weight-bearing object",
     "## Decision tree path",
+    "## Tie-break rationale",
 ]
 
 REQUIRED_SET = set(REQUIRED_HEADINGS)
@@ -102,16 +104,22 @@ def _check_decision_tree_headings(cleaned: str) -> list[str]:
     if not primary_section:
         return []  # Primary route is already checked as required
 
-    # Check if a specialized route was selected (not shared-workflow)
-    has_specialized = any(
-        route_id in primary_section.lower()
-        for route_id in [
-            "listed-company", "startup-evaluation", "market-entry",
-            "regulatory-analysis", "provider-selection", "competitive-positioning",
-            "technical-deep-dive", "equipment-selection", "market-outlook",
-            "constrained-choice", "academic-review",
-        ]
-    )
+    # Check if a specialized route was selected (not shared-workflow).
+    # Canonicalize via route-manifest.json aliases so display-name forms
+    # like "Constrained Choice / Shortlist" are recognized.
+    manifest_path = Path(__file__).resolve().parent.parent / "schemas" / "route-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    search_ids: set[str] = set()
+    for route in manifest["routes"]:
+        if route["category"] != "specialized":
+            continue
+        # Canonical id + all aliases
+        search_ids.add(route["id"].lower())
+        for alias in route.get("aliases", []):
+            search_ids.add(alias.lower())
+
+    primary_lower = primary_section.lower()
+    has_specialized = any(rid in primary_lower for rid in search_ids)
     if not has_specialized:
         return []  # Shared-workflow or unknown — decision tree fields not needed
 
