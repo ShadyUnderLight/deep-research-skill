@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deep-research-skill/schemas/route-activation-contract.json",
+  "title": "Route Activation Contract",
+  "description": "Typed, verifiable contract that separates primary route, secondary routes, cross-cutting disciplines, and audits. Generated at preflight, re-verified at delivery. Designed for embedding in Markdown ```contract fenced blocks.",
+  "version": 1,
+  "type": "object",
+  "required": ["primary_route", "secondary_routes", "disciplines", "audits"],
+  "properties": {
+    "primary_route": {
+      "type": "string",
+      "description": "Canonical route id from route-manifest.json"
+    },
+    "closest_alternative": {
+      "type": "string",
+      "description": "Canonical id of the closest alternative route considered and rejected"
+    },
+    "secondary_routes": {
+      "type": "array",
+      "description": "Specialized routes used as secondary — each has independent hard-fail verification. Must be route ids (NOT discipline ids).",
+      "items": {
+        "type": "string",
+        "description": "Canonical route id from route-manifest.json"
+      }
+    },
+    "disciplines": {
+      "type": "array",
+      "description": "Cross-cutting disciplines applied to this task. These are NOT routes and NOT secondary routes.",
+      "items": {
+        "type": "string",
+        "description": "Canonical discipline id from discipline-registry.json"
+      }
+    },
+    "audits": {
+      "type": "array",
+      "description": "Verification actions run against the final artifact or process artifact",
+      "items": {
+        "type": "object",
+        "required": ["id", "status"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Audit identifier (checklist file stem without .md extension, or special audit name)"
+          },
+          "status": {
+            "type": "string",
+            "enum": ["passed", "skipped", "not_run"],
+            "description": "Execution status of this audit"
+          },
+          "evidence": {
+            "type": "string",
+            "description": "Concrete reference to evidence location in artifact. Must be non-empty when status=passed."
+          }
+        }
+      }
+    }
+  },
+  "examples": [
+    {
+      "primary_route": "listed-company",
+      "secondary_routes": ["regulatory-analysis"],
+      "disciplines": ["current-state", "source-traceability", "forward-looking"],
+      "audits": [
+        {"id": "listed-company-report", "status": "passed", "evidence": "§2-§6"},
+        {"id": "source-traceability", "status": "passed", "evidence": "[S01]-[S15]"},
+        {"id": "final-audit", "status": "passed", "evidence": "§2-§8"},
+        {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "§6 verified 4 hard-fail conditions; 2 inapplicable"}
+      ]
+    }
+  ]
+}
