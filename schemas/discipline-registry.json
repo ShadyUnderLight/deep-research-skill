@@ -1,0 +1,70 @@
+{
+  "version": 1,
+  "description": "Single source of truth for cross-cutting research disciplines. Disciplines are reusable rules/methods that apply across multiple routes, distinct from routes (which determine report structure and evidence burden) and audits (which verify execution at delivery time).",
+  "last_reviewed": "2026-07-22",
+  "disciplines": [
+    {
+      "id": "current-state",
+      "display_name": "Current-State Verification",
+      "category": "currentness",
+      "reference": "references/current-state-verification.md",
+      "description": "Verify product versions, pricing, company status, market snapshots are current before building analysis on stale data."
+    },
+    {
+      "id": "source-traceability",
+      "display_name": "Source Traceability and Claim Citation",
+      "category": "evidence",
+      "reference": "references/source-traceability-and-claim-citation.md",
+      "description": "Load-bearing claims must be traceable to specific sources via inline citations, not only a bibliography at the end."
+    },
+    {
+      "id": "forward-looking",
+      "display_name": "Forward-Looking Claims Discipline",
+      "category": "currentness",
+      "reference": "references/forward-looking-discipline.md",
+      "description": "Forecasts, estimates, and forward-looking claims must have visible source role, time basis, and confidence signals — not presented as confirmed facts."
+    },
+    {
+      "id": "decision-utility",
+      "display_name": "Decision Utility",
+      "category": "decision",
+      "reference": "references/decision-report-template.md",
+      "description": "The report must drive toward a decision, not just describe the topic. The decision frame must be explicit and shape the report structure."
+    },
+    {
+      "id": "quantitative-role",
+      "display_name": "Quantitative Role Labeling",
+      "category": "quantitative",
+      "reference": "references/quantitative-role-labeling.md",
+      "description": "Important numbers must be labeled as observed fact / proxy / assumption / model output when the distinction affects trust in conclusions."
+    },
+    {
+      "id": "scope-completeness",
+      "display_name": "Scope Completeness",
+      "category": "scope",
+      "reference": "references/scope-completeness-discipline.md",
+      "description": "When the report claims global, comprehensive, or industry-wide scope, coverage boundaries must be explicit and load-bearing regions/segments must be present."
+    },
+    {
+      "id": "data-conflict",
+      "display_name": "Data Conflict Resolution",
+      "category": "evidence",
+      "reference": "references/data-conflict-resolution.md",
+      "description": "When data from multiple sources disagrees, apply a structured resolution protocol rather than silently picking one source."
+    },
+    {
+      "id": "counter-evidence",
+      "display_name": "Counter-Evidence",
+      "category": "evidence",
+      "reference": "references/counter-evidence.md",
+      "description": "Actively seek and present the strongest argument against the main conclusion, with structured counter-evidence blocks for load-bearing claims."
+    },
+    {
+      "id": "sensitivity-analysis",
+      "display_name": "Sensitivity Analysis",
+      "category": "quantitative",
+      "reference": "references/valuation-methodology.md",
+      "description": "When valuation, growth assumptions, or financial projections materially affect the conclusion, show how the conclusion changes under assumption movement."
+    }
+  ]
+}
