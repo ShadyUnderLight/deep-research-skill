@@ -398,6 +398,15 @@ _AUDIT_STATUS_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Structured status: status must follow an em dash or colon separator.
+# The regular hyphen [-] is excluded — it matches list bullets (e.g.
+# "passed-source audit" with leading "- " is not a status stamp)
+_AUDIT_STATUS_STRUCTURED_RE = re.compile(
+    r"[–—:]\s*(?:passed|skipped|not-run|partial"
+    r"|已通过|已跳过|未运行|部分通过)\b",
+    re.IGNORECASE,
+)
+
 _AUDIT_NOT_RUN_RE = re.compile(
     r"\b(?:not-run|未运行)\b",
     re.IGNORECASE,
@@ -428,6 +437,19 @@ _CLOSEST_ALT_EXCLUDE_RE = re.compile(
     re.IGNORECASE,
 )
 
+# Require specific alternative-identity or switching-condition language.
+# Checks that the boundary judgment contains more than just "rejected" —
+# must explain why or describe when the alternative would apply.
+_CLOSEST_ALT_IDENTITY_RE = re.compile(
+    r"\b(?:would become|would apply|if\b.*\b(?:then|would|will)\b|"
+    r"when\b.*\bchanges?\b|switch to|instead would be|"
+    r"改用|转为|切换|如果.*则|当.*时|"
+    r"rejected\s*[–—]\s*(?:task|because|since|due|as)\b|"
+    r"rejected because|rejected since|rejected as|"
+    r"alternative (?:is|would be)|boundary: if)\b",
+    re.IGNORECASE,
+)
+
 
 def _check_closest_alternative(cleaned: str) -> list[str]:
     """Check Primary route section contains boundary judgment language."""
@@ -455,6 +477,14 @@ def _check_closest_alternative(cleaned: str) -> list[str]:
             "not applicable, not a fit, 排除, 不适用) — boundary judgment "
             "must explain why the alternative was not chosen"
         ]
+    # Require specific alternative identity (named route or switching condition)
+    if not _CLOSEST_ALT_IDENTITY_RE.search(body):
+        return [
+            "Primary route section has boundary/exclusion language but "
+            "lacks specific alternative identity — must name the "
+            "alternative route or describe switching condition "
+            "(e.g. 'would become', 'if X then Y', '改用', '转为')"
+        ]
     return []
 
 
@@ -470,7 +500,7 @@ def _check_audit_run_statuses(cleaned: str) -> list[str]:
     audit_lines = [l for l in lines if not l.startswith("#")]
     unstamped: list[str] = []
     for line in audit_lines:
-        if not _AUDIT_STATUS_RE.search(line):
+        if not _AUDIT_STATUS_STRUCTURED_RE.search(line):
             unstamped.append(line[:60])
 
     errors: list[str] = []
@@ -542,6 +572,13 @@ def _check_audit_consistency(cleaned: str) -> list[str]:
                 "Final audit status is 'Partial' but Required audits "
                 "contain not-run item(s) without documented reason — "
                 "should be Fail"
+            )
+        if has_skipped_partial_no_reason:
+            issues.append(
+                "Final audit status is 'Partial' but Required audits "
+                "contain skipped/partial item(s) without documented "
+                "reason — Partial requires reason for all non-passed "
+                "statuses"
             )
 
     if declared == "Fail":

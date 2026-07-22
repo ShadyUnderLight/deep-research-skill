@@ -216,7 +216,7 @@ ok
 ok
 
 ## Primary route
-Constrained choice / shortlist (alternative: market-outlook — rejected,
+Constrained choice / shortlist (alternative: market-outlook — rejected because task type mismatch; would switch if question changed,
 task type mismatch)
 
 ## Secondary disciplines
@@ -270,7 +270,7 @@ ok
 ok
 
 ## Primary route
-Constrained choice / shortlist (alternative: market-outlook — rejected)
+Constrained choice / shortlist (alternative: market-outlook — rejected because task type mismatch; would switch if question changed)
 
 ## Secondary disciplines
 ok
@@ -311,7 +311,7 @@ ok
 ok
 
 ## Primary route
-Constrained choice / shortlist (alternative: market-outlook — rejected)
+Constrained choice / shortlist (alternative: market-outlook — rejected because task type mismatch; would switch if question changed)
 
 ## Secondary disciplines
 ok

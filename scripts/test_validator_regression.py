@@ -158,8 +158,9 @@ ok
 ok
 
 ## Primary route
-Constrained choice / shortlist (alternative: market-outlook — rejected,
-task asks for ranking not forecasting)
+Constrained choice / shortlist (alternative: market-outlook — rejected
+because task asks for ranking not forecasting; would become primary
+route if question shifted to trend projection)
 
 ## Secondary disciplines
 ok
@@ -564,6 +565,26 @@ V4_PASS_PARTIAL_NO_REASON = re.sub(
     V4_BASELINE,
 )
 
+V4_PARTIAL_SKIPPED_NO_REASON = re.sub(
+    r"## Final audit status\nPass",
+    "## Final audit status\nPartial",
+    V4_PASS_SKIPPED_NO_REASON,
+)
+
+V4_FAKE_STATUS_NAME = re.sub(
+    r"- final audit — passed\n- quantitative role audit — passed",
+    "- passed-source audit\n- quantitative role audit — passed",
+    V4_BASELINE,
+)
+
+V4_ALT_NO_IDENTITY = re.sub(
+    r"Closest alternative: market-outlook \(rejected.*?route\.\n",
+    "Closest alternative: was rejected. Boundary: applies to the "
+    "current domain only.\n\n",
+    V4_BASELINE,
+    flags=re.DOTALL,
+)
+
 
 def test_strict_v4_valid_baseline(d: str) -> None:
     path = write(os.path.join(d, "v4_valid.md"), V4_BASELINE)
@@ -657,6 +678,43 @@ def test_strict_v4_pass_partial_no_reason(d: str) -> None:
     )
 
 
+def test_strict_v4_partial_skipped_no_reason(d: str) -> None:
+    path = write(os.path.join(d, "v4_psnr.md"), V4_PARTIAL_SKIPPED_NO_REASON)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 Partial + skipped no reason: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "reason" in result.stdout.lower(), (
+        f"expected 'reason' error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_fake_status_name(d: str) -> None:
+    path = write(os.path.join(d, "v4_fake.md"), V4_FAKE_STATUS_NAME)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 fake status name: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "missing run status" in result.stdout.lower(), (
+        f"expected 'missing run status' error in output: {result.stdout}"
+    )
+
+
+def test_strict_v4_alt_no_identity(d: str) -> None:
+    path = write(os.path.join(d, "v4_no_id.md"), V4_ALT_NO_IDENTITY)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V4 alt without identity: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "identity" in result.stdout.lower() or \
+           "specific" in result.stdout.lower(), (
+        f"expected identity-related error in output: {result.stdout}"
+    )
+
+
 def main() -> int:
     with tempfile.TemporaryDirectory() as d:
         tests = [
@@ -696,6 +754,9 @@ def main() -> int:
             ("V4 Partial valid (not-run with reason)", test_strict_v4_partial_valid),
             ("V4 Pass + skipped no reason", test_strict_v4_pass_skipped_no_reason),
             ("V4 Pass + partial no reason", test_strict_v4_pass_partial_no_reason),
+            ("V4 Partial + skipped no reason", test_strict_v4_partial_skipped_no_reason),
+            ("V4 fake status name (passed-source audit)", test_strict_v4_fake_status_name),
+            ("V4 closest-alt without identity", test_strict_v4_alt_no_identity),
         ]
         failures = []
         for name, fn in tests:
