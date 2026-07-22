@@ -474,6 +474,15 @@ def main(argv: list[str] | None = None) -> int:
 
     contract = extract_contract_from_markdown(text)
     if contract is None:
+        if has_contract_block(text):
+            # A ```contract block exists but JSON is malformed — always an error.
+            # A declared contract that can't be parsed is a broken contract,
+            # not a missing one. Fail-closed.
+            print(
+                f"Error: Contract block found in {path} but JSON is malformed "
+                f"or not a valid object. Fix the ```contract fenced block."
+            )
+            return 2
         if args.require_contract:
             print(f"Error: No contract block found in {path} (--require-contract set).")
             return 2

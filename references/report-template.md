@@ -503,7 +503,9 @@ Status block 中涉及四类实体，使用统一的 canonical id：
     }
     ```
 
-验证命令：`python3 scripts/validate_contract.py report.md`
+验证命令：`python3 scripts/validate_contract.py report.md --require-contract`
+
+（建议在 CI 和交付前验证中始终使用 `--require-contract`。不带该 flag 时，缺失 contract 的报告会静默跳过以兼容旧报告。）
 
 ### 9. Sources
 
