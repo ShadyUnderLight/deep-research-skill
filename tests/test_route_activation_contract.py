@@ -6,7 +6,7 @@ Validates the contract schema itself and contract instances:
    - Schema exists, valid JSON, type=object
    - Requires primary_route, secondary_routes, disciplines, audits fields
 
-2. Contract instance validation:
+2. Contract instance validation (via validate_contract.py):
    - Minimal contract is valid
    - Discipline/route separation (properties)
    - Secondary route ids must be valid routes
@@ -14,12 +14,18 @@ Validates the contract schema itself and contract instances:
    - Shared-workflow path requires minimum audits
 """
 import json
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CONTRACT_SCHEMA_PATH = ROOT / "schemas" / "route-activation-contract.json"
 ROUTE_MANIFEST_PATH = ROOT / "schemas" / "route-manifest.json"
 DISCIPLINE_REGISTRY_PATH = ROOT / "schemas" / "discipline-registry.json"
+
+# Add scripts/ to path for validate_contract import
+sys.path.insert(0, str(ROOT / "scripts"))
+
+from validate_contract import validate_contract, extract_contract_from_markdown
 
 
 def load_contract_schema():
@@ -163,11 +169,6 @@ def test_contract_secondary_routes_are_valid():
 
 def test_contract_discipline_cannot_be_secondary_route():
     """Property: discipline ids should NOT be usable as secondary routes."""
-    disciplines_data = load_disciplines()
-    discipline_ids = {d["id"] for d in disciplines_data["disciplines"]}
-    routes = load_routes()
-    route_ids = {r["id"] for r in routes["routes"]}
-
     # current-state is a discipline, not a route
     contract = {
         "primary_route": "listed-company",
@@ -175,11 +176,15 @@ def test_contract_discipline_cannot_be_secondary_route():
         "disciplines": [],
         "audits": [],
     }
-    for sr in contract["secondary_routes"]:
-        # A discipline id should never appear as a secondary route
-        assert sr in route_ids or sr not in discipline_ids, (
-            f"'{sr}' is a discipline, not a valid secondary route"
-        )
+    result = validate_contract(contract)
+    assert not result.is_valid, (
+        f"Contract with discipline as secondary route should be invalid. "
+        f"Got: valid={result.is_valid}"
+    )
+    assert any(
+        "discipline" in e.lower() or "not a valid route" in e.lower()
+        for e in result.errors
+    ), f"Expected discipline-related error, got: {result.errors}"
 
 
 def test_contract_audit_status_valid_values():
@@ -243,9 +248,10 @@ def test_contract_primary_and_secondary_cannot_be_same():
         "disciplines": [],
         "audits": [],
     }
-    secondary_ids = set(contract["secondary_routes"])
-    assert contract["primary_route"] not in secondary_ids, (
-        "Primary route cannot also be a secondary route"
+    result = validate_contract(contract)
+    assert not result.is_valid, (
+        f"Primary route as secondary should be invalid. "
+        f"Got: valid={result.is_valid}"
     )
 
 
@@ -284,10 +290,8 @@ def test_contract_audit_evidence_not_empty():
             {"id": "final-audit", "status": "passed", "evidence": ""},
         ],
     }
-    passed_without_evidence = [
-        a for a in contract["audits"]
-        if a["status"] == "passed" and not a.get("evidence", "").strip()
-    ]
-    assert not passed_without_evidence, (
-        f"Passed audits without evidence: {[a['id'] for a in passed_without_evidence]}"
+    result = validate_contract(contract)
+    assert not result.is_valid, (
+        f"Passed audit with empty evidence should be invalid. "
+        f"Got: valid={result.is_valid}"
     )
