@@ -145,10 +145,39 @@ def validate_contract(contract: dict) -> ContractValidationResult:
     if "primary_route" not in contract:
         return ContractValidationResult(errors=errors, warnings=warnings)
 
+    # Guard against null values in fields that should be arrays
+    secondary = contract.get("secondary_routes")
+    disciplines = contract.get("disciplines")
+    audits = contract.get("audits")
+
+    if secondary is None:
+        errors.append("secondary_routes is null — must be an array (use [] if empty)")
+        secondary = []
+    if disciplines is None:
+        errors.append("disciplines is null — must be an array (use [] if empty)")
+        disciplines = []
+    if audits is None:
+        errors.append("audits is null — must be an array (use [] if empty)")
+        audits = []
+
+    if not isinstance(secondary, list):
+        errors.append(f"secondary_routes must be an array, got {type(secondary).__name__}")
+        secondary = []
+    if not isinstance(disciplines, list):
+        errors.append(f"disciplines must be an array, got {type(disciplines).__name__}")
+        disciplines = []
+    if not isinstance(audits, list):
+        errors.append(f"audits must be an array, got {type(audits).__name__}")
+        audits = []
+
     primary = contract["primary_route"]
-    secondary = contract.get("secondary_routes", [])
-    disciplines = contract.get("disciplines", [])
-    audits = contract.get("audits", [])
+
+    # 1b. Primary route must be a string
+    if not isinstance(primary, str):
+        errors.append(
+            f"primary_route must be a string, got {type(primary).__name__}: {primary!r}"
+        )
+        return ContractValidationResult(errors=errors, warnings=warnings)
 
     # 2. Primary route must be a valid route id
     if primary not in route_ids:
@@ -179,6 +208,33 @@ def validate_contract(contract: dict) -> ContractValidationResult:
             f"Primary route '{primary}' is also listed as a secondary route. "
             f"A route cannot be both primary and secondary in the same contract."
         )
+
+    # 4b. Closest alternative route validation
+    closest = contract.get("closest_alternative")
+    if closest is not None:
+        if not isinstance(closest, str):
+            errors.append(
+                f"closest_alternative must be a string, got {type(closest).__name__}"
+            )
+        elif closest not in route_ids:
+            errors.append(
+                f"closest_alternative '{closest}' is not a valid route id. "
+                f"Valid routes: {sorted(route_ids)}"
+            )
+        elif closest == primary:
+            errors.append(
+                f"closest_alternative '{closest}' is the same as primary_route. "
+                f"Closest alternative must be a different route."
+            )
+
+    # 4c. Duplicate secondary routes detection
+    seen_secondary: set[str] = set()
+    for sr in secondary:
+        if not isinstance(sr, str):
+            continue
+        if sr in seen_secondary:
+            warnings.append(f"Duplicate secondary route: '{sr}'")
+        seen_secondary.add(sr)
 
     # 5. Disciplines — must be valid discipline ids, not route ids
     for d in disciplines:
@@ -217,6 +273,35 @@ def validate_contract(contract: dict) -> ContractValidationResult:
                 f"Audit '{audit_id}' is marked 'passed' but has empty evidence. "
                 f"Evidence must reference a concrete location in the artifact."
             )
+
+    # 6b. Duplicate audit ID detection
+    audit_id_list = [a.get("id", "") for a in audits if isinstance(a, dict)]
+    seen_audit_ids: set[str] = set()
+    for aid in audit_id_list:
+        if aid in seen_audit_ids:
+            warnings.append(f"Duplicate audit id: '{aid}'")
+        seen_audit_ids.add(aid)
+
+    # 6c. Secondary route hard-fail audit enforcement
+    # Each declared secondary route should have a corresponding audit entry
+    # that tracks its hard-fail verification (e.g., "regulatory-analysis-secondary-hard-fail")
+    if secondary:
+        audit_ids_set = set(audit_id_list)
+        for sr in secondary:
+            if not isinstance(sr, str):
+                continue
+            # Check if any audit references this secondary route
+            has_tracking = any(
+                sr in aid or sr in a.get("evidence", "")
+                for a in audits if isinstance(a, dict)
+                for aid in [a.get("id", "")]
+            )
+            if not has_tracking:
+                errors.append(
+                    f"Secondary route '{sr}' has no hard-fail audit tracking. "
+                    f"Add an audit entry with id containing '{sr}' or referencing "
+                    f"it in the evidence column."
+                )
 
     # 7. Shared-workflow must have at least workflow-spine-audit or final-audit
     if primary == "shared-workflow":

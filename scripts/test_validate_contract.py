@@ -38,8 +38,9 @@ SAMPLE_CONTRACT_MD = """# Test Report
   "secondary_routes": ["regulatory-analysis"],
   "disciplines": ["current-state", "source-traceability"],
   "audits": [
-    {"id": "listed-company-report", "status": "passed", "evidence": "\\u00a73"},
-    {"id": "final-audit", "status": "passed", "evidence": "\\u00a72-\\u00a78"}
+    {"id": "listed-company-report", "status": "passed", "evidence": "§3"},
+    {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "§6 verified"},
+    {"id": "final-audit", "status": "passed", "evidence": "§2-§8"}
   ]
 }
 ```
@@ -112,6 +113,8 @@ def test_validate_full_contract():
             {"id": "market-outlook-audit", "status": "passed", "evidence": "§3"},
             {"id": "source-traceability", "status": "passed", "evidence": "[S01]-[S12]"},
             {"id": "final-audit", "status": "passed", "evidence": "§2-§8"},
+            {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed",
+             "evidence": "§6 verified regulatory hard-fail conditions"},
         ],
     }
     result = validate_contract(contract)
@@ -340,6 +343,188 @@ def test_validate_warnings_not_errors():
     result = validate_contract(contract)
     # It should be valid (has required audits), but may have a warning about extras
     assert result.is_valid or len(result.warnings) > 0
+
+
+# ── New tests for null/type guards ──────────────────────────────────────────
+
+
+def test_validate_null_secondary_routes():
+    """Null values in array fields should produce errors, not crash."""
+    contract = {
+        "primary_route": "listed-company",
+        "secondary_routes": None,
+        "disciplines": [],
+        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("null" in e.lower() for e in result.errors)
+
+
+def test_validate_null_disciplines():
+    contract = {
+        "primary_route": "listed-company",
+        "secondary_routes": [],
+        "disciplines": None,
+        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("null" in e.lower() for e in result.errors)
+
+
+def test_validate_null_audits():
+    contract = {
+        "primary_route": "listed-company",
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": None,
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("null" in e.lower() for e in result.errors)
+
+
+def test_validate_primary_route_non_string():
+    contract = {
+        "primary_route": 123,
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("string" in e.lower() for e in result.errors)
+
+
+def test_validate_primary_route_null():
+    contract = {
+        "primary_route": None,
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+
+
+# ── New tests for closest_alternative validation ────────────────────────────
+
+
+def test_validate_closest_alternative_valid():
+    contract = {
+        "primary_route": "listed-company",
+        "closest_alternative": "competitive-positioning",
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+    }
+    result = validate_contract(contract)
+    assert result.is_valid, f"Errors: {result.errors}"
+
+
+def test_validate_closest_alternative_unknown():
+    contract = {
+        "primary_route": "listed-company",
+        "closest_alternative": "nonexistent-zzz",
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+
+
+def test_validate_closest_alternative_same_as_primary():
+    contract = {
+        "primary_route": "listed-company",
+        "closest_alternative": "listed-company",
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("same" in e.lower() or "closest" in e.lower() for e in result.errors)
+
+
+# ── New tests for duplicate detection ───────────────────────────────────────
+
+
+def test_validate_duplicate_secondary_routes():
+    contract = {
+        "primary_route": "listed-company",
+        "secondary_routes": ["regulatory-analysis", "regulatory-analysis"],
+        "disciplines": [],
+        "audits": [
+            {"id": "final-audit", "status": "passed", "evidence": "§2"},
+            {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed",
+             "evidence": "§6 verified"},
+        ],
+    }
+    result = validate_contract(contract)
+    assert len(result.warnings) > 0
+    assert any("duplicate" in w.lower() for w in result.warnings)
+
+
+def test_validate_duplicate_audit_ids():
+    contract = {
+        "primary_route": "listed-company",
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [
+            {"id": "final-audit", "status": "passed", "evidence": "§2"},
+            {"id": "final-audit", "status": "passed", "evidence": "§3"},
+        ],
+    }
+    result = validate_contract(contract)
+    assert len(result.warnings) > 0
+    assert any("duplicate" in w.lower() for w in result.warnings)
+
+
+# ── New tests for secondary hard-fail audit enforcement ────────────────────
+
+
+def test_validate_secondary_without_hard_fail_audit():
+    contract = {
+        "primary_route": "market-outlook",
+        "secondary_routes": ["regulatory-analysis"],
+        "disciplines": [],
+        "audits": [
+            {"id": "final-audit", "status": "passed", "evidence": "§2"},
+        ],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("hard-fail" in e.lower() or "no hard-fail" in e.lower()
+               or "has no" in e.lower() for e in result.errors)
+
+
+def test_validate_secondary_with_evidence_reference():
+    """Secondary hard-fail tracking can be via evidence reference."""
+    contract = {
+        "primary_route": "market-outlook",
+        "secondary_routes": ["regulatory-analysis"],
+        "disciplines": [],
+        "audits": [
+            {"id": "final-audit", "status": "passed",
+             "evidence": "regulatory-analysis hard-fail verified in §6"},
+        ],
+    }
+    result = validate_contract(contract)
+    assert result.is_valid, f"Errors: {result.errors}"
+
+
+def test_validate_secondary_array_not_list():
+    contract = {
+        "primary_route": "listed-company",
+        "secondary_routes": "not-a-list",
+        "disciplines": [],
+        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+    }
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("array" in e.lower() for e in result.errors)
 
 
 # ── ContractValidationResult tests ─────────────────────────────────────────
