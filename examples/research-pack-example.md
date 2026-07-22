@@ -20,6 +20,17 @@ Closest alternative: market-outlook (rejected — task asks "which city" not
 to "how will travel patterns change across candidate cities," market-outlook
 would become the primary route.
 
+## Action burden
+Select / rank / predict — the task output is a ranked shortlist of cities.
+
+## Weight-bearing object
+Defined options / teams / ranking — the conclusion rests on comparing
+defined city options.
+
+## Decision tree path
+Steps 1-2 resolved to `constrained-choice`; Step 3 verified "Do not use"
+clause does not exclude ranking tasks; Step 4 not reached.
+
 ## Secondary disciplines
 - source traceability
 - quantitative role labeling

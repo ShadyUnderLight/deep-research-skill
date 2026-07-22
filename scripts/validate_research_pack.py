@@ -19,6 +19,15 @@ REQUIRED_HEADINGS = [
     "## Final audit status",
 ]
 
+# Decision tree fields: conditionally required when a specialized route
+# was selected and the decision tree was used. Not required for shared-
+# workflow or lightweight tasks.
+DECISION_TREE_HEADINGS = [
+    "## Action burden",
+    "## Weight-bearing object",
+    "## Decision tree path",
+]
+
 REQUIRED_SET = set(REQUIRED_HEADINGS)
 
 ARTIFACT_RED_FLAGS = [
@@ -74,6 +83,40 @@ def strip_fenced_code_blocks(text: str) -> str:
                 continue
 
     return "\n".join(out)
+
+
+def _check_decision_tree_headings(cleaned: str) -> list[str]:
+    """Check for decision tree fields if a specialized route was selected.
+
+    Only warns — does not fail validation. Decision tree fields are
+    recommended but not required for shared-workflow or lightweight tasks."""
+    found = set()
+    for m in H2_RE.finditer(cleaned):
+        title = m.group(1).rstrip()
+        full = f"## {title}"
+        if full in set(DECISION_TREE_HEADINGS):
+            found.add(full)
+
+    # Only warn if a specialized route was declared
+    primary_section = _section_body(cleaned, "Primary route")
+    if not primary_section:
+        return []  # Primary route is already checked as required
+
+    # Check if a specialized route was selected (not shared-workflow)
+    has_specialized = any(
+        route_id in primary_section.lower()
+        for route_id in [
+            "listed-company", "startup-evaluation", "market-entry",
+            "regulatory-analysis", "provider-selection", "competitive-positioning",
+            "technical-deep-dive", "equipment-selection", "market-outlook",
+            "constrained-choice", "academic-review",
+        ]
+    )
+    if not has_specialized:
+        return []  # Shared-workflow or unknown — decision tree fields not needed
+
+    missing = [h for h in DECISION_TREE_HEADINGS if h not in found]
+    return missing
 
 
 def find_missing_headings(cleaned: str) -> list[str]:
@@ -640,6 +683,16 @@ def main() -> int:
         for heading in missing:
             print(f"- {heading}")
         return EXIT_STRUCTURE
+
+    # Conditional check: decision tree fields are recommended when
+    # a specialized route is selected (not shared-workflow), but
+    # are not required for lightweight tasks.
+    dt_missing = _check_decision_tree_headings(cleaned)
+    if dt_missing:
+        print("Note: Decision tree fields recommended (not required):")
+        for heading in dt_missing:
+            print(f"- {heading}")
+        # Warning only — does not fail validation
 
     empty = find_empty_sections(cleaned)
     if empty:
