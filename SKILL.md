@@ -205,6 +205,13 @@ These states are distinct from "evidence is weak" or "confidence is low" — the
 why a tool, channel, audit, or validation step could not complete, not why the evidence
 itself is insufficient.
 
+Two conditional Pack fields add formal layers: **Research status**
+(`complete` / `partial` / `blocked`) for process completion, and
+**Delivery status** (`md_ready` / `pdf_ready` / `pdf_failed` / `not_run`)
+for rendering outcome. Both are independent from content quality
+(`Final audit status`). See `schemas/research-pack.md` for the
+full schema.
+
 ## Evidence standards
 
 For key claims, prefer:

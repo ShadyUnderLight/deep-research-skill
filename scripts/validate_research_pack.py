@@ -353,6 +353,14 @@ def run_strict_checks(cleaned: str) -> list[str]:
         else:
             errors.append(issue)
 
+    # Research status validation (conditional: only validated when present)
+    research_issues = _check_research_status(cleaned)
+    errors.extend(research_issues)
+
+    # Delivery status validation (conditional: only validated when present)
+    delivery_issues = _check_delivery_status(cleaned)
+    errors.extend(delivery_issues)
+
     result: list[str] = []
     for e in errors:
         result.append(f"  ✗ {e}")
@@ -613,6 +621,59 @@ def _check_audit_consistency(cleaned: str) -> list[str]:
             )
 
     return issues
+
+
+# ─── Research status and Delivery status validation ──────────────────────────
+
+
+def _check_research_status(cleaned: str) -> list[str]:
+    """Validate the ## Research status section if present.
+
+    Conditional: section absence is not an error.
+    When present, the first line must be a valid status value.
+    Uses word-boundary matching (like _check_audit_status) so
+    trailing comments like 'complete — verified' are accepted.
+    """
+    if "## Research status" not in cleaned:
+        return []
+    body = _section_body(cleaned, "Research status")
+    if not body:
+        return ["Research status section is present but empty"]
+    first_line = body.split("\n")[0].strip()
+    if not first_line:
+        return ["Research status section is present but empty"]
+    m = re.match(r"^(complete|partial|blocked)\b", first_line, re.IGNORECASE)
+    if not m:
+        return [
+            f"Invalid research_status: '{first_line}'. "
+            f"Must be one of: complete, partial, blocked"
+        ]
+    return []
+
+
+def _check_delivery_status(cleaned: str) -> list[str]:
+    """Validate the ## Delivery status section if present.
+
+    Conditional: section absence is not an error.
+    When present, the first line must be a valid status value.
+    Uses word-boundary matching (like _check_audit_status) so
+    trailing comments like 'md_ready — all checks passed' are accepted.
+    """
+    if "## Delivery status" not in cleaned:
+        return []
+    body = _section_body(cleaned, "Delivery status")
+    if not body:
+        return ["Delivery status section is present but empty"]
+    first_line = body.split("\n")[0].strip()
+    if not first_line:
+        return ["Delivery status section is present but empty"]
+    m = re.match(r"^(md_ready|pdf_ready|pdf_failed|not_run)\b", first_line, re.IGNORECASE)
+    if not m:
+        return [
+            f"Invalid delivery_status: '{first_line}'. "
+            f"Must be one of: md_ready, pdf_ready, pdf_failed, not_run"
+        ]
+    return []
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────

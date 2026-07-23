@@ -617,6 +617,77 @@ V4_PUNCT_ONLY_REASON = re.sub(
     V4_BASELINE,
 )
 
+# ─── V5: Research status and Delivery status fixtures (#365) ────────────────
+
+# Valid research_status values
+V5_RESEARCH_COMPLETE = re.sub(
+    r"## Uncertainty register\nok\n",
+    "## Uncertainty register\nok\n\n## Research status\ncomplete\n",
+    V4_BASELINE,
+)
+V5_RESEARCH_PARTIAL = re.sub(
+    r"## Uncertainty register\nok\n",
+    "## Uncertainty register\nok\n\n## Research status\npartial\n",
+    V4_BASELINE,
+)
+V5_RESEARCH_BLOCKED = re.sub(
+    r"## Uncertainty register\nok\n",
+    "## Uncertainty register\nok\n\n## Research status\nblocked\n",
+    V4_BASELINE,
+)
+
+# Valid delivery_status values
+V5_DELIVERY_MD_READY = re.sub(
+    r"## Uncertainty register\nok\n",
+    "## Uncertainty register\nok\n\n## Delivery status\nmd_ready\n",
+    V4_BASELINE,
+)
+V5_DELIVERY_PDF_FAILED = re.sub(
+    r"## Uncertainty register\nok\n",
+    "## Uncertainty register\nok\n\n## Delivery status\npdf_failed\n",
+    V4_BASELINE,
+)
+V5_DELIVERY_NOT_RUN = re.sub(
+    r"## Uncertainty register\nok\n",
+    "## Uncertainty register\nok\n\n## Delivery status\nnot_run\n",
+    V4_BASELINE,
+)
+
+# Invalid research_status
+V5_RESEARCH_INVALID = re.sub(
+    r"## Uncertainty register\nok\n",
+    "## Uncertainty register\nok\n\n## Research status\nnot-sure\n",
+    V4_BASELINE,
+)
+
+# Invalid delivery_status
+V5_DELIVERY_INVALID = re.sub(
+    r"## Uncertainty register\nok\n",
+    "## Uncertainty register\nok\n\n## Delivery status\nbroken\n",
+    V4_BASELINE,
+)
+
+# Empty research_status
+V5_RESEARCH_EMPTY = re.sub(
+    r"## Uncertainty register\nok\n",
+    "## Uncertainty register\nok\n\n## Research status\n\n",
+    V4_BASELINE,
+)
+
+# Research status with trailing comment (word-boundary match, like audit_status)
+V5_RESEARCH_TRAILING = re.sub(
+    r"## Uncertainty register\nok\n",
+    "## Uncertainty register\nok\n\n## Research status\ncomplete — verified by team\n",
+    V4_BASELINE,
+)
+
+# Both statuses valid
+V5_BOTH_VALID = re.sub(
+    r"## Uncertainty register\nok\n",
+    "## Uncertainty register\nok\n\n## Research status\ncomplete\n\n## Delivery status\nmd_ready\n",
+    V4_BASELINE,
+)
+
 
 def test_strict_v4_valid_baseline(d: str) -> None:
     path = write(os.path.join(d, "v4_valid.md"), V4_BASELINE)
@@ -719,6 +790,114 @@ def test_strict_v4_partial_skipped_no_reason(d: str) -> None:
     )
     assert "reason" in result.stdout.lower(), (
         f"expected 'reason' error in output: {result.stdout}"
+    )
+
+
+def test_strict_v5_research_complete(d: str) -> None:
+    path = write(os.path.join(d, "v5_rc.md"), V5_RESEARCH_COMPLETE)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V5 research_status complete: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+
+
+def test_strict_v5_research_partial(d: str) -> None:
+    path = write(os.path.join(d, "v5_rp.md"), V5_RESEARCH_PARTIAL)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V5 research_status partial: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+
+
+def test_strict_v5_research_blocked(d: str) -> None:
+    path = write(os.path.join(d, "v5_rb.md"), V5_RESEARCH_BLOCKED)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V5 research_status blocked: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+
+
+def test_strict_v5_delivery_md_ready(d: str) -> None:
+    path = write(os.path.join(d, "v5_dmr.md"), V5_DELIVERY_MD_READY)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V5 delivery_status md_ready: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+
+
+def test_strict_v5_delivery_pdf_failed(d: str) -> None:
+    path = write(os.path.join(d, "v5_dpf.md"), V5_DELIVERY_PDF_FAILED)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V5 delivery_status pdf_failed: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+
+
+def test_strict_v5_delivery_not_run(d: str) -> None:
+    path = write(os.path.join(d, "v5_dnr.md"), V5_DELIVERY_NOT_RUN)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V5 delivery_status not_run: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+
+
+def test_strict_v5_research_invalid(d: str) -> None:
+    path = write(os.path.join(d, "v5_ri.md"), V5_RESEARCH_INVALID)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V5 research_status invalid: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "research" in result.stdout.lower(), (
+        f"expected 'research' in error output: {result.stdout}"
+    )
+
+
+def test_strict_v5_delivery_invalid(d: str) -> None:
+    path = write(os.path.join(d, "v5_di.md"), V5_DELIVERY_INVALID)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V5 delivery_status invalid: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "delivery" in result.stdout.lower(), (
+        f"expected 'delivery' in error output: {result.stdout}"
+    )
+
+
+def test_strict_v5_research_empty(d: str) -> None:
+    path = write(os.path.join(d, "v5_re.md"), V5_RESEARCH_EMPTY)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V5 research_status empty: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "empty" in result.stdout.lower(), (
+        f"expected 'empty' in error output: {result.stdout}"
+    )
+
+
+def test_strict_v5_both_valid(d: str) -> None:
+    path = write(os.path.join(d, "v5_bv.md"), V5_BOTH_VALID)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V5 both statuses valid: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+
+
+def test_strict_v5_research_trailing_comment(d: str) -> None:
+    path = write(os.path.join(d, "v5_rtc.md"), V5_RESEARCH_TRAILING)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V5 research_status with trailing comment: expected exit 0, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
     )
 
 
@@ -850,6 +1029,17 @@ def main() -> int:
             ("V4 not-run reason mentions status", test_strict_v4_not_run_reason_mentions_status),
             ("V4 distant colon fake reason", test_strict_v4_distant_colon_fake_reason),
             ("V4 punct-only reason not valid", test_strict_v4_punct_only_reason),
+            ("V5 research_status complete", test_strict_v5_research_complete),
+            ("V5 research_status partial", test_strict_v5_research_partial),
+            ("V5 research_status blocked", test_strict_v5_research_blocked),
+            ("V5 delivery_status md_ready", test_strict_v5_delivery_md_ready),
+            ("V5 delivery_status pdf_failed", test_strict_v5_delivery_pdf_failed),
+            ("V5 delivery_status not_run", test_strict_v5_delivery_not_run),
+            ("V5 research_status invalid", test_strict_v5_research_invalid),
+            ("V5 delivery_status invalid", test_strict_v5_delivery_invalid),
+            ("V5 research_status empty", test_strict_v5_research_empty),
+            ("V5 both statuses valid", test_strict_v5_both_valid),
+            ("V5 research trailing comment", test_strict_v5_research_trailing_comment),
         ]
         failures = []
         for name, fn in tests:

@@ -89,6 +89,34 @@ or partial with reason, or when validator has warnings but no errors;
 Fail is required when any audit is not-run without reason or when strict
 validation fails.
 
+### Research status
+
+Set the research status after collection is complete. One of:
+
+- `complete` — all core subquestions have adequate evidence.
+- `partial` — some subquestions have insufficient evidence or relied on
+  degraded search.
+- `blocked` — external channels or providers were unavailable, preventing
+  current-state confirmation.
+
+This field is distinct from Final audit status: it records whether the
+research process completed successfully, not whether the delivered content
+passes quality checks. A blocked research process can still produce a
+content-quality-audit Pass if the available evidence is correctly labeled.
+
+### Delivery status
+
+Set the delivery status after rendering. One of:
+
+- `md_ready` — Markdown artifact satisfies the artifact contract.
+- `pdf_ready` — PDF was successfully rendered from the Markdown artifact.
+- `pdf_failed` — PDF rendering failed, but Markdown is still available.
+- `not_run` — rendering was not attempted (e.g., mid-research artifact).
+
+This field separates delivery concerns from content quality. A `pdf_failed`
+result does not imply the Markdown content is invalid — the two statuses
+are independent.
+
 ## Minimal example shape
 
 ```md
@@ -135,6 +163,12 @@ validation fails.
 
 ## Artifact contract
 ...
+
+## Research status
+complete | partial | blocked
+
+## Delivery status
+md_ready | pdf_ready | pdf_failed | not_run
 
 ## Required audits
 - audit name — passed | skipped (reason) | not-run (reason) | partial (reason)
