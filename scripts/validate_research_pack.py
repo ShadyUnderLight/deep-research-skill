@@ -447,6 +447,14 @@ def run_strict_checks(cleaned: str) -> list[str]:
         else:
             errors.append(issue)
 
+    # Research status validation (conditional: only validated when present)
+    research_issues = _check_research_status(cleaned)
+    errors.extend(research_issues)
+
+    # Delivery status validation (conditional: only validated when present)
+    delivery_issues = _check_delivery_status(cleaned)
+    errors.extend(delivery_issues)
+
     result: list[str] = []
     for e in errors:
         result.append(f"  ✗ {e}")
@@ -707,6 +715,82 @@ def _check_audit_consistency(cleaned: str) -> list[str]:
             )
 
     return issues
+
+
+# ─── Research status and Delivery status validation ──────────────────────────
+
+
+def _has_h2_section(text: str, heading: str) -> bool:
+    """Check if text contains a real H2 section (## heading on its own line).
+
+    Uses line-anchored regex to avoid false matches on body text references
+    like `` `## Research status` `` or prose mentions."""
+    return bool(re.search(rf"^## {re.escape(heading)}\s*$", text, re.MULTILINE))
+
+
+def _count_h2_sections(text: str, heading: str) -> int:
+    """Count occurrences of a real H2 section heading."""
+    return len(re.findall(rf"^## {re.escape(heading)}\s*$", text, re.MULTILINE))
+
+
+def _check_research_status(cleaned: str) -> list[str]:
+    """Validate the ## Research status section if present.
+
+    Conditional: section absence is not an error.
+    When present, the first line must be a valid status value.
+    Uses word-boundary matching (like _check_audit_status) so
+    trailing comments like 'complete — verified' are accepted.
+
+    Rejects duplicate sections — only one Research status section is allowed.
+    """
+    count = _count_h2_sections(cleaned, "Research status")
+    if count == 0:
+        return []
+    if count > 1:
+        return [f"Duplicate section: '## Research status' appears {count} times"]
+    body = _section_body(cleaned, "Research status")
+    if not body:
+        return ["Research status section is present but empty"]
+    first_line = body.split("\n")[0].strip()
+    if not first_line:
+        return ["Research status section is present but empty"]
+    m = re.match(r"^(complete|partial|blocked)\b", first_line, re.IGNORECASE)
+    if not m:
+        return [
+            f"Invalid research_status: '{first_line}'. "
+            f"Must be one of: complete, partial, blocked"
+        ]
+    return []
+
+
+def _check_delivery_status(cleaned: str) -> list[str]:
+    """Validate the ## Delivery status section if present.
+
+    Conditional: section absence is not an error.
+    When present, the first line must be a valid status value.
+    Uses word-boundary matching (like _check_audit_status) so
+    trailing comments like 'md_ready — all checks passed' are accepted.
+
+    Rejects duplicate sections — only one Delivery status section is allowed.
+    """
+    count = _count_h2_sections(cleaned, "Delivery status")
+    if count == 0:
+        return []
+    if count > 1:
+        return [f"Duplicate section: '## Delivery status' appears {count} times"]
+    body = _section_body(cleaned, "Delivery status")
+    if not body:
+        return ["Delivery status section is present but empty"]
+    first_line = body.split("\n")[0].strip()
+    if not first_line:
+        return ["Delivery status section is present but empty"]
+    m = re.match(r"^(md_ready|pdf_ready|pdf_failed|not_run)\b", first_line, re.IGNORECASE)
+    if not m:
+        return [
+            f"Invalid delivery_status: '{first_line}'. "
+            f"Must be one of: md_ready, pdf_ready, pdf_failed, not_run"
+        ]
+    return []
 
 
 # ─── Main ─────────────────────────────────────────────────────────────────────
