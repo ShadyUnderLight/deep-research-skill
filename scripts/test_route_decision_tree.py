@@ -743,6 +743,19 @@ ROUTE_FIXTURES = [
         "provider-selection",
         [],
     ),
+    # ── Non-empty secondary fixtures — conflict pair secondary verification ──
+    (
+        "英伟达GPU架构对其估值的影响——投资视角分析架构优势",
+        "listed-company",
+        "listed-company",
+        ["technical-deep-dive"],
+    ),
+    (
+        "分析欧盟数据保护法规对美国科技市场的影响",
+        "regulation",
+        "regulatory-analysis",
+        ["market-outlook"],
+    ),
 ]
 
 
@@ -781,16 +794,19 @@ def test_route_fixtures_classify_and_verify():
             f"→ resolved primary='{resolved_primary}', expected='{exp_route}'"
         )
 
-        # (e) Verify secondary routes
-        for sec in exp_secondary:
-            assert sec in resolved_secondary, (
-                f"Fixture '{desc}': expected secondary '{sec}' not in "
-                f"resolved secondary {resolved_secondary}"
-            )
-        for sec in resolved_secondary:
-            assert sec in valid_ids or sec in exp_secondary, (
-                f"Fixture '{desc}': resolved secondary '{sec}' not expected"
-            )
+        # (e) Verify secondary routes (exact match — both directions)
+        resolved_set = set(resolved_secondary)
+        expected_set = set(exp_secondary)
+        missing = expected_set - resolved_set
+        extra = resolved_set - expected_set
+        assert not missing, (
+            f"Fixture '{desc}': missing secondary {missing}, "
+            f"expected {exp_secondary}, got {resolved_secondary}"
+        )
+        assert not extra, (
+            f"Fixture '{desc}': unexpected secondary {extra}, "
+            f"expected {exp_secondary}, got {resolved_secondary}"
+        )
 
 
 def test_no_select_rank_fixture_routes_market_outlook():

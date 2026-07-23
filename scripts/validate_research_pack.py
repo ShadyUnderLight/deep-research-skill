@@ -108,6 +108,10 @@ def _check_decision_tree_headings(cleaned: str) -> list[str]:
         full = f"## {title}"
         if full in set(DECISION_TREE_HEADINGS):
             found.add(full)
+        # Also accept suffixed variants like "## Tie-break rationale (if applicable)"
+        base = re.sub(r"\s*\([^)]*\)\s*$", "", full)
+        if base in set(DECISION_TREE_HEADINGS):
+            found.add(base)
 
     # Only warn if a specialized route was declared
     primary_section = _section_body(cleaned, "Primary route")
