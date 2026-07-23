@@ -418,3 +418,84 @@ class TestMissingStatusSections:
         """Having only delivery_status (no research_status) should still pass."""
         result = _run_strict(delivery_md_ready_md)
         assert result.returncode == 0, f"expected exit 0, got {result.returncode}\n{result.stdout}"
+
+
+# ── Edge case: Body mention without real section (P1-2 fix) ─────────────
+
+
+class TestBodyMentionNoSection:
+    """Body text references to `## Research status` or `## Delivery status`
+    must NOT trigger false 'section present but empty' errors.
+    The validator must use H2 line-anchored regex, not string containment."""
+
+    @pytest.fixture
+    def body_mention_research_md(self, baseline):
+        """Inject `## Research status` mention inside Uncertainty register body text."""
+        return baseline.replace(
+            "## Uncertainty register\n- Uncertainty: edge cases",
+            "## Uncertainty register\n- Uncertainty: edge cases\n- See `## Research status` in the schema for details.",
+        )
+
+    @pytest.fixture
+    def body_mention_delivery_md(self, baseline):
+        """Inject `## Delivery status` mention inside Uncertainty register body text."""
+        return baseline.replace(
+            "## Uncertainty register\n- Uncertainty: edge cases",
+            "## Uncertainty register\n- Uncertainty: edge cases\n- See `## Delivery status` in the schema for details.",
+        )
+
+    def test_research_mention_in_body_passes(self, body_mention_research_md):
+        result = _run_strict(body_mention_research_md)
+        assert result.returncode == 0, (
+            f"body mention of ## Research status must NOT trigger validation, "
+            f"got exit {result.returncode}: {result.stdout}"
+        )
+
+    def test_delivery_mention_in_body_passes(self, body_mention_delivery_md):
+        result = _run_strict(body_mention_delivery_md)
+        assert result.returncode == 0, (
+            f"body mention of ## Delivery status must NOT trigger validation, "
+            f"got exit {result.returncode}: {result.stdout}"
+        )
+
+
+# ── Edge case: Duplicate sections (P2 fix) ──────────────────────────────
+
+
+class TestDuplicateStatusSections:
+    """Duplicate ## Research status or ## Delivery status sections
+    should be rejected as errors."""
+
+    @pytest.fixture
+    def duplicate_research_md(self, research_complete_md):
+        """Two Research status sections — second one invalid."""
+        return research_complete_md.replace(
+            "## Research status\ncomplete\n",
+            "## Research status\ncomplete\n\n## Research status\nnot-sure\n",
+        )
+
+    @pytest.fixture
+    def duplicate_delivery_md(self, delivery_md_ready_md):
+        """Two Delivery status sections — second one invalid."""
+        return delivery_md_ready_md.replace(
+            "## Delivery status\nmd_ready\n",
+            "## Delivery status\nmd_ready\n\n## Delivery status\nbroken\n",
+        )
+
+    def test_duplicate_research_status_fails(self, duplicate_research_md):
+        result = _run_strict(duplicate_research_md)
+        assert result.returncode == 4, (
+            f"duplicate research_status must fail, got exit {result.returncode}: {result.stdout}"
+        )
+        assert "duplicate" in result.stdout.lower(), (
+            f"expected 'duplicate' in error: {result.stdout}"
+        )
+
+    def test_duplicate_delivery_status_fails(self, duplicate_delivery_md):
+        result = _run_strict(duplicate_delivery_md)
+        assert result.returncode == 4, (
+            f"duplicate delivery_status must fail, got exit {result.returncode}: {result.stdout}"
+        )
+        assert "duplicate" in result.stdout.lower(), (
+            f"expected 'duplicate' in error: {result.stdout}"
+        )

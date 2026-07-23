@@ -681,6 +681,35 @@ V5_RESEARCH_TRAILING = re.sub(
     V4_BASELINE,
 )
 
+# Body text mentions `## Research status` without a real H2 section heading —
+# should NOT trigger validation (string containment bug, P1-2 in PR #371 review).
+# Inject the mention inside the Uncertainty register body text.
+V5_RESEARCH_MENTION_IN_BODY = re.sub(
+    r"ok\n\n## Artifact contract",
+    "ok\n\nSee `## Research status` in the schema for details.\n\n## Artifact contract",
+    V4_BASELINE,
+)
+# Same for delivery status
+V5_DELIVERY_MENTION_IN_BODY = re.sub(
+    r"ok\n\n## Artifact contract",
+    "ok\n\nSee `## Delivery status` in the schema for details.\n\n## Artifact contract",
+    V4_BASELINE,
+)
+
+# Duplicate research_status sections — should be rejected.
+# Inject a second ## Research status after the first (after the first complete\n).
+V5_RESEARCH_DUPLICATE = re.sub(
+    r"(## Research status\ncomplete\n)",
+    r"\1## Research status\nnot-sure\n",
+    V5_RESEARCH_COMPLETE,
+)
+# Duplicate delivery_status sections — should be rejected.
+V5_DELIVERY_DUPLICATE = re.sub(
+    r"(## Delivery status\nmd_ready\n)",
+    r"\1## Delivery status\npdf_failed\n",
+    V5_DELIVERY_MD_READY,
+)
+
 # Both statuses valid
 V5_BOTH_VALID = re.sub(
     r"## Uncertainty register\nok\n",
@@ -901,6 +930,53 @@ def test_strict_v5_research_trailing_comment(d: str) -> None:
     )
 
 
+def test_strict_v5_body_mention_no_real_section(d: str) -> None:
+    """P1-2 fix: body text like `See ## Research status` must NOT trigger
+    'section is present but empty' — must use H2 regex, not string containment."""
+    path = write(os.path.join(d, "v5_bmrs.md"), V5_RESEARCH_MENTION_IN_BODY)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V5 body mention of ## Research status: expected exit 0 (no section detected), "
+        f"got {result.returncode}\nstdout: {result.stdout}"
+    )
+
+
+def test_strict_v5_body_mention_delivery_no_section(d: str) -> None:
+    """P1-2 fix: body mention of ## Delivery status without real H2 must pass."""
+    path = write(os.path.join(d, "v5_bmds.md"), V5_DELIVERY_MENTION_IN_BODY)
+    result = run_strict(path)
+    assert result.returncode == 0, (
+        f"V5 body mention of ## Delivery status: expected exit 0 (no section detected), "
+        f"got {result.returncode}\nstdout: {result.stdout}"
+    )
+
+
+def test_strict_v5_research_duplicate(d: str) -> None:
+    """P2: duplicate ## Research status sections should be rejected."""
+    path = write(os.path.join(d, "v5_rd.md"), V5_RESEARCH_DUPLICATE)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V5 duplicate research_status: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "duplicate" in result.stdout.lower(), (
+        f"expected 'duplicate' in error output: {result.stdout}"
+    )
+
+
+def test_strict_v5_delivery_duplicate(d: str) -> None:
+    """P2: duplicate ## Delivery status sections should be rejected."""
+    path = write(os.path.join(d, "v5_dd.md"), V5_DELIVERY_DUPLICATE)
+    result = run_strict(path)
+    assert result.returncode == 4, (
+        f"V5 duplicate delivery_status: expected exit 4, got {result.returncode}\n"
+        f"stdout: {result.stdout}"
+    )
+    assert "duplicate" in result.stdout.lower(), (
+        f"expected 'duplicate' in error output: {result.stdout}"
+    )
+
+
 def test_strict_v4_fake_status_name(d: str) -> None:
     path = write(os.path.join(d, "v4_fake.md"), V4_FAKE_STATUS_NAME)
     result = run_strict(path)
@@ -1040,6 +1116,10 @@ def main() -> int:
             ("V5 research_status empty", test_strict_v5_research_empty),
             ("V5 both statuses valid", test_strict_v5_both_valid),
             ("V5 research trailing comment", test_strict_v5_research_trailing_comment),
+            ("V5 body mention no real section (research)", test_strict_v5_body_mention_no_real_section),
+            ("V5 body mention no real section (delivery)", test_strict_v5_body_mention_delivery_no_section),
+            ("V5 duplicate research_status", test_strict_v5_research_duplicate),
+            ("V5 duplicate delivery_status", test_strict_v5_delivery_duplicate),
         ]
         failures = []
         for name, fn in tests:

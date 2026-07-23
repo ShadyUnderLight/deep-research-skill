@@ -179,10 +179,10 @@ evidence — not on validator alone:
 
 - **Pass**: strict validation passes AND every Required audit was executed with
   documented evidence (passed / skipped-with-reason).
-- **Partial**: strict validation passes but some Required audits were skipped or not run
-  with documented reason, OR strict validation has warnings but no errors.
-- **Fail**: strict validation fails (structural or semantic errors) OR a Required audit
-  was not run without documented reason.
+- **Partial**: strict validation passes but some Required audits were skipped or
+  not run with documented reason, OR strict validation has warnings but no errors.
+- **Fail**: strict validation fails (structural or semantic errors) OR a Required
+  audit was not run without documented reason.
 
 If a Required audit was declared but never executed, do not claim Pass regardless of
 validator outcome. Record each Required audit with its run status — passed, skipped
@@ -205,12 +205,10 @@ These states are distinct from "evidence is weak" or "confidence is low" — the
 why a tool, channel, audit, or validation step could not complete, not why the evidence
 itself is insufficient.
 
-Two conditional Pack fields add formal layers: **Research status**
-(`complete` / `partial` / `blocked`) for process completion, and
-**Delivery status** (`md_ready` / `pdf_ready` / `pdf_failed` / `not_run`)
-for rendering outcome. Both are independent from content quality
-(`Final audit status`). See `schemas/research-pack.md` for the
-full schema.
+Two conditional Pack fields separate previously conflated concerns: **Research
+status** (`complete` / `partial` / `blocked`) and **Delivery status**
+(`md_ready` / `pdf_ready` / `pdf_failed` / `not_run`). Both are independent
+from content quality (`Final audit status`). See `schemas/research-pack.md`.
 
 ## Evidence standards
 
@@ -422,11 +420,7 @@ Before delivery:
 
 A report that sounds informed but does not visibly satisfy its required artifact contract (route-specific or shared-workflow) is not ready.
 
-If the failure seems to be:
-- missing rule
-- missing trigger
-- or execution drift
-
+If the failure seems to be missing rule, missing trigger, or execution drift,
 use `evals/meta/rule-activation-and-execution-discipline.md`.
 
 If no mature specialized route applies, treat the task as a shared-workflow task — the workflow-spine audit (already run in step 3) replaces route-specific checks; skip the route-dependent parts of steps 5 and 6.
@@ -443,8 +437,7 @@ A strong final answer should:
 - explain what is still missing
 - help the user decide what to do next
 
-If confidence is limited, say exactly why.
-
-If a Research Pack should have been created under the trigger conditions but was not,
-record this in the internal Research Pack (or in the Final discipline log if no pack exists)
-as a noted gap — do not silently omit it.
+If confidence is limited, say exactly why. If a Research Pack should have been
+created under the trigger conditions but was not, record this in the internal
+Research Pack (or in the Final discipline log if no pack exists) as a noted
+gap — do not silently omit it.

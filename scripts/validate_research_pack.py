@@ -626,6 +626,19 @@ def _check_audit_consistency(cleaned: str) -> list[str]:
 # ─── Research status and Delivery status validation ──────────────────────────
 
 
+def _has_h2_section(text: str, heading: str) -> bool:
+    """Check if text contains a real H2 section (## heading on its own line).
+
+    Uses line-anchored regex to avoid false matches on body text references
+    like `` `## Research status` `` or prose mentions."""
+    return bool(re.search(rf"^## {re.escape(heading)}\s*$", text, re.MULTILINE))
+
+
+def _count_h2_sections(text: str, heading: str) -> int:
+    """Count occurrences of a real H2 section heading."""
+    return len(re.findall(rf"^## {re.escape(heading)}\s*$", text, re.MULTILINE))
+
+
 def _check_research_status(cleaned: str) -> list[str]:
     """Validate the ## Research status section if present.
 
@@ -633,9 +646,14 @@ def _check_research_status(cleaned: str) -> list[str]:
     When present, the first line must be a valid status value.
     Uses word-boundary matching (like _check_audit_status) so
     trailing comments like 'complete — verified' are accepted.
+
+    Rejects duplicate sections — only one Research status section is allowed.
     """
-    if "## Research status" not in cleaned:
+    count = _count_h2_sections(cleaned, "Research status")
+    if count == 0:
         return []
+    if count > 1:
+        return [f"Duplicate section: '## Research status' appears {count} times"]
     body = _section_body(cleaned, "Research status")
     if not body:
         return ["Research status section is present but empty"]
@@ -658,9 +676,14 @@ def _check_delivery_status(cleaned: str) -> list[str]:
     When present, the first line must be a valid status value.
     Uses word-boundary matching (like _check_audit_status) so
     trailing comments like 'md_ready — all checks passed' are accepted.
+
+    Rejects duplicate sections — only one Delivery status section is allowed.
     """
-    if "## Delivery status" not in cleaned:
+    count = _count_h2_sections(cleaned, "Delivery status")
+    if count == 0:
         return []
+    if count > 1:
+        return [f"Duplicate section: '## Delivery status' appears {count} times"]
     body = _section_body(cleaned, "Delivery status")
     if not body:
         return ["Delivery status section is present but empty"]
