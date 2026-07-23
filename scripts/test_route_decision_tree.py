@@ -756,6 +756,13 @@ ROUTE_FIXTURES = [
         "regulatory-analysis",
         ["market-outlook"],
     ),
+    # ── Conflict pair regression: select+market → constrained-choice ──
+    (
+        "predict which market will be more profitable",
+        "Select",
+        "constrained-choice",
+        [],
+    ),
 ]
 
 

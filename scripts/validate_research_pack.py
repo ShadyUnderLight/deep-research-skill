@@ -108,10 +108,10 @@ def _check_decision_tree_headings(cleaned: str) -> list[str]:
         full = f"## {title}"
         if full in set(DECISION_TREE_HEADINGS):
             found.add(full)
-        # Also accept suffixed variants like "## Tie-break rationale (if applicable)"
-        base = re.sub(r"\s*\([^)]*\)\s*$", "", full)
-        if base in set(DECISION_TREE_HEADINGS):
-            found.add(base)
+        # Accept "## Tie-break rationale (if applicable)" — the only
+        # heading with a documented optional suffix in the schema.
+        if full.startswith("## Tie-break rationale"):
+            found.add("## Tie-break rationale")
 
     # Only warn if a specialized route was declared
     primary_section = _section_body(cleaned, "Primary route")
@@ -133,10 +133,19 @@ def _check_decision_tree_headings(cleaned: str) -> list[str]:
             search_ids.add(alias.lower())
 
     # Extract the primary route declaration from the first content lines
-    # (before any prose about closest alternative)
+    # (before any prose about closest alternative). Strip Markdown formatting
+    # so bold/italic/list markers don't hide "Closest alternative" prose.
+    def _strip_md(line: str) -> str:
+        s = line.strip()
+        # Remove leading list markers: "- ", "* ", "> "
+        s = re.sub(r"^[-*>]\s+", "", s)
+        # Remove bold/italic markers: **text**, *text*
+        s = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", s)
+        return s
+
     primary_lines = [
-        l.strip() for l in primary_section.split("\n")
-        if l.strip() and not l.strip().startswith("Closest")
+        _strip_md(l) for l in primary_section.split("\n")
+        if _strip_md(l) and not _strip_md(l).lower().startswith("closest")
     ]
     primary_declared = "\n".join(primary_lines[:3]).lower()  # first 3 content lines
     has_specialized = any(rid in primary_declared for rid in search_ids)
