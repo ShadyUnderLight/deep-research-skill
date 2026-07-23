@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import argparse
+import json
 import re
 from pathlib import Path
 
@@ -17,6 +18,16 @@ REQUIRED_HEADINGS = [
     "## Artifact contract",
     "## Required audits",
     "## Final audit status",
+]
+
+# Decision tree fields: conditionally required when a specialized route
+# was selected and the decision tree was used. Not required for shared-
+# workflow or lightweight tasks.
+DECISION_TREE_HEADINGS = [
+    "## Action burden",
+    "## Weight-bearing object",
+    "## Decision tree path",
+    "## Tie-break rationale",
 ]
 
 REQUIRED_SET = set(REQUIRED_HEADINGS)
@@ -74,6 +85,89 @@ def strip_fenced_code_blocks(text: str) -> str:
                 continue
 
     return "\n".join(out)
+
+
+def _heading_matches(found: set[str], heading: str) -> bool:
+    """Check if a heading exists in found set, accepting optional
+    suffixes like ' (if applicable)'."""
+    if heading in found:
+        return True
+    # Check for headings that start with the expected prefix
+    prefix = heading + " ("
+    return any(h.startswith(prefix) for h in found)
+
+
+def _check_decision_tree_headings(cleaned: str) -> list[str]:
+    """Check for decision tree fields if a specialized route was selected.
+
+    Only warns — does not fail validation. Decision tree fields are
+    recommended but not required for shared-workflow or lightweight tasks."""
+    found = set()
+    for m in H2_RE.finditer(cleaned):
+        title = m.group(1).rstrip()
+        full = f"## {title}"
+        if full in set(DECISION_TREE_HEADINGS):
+            found.add(full)
+        # Accept only the exact heading or the documented optional suffix
+        if full == "## Tie-break rationale" or full == "## Tie-break rationale (if applicable)":
+            found.add("## Tie-break rationale")
+
+    # Only warn if a specialized route was declared
+    primary_section = _section_body(cleaned, "Primary route")
+    if not primary_section:
+        return []  # Primary route is already checked as required
+
+    # Check if a specialized route was selected (not shared-workflow).
+    # Canonicalize via route-manifest.json aliases so display-name forms
+    # like "Constrained Choice / Shortlist" are recognized.
+    # Parse only the primary route line — exclude closest-alternative prose.
+    manifest_path = Path(__file__).resolve().parent.parent / "schemas" / "route-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    search_ids: set[str] = set()
+    for route in manifest["routes"]:
+        if route["category"] != "specialized":
+            continue
+        search_ids.add(route["id"].lower())
+        for alias in route.get("aliases", []):
+            search_ids.add(alias.lower())
+
+    # Extract the primary route declaration from the first content lines
+    # (before any prose about closest alternative). Strip Markdown formatting
+    # so bold/italic/list markers don't hide "Closest alternative" prose.
+    def _strip_md(line: str) -> str:
+        s = line.strip()
+        # Remove ordered/unordered list markers: "- ", "* ", "> ", "1. ", "1) "
+        s = re.sub(r"^[-*>]+\s+", "", s)
+        s = re.sub(r"^\d+[.)]\s+", "", s)
+        # Remove bold/italic markers: **text**, *text*
+        s = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", s)
+        return s
+
+    primary_lines = [
+        _strip_md(l) for l in primary_section.split("\n")
+        if _strip_md(l) and not _strip_md(l).lower().startswith("closest")
+    ]
+    primary_declared = "\n".join(primary_lines[:3]).lower()  # first 3 content lines
+    has_specialized = any(rid in primary_declared for rid in search_ids)
+    if not has_specialized:
+        return []  # Shared-workflow or unknown — decision tree fields not needed
+
+    # Core 3 fields: always recommended for specialized routes
+    core_fields = [h for h in DECISION_TREE_HEADINGS if h != "## Tie-break rationale"]
+    missing = [h for h in core_fields if h not in found]
+
+    # Tie-break rationale: only warn if Decision tree path explicitly says
+    # Step 4 was reached (not "Step 4 not reached"). Accept heading with
+    # optional suffix like "## Tie-break rationale (if applicable)".
+    dt_path_body = _section_body(cleaned, "Decision tree path")
+    step4_reached = dt_path_body and re.search(
+        r"step 4 (?:was )?reached", dt_path_body.lower()
+    ) is not None
+    tiebreak_found = _heading_matches(found, "## Tie-break rationale")
+    if step4_reached and not tiebreak_found:
+        missing.append("## Tie-break rationale")
+
+    return missing
 
 
 def find_missing_headings(cleaned: str) -> list[str]:
@@ -640,6 +734,16 @@ def main() -> int:
         for heading in missing:
             print(f"- {heading}")
         return EXIT_STRUCTURE
+
+    # Conditional check: decision tree fields are recommended when
+    # a specialized route is selected (not shared-workflow), but
+    # are not required for lightweight tasks.
+    dt_missing = _check_decision_tree_headings(cleaned)
+    if dt_missing:
+        print("Note: Decision tree fields recommended (not required):")
+        for heading in dt_missing:
+            print(f"- {heading}")
+        # Warning only — does not fail validation
 
     empty = find_empty_sections(cleaned)
     if empty:

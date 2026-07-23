@@ -1054,27 +1054,91 @@ Fail if:
 
 ---
 
-## Routing priority
+## Route selection decision tree
 
-If multiple primary-looking routes apply, use this order:
+When per-route boundary clauses ("Choose this route when" / "Do not use this route when" / "Often confused with") narrow candidate routes to two or more that still appear equally applicable, use this decision tree. The goal is to select the route that most strongly determines report structure, evidence burden, and audit burden — not the route with the highest fixed rank.
 
-1. listed-company / investment-style
-2. private company / startup evaluation
-3. market entry / regional expansion
-4. regulatory / policy impact analysis
-5. provider / vendor selection
-6. first-tier / competitive positioning
-7. technical deep-dive / architecture analysis
-8. equipment selection / procurement / home-server planning
-9. market outlook / industry evolution
-10. constrained choice / shortlist
-11. academic / literature review
+### Step 1 — Identify action burden
 
-Choose the route that most strongly determines report structure and audit burden.
+Classify what the user is asking to deliver:
+
+| Action category | What the task output must do | Example question phrasings |
+|---|---|---|
+| **Select / rank / predict** | Choose among defined options; produce ranked shortlist; predict outcome or probability | "which provider should we choose", "rank these teams", "predict the winner" / "选哪个供应商", "哪支球队最可能夺冠" |
+| **Enter / phase / sequence** | Decide whether/when/where to enter; produce go/no-go with gates and sequencing | "should we enter market X", "which country first", "how to phase expansion" / "是否进入某市场", "如何分阶段扩张" |
+| **Judge direction / scenario** | Explain how a market or industry will evolve; produce base case + scenarios | "how will this market evolve", "what's the 12-month outlook", "industry trajectory" / "市场未来如何演化", "怎么看这个行业", "行业趋势" |
+| **Judge regulation / policy impact** | Assess regulatory environment; analyze compliance impact on business | "impact of EU AI Act on industry", "export control effects on revenue" / "某法规对行业的影响" |
+| **Judge listed-company value** | Evaluate investment thesis; assess valuation; produce public-market judgment | "is XYZ stock fairly valued", "investment memo for ABC", "should we hold or sell" / "某股票是否合理估值" |
+| **Judge private-company quality** | Evaluate startup/private company; assess PMF, team, funding | "evaluate this startup", "PMF signal strength", "Series B due diligence" / "评估某创业公司", "PMF 怎么样" |
+| **Judge technical mechanism / feasibility** | Explain how technology works; compare architectures; assess feasibility | "how does X work", "compare architecture A vs B", "is Y technically feasible" / "某技术原理是什么", "技术可行性分析" |
+| **Judge academic evidence / research** | Survey literature; evaluate research quality; trace technology origins | "literature review on Z", "state of research in field W", "compare paper methodologies" / "某领域文献综述", "某研究方向进展" |
+| **Judge positioning / tier** | Determine whether entity belongs in a top tier; assess competitive standing | "is company X first-tier", "competitive positioning analysis" / "某公司是不是第一梯队" |
+
+### Step 2 — Identify weight-bearing object
+
+Identify what the conclusion fundamentally rests on. Match to the route whose evidence burden and artifact contract is designed for that object:
+
+| Weight-bearing object | Primary route candidate |
+|---|---|
+| Defined options / teams / ranking | `constrained-choice` |
+| Providers / vendors / APIs / models | `provider-selection` |
+| Devices / hardware / build | `equipment-selection` |
+| Market / category trajectory | `market-outlook` |
+| Regulation / rules / policy | `regulatory-analysis` |
+| Listed / public company | `listed-company` |
+| Private / startup company | `startup-evaluation` |
+| Architecture / mechanism / patent | `technical-deep-dive` |
+| Academic literature / research evidence | `academic-review` |
+| Positioning / tier label | `competitive-positioning` |
+| Entry decision / sequencing / gates | `market-entry` |
+
+When an object matches multiple rows, prefer the **most specific** row: "Providers / vendors / APIs / models" is more specific than "Defined options / teams / ranking"; "Devices / hardware / build" is more specific than "Defined options / teams / ranking". Only fall back to the general "Defined options" row when the object is not clearly a provider or a device.
+
+The action from Step 1 and the object from Step 2 must be consistent. Conflict examples — stop and re-examine when:
+
+- Step 1 says "select/rank" but Step 2 points to "market trajectory" → likely `constrained-choice`, not `market-outlook`
+- Step 1 says "enter/phase" but Step 2 points to "defined options / teams" → likely `market-entry`, not `constrained-choice`
+- Step 1 says "judge listed-company value" but Step 2 points to "architecture / mechanism" → likely `listed-company` (primary) + `technical-deep-dive` (secondary), not the reverse
+- Step 1 says "judge academic evidence" but Step 2 points to "architecture / mechanism" → likely `academic-review`, not `technical-deep-dive`
+- Step 1 says "judge regulation/policy" but Step 2 points to "market trajectory" → likely `regulatory-analysis` (primary) + `market-outlook` (secondary), not the reverse
+- Step 1 says "judge technical mechanism" but Step 2 points to "listed / public company" → likely `technical-deep-dive` (primary), not `listed-company` — the technical question drives the report structure, even if the subject is a listed company
+
+- Step 1 says "judge technical mechanism" but Step 2 points to "academic literature / research evidence" → likely `technical-deep-dive` (primary), not `academic-review` — the technical mechanism question drives the report structure, even if academic papers are the evidence source
+
+### Step 3 — Check route boundary hard-fails
+
+For the top candidate route(s) from Steps 1-2:
+
+1. Read the route's **"Do not use this route when"** clause in the full route contract.
+2. If the task matches a "Do not use" condition → eliminate that route.
+3. Read the closest alternative route's **"Do not use"** and **"Often confused with"** clauses.
+4. If the boundary is ambiguous, document the boundary judgment per the [Route boundary resolution requirement](#route-boundary-resolution-requirement): which hard-fail conditions were checked, why they don't apply, and under what conditions the route should be switched.
+
+Do not skip this step because a route "feels right" from Steps 1-2. The per-route clauses contain domain-specific boundary rules that the decision tree's general categories cannot replace.
+
+### Step 4 — Tie-breaker (only when Steps 1-3 don't resolve)
+
+Use this fixed priority order **only** after confirming that Steps 1-3 did not produce a clear winner. This order reflects the default assumption that some evidence burdens (listed-company valuation) structurally dominate others (academic survey) when the task genuinely carries both burdens equally:
+
+1. `listed-company` / investment-style
+2. `startup-evaluation` / private company
+3. `market-entry` / regional expansion
+4. `regulatory-analysis` / policy impact
+5. `provider-selection` / vendor selection
+6. `competitive-positioning` / first-tier
+7. `technical-deep-dive` / architecture analysis
+8. `equipment-selection` / procurement / home-server planning
+9. `market-outlook` / industry evolution
+10. `constrained-choice` / shortlist
+11. `academic-review` / literature review
+
+If you reach this step, explicitly state that Steps 1-3 were exhausted and document why neither candidate route's clauses produced a clear winner.
 
 **Borderline case — private company filing for IPO:** Use private company route if not yet trading. Use listed-company route if trading has begun. Note IPO status explicitly in either case.
 
 **Borderline case — academic vs technical deep-dive:** Use academic route when the core question is about research evidence, methodology, or field progress through literature. Use technical deep-dive when the core question is about how technology works, comparing architectures, or evaluating feasibility — even if academic papers are used as sources.
+
+**Borderline case — listed-company vs technical deep-dive:** When a task about a listed company's technology is ambiguous (e.g., "analyze Nvidia's GPU architecture and competitive implications"), trace the primary question: if the user asks "how does this technology work" first → `technical-deep-dive`; if the user asks "what does this mean for the investment case" first → `listed-company`. When the question genuinely carries both investment and technical burdens equally, default to `listed-company` (primary) + `technical-deep-dive` (secondary) per conflict pair #3 — the investment judgment structurally dominates the report shape.
 
 ---
 

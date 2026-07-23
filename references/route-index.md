@@ -48,8 +48,10 @@ Read `references/route-activation-and-preflight.md` and complete:
 - route declaration scale check
 - execution contract formation
 
-## Routing priority
+## Routing tie-breaker (Step 4 only)
 
-If multiple routes could apply: `listed-company` > `startup-evaluation` > `market-entry` > `regulatory-analysis` > `provider-selection` > `competitive-positioning` > `technical-deep-dive` > `equipment-selection` > `market-outlook` > `constrained-choice` > `academic-review`.
+When multiple routes could apply, first use the **Route selection decision tree** in `ROUTING-MATRIX.md` (Steps 1-3: action burden → weight-bearing object → boundary hard-fails). This fixed priority list is the **Step 4 tie-breaker** — use it only after Steps 1-3 are exhausted:
+
+`listed-company` > `startup-evaluation` > `market-entry` > `regulatory-analysis` > `provider-selection` > `competitive-positioning` > `technical-deep-dive` > `equipment-selection` > `market-outlook` > `constrained-choice` > `academic-review`.
 
 For full route contracts (hard-fail conditions, micro-audit focus, entity type definitions), read `ROUTING-MATRIX.md`.

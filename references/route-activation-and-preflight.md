@@ -51,6 +51,8 @@ Before committing to a route, check the route's **"Do not use"** and **"Often co
 - If the boundary is ambiguous (the task partially overlaps with "Often confused with" routes) → document the boundary judgment: why this route still wins despite the overlap, or switch to the more appropriate route. The documentation must follow the (a)(b)(c) requirement defined in `ROUTING-MATRIX.md`'s "Route boundary resolution requirement" section — which hard-fail conditions of the alternative route were checked, why they don't apply, and under what conditions the route should be switched.
 - Do not skip this check because the route "feels right" for the topic — topic label is not the same as decision burden.
 
+After Step 1, if multiple candidate routes remain, use the **Route selection decision tree** in `ROUTING-MATRIX.md` (Steps 1-3: action burden → weight-bearing object → boundary hard-fails). The decision tree re-checks "Do not use" clauses against Step 1-2 classifications before falling back to the fixed tie-breaker priority list.
+
 ### Step 2: Secondary-route hard-fail verification
 
 A secondary route is present when one of the "Secondary disciplines" identified in the Preflight questions above is itself a specialized route (e.g., Listed Company attached to a Market Outlook primary) rather than a cross-cutting discipline like source traceability.

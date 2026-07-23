@@ -7,6 +7,11 @@ A minimal Research Pack should contain:
 - Objective
 - Decision context
 - Primary route
+- Closest alternative route and boundary judgment
+- Action burden (Step 1 of route selection decision tree)
+- Weight-bearing object (Step 2 of route selection decision tree)
+- Decision tree path (which steps resolved the route; "not needed" if per-route clauses sufficed)
+- Tie-break rationale (only if Step 4 was reached)
 - Secondary disciplines
 - Core subquestions
 - Stop condition
@@ -54,6 +59,28 @@ Include the closest alternative route and boundary judgment — why this
 route was chosen over the alternative (verify "Do not use" / "Often confused
 with" clauses from `references/route-activation-and-preflight.md`).
 
+### Action burden
+Record the action category from Step 1 of the route selection decision tree
+in `ROUTING-MATRIX.md` (e.g., "Select / rank / predict", "Judge direction /
+scenario"). If the decision tree was not needed (per-route clauses sufficed),
+note "not needed."
+
+### Weight-bearing object
+Record the weight-bearing object from Step 2 of the decision tree (e.g.,
+"Defined options / teams / ranking", "Market / category trajectory").
+If the decision tree was not needed, note "not needed."
+
+### Decision tree path
+Document which steps resolved the route selection. Format: "Steps 1-2
+resolved to `<route-id>`; Step 3 verified; Step 4 not reached" or
+"Per-route clauses resolved without decision tree." If Step 4 was reached,
+document the exhaustion of Steps 1-3 and the tie-breaker result.
+
+### Tie-break rationale
+Only required if Step 4 of the decision tree was reached. Explain why
+Steps 1-3 were exhausted and which two candidate routes were compared
+by the fixed tie-breaker priority list. Document the resolution.
+
 ### Secondary disciplines
 List only the disciplines that materially matter to the task.
 
@@ -99,6 +126,18 @@ validation fails.
 ...
 
 ## Primary route
+...
+
+## Action burden
+...
+
+## Weight-bearing object
+...
+
+## Decision tree path
+...
+
+## Tie-break rationale (if applicable)
 ...
 
 ## Secondary disciplines

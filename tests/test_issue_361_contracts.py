@@ -420,29 +420,85 @@ class TestBackwardCompatibility:
             f"test_discipline_registry.py failed:\n{result.stdout}\n{result.stderr}"
         )
 
-    def test_routing_matrix_is_unchanged(self):
-        """ROUTING-MATRIX.md should not be modified in Phase 1.
+    def test_routing_matrix_structural_integrity(self):
+        """ROUTING-MATRIX.md must retain all route-specific boundary clauses.
 
-        Uses merge-base diff to verify no commits on this branch modify
-        ROUTING-MATRIX.md. Resolves merge-base against main, origin/main,
-        or any available remote ref. Fails closed if base is unresolvable
-        (e.g. shallow/detached checkout without remote).
-        """
-        base = _resolve_merge_base()
-        assert base is not None, (
-            "Cannot resolve merge-base — git remote or local main branch "
-            "is required to verify ROUTING-MATRIX.md was not modified. "
-            "In CI, ensure the checkout fetches the base branch."
+        Note: ROUTING-MATRIX.md may be modified by later phases (e.g. #364
+        route selection decision tree). This test verifies that per-route
+        boundary markers (Choose/Do not/Often confused/Hard fail) remain
+        intact for every specialized route, regardless of structural changes."""
+        text = (ROOT / "ROUTING-MATRIX.md").read_text(encoding="utf-8")
+        manifest = load_manifest()
+
+        # Verify global structural markers
+        assert "## Route selection decision tree" in text, (
+            "Missing Route selection decision tree section"
         )
-        result = subprocess.run(
-            ["git", "diff", "--name-only", f"{base}..HEAD"],
-            capture_output=True, text=True, cwd=str(ROOT),
+        assert "Choose the route that most strongly determines" in text or \
+               "strongly determines report structure" in text, (
+            "Missing route selection principle"
         )
-        changed = result.stdout.strip().split("\n") if result.stdout.strip() else []
-        assert "ROUTING-MATRIX.md" not in changed, (
-            f"ROUTING-MATRIX.md was modified in this branch — out of scope "
-            f"for Phase 1.\nChanged files: {changed}"
-        )
+
+        # Per-route verification: every specialized route must have its
+        # anchored heading and required boundary markers
+        for route in manifest["routes"]:
+            if route["category"] != "specialized":
+                continue
+            rid = route["id"]
+            display = route["display_name"]
+
+            # Anchored heading: "## Route: <display_name>" must exist
+            heading = f"## Route: {display}"
+            assert heading in text, (
+                f"ROUTING-MATRIX.md missing anchored heading: '{heading}'"
+            )
+
+            # Find the route's section (from its heading to the next "## Route:" or end)
+            heading_pos = text.find(heading)
+            assert heading_pos != -1
+            route_section_start = heading_pos
+            # Find next "## Route:" heading
+            next_route = text.find("\n## Route:", route_section_start + len(heading))
+            # But don't cross into the cross-cutting disciplines or decision tree sections
+            if next_route == -1:
+                # Check for "## Cross-cutting" or "## Route selection" as boundary
+                next_route = text.find("\n## Cross-cutting", route_section_start + len(heading))
+            if next_route == -1:
+                next_route = text.find("\n## Route selection decision tree", route_section_start + len(heading))
+            route_section = text[route_section_start:next_route] if next_route != -1 else text[route_section_start:]
+
+            # Required per-route boundary markers
+            boundary_markers = [
+                ("Choose this route when", "route selection trigger"),
+                ("Do not use this route when", "route exclusion clause"),
+                ("Often confused with", "route confusion boundary"),
+                ("Hard fail", "hard-fail conditions"),
+            ]
+            for marker, description in boundary_markers:
+                assert marker in route_section, (
+                    f"Route '{rid}' ({display}) missing '{marker}' ({description}) "
+                    f"in its section"
+                )
+
+            # Verify a representative subset of the route's hard-fail keywords
+            # appear in its section. Keywords in the manifest are abbreviated
+            # forms (e.g., "accessibility as side note" for "accessibility /
+            # compliance / SLA as side notes"). Check that each keyword's
+            # substantive words appear.
+            for keyword in route.get("hard_fail_keywords", []):
+                # Split into significant words (≥4 chars) for loose matching
+                words = [w for w in keyword.lower().split() if len(w) >= 4]
+                if not words:
+                    continue
+                # At least half the significant words must appear in the section
+                found_words = sum(
+                    1 for w in words if w in route_section.lower()
+                )
+                assert found_words >= max(1, len(words) // 2), (
+                    f"Route '{rid}' hard-fail keyword '{keyword}': "
+                    f"only {found_words}/{len(words)} significant words found "
+                    f"in section (words checked: {words})"
+                )
 
 
 # ── Contract G: Cross-Reference Integrity ───────────────────────────────────
