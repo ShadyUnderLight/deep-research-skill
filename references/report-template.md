@@ -4,6 +4,11 @@ Use this as the default structure for most deep-research outputs.
 
 Do not force every section if the task does not need it, but keep the report decision-oriented and evidence-aware.
 
+For the reader-facing format of a Markdown-first delivery, also read
+`references/markdown-delivery-contract.md`. This template defines what the
+report must contain; the Markdown contract defines how that content should be
+ordered and presented for scan reading.
+
 ## Front-page discipline
 
 The front page should help the reader grasp the report's main judgment quickly.
