@@ -856,6 +856,48 @@ def test_market_outlook_fixtures_single_candidate():
         )
 
 
+def test_conflict_pairs_resolve_correctly():
+    """Direct resolver tests for all documented conflict pairs.
+    Does not depend on the classifier — verifies _resolve_route
+    with explicit action and object inputs."""
+    import json
+    manifest_path = REPO_ROOT / "schemas" / "route-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    valid_ids = {r["id"] for r in manifest["routes"]}
+
+    pairs = [
+        # (action_name, object_name, expected_primary, expected_secondary)
+        ("Select / rank / predict", "Market / category trajectory",
+         "constrained-choice", []),
+        ("Enter / phase / sequence", "Defined options / teams / ranking",
+         "market-entry", []),
+        ("Judge listed-company value", "Architecture / mechanism / patent",
+         "listed-company", ["technical-deep-dive"]),
+        ("Judge academic evidence / research", "Architecture / mechanism / patent",
+         "academic-review", []),
+        ("Judge regulation / policy impact", "Market / category trajectory",
+         "regulatory-analysis", ["market-outlook"]),
+        ("Judge technical mechanism / feasibility", "Listed / public company",
+         "technical-deep-dive", []),
+        ("Judge technical mechanism / feasibility", "Academic literature / research evidence",
+         "technical-deep-dive", []),
+    ]
+
+    for action, obj, exp_primary, exp_secondary in pairs:
+        primary, secondary = _resolve_route(action, obj)
+        assert primary == exp_primary, (
+            f"action='{action}', obj='{obj}' → primary='{primary}', "
+            f"expected='{exp_primary}'"
+        )
+        assert set(secondary) == set(exp_secondary), (
+            f"action='{action}', obj='{obj}' → secondary={secondary}, "
+            f"expected={exp_secondary}"
+        )
+        # All returned routes must be valid
+        for sec in secondary:
+            assert sec in valid_ids, f"Invalid secondary route: {sec}"
+
+
 if __name__ == "__main__":
     failures: list[str] = []
     tests = [
@@ -884,6 +926,8 @@ if __name__ == "__main__":
         ("route_fixtures_classify_and_verify", test_route_fixtures_classify_and_verify),
         ("no_select_rank_fixture_routes_market_outlook", test_no_select_rank_fixture_routes_market_outlook),
         ("market_outlook_fixtures_single_candidate", test_market_outlook_fixtures_single_candidate),
+        # Behavioral tests — direct conflict pair resolver
+        ("conflict_pairs_resolve_correctly", test_conflict_pairs_resolve_correctly),
     ]
 
     for name, fn in tests:

@@ -108,9 +108,8 @@ def _check_decision_tree_headings(cleaned: str) -> list[str]:
         full = f"## {title}"
         if full in set(DECISION_TREE_HEADINGS):
             found.add(full)
-        # Accept "## Tie-break rationale (if applicable)" — the only
-        # heading with a documented optional suffix in the schema.
-        if full.startswith("## Tie-break rationale"):
+        # Accept only the exact heading or the documented optional suffix
+        if full == "## Tie-break rationale" or full == "## Tie-break rationale (if applicable)":
             found.add("## Tie-break rationale")
 
     # Only warn if a specialized route was declared
@@ -137,8 +136,9 @@ def _check_decision_tree_headings(cleaned: str) -> list[str]:
     # so bold/italic/list markers don't hide "Closest alternative" prose.
     def _strip_md(line: str) -> str:
         s = line.strip()
-        # Remove leading list markers: "- ", "* ", "> "
-        s = re.sub(r"^[-*>]\s+", "", s)
+        # Remove ordered/unordered list markers: "- ", "* ", "> ", "1. ", "1) "
+        s = re.sub(r"^[-*>]+\s+", "", s)
+        s = re.sub(r"^\d+[.)]\s+", "", s)
         # Remove bold/italic markers: **text**, *text*
         s = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", s)
         return s
