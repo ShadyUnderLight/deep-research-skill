@@ -11,6 +11,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Changed
+- `references/markdown-delivery-contract.md`, `scripts/validate_markdown_delivery.py`, and `tests/test_markdown_delivery_contract.py`: added a standalone Markdown-first reader contract and presentation lint. It keeps the judgment, evidence, route/audit, and Source Register layers readable in `.md` without coupling them to PDF cover/page layout.
 - `SKILL.md`: Phase 1 progressive-disclosure refactoring — extracted environment-specific degraded-search fallback policy, execution discipline, evidence log format, and tool capability mapping (100+ lines) to `references/search-provider-fallback.md`; moved PDF delivery trigger keywords and pipeline steps to `references/delivery-operator-note.md`; added `references/route-index.md` as a compact route selection index (34 lines, all 12 routes from `schemas/route-manifest.json`, ≤80 line limit) for one-read route identification before deep-diving into `ROUTING-MATRIX.md`; SKILL.md reduced from 542 to ~443 lines while retaining all workflow spine, Research Pack lifecycle, evidence standards, current-state verification, mid-research review, counter-evidence, synthesis, parallelization, final discipline, and output quality bar sections. Updated cross-references in `external-channel-preflight.md`, `ARCHITECTURE.md`, `SYSTEM-MAP.md`, and `README.md` (#361).
 
 ### Added

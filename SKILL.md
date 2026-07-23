@@ -329,6 +329,11 @@ Never treat the first plausible story as the final one.
 
 Use `references/report-template.md` by default.
 
+For default Markdown/text delivery, read
+`references/markdown-delivery-contract.md` and run
+`python3 scripts/validate_markdown_delivery.py <report>.md`; it supplements
+this template with reader-facing format rules.
+
 Use `references/decision-report-template.md` when the task needs:
 
 - recommendation
@@ -361,7 +366,7 @@ For most tasks, include:
 
 ## Delivery rule
 
-Default delivery stays as text or markdown. Produce a PDF artifact only when the user's request shows explicit file-delivery intent (e.g. "生成 PDF", "导出 PDF", "作为附件给我").
+Default delivery stays as text or markdown. Markdown is the reader-facing source of truth; apply `references/markdown-delivery-contract.md`. Produce a PDF artifact only when the user's request shows explicit file-delivery intent (e.g. "生成 PDF", "导出 PDF", "作为附件给我").
 
 For the complete PDF delivery trigger keywords, negation guard list, and pipeline steps, read `references/delivery-operator-note.md`.
 
@@ -412,6 +417,8 @@ Before delivery:
    - if no specialized route applies (shared-workflow path), list at least `workflow-spine-audit.md` and `final-audit.md`
    - for each listed audit, confirm one of these statuses: **已通过** (passed, with evidence visible in the standardized route-and-audit-status block in the artifact — see `references/report-template.md` §Route and audit status — or in the process log), **已跳过（附理由）** (skipped, with documented reason), or **未运行（附理由）** (not run, with documented reason)
    - if any required audit is missing or not run, run it before proceeding, or document the reason (skipped / not run / not applicable)
+
+For Markdown/text delivery, run `python3 scripts/validate_markdown_delivery.py <report>.md`; if PDF was requested, run the separate checks in `references/delivery-operator-note.md`.
 
 A report that sounds informed but does not visibly satisfy its required artifact contract (route-specific or shared-workflow) is not ready.
 

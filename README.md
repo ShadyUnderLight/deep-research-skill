@@ -111,6 +111,7 @@ python -m playwright install chromium
 ├── SYSTEM-MAP.md           # 全仓库结构地图 / 问题域地图
 ├── references/
 │   ├── route-index.md      # 紧凑路由选择索引 (读 ROUTING-MATRIX 前先读此)
+│   ├── markdown-delivery-contract.md # Markdown-first 阅读交付契约
 │   ├── search-provider-fallback.md  # 降级搜索 fallback 策略和执行纪律
 │   └── ...                 # 可复用研究方法、模板、纪律说明
 ├── checklists/             # 交付前审计门槛
@@ -147,10 +148,11 @@ python -m playwright install chromium
 4. **`references/`** 提供方法、模板、claim discipline 与研究约束
 5. **`checklists/`** 检查最终产物是否真的达到交付标准
 6. **`evals/`** 把真实失败沉淀成可复盘、可回归的资产
-7. **`scripts/`** 负责 markdown → PDF 等交付层问题
+7. **`scripts/`** 负责 Markdown → PDF 等交付层问题；其中
+   `validate_markdown_delivery.py` 单独检查 Markdown 阅读层的结构与密度
 
 一句话概括：
-**route 决定你该怎么研究，checklist 决定你能不能交付，eval 决定你会不会重复犯错。**
+**route 决定你该怎么研究，Markdown 交付契约决定读者能否快速读懂，checklist 决定你能不能交付，eval 决定你会不会重复犯错。**
 
 ---
 

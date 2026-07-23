@@ -61,6 +61,8 @@ The pipeline should not be treated as a black box. If the markdown is clean but 
 - `scripts/render_pdf.py` — the PDF renderer; supports `--landscape`, `--media`, `--margin-top`, `--margin-right`, `--margin-bottom`, `--margin-left`, and `--title` for print control
 - `scripts/md_to_pdf.py` — the one-shot pipeline; forwards all print controls
 - `references/failure-taxonomy.md` — documents recurring delivery failure families
+- `references/markdown-delivery-contract.md` — defines the reader-facing
+  Markdown shape and its lightweight presentation lint
 
 ## When to change the rendering layer
 
