@@ -107,23 +107,41 @@ def _check_decision_tree_headings(cleaned: str) -> list[str]:
     # Check if a specialized route was selected (not shared-workflow).
     # Canonicalize via route-manifest.json aliases so display-name forms
     # like "Constrained Choice / Shortlist" are recognized.
+    # Parse only the primary route line — exclude closest-alternative prose.
     manifest_path = Path(__file__).resolve().parent.parent / "schemas" / "route-manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     search_ids: set[str] = set()
     for route in manifest["routes"]:
         if route["category"] != "specialized":
             continue
-        # Canonical id + all aliases
         search_ids.add(route["id"].lower())
         for alias in route.get("aliases", []):
             search_ids.add(alias.lower())
 
-    primary_lower = primary_section.lower()
-    has_specialized = any(rid in primary_lower for rid in search_ids)
+    # Extract the primary route declaration from the first content lines
+    # (before any prose about closest alternative)
+    primary_lines = [
+        l.strip() for l in primary_section.split("\n")
+        if l.strip() and not l.strip().startswith("Closest")
+    ]
+    primary_declared = "\n".join(primary_lines[:3]).lower()  # first 3 content lines
+    has_specialized = any(rid in primary_declared for rid in search_ids)
     if not has_specialized:
         return []  # Shared-workflow or unknown — decision tree fields not needed
 
-    missing = [h for h in DECISION_TREE_HEADINGS if h not in found]
+    # Core 3 fields: always recommended for specialized routes
+    core_fields = [h for h in DECISION_TREE_HEADINGS if h != "## Tie-break rationale"]
+    missing = [h for h in core_fields if h not in found]
+
+    # Tie-break rationale: only warn if Decision tree path explicitly says
+    # Step 4 was reached (not "Step 4 not reached")
+    dt_path_body = _section_body(cleaned, "Decision tree path")
+    step4_reached = dt_path_body and re.search(
+        r"step 4 (?:was )?reached", dt_path_body.lower()
+    ) is not None
+    if step4_reached and "## Tie-break rationale" not in found:
+        missing.append("## Tie-break rationale")
+
     return missing
 
 

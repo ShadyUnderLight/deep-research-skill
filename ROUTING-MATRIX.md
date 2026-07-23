@@ -1101,6 +1101,7 @@ The action from Step 1 and the object from Step 2 must be consistent. Conflict e
 - Step 1 says "judge listed-company value" but Step 2 points to "architecture / mechanism" → likely `listed-company` (primary) + `technical-deep-dive` (secondary), not the reverse
 - Step 1 says "judge academic evidence" but Step 2 points to "architecture / mechanism" → likely `academic-review`, not `technical-deep-dive`
 - Step 1 says "judge regulation/policy" but Step 2 points to "market trajectory" → likely `regulatory-analysis` (primary) + `market-outlook` (secondary), not the reverse
+- Step 1 says "judge technical mechanism" but Step 2 points to "listed / public company" → likely `technical-deep-dive` (primary), not `listed-company` — the technical question drives the report structure, even if the subject is a listed company
 
 ### Step 3 — Check route boundary hard-fails
 

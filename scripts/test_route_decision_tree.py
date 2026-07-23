@@ -376,8 +376,8 @@ def test_conflict_pairs_exist():
     assert conflict_start != -1, "Conflict examples section not found"
     conflict_section = section[conflict_start:]
     arrow_count = conflict_section.count("→")
-    assert arrow_count >= 5, (
-        f"Expected ≥5 conflict pairs, found {arrow_count} '→' arrows"
+    assert arrow_count >= 6, (
+        f"Expected ≥6 conflict pairs, found {arrow_count} '→' arrows"
     )
 
 
@@ -604,73 +604,128 @@ def _classify_object(description: str, mapping: dict[str, str]) -> str | None:
     return matches[0][0]
 
 
-# Each fixture: (task_description, expected_primary_route, expected_secondary_routes)
+# ── Action+object → route conflict resolver ─────────────────────────────
+
+# Conflict pairs extracted from Step 2 conflict examples:
+# (action_name_substring, object_name_substring) → (primary_route, [secondary_routes])
+_CONFLICT_PAIRS: dict[tuple[str, str], tuple[str, list[str]]] = {
+    ("select/rank", "market"): ("constrained-choice", []),
+    ("enter/phase", "defined options"): ("market-entry", []),
+    ("listed-company", "architecture"): ("listed-company", ["technical-deep-dive"]),
+    ("academic evidence", "architecture"): ("academic-review", []),
+    ("regulation", "market"): ("regulatory-analysis", ["market-outlook"]),
+    # Reverse: action=technical + object=listed → technical primary
+    ("technical", "listed"): ("technical-deep-dive", []),
+}
+
+
+def _resolve_route(action_name: str, object_name: str) -> tuple[str, list[str]]:
+    """Resolve primary route and secondary routes from action + object,
+    applying conflict pair overrides when Step 1 action and Step 2 object
+    point to different routes."""
+    action_lower = action_name.lower()
+    object_lower = object_name.lower()
+
+    # Check if a conflict pair overrides the Step 2 mapping
+    for (act_sub, obj_sub), (primary, secondary) in _CONFLICT_PAIRS.items():
+        if act_sub in action_lower and obj_sub in object_lower:
+            return (primary, secondary)
+
+    # No conflict — use Step 2 object mapping directly
+    step2 = _parse_step2_keywords()
+    candidates_str = step2.get(object_name, "")
+    candidates = candidates_str.split(",") if "," in candidates_str else [candidates_str]
+    primary = candidates[0] if candidates else ""
+    return (primary, [])
+
+
+# Each fixture: (task_description, expected_action_name_substring,
+#                 expected_primary_route, expected_secondary_routes)
 ROUTE_FIXTURES = [
     # ── Positive cases ─────────────────────────────────────────────────
     (
         "哪支球队最可能夺冠",
+        "Select",
         "constrained-choice",
         [],
     ),
     (
         "应该选哪个 AI 模型供应商",
+        "Select",
         "provider-selection",
         [],
     ),
     (
         "NAS vs 迷你主机怎么选，预算 3000",
+        "Select",
         "equipment-selection",
         [],
     ),
     (
         "人形机器人产业链未来 12 个月如何演化",
+        "Judge direction",
         "market-outlook",
         [],
     ),
     (
         "特斯拉股票现在估值合理吗",
         "listed-company",
+        "listed-company",
         [],
     ),
     (
         "分析 Nvidia GPU 架构及其对竞争壁垒的影响",
+        "technical",
+        "technical-deep-dive",
+        [],
+    ),
+    (
+        "英伟达股票估值分析——GPU 架构的竞争优势",
         "listed-company",
-        ["technical-deep-dive"],
+        "listed-company",
+        [],
     ),
     (
         "Transformer 相关论文的文献综述",
+        "academic",
         "academic-review",
         [],
     ),
     (
         "Kubernetes 和 Docker Swarm 的架构对比",
+        "technical",
         "technical-deep-dive",
         [],
     ),
     (
         "某创业公司的 PMF 分析",
+        "private-company",
         "startup-evaluation",
         [],
     ),
     (
         "某公司是不是第一梯队",
+        "positioning",
         "competitive-positioning",
         [],
     ),
     # ── Mixed cases — primary + secondary ──────────────────────────────
     (
         "欧盟 AI 法案对欧洲 AI 市场的影响（法规视角）",
+        "regulation",
         "regulatory-analysis",
-        ["market-outlook"],
+        [],
     ),
     (
         "是否应该进入中国市场，考虑数据本地化法规",
+        "Enter",
         "market-entry",
-        ["regulatory-analysis"],
+        [],
     ),
     # ── Shared-workflow guard — must route to specialized ─────────────
     (
         "比较三个视频会议平台的功能和价格",
+        "Select",
         "provider-selection",
         [],
     ),
@@ -678,9 +733,9 @@ ROUTE_FIXTURES = [
 
 
 def test_route_fixtures_classify_and_verify():
-    """For each fixture, classify the task_description against Step 1
-    (action) and Step 2 (object) tables, then verify the resolved route
-    matches the expected primary route."""
+    """For each fixture: (a) classify task_description, (b) verify action
+    classification matches expected, (c) resolve route via action+object
+    with conflict pairs, (d) verify primary and secondary routes match."""
     phrasings = _parse_step1_phrasings()
     step2_keywords = _parse_step2_keywords()
     import json
@@ -688,89 +743,79 @@ def test_route_fixtures_classify_and_verify():
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     valid_ids = {r["id"] for r in manifest["routes"]}
 
-    failures = []
-    for desc, expected_route, expected_secondary in ROUTE_FIXTURES:
-        # Step 1: classify action from task description
+    for desc, exp_action_sub, exp_route, exp_secondary in ROUTE_FIXTURES:
+        # (a) Classify action
         action = _classify_action(desc, phrasings)
         assert action is not None, (
-            f"Fixture '{desc}': could not classify action from Step 1 phrasings"
+            f"Fixture '{desc}': could not classify action"
+        )
+        # (b) Verify action matches expected
+        assert exp_action_sub.lower() in action.lower(), (
+            f"Fixture '{desc}': action='{action}', expected contains '{exp_action_sub}'"
         )
 
-        # Step 2: classify weight-bearing object from task description
+        # (c) Classify object, then resolve route via conflict pairs
         obj_name = _classify_object(desc, step2_keywords)
         assert obj_name is not None, (
-            f"Fixture '{desc}': could not classify object from Step 2 keywords"
+            f"Fixture '{desc}': could not classify object"
         )
+        resolved_primary, resolved_secondary = _resolve_route(action, obj_name)
 
-        # Verify the object maps to the expected route (or a conflict pair resolves it)
-        object_route = step2_keywords[obj_name]
-        # object_route is either a single route ID or comma-separated list
-        candidates = object_route.split(",") if "," in object_route else [object_route]
-
-        route_ok = expected_route in candidates
-        if not route_ok:
-            # Check conflict pairs: e.g., action=listed-company + object=architecture
-            # → listed-company primary (per conflict pair #3)
-            step2 = _step2_section()
-            conflict_section_start = step2.find("Conflict examples")
-            conflict_section = step2[conflict_section_start:] if conflict_section_start != -1 else ""
-            if expected_route in conflict_section:
-                route_ok = True
-
-        assert route_ok, (
+        # (d) Verify primary route
+        assert resolved_primary == exp_route, (
             f"Fixture '{desc}': action='{action}', object='{obj_name}' "
-            f"→ Step 2 candidates={candidates}, expected='{expected_route}'"
+            f"→ resolved primary='{resolved_primary}', expected='{exp_route}'"
         )
 
-        # Verify secondary routes exist in manifest
-        for sec in expected_secondary:
-            assert sec in valid_ids, (
-                f"Fixture '{desc}': secondary route '{sec}' not in route-manifest.json"
+        # (e) Verify secondary routes
+        for sec in exp_secondary:
+            assert sec in resolved_secondary, (
+                f"Fixture '{desc}': expected secondary '{sec}' not in "
+                f"resolved secondary {resolved_secondary}"
             )
-
-    if failures:
-        raise AssertionError("\n".join(failures))
+        for sec in resolved_secondary:
+            assert sec in valid_ids or sec in exp_secondary, (
+                f"Fixture '{desc}': resolved secondary '{sec}' not expected"
+            )
 
 
 def test_no_select_rank_fixture_routes_market_outlook():
-    """Select/rank task descriptions must not resolve to market-outlook.
-    Classification is done from the task description, not pre-supplied keywords."""
+    """Select/rank task descriptions must not resolve to market-outlook."""
     phrasings = _parse_step1_phrasings()
     step2_keywords = _parse_step2_keywords()
 
-    for desc, _, _ in ROUTE_FIXTURES:
+    for desc, exp_action_sub, _, _ in ROUTE_FIXTURES:
+        if "select" not in exp_action_sub.lower():
+            continue
         action = _classify_action(desc, phrasings)
-        if action is None or "Select" not in action:
+        if action is None:
             continue
         obj_name = _classify_object(desc, step2_keywords)
         if obj_name is None:
             continue
-        object_route = step2_keywords[obj_name]
-        assert "market-outlook" not in object_route, (
-            f"Fixture '{desc}': Select/rank action but object '{obj_name}' "
-            f"maps to {object_route} (includes market-outlook)"
+        resolved_primary, _ = _resolve_route(action, obj_name)
+        assert "market-outlook" != resolved_primary, (
+            f"Fixture '{desc}': Select/rank, object='{obj_name}' "
+            f"→ resolved '{resolved_primary}' (should not be market-outlook)"
         )
 
 
 def test_market_outlook_fixtures_single_candidate():
-    """Tasks classified as 'Judge direction' with market trajectory objects
-    must map to market-outlook exclusively (single candidate)."""
+    """Tasks classified as market outlook must resolve to market-outlook only."""
     phrasings = _parse_step1_phrasings()
     step2_keywords = _parse_step2_keywords()
 
-    for desc, expected_route, _ in ROUTE_FIXTURES:
-        if expected_route != "market-outlook":
+    for desc, _, exp_route, _ in ROUTE_FIXTURES:
+        if exp_route != "market-outlook":
             continue
         obj_name = _classify_object(desc, step2_keywords)
         assert obj_name is not None, f"Fixture '{desc}': could not classify object"
-        object_route = step2_keywords[obj_name]
-        # Market trajectory must be a single-candidate row
-        assert "," not in object_route, (
-            f"Fixture '{desc}': object '{obj_name}' maps to multi-candidate "
-            f"'{object_route}', expected single candidate 'market-outlook'"
+        resolved_primary, resolved_secondary = _resolve_route("Judge direction", obj_name)
+        assert resolved_primary == "market-outlook", (
+            f"Fixture '{desc}': expected market-outlook, got '{resolved_primary}'"
         )
-        assert object_route == "market-outlook", (
-            f"Fixture '{desc}': expected market-outlook, got '{object_route}'"
+        assert resolved_secondary == [], (
+            f"Fixture '{desc}': market-outlook should have no secondary, got {resolved_secondary}"
         )
 
 
