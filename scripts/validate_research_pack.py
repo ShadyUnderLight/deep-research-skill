@@ -87,6 +87,16 @@ def strip_fenced_code_blocks(text: str) -> str:
     return "\n".join(out)
 
 
+def _heading_matches(found: set[str], heading: str) -> bool:
+    """Check if a heading exists in found set, accepting optional
+    suffixes like ' (if applicable)'."""
+    if heading in found:
+        return True
+    # Check for headings that start with the expected prefix
+    prefix = heading + " ("
+    return any(h.startswith(prefix) for h in found)
+
+
 def _check_decision_tree_headings(cleaned: str) -> list[str]:
     """Check for decision tree fields if a specialized route was selected.
 
@@ -134,12 +144,14 @@ def _check_decision_tree_headings(cleaned: str) -> list[str]:
     missing = [h for h in core_fields if h not in found]
 
     # Tie-break rationale: only warn if Decision tree path explicitly says
-    # Step 4 was reached (not "Step 4 not reached")
+    # Step 4 was reached (not "Step 4 not reached"). Accept heading with
+    # optional suffix like "## Tie-break rationale (if applicable)".
     dt_path_body = _section_body(cleaned, "Decision tree path")
     step4_reached = dt_path_body and re.search(
         r"step 4 (?:was )?reached", dt_path_body.lower()
     ) is not None
-    if step4_reached and "## Tie-break rationale" not in found:
+    tiebreak_found = _heading_matches(found, "## Tie-break rationale")
+    if step4_reached and not tiebreak_found:
         missing.append("## Tie-break rationale")
 
     return missing

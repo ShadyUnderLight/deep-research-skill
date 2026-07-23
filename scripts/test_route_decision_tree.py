@@ -608,6 +608,7 @@ def _classify_object(description: str, mapping: dict[str, str]) -> str | None:
 
 # Conflict pairs extracted from Step 2 conflict examples:
 # (action_name_substring, object_name_substring) → (primary_route, [secondary_routes])
+# Substrings are slash-normalized (spaces around / removed) to match classifier output.
 _CONFLICT_PAIRS: dict[tuple[str, str], tuple[str, list[str]]] = {
     ("select/rank", "market"): ("constrained-choice", []),
     ("enter/phase", "defined options"): ("market-entry", []),
@@ -616,19 +617,26 @@ _CONFLICT_PAIRS: dict[tuple[str, str], tuple[str, list[str]]] = {
     ("regulation", "market"): ("regulatory-analysis", ["market-outlook"]),
     # Reverse: action=technical + object=listed → technical primary
     ("technical", "listed"): ("technical-deep-dive", []),
+    # Reverse: action=technical + object=academic → technical primary
+    ("technical", "academic"): ("technical-deep-dive", []),
 }
+
+
+def _normalize_label(s: str) -> str:
+    """Collapse spaces around slashes: 'Select / rank / predict' → 'select/rank/predict'."""
+    return re.sub(r"\s*/\s*", "/", s.lower())
 
 
 def _resolve_route(action_name: str, object_name: str) -> tuple[str, list[str]]:
     """Resolve primary route and secondary routes from action + object,
     applying conflict pair overrides when Step 1 action and Step 2 object
     point to different routes."""
-    action_lower = action_name.lower()
-    object_lower = object_name.lower()
+    action_norm = _normalize_label(action_name)
+    object_norm = _normalize_label(object_name)
 
     # Check if a conflict pair overrides the Step 2 mapping
     for (act_sub, obj_sub), (primary, secondary) in _CONFLICT_PAIRS.items():
-        if act_sub in action_lower and obj_sub in object_lower:
+        if act_sub in action_norm and obj_sub in object_norm:
             return (primary, secondary)
 
     # No conflict — use Step 2 object mapping directly
@@ -689,6 +697,12 @@ ROUTE_FIXTURES = [
         "Transformer 相关论文的文献综述",
         "academic",
         "academic-review",
+        [],
+    ),
+    (
+        "Transformer 注意力机制的技术原理——基于论文分析",
+        "technical",
+        "technical-deep-dive",
         [],
     ),
     (
