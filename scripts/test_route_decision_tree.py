@@ -898,6 +898,111 @@ def test_conflict_pairs_resolve_correctly():
             assert sec in valid_ids, f"Invalid secondary route: {sec}"
 
 
+# ── Validator regression: decision tree heading checks ───────────────────
+
+def _make_pack(primary_route: str, dt_path: str, tie_break: str = "",
+               action: str = "Select", obj: str = "Defined options") -> str:
+    """Build a minimal Research Pack markdown for validator testing."""
+    parts = [
+        "## Objective\ntest",
+        "## Decision context\ntest",
+        f"## Primary route\n{primary_route}",
+    ]
+    if action:
+        parts.append(f"## Action burden\n{action}")
+    if obj:
+        parts.append(f"## Weight-bearing object\n{obj}")
+    parts.append(f"## Decision tree path\n{dt_path}")
+    if tie_break:
+        parts.append(tie_break)
+    parts.extend([
+        "## Secondary disciplines\ntest",
+        "## Core subquestions\ntest",
+        "## Stop condition\ntest",
+        "## Source register\ntest",
+        "## Claim register\ntest",
+        "## Uncertainty register\ntest",
+        "## Artifact contract\ntest",
+        "## Required audits\ntest",
+        "## Final audit status\ntest",
+    ])
+    return "\n\n".join(parts)
+
+
+def test_validator_ordered_list_alternative_not_specialized():
+    """Ordered list '1. Closest alternative' must not be treated
+    as a primary route declaration."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from validate_research_pack import _check_decision_tree_headings, strip_fenced_code_blocks
+
+    pack = _make_pack(
+        "Shared-workflow\n\n1. Closest alternative: constrained-choice",
+        "Per-route clauses resolved without decision tree."
+    )
+    cleaned = strip_fenced_code_blocks(pack)
+    missing = _check_decision_tree_headings(cleaned)
+    # Shared-workflow should not trigger decision tree field warnings
+    assert missing == [], (
+        f"Ordered-list closest alternative triggered false positive: {missing}"
+    )
+
+
+def test_validator_markdown_bold_alternative_not_specialized():
+    """Markdown '**Closest alternative**: constrained-choice' must not
+    be treated as a primary route declaration."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from validate_research_pack import _check_decision_tree_headings, strip_fenced_code_blocks
+
+    pack = _make_pack(
+        "Shared-workflow\n\n**Closest alternative**: constrained-choice",
+        "Per-route clauses resolved without decision tree."
+    )
+    cleaned = strip_fenced_code_blocks(pack)
+    missing = _check_decision_tree_headings(cleaned)
+    assert missing == [], (
+        f"Bold-formatted closest alternative triggered false positive: {missing}"
+    )
+
+
+def test_validator_tiebreak_garbage_suffix_rejected():
+    """'## Tie-break rationale (garbage)' must not satisfy the heading check."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from validate_research_pack import _check_decision_tree_headings, strip_fenced_code_blocks
+
+    pack = _make_pack(
+        "Constrained Choice / Shortlist",
+        "Steps 1-2 resolved; Step 3 verified; Step 4 was reached.",
+        tie_break="## Tie-break rationale (garbage)\nWrong heading."
+    )
+    cleaned = strip_fenced_code_blocks(pack)
+    missing = _check_decision_tree_headings(cleaned)
+    # Garbage suffix should still trigger a warning for Tie-break rationale
+    assert "## Tie-break rationale" in missing, (
+        f"Garbage suffix '{tie_break}' was accepted as valid heading"
+    )
+
+
+def test_validator_tiebreak_if_applicable_accepted():
+    """'## Tie-break rationale (if applicable)' must satisfy the heading check."""
+    import sys
+    sys.path.insert(0, str(REPO_ROOT / "scripts"))
+    from validate_research_pack import _check_decision_tree_headings, strip_fenced_code_blocks
+
+    pack = _make_pack(
+        "Constrained Choice / Shortlist",
+        "Steps 1-2 resolved; Step 3 verified; Step 4 was reached.",
+        tie_break="## Tie-break rationale (if applicable)\nResolved via tie-breaker."
+    )
+    cleaned = strip_fenced_code_blocks(pack)
+    missing = _check_decision_tree_headings(cleaned)
+    assert "## Tie-break rationale" not in missing, (
+        "'(if applicable)' suffix was not accepted (false positive)"
+    )
+
+
 if __name__ == "__main__":
     failures: list[str] = []
     tests = [
@@ -928,6 +1033,11 @@ if __name__ == "__main__":
         ("market_outlook_fixtures_single_candidate", test_market_outlook_fixtures_single_candidate),
         # Behavioral tests — direct conflict pair resolver
         ("conflict_pairs_resolve_correctly", test_conflict_pairs_resolve_correctly),
+        # Validator regression tests
+        ("validator_ordered_list_alternative_not_specialized", test_validator_ordered_list_alternative_not_specialized),
+        ("validator_markdown_bold_alternative_not_specialized", test_validator_markdown_bold_alternative_not_specialized),
+        ("validator_tiebreak_garbage_suffix_rejected", test_validator_tiebreak_garbage_suffix_rejected),
+        ("validator_tiebreak_if_applicable_accepted", test_validator_tiebreak_if_applicable_accepted),
     ]
 
     for name, fn in tests:
