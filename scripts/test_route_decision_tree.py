@@ -981,7 +981,7 @@ def test_validator_tiebreak_garbage_suffix_rejected():
     missing = _check_decision_tree_headings(cleaned)
     # Garbage suffix should still trigger a warning for Tie-break rationale
     assert "## Tie-break rationale" in missing, (
-        f"Garbage suffix '{tie_break}' was accepted as valid heading"
+        "Garbage suffix '(garbage)' was accepted as valid Tie-break heading"
     )
 
 
