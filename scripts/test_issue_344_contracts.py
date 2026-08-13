@@ -239,8 +239,41 @@ def test_c3_indexed_cases_match_git_tracked_files() -> None:
 # ── C4: CandidateRuleContract ───────────────────────────────────────────────
 
 
+def _registry_source_problems(registry_text: str, indexed_cases: set[str]) -> list[str]:
+    """Validate the registry table's `Source file(s)` column (bare stems).
+
+    Each stem is treated as a filename prefix resolved against both
+    `evals/cases/` and `evals/comparative-distillation/`, because the registry
+    mixes stems for case files and distillation files (e.g.
+    `amd-minimax-equity-report` -> `amd-minimax-equity-report-distillation.md`).
+    Every matched `evals/cases/*.md` must also be registered in INDEX.md.
+
+    Returns a list of problems; an empty list means the registry is healthy.
+    """
+    problems: list[str] = []
+    for line in registry_text.splitlines():
+        cols = [c.strip() for c in line.split("|")]
+        if len(cols) < 9 or not re.match(r"R\d+", cols[1]):
+            continue
+        rule_id = cols[1]
+        for stem in (s.strip() for s in cols[4].split(",") if s.strip()):
+            case_matches = [p for p in CASE_DIR.glob(f"{stem}*") if p.is_file()]
+            distill_matches = [p for p in DISTILL_DIR.glob(f"{stem}*") if p.is_file()]
+            if not case_matches and not distill_matches:
+                problems.append(
+                    f"Source file(s) '{stem}' (R{rule_id}) resolves to no file "
+                    f"under evals/cases/ or evals/comparative-distillation/"
+                )
+            for match in case_matches:
+                if match.name not in indexed_cases:
+                    problems.append(
+                        f"{match} (R{rule_id} source) is not registered in evals/INDEX.md"
+                    )
+    return problems
+
+
 def test_c4_candidate_rule_sources_exist() -> None:
-    """C4a: All candidate rule source files must exist."""
+    """C4a: All candidate rule source files must exist and be indexed."""
     if not REGISTRY_PATH.exists():
         return
     text = REGISTRY_PATH.read_text(encoding="utf-8")
@@ -260,6 +293,48 @@ def test_c4_candidate_rule_sources_exist() -> None:
                 f"Referenced source file does not exist: {ref} "
                 f"(looked in {CASE_DIR} and {DISTILL_DIR})"
             )
+    # The table's `Source file(s)` column uses bare stems (no `.md` suffix, no
+    # backticks). Resolve them as filename prefixes and fail closed on typos,
+    # deletions, or eval cases missing from INDEX.md (issue #375 review P1).
+    indexed_cases = set(
+        re.findall(
+            r"evals/cases/([^`\s]+\.md)",
+            INDEX_PATH.read_text(encoding="utf-8"),
+        )
+    )
+    problems = _registry_source_problems(text, indexed_cases)
+    assert not problems, (
+        "Candidate rule registry source problems:\n" + "\n".join(problems)
+    )
+
+
+def test_c4_missing_source_stem_detected() -> None:
+    """C4a-negative: a typo'd or deleted source stem is reported."""
+    fake = (
+        "| ID | Candidate rule | Action type | Source file(s) | Frequency | "
+        "Original label | Existing coverage | Coverage status |\n"
+        "| R99 | fake rule | NEW_RULE | this-stem-does-not-exist-anywhere | 1 | "
+        "PROMOTE_NOW | - | 无覆盖 |\n"
+    )
+    problems = _registry_source_problems(fake, set())
+    assert any("this-stem-does-not-exist-anywhere" in p for p in problems), problems
+
+
+def test_c4_case_not_indexed_detected() -> None:
+    """C4a-negative: an eval case referenced but missing from INDEX.md is reported."""
+    unique_case = next(
+        p
+        for p in sorted(CASE_DIR.glob("*.md"))
+        if len(list(CASE_DIR.glob(f"{p.stem}*"))) == 1
+    )
+    fake = (
+        "| ID | Candidate rule | Action type | Source file(s) | Frequency | "
+        "Original label | Existing coverage | Coverage status |\n"
+        f"| R99 | fake rule | NEW_RULE | {unique_case.stem} | 1 | "
+        "PROMOTE_NOW | - | 无覆盖 |\n"
+    )
+    problems = _registry_source_problems(fake, set())
+    assert any(unique_case.name in p for p in problems), problems
 
 
 def test_c4_no_duplicate_candidate_ids() -> None:
