@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "description": "Single source of truth for audit checklist identity, file path and execution type. Loaded at runtime via scripts/registry_loader.py. execution_type: automated = executed by a validator script, manual = human checklist at delivery time, process = research-process node audit.",
+  "description": "Single source of truth for audit checklist identity, file path and execution type. Loaded at runtime via scripts/registry_loader.py. execution_type: automated = executed by a validator script, manual = human checklist at delivery time, process = research-process node audit. validator_binding: canonical validator id that executes an automated audit (must be null for manual/process); issue #378.",
   "last_reviewed": "2026-08-13",
   "audits": [
     {
@@ -8,98 +8,112 @@
       "checklist": "checklists/academic-analysis-audit.md",
       "execution_type": "manual",
       "description": "Academic route delivery audit: evidence hierarchy, venue labeling, publication-bias handling.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     },
     {
       "id": "final-audit",
       "checklist": "checklists/final-audit.md",
       "execution_type": "manual",
       "description": "Last gate before delivery: question answered, key variables supported, bottom line actionable.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     },
     {
       "id": "forward-looking-claims",
       "checklist": "checklists/forward-looking-claims.md",
       "execution_type": "automated",
       "description": "Forward-looking claims discipline gate: forecasts must carry source role, time basis and confidence signals.",
-      "automation_reference": "scripts/validate_forward_looking_labels.py"
+      "automation_reference": "scripts/validate_forward_looking_labels.py",
+      "validator_binding": "forward-looking-claims"
     },
     {
       "id": "listed-company-report",
       "checklist": "checklists/listed-company-report.md",
       "execution_type": "manual",
       "description": "Listed-company route delivery audit: research anchor, dated numbers, reported vs estimates separation.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     },
     {
       "id": "market-outlook-audit",
       "checklist": "checklists/market-outlook-audit.md",
       "execution_type": "manual",
       "description": "Market-outlook route delivery audit: scenario structure, monitoring actionability, stakeholder implications.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     },
     {
       "id": "mid-research-review-audit",
       "checklist": "checklists/mid-research-review-audit.md",
       "execution_type": "process",
       "description": "Mid-research review node: visible current best answer, strongest evidence, missing evidence, cut branches.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     },
     {
       "id": "option-selection-final-audit",
       "checklist": "checklists/option-selection-final-audit.md",
       "execution_type": "manual",
       "description": "Selection-memo final audit for option/choice routes: shortlist logic, comparison unit, ranking-reversal conditions.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     },
     {
       "id": "quantitative-role-audit",
       "checklist": "checklists/quantitative-role-audit.md",
       "execution_type": "manual",
       "description": "Quantitative role labeling gate: numbers labeled as observed fact / proxy / assumption / model output; route-specific checks.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     },
     {
       "id": "regulatory-analysis-audit",
       "checklist": "checklists/regulatory-analysis-audit.md",
       "execution_type": "manual",
       "description": "Regulatory route delivery audit: business impact, enforcement reality, graduated risk, jurisdiction handling.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     },
     {
       "id": "route-activation-audit",
       "checklist": "checklists/route-activation-audit.md",
       "execution_type": "process",
       "description": "Route activation node: primary route chosen before deep collection, boundary judgment documented, no escape-hatch misuse.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     },
     {
       "id": "source-traceability",
       "checklist": "checklists/source-traceability.md",
       "execution_type": "automated",
       "description": "Inline citation and source-register gate: load-bearing claims traceable via [SN]/[IN]/[UN], register columns and mapping.",
-      "automation_reference": "scripts/validate_source_label_consistency.py"
+      "automation_reference": "scripts/validate_source_label_consistency.py",
+      "validator_binding": "source-label-consistency"
     },
     {
       "id": "startup-company-report",
       "checklist": "checklists/startup-company-report.md",
       "execution_type": "manual",
       "description": "Startup-evaluation route delivery audit: PMF signals, funding overview, milestone framing, uncertainty bounds.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     },
     {
       "id": "technical-analysis-audit",
       "checklist": "checklists/technical-analysis-audit.md",
       "execution_type": "manual",
       "description": "Technical-deep-dive route delivery audit: judgment presence, comparison dimensions, feasibility evidence, roadmap separation.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     },
     {
       "id": "workflow-spine-audit",
       "checklist": "checklists/workflow-spine-audit.md",
       "execution_type": "manual",
       "description": "Shared-workflow audit: workflow spine evidence, no specialized-route escape hatch misuse.",
-      "automation_reference": null
+      "automation_reference": null,
+      "validator_binding": null
     }
   ]
 }

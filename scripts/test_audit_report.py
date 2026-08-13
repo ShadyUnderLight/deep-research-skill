@@ -33,6 +33,8 @@ def _valid_report() -> str:
     - A table with role labels must exist to satisfy quantitative-role-labeling claim
     - Source Register must have 7 columns
     - Each key section must have [Sxx] citation
+    - A route activation contract declaring the route's required audits
+      (issue #378: strict mode implies --require-contract)
     """
     return """\
 # Test Report
@@ -46,10 +48,14 @@ def _valid_report() -> str:
 | source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
 | final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
 | quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
+| technical-analysis-audit | ✅ Passed | §4 判断与维度结论可追溯 |
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：the report concludes X is viable [S01].
+
+- Key bullet one
+- Key bullet two
 
 ## Findings
 
@@ -72,6 +78,10 @@ Each dimension conclusion is backed by [S01] and [S02].
 |----|-------------|-------------|------|---------|-------------|------------------|
 | S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
 | S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+
+```contract
+{"primary_route": "technical-deep-dive", "secondary_routes": [], "disciplines": [], "audits": [{"id": "technical-analysis-audit", "status": "passed", "evidence": "§4"}, {"id": "source-traceability", "status": "passed", "evidence": "§3"}, {"id": "final-audit", "status": "passed", "evidence": "§2"}], "artifact_id": "fixture-tdd-valid", "contract_version": "1.0.0", "created_at": "2026-08-13"}
+```
 """
 
 
@@ -624,10 +634,15 @@ _MO_BODY_PREFIX = """\
 | source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
 | quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
 | final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+| market-outlook-audit | ✅ Passed | §3 监控信号完整 |
+| forward-looking-claims | ✅ Passed | §4 前瞻数字均带标签 |
 
 ## 执行摘要
 
-Power constraints are tightening across global data center markets [S01].
+**核心判断**：power constraints will keep tightening in 2026 [S01].
+
+- Key bullet one
+- Key bullet two
 
 ## 市场现状
 
@@ -654,6 +669,10 @@ _MO_SOURCE_REGISTER = """
 |----|-------------|-------------|------|---------|-------------|------------------|
 | S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
 | S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+
+```contract
+{"primary_route": "market-outlook", "secondary_routes": [], "disciplines": [], "audits": [{"id": "market-outlook-audit", "status": "passed", "evidence": "§3"}, {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"}, {"id": "source-traceability", "status": "passed", "evidence": "§5"}, {"id": "final-audit", "status": "passed", "evidence": "§2"}], "artifact_id": "fixture-mo-monitoring", "contract_version": "1.0.0", "created_at": "2026-08-13"}
+```
 """
 
 

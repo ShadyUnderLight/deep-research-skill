@@ -1,0 +1,524 @@
+#!/usr/bin/env python3
+"""
+Tests for issue #378 — required-audit execution and fail-closed semantics.
+
+Verifies that:
+1. Every route's required_audits resolve to a registry binding; automated
+   audits without a binding fail closed.
+2. Required automated audits actually run and appear in structured results.
+3. Manual/process audits not run in the report are recorded as ``not_run``
+   and cannot aggregate to Pass (blocking in strict mode, warning otherwise).
+4. Strict mode fails when route / contract / pack declarations are missing —
+   no silent fallback to technical-deep-dive.
+5. ``--json`` emits a machine-readable verdict with audit id, status,
+   evidence, validator version and input artifact hash.
+6. Markdown delivery, Research Pack (when provided) and route-specific
+   audits run in a single command.
+"""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = ROOT / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+SCRIPT = str(SCRIPTS_DIR / "audit_report.py")
+
+# Contract template that satisfies all validate_contract rules (issue #376):
+# every primary-route required audit declared, passed with non-empty
+# evidence, plus stable artifact identity fields.
+CONTRACT_TEMPLATE = {
+    "primary_route": "market-outlook",
+    "secondary_routes": [],
+    "disciplines": [],
+    "audits": [
+        {"id": "market-outlook-audit", "status": "passed", "evidence": "§3"},
+        {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"},
+        {"id": "source-traceability", "status": "passed", "evidence": "§5"},
+        {"id": "final-audit", "status": "passed", "evidence": "§2"},
+    ],
+    "artifact_id": "fixture-market-outlook-pos",
+    "contract_version": "1.0.0",
+    "created_at": "2026-08-13",
+}
+
+
+def _contract(primary: str = "market-outlook", **overrides) -> str:
+    data = json.dumps(CONTRACT_TEMPLATE, ensure_ascii=False)
+    if primary != "market-outlook":
+        data = json.dumps(
+            {**CONTRACT_TEMPLATE, "primary_route": primary}, ensure_ascii=False
+        )
+    data = json.dumps(
+        {**json.loads(data), **overrides}, ensure_ascii=False
+    )
+    return data
+
+
+def _route_block(primary: str) -> str:
+    """Route and audit status block declaring the primary route and audits."""
+    audits = {
+        "market-outlook": [
+            ("market-outlook-audit", "§3"),
+            ("forward-looking-claims", "§4"),
+            ("source-traceability", "§5"),
+            ("final-audit", "§2"),
+            # quantitative-role-audit keeps the table role-annotated
+            # (table-role-labels: 3+ row tables need a role keyword).
+            ("quantitative-role-audit", "§6"),
+        ],
+        "technical-deep-dive": [
+            ("technical-analysis-audit", "§4"),
+            ("source-traceability", "§5"),
+            ("final-audit", "§2"),
+            ("quantitative-role-audit", "§6"),
+        ],
+        "shared-workflow": [
+            ("workflow-spine-audit", "§3"),
+            ("final-audit", "§2"),
+            ("quantitative-role-audit", "§6"),
+        ],
+    }
+    rows = audits.get(primary, audits["market-outlook"])
+    body = "".join(
+        f"| {aid} | ✅ Passed | {evidence} |\n" for aid, evidence in rows
+    )
+    display = {
+        "market-outlook": "Market Outlook",
+        "technical-deep-dive": "Technical Deep-dive",
+        "shared-workflow": "Shared-workflow",
+    }[primary]
+    return (
+        "## Route and audit status\n\n"
+        f"**Primary route**: {display}\n\n"
+        "| Audit | Status | 证据 |\n"
+        "|-------|--------|------|\n" + body
+    )
+
+
+def _monitoring_section() -> str:
+    """Monitoring section with 3 fully-defined signals (market-outlook)."""
+    return """\
+## Monitoring signals
+
+| Signal | Threshold | Cadence | Source | Trigger-to-action | 数字角色 |
+|--------|-----------|---------|--------|-------------------|---------|
+| Signal A | ≥2.0 | monthly | [S01] | rebalance | observed |
+| Signal B | ≤1.5 | weekly | [S02] | hedge | observed |
+| Signal C | ≥10% | quarterly | [S03] | reallocate | observed |
+"""
+
+
+def _source_register() -> str:
+    return """\
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+| S03 | Example C | secondary | 2026-03-01 | https://example.com/c | high | §4 |
+"""
+
+
+def _report(
+    primary: str = "market-outlook",
+    contract: str | None = None,
+    include_monitoring: bool = True,
+    route_block: str | None = None,
+) -> str:
+    """Build a report that passes all generic validators."""
+    parts = [
+        "# Test Report\n",
+        route_block or _route_block(primary),
+        "\n## Executive summary\n\n"
+        "**核心判断**：the market will grow, backed by [S01].\n\n"
+        "- Key bullet one\n"
+        "- Key bullet two\n",
+        "\n## Findings\n\nBody text with citations [S01], [S02], [S03].\n",
+        "\n## Comparison Table\n\n"
+        "| Metric | System A | System B | 数字角色 |\n"
+        "|--------|----------|----------|---------|\n"
+        "| Cost | 100 | 80 | observed |\n"
+        "| Speed | 200 | 150 | observed |\n",
+        "\n## Dimension conclusions\n\nBacked by [S01] and [S02].\n",
+    ]
+    if include_monitoring:
+        parts.append("\n" + _monitoring_section())
+    parts.append("\n" + _source_register())
+    if contract is not None:
+        parts.append(f"\n```contract\n{contract}\n```\n")
+    return "".join(parts)
+
+
+def _write(text: str) -> Path:
+    f = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".md", delete=False, encoding="utf-8"
+    )
+    f.write(text)
+    f.close()
+    return Path(f.name)
+
+
+def _run_audit(
+    path: Path,
+    extra_args: list[str] | None = None,
+    research_pack: Path | None = None,
+) -> subprocess.CompletedProcess:
+    args = [sys.executable, SCRIPT, str(path)]
+    if research_pack is not None:
+        args += ["--research-pack", str(research_pack)]
+    args += extra_args or []
+    return subprocess.run(args, capture_output=True, text=True)
+
+
+class TestRequiredAuditExecution:
+    """Required audits must actually execute and appear in results."""
+
+    def test_required_automated_audits_executed(self) -> None:
+        """forward-looking-claims (automated) must run for market-outlook."""
+        report = _report(contract=_contract())
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        audit_ids = {a["audit_id"] for a in data["audits"]}
+        assert "forward-looking-claims" in audit_ids
+        assert "source-traceability" in audit_ids
+        assert "market-outlook-audit" in audit_ids  # manual, declared
+        assert "markdown-delivery" in audit_ids  # global automated
+
+    def test_forward_looking_failure_is_blocking(self) -> None:
+        """A forward-looking numeric claim mislabeled as confirmed must fail."""
+        report = _report(contract=_contract())
+        report += (
+            "\n## Outlook\n\n"
+            "[Confirmed] Shipments will reach 100 units by 2027.\n"
+        )
+        path = _write(report)
+        result = _run_audit(path)
+        assert result.returncode == 2, result.stdout
+        assert "forward-looking" in result.stdout.lower()
+
+
+class TestManualAuditStatus:
+    """Manual/process audits must have explicit not_run/skipped semantics."""
+
+    def _report_missing_declaration(self) -> Path:
+        block = (
+            "## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n"
+            "|-------|--------|------|\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+        )
+        return _write(_report(route_block=block, contract=_contract()))
+
+    def test_undeclared_manual_audit_is_not_run_non_strict(self) -> None:
+        """Non-strict records not_run explicitly without changing exit code."""
+        path = self._report_missing_declaration()
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run"
+        assert mo["reason"] == "not declared in Route and audit status block"
+
+    def test_undeclared_manual_audit_is_blocking_in_strict(self) -> None:
+        path = self._report_missing_declaration()
+        result = _run_audit(path, extra_args=["--strict", "--require-contract"])
+        assert result.returncode == 2, result.stdout
+        assert "market-outlook-audit" in result.stdout
+
+
+class TestFailClosed:
+    """Strict mode must fail closed on missing declarations."""
+
+    def test_strict_no_route_fails(self) -> None:
+        """No route block and no --route: strict must fail, not fall back."""
+        report = (
+            "# Test Report\n\n"
+            "## Findings\n\nBody [S01].\n\n"
+            "## Source Register\n\n"
+            "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |\n"
+            "|----|-------------|-------------|------|---------|-------------|------------------|\n"
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |\n"
+        )
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--strict"])
+        assert result.returncode == 2, result.stdout
+        assert "route" in result.stdout.lower()
+
+    def test_non_strict_no_route_still_falls_back(self) -> None:
+        """Legacy compatibility: non-strict keeps the default-route fallback."""
+        report = (
+            "# Test Report\n\n"
+            "## Findings\n\nBody [S01].\n\n"
+            "## Source Register\n\n"
+            "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |\n"
+            "|----|-------------|-------------|------|---------|-------------|------------------|\n"
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |\n"
+        )
+        path = _write(report)
+        result = _run_audit(path)
+        assert "technical-deep-dive" in result.stdout.lower()
+
+    def test_strict_missing_contract_fails(self) -> None:
+        """Strict implies --require-contract: missing contract is blocking."""
+        path = _write(_report(contract=None))
+        result = _run_audit(path, extra_args=["--strict"])
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_missing_contract_non_strict_skips(self) -> None:
+        """Migration opt-out preserved: non-strict without contract has no
+        contract-related blocking."""
+        path = _write(_report(contract=None))
+        result = _run_audit(path, extra_args=["--route", "market-outlook", "--json"])
+        data = json.loads(result.stdout)
+        assert not any("contract" in b for b in data["blocking"]), data["blocking"]
+
+    def test_research_pack_not_provided_is_skipped(self) -> None:
+        """research-pack audit is explicitly skipped when no pack is given."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        pack = next(a for a in data["audits"] if a["audit_id"] == "research-pack")
+        assert pack["status"] == "skipped"
+
+
+class TestAutomatedAuditBinding:
+    """Automated audits without a registry binding must fail closed."""
+
+    def test_missing_binding_fails_closed(self, monkeypatch) -> None:
+        import audit_report
+        import registry_loader
+
+        # Simulate an audit registry where forward-looking-claims lost its
+        # validator binding (registry/code drift).
+        class FakeAuditInfo:
+            def __init__(self, aid, etype, binding):
+                self.id = aid
+                self.execution_type = etype
+                self.validator_binding = binding
+                self.checklist = "checklists/forward-looking-claims.md"
+                self.description = ""
+                self.automation_reference = None
+
+        class FakeAuditRegistry:
+            version = 1
+
+            def __init__(self):
+                self._audits = {
+                    "market-outlook-audit": FakeAuditInfo(
+                        "market-outlook-audit", "manual", None),
+                    "forward-looking-claims": FakeAuditInfo(
+                        "forward-looking-claims", "automated", None),
+                    "source-traceability": FakeAuditInfo(
+                        "source-traceability", "automated",
+                        "source-label-consistency"),
+                    "final-audit": FakeAuditInfo("final-audit", "manual", None),
+                }
+
+            def get_audit(self, aid):
+                return self._audits.get(aid)
+
+            def audit_ids(self):
+                return set(self._audits)
+
+        monkeypatch.setattr(audit_report, "_AUDIT_REGISTRY", FakeAuditRegistry())
+        path = _write(_report(contract=_contract()))
+        verdict = audit_report.audit_report(path, route="market-outlook")
+        assert verdict.overall == "fail"
+        assert any("forward-looking-claims" in e for e in verdict.blocking)
+
+
+class TestJsonOutput:
+    """--json must emit a machine-readable verdict."""
+
+    def test_json_shape(self) -> None:
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        assert result.returncode == 0, result.stdout
+        data = json.loads(result.stdout)
+        assert data["route"] == "market-outlook"
+        assert data["overall"] == "pass"
+        assert data["exit_code"] == 0
+        assert data["input_sha256"]
+        assert data["validator_version"]
+        for audit in data["audits"]:
+            assert audit["audit_id"]
+            assert audit["status"]
+            assert audit["execution_type"]
+        # human-readable summary must not pollute stdout
+        assert "Route:" not in result.stdout
+
+    def test_json_with_failures(self) -> None:
+        report = _report(contract=_contract())
+        report += (
+            "\n## Outlook\n\n"
+            "[Confirmed] Shipments will reach 100 units by 2027.\n"
+        )
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--json"])
+        assert result.returncode == 2
+        data = json.loads(result.stdout)
+        assert data["overall"] == "fail"
+        fl = next(
+            a for a in data["audits"] if a["audit_id"] == "forward-looking-claims"
+        )
+        assert fl["status"] == "fail"
+        assert fl["errors"]
+
+
+class TestSingleCommandCoverage:
+    """Markdown delivery + Research Pack + contract + route audits in one command."""
+
+    def test_markdown_delivery_and_pack_run_together(self) -> None:
+        report = _write(_report(contract=_contract()))
+        pack = _write(PACK_FIXTURE)
+        result = _run_audit(
+            report, research_pack=pack, extra_args=["--strict", "--require-contract"]
+        )
+        assert result.returncode == 0, result.stdout
+
+    def test_invalid_pack_fails(self) -> None:
+        report = _write(_report(contract=_contract()))
+        bad_pack = _write("# Not a pack\n")
+        result = _run_audit(
+            report, research_pack=bad_pack, extra_args=["--strict"]
+        )
+        assert result.returncode == 2, result.stdout
+        assert "research-pack" in result.stdout.lower()
+
+
+class TestSelfAssessmentCannotOverride:
+    """A report claiming Passed must not override validator failures."""
+
+    def test_report_claims_pass_but_validator_fails(self) -> None:
+        # Report declares all audits Passed but body has no monitoring section.
+        report = _report(
+            contract=_contract(), include_monitoring=False, route_block=_route_block("market-outlook")
+        )
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract"])
+        assert result.returncode == 2, result.stdout
+        assert "monitoring" in result.stdout.lower()
+
+
+class TestSecondaryHardFail:
+    """Secondary-route hard-fail verification needs its own audit result
+    (issue #378 acceptance 6) — primary-route coverage is not enough."""
+
+    def _secondary_report(self, contract_text: str) -> Path:
+        block = _route_block("market-outlook")
+        return _write(_report(contract=contract_text, route_block=block))
+
+    def test_declared_secondary_hard_fail_present_passes(self) -> None:
+        contract = _contract(
+            secondary_routes=["constrained-choice"],
+            audits=[
+                {"id": "market-outlook-audit", "status": "passed", "evidence": "§3"},
+                {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"},
+                {"id": "source-traceability", "status": "passed", "evidence": "§5"},
+                {"id": "final-audit", "status": "passed", "evidence": "§2"},
+                {"id": "constrained-choice-secondary-hard-fail", "status": "passed",
+                 "evidence": "§6 verified hard-fail conditions"},
+            ],
+        )
+        path = self._secondary_report(contract)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        ids = {a["audit_id"]: a for a in data["audits"]}
+        assert "constrained-choice-secondary-hard-fail" in ids
+        assert ids["constrained-choice-secondary-hard-fail"]["status"] == "pass"
+
+    def test_missing_secondary_hard_fail_is_not_run_blocking(self) -> None:
+        """Secondary declared but no hard-fail audit entry: must not pass."""
+        contract = _contract(
+            secondary_routes=["constrained-choice"],
+            audits=[
+                {"id": "market-outlook-audit", "status": "passed", "evidence": "§3"},
+                {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"},
+                {"id": "source-traceability", "status": "passed", "evidence": "§5"},
+                {"id": "final-audit", "status": "passed", "evidence": "§2"},
+            ],
+        )
+        path = self._secondary_report(contract)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract"])
+        assert result.returncode == 2, result.stdout
+        assert "constrained-choice-secondary-hard-fail" in result.stdout
+
+
+# A minimal valid Research Pack satisfying validate_research_pack structure
+# and strict semantic checks (see scripts/validate_research_pack.py).
+PACK_FIXTURE = """\
+## Objective
+
+Determine X, grounded on [S01].
+
+## Decision context
+
+Context with boundary judgment: chosen over alternative Y, rejected because
+scope mismatch; would become relevant if market conditions change.
+
+## Primary route
+
+Market Outlook selected as primary route. The closest alternative,
+shared-workflow, was rejected because this task needs scenario structure.
+Boundary: if monitoring signals are not required, shared-workflow would apply.
+
+## Secondary disciplines
+
+- none
+
+## Core subquestions
+
+- Q1
+
+## Stop condition
+
+Stop when evidence saturated.
+
+## Source register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+
+## Claim register
+
+| Claim | Source ID |
+|-------|-----------|
+| C1 | S01 |
+
+## Uncertainty register
+
+| Uncertainty | Source ID |
+|-------------|-----------|
+| U01 | S01 |
+
+## Artifact contract
+
+| Field | Value |
+|-------|-------|
+| artifact_id | fixture-market-outlook-pos |
+
+## Required audits
+
+- market-outlook-audit — passed: executed by author
+- forward-looking-claims — passed: no mislabeled claims
+- source-traceability — passed: register complete
+- final-audit — passed: all gates verified
+
+## Final audit status
+
+Pass
+"""

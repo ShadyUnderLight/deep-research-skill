@@ -51,6 +51,20 @@ KNOWN_VALIDATOR_IDS: frozenset[str] = frozenset({
     "contract-check",
 })
 
+# Validator ids that exist only to execute automated audits (issue #378).
+# They are NOT route validator bindings: they are bound via each audit's
+# ``validator_binding`` in schemas/audit-registry.json.  audit_report.py
+# maps these ids to functions in _AUDIT_VALIDATOR_REGISTRY; keeping the
+# set here makes the registry self-validating without regex-parsing code.
+AUDIT_VALIDATOR_IDS: frozenset[str] = frozenset({
+    "markdown-delivery",
+    "research-pack",
+    "forward-looking-claims",
+})
+
+# All ids an audit's validator_binding may reference.
+AUDIT_BINDING_IDS: frozenset[str] = KNOWN_VALIDATOR_IDS | AUDIT_VALIDATOR_IDS
+
 ROUTE_REQUIRED_FIELDS = {
     "id", "display_name", "category", "aliases", "required_audits",
     "required_disciplines", "validator_bindings", "primary_reads",
@@ -62,6 +76,7 @@ DISCIPLINE_REQUIRED_FIELDS = {
 }
 AUDIT_REQUIRED_FIELDS = {
     "id", "checklist", "execution_type", "description", "automation_reference",
+    "validator_binding",
 }
 
 
@@ -219,6 +234,7 @@ class AuditInfo:
     execution_type: str  # automated | manual | process
     description: str
     automation_reference: str | None
+    validator_binding: str | None
 
 
 @dataclass
@@ -281,6 +297,13 @@ class RouteRegistry:
             raise UnknownRouteError(f"Unknown route: '{route_id}'")
         return list(route.validator_bindings)
 
+    def required_audits_for(self, route_id: str) -> list[str]:
+        """Return the required audit ids declared for a route."""
+        route = self.get_route(route_id)
+        if route is None:
+            raise UnknownRouteError(f"Unknown route: '{route_id}'")
+        return list(route.required_audits)
+
 
 @dataclass
 class DisciplineRegistry:
@@ -302,6 +325,9 @@ class AuditRegistry:
 
     def audit_ids(self) -> set[str]:
         return {a.id for a in self.audits}
+
+    def get_audit(self, audit_id: str) -> AuditInfo | None:
+        return next((a for a in self.audits if a.id == audit_id), None)
 
 
 def load_route_registry(path: Path | None = None) -> RouteRegistry:
@@ -416,6 +442,28 @@ def load_audit_registry(path: Path | None = None) -> AuditRegistry:
             raise RegistryError(
                 f"Audit '{aid}' checklist missing: {checklist}"
             )
+        validator_binding = _require_optional_str(
+            entry, "validator_binding", f"Audit registry audits[{i}]"
+        )
+        if execution_type == "automated":
+            if validator_binding is None:
+                raise RegistryError(
+                    f"Automated audit '{aid}' has no validator_binding — "
+                    f"every automated audit must declare which validator "
+                    f"executes it (issue #378)"
+                )
+            if validator_binding not in AUDIT_BINDING_IDS:
+                raise RegistryError(
+                    f"Automated audit '{aid}' binds unknown validator id "
+                    f"'{validator_binding}' — must be one of "
+                    f"{', '.join(sorted(AUDIT_BINDING_IDS))}"
+                )
+        elif validator_binding is not None:
+            raise RegistryError(
+                f"{execution_type} audit '{aid}' must not declare a "
+                f"validator_binding (only automated audits execute a "
+                f"validator)"
+            )
         audits.append(AuditInfo(
             id=aid,
             checklist=checklist,
@@ -424,6 +472,7 @@ def load_audit_registry(path: Path | None = None) -> AuditRegistry:
             automation_reference=_require_optional_str(
                 entry, "automation_reference", f"Audit registry audits[{i}]"
             ),
+            validator_binding=validator_binding,
         ))
 
     return AuditRegistry(version=data["version"], audits=audits)

@@ -112,6 +112,24 @@ jobs:
       - run: python3 scripts/test_route_decision_tree.py
       - run: python3 scripts/validate_contract.py references/report-template.md --require-contract
       - run: python3 scripts/test_issue_pr_acceptance.py
+      # ── Issue #378: required-audit execution end-to-end fixtures ──────────
+      # Positive fixtures must pass under fail-closed flags.
+      - run: python3 scripts/audit_report.py tests/fixtures/audit/market-outlook-pos.md --strict --require-contract
+      - run: python3 scripts/audit_report.py tests/fixtures/audit/shared-workflow-pos.md --strict --require-contract
+      - run: python3 scripts/audit_report.py tests/fixtures/audit/market-outlook-mixed-pos.md --strict --require-contract
+      - run: python3 scripts/audit_report.py tests/fixtures/audit/market-outlook-pos.md --research-pack tests/fixtures/audit/research-pack-pos.md --strict --require-contract
+      # Negative fixtures must fail with exit 2 (fail closed), not exit 0.
+      - run: |
+          python3 scripts/audit_report.py tests/fixtures/audit/market-outlook-neg.md --strict --require-contract \
+            && exit 1 || test $? -eq 2
+      - run: |
+          python3 scripts/audit_report.py tests/fixtures/audit/shared-workflow-neg.md --strict --require-contract \
+            && exit 1 || test $? -eq 2
+      - run: |
+          python3 scripts/audit_report.py tests/fixtures/audit/market-outlook-mixed-neg.md --strict --require-contract \
+            && exit 1 || test $? -eq 2
+      # JSON verdict must be machine-consumable.
+      - run: python3 scripts/audit_report.py tests/fixtures/audit/market-outlook-pos.md --strict --require-contract --json | python3 -c "import json,sys; json.load(sys.stdin)"
 
   # ── Workflow config lint (issue #375): validates branch/path filter
   #    semantics so a broken trigger cannot silently disable CI.
