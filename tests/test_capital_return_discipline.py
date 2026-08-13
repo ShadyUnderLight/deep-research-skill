@@ -44,6 +44,11 @@ def test_markdown_code_blocks_balanced():
     ]
     for p in paths:
         content = read(p)
+        # Strip inline-code segments that *show* a triple-backtick example
+        # (e.g. the ```contract demo in report-template.md) — those are
+        # documentation, not fences. Counting them naively reports a false
+        # imbalance (issue #375).
+        content = re.sub(r"`[^`\n]*```[^`\n]*`", "", content)
         count = content.count("```")
         assert count % 2 == 0, f"{p} has {count} backtick fences (unbalanced)"
 

@@ -339,11 +339,6 @@ Never treat the first plausible story as the final one.
 
 Use `references/report-template.md` by default.
 
-For default Markdown/text delivery, read
-`references/markdown-delivery-contract.md` and run
-`python3 scripts/validate_markdown_delivery.py <report>.md`; it supplements
-this template with reader-facing format rules.
-
 Use `references/decision-report-template.md` when the task needs:
 
 - recommendation
@@ -449,7 +444,4 @@ A strong final answer should:
 - explain what is still missing
 - help the user decide what to do next
 
-If confidence is limited, say exactly why. If a Research Pack should have been
-created under the trigger conditions but was not, record this in the internal
-Research Pack (or in the Final discipline log if no pack exists) as a noted
-gap — do not silently omit it.
+If confidence is limited, say exactly why. If a Research Pack should have been created under the trigger conditions but was not, record it in the internal Research Pack (or the Final discipline log if no pack exists) as a noted gap — do not silently omit it.

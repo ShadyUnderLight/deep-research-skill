@@ -244,12 +244,22 @@ def test_c4_candidate_rule_sources_exist() -> None:
     if not REGISTRY_PATH.exists():
         return
     text = REGISTRY_PATH.read_text(encoding="utf-8")
-    # Find source files referenced in the registry table rows
-    source_refs = re.findall(r"world-cup-[a-z-]+\.md", text)
+    # References appear in two forms: repo-relative paths (`` `evals/cases/x.md` ``)
+    # and bare filenames (`` `world-cup-x-case.md` ``) that live in either the
+    # eval case directory or the comparative-distillation directory. Resolve
+    # both forms and fail closed on any missing file (issue #375).
+    source_refs = re.findall(r"`([^`]+\.md)`", text)
     for ref in source_refs:
-        # These should refer to comparative-distillation files
-        expected = DISTILL_DIR / ref
-        assert expected.exists(), f"Referenced source file does not exist: {ref}"
+        if ref.startswith("evals/"):
+            expected = ROOT / ref
+            assert expected.exists(), f"Referenced source file does not exist: {ref}"
+        elif "/" not in ref:
+            in_cases = (CASE_DIR / ref).exists()
+            in_distill = (DISTILL_DIR / ref).exists()
+            assert in_cases or in_distill, (
+                f"Referenced source file does not exist: {ref} "
+                f"(looked in {CASE_DIR} and {DISTILL_DIR})"
+            )
 
 
 def test_c4_no_duplicate_candidate_ids() -> None:

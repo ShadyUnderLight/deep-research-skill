@@ -94,24 +94,26 @@ def test_recent_paper_verification_item_present() -> None:
 def test_final_audit_recall_includes_coverage_window() -> None:
     """Property: final-audit.md recall discipline covers coverage window and recent-paper verification."""
     text = read("checklists/final-audit.md")
-    # Find the academic review recall section (around lines 181-186)
-    # The recall items for academic review appear after "for academic / literature review tasks"
-    academic_section = text.split("for academic / literature review tasks")
-    expect(len(academic_section) >= 2, "Cannot find academic review recall section in final-audit.md")
-    
-    # Check the block of items after "for academic / literature review tasks"
-    # There are normally 5 items; we need to check the last one mentions coverage window or recent papers
-    all_academic_items = text.split("for academic / literature review tasks")
-    # The last occurrence contains the complete set
-    relevant_text = all_academic_items[-1]
-    
-    # Split by next non-academic section or end
-    recall_items = relevant_text.split("## ")[0] if "## " in relevant_text else relevant_text
-    
+    # Academic recall items are individual checklist lines prefixed with
+    # "for academic / literature review tasks". Parse them structurally instead
+    # of slicing the text after the last occurrence of the phrase — later items
+    # (e.g. benchmark comparability) can follow the coverage-window item, which
+    # previously made the last-slice heuristic point at the wrong section
+    # (issue #375).
+    recall_items = [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip().startswith("- [ ] for academic / literature review tasks")
+    ]
+    expect(len(recall_items) >= 1, "Cannot find academic review recall items in final-audit.md")
+
     expect(
-        "coverage window" in recall_items.lower() or "recent papers" in recall_items.lower(),
+        any(
+            "coverage window" in item.lower() or "recent papers" in item.lower()
+            for item in recall_items
+        ),
         "final-audit.md recall discipline missing coverage window or recent-paper verification. "
-        f"Content:\n{recall_items[:500]}",
+        f"Items:\n{recall_items}",
     )
 
 

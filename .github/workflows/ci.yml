@@ -10,12 +10,23 @@ on:
       - 'checklists/**'
       - 'references/**'
       - 'evals/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'ARCHITECTURE.md'
+      - 'CHANGELOG.md'
+      - 'SYSTEM-MAP.md'
+      - 'ROADMAP.md'
       - 'ROUTING-MATRIX.md'
       - 'SKILL.md'
       - 'requirements.txt'
+      - 'requirements.lock'
+      - 'pyproject.toml'
       - '.github/workflows/ci.yml'
   push:
-    branches: [$default-branch]
+    # `[$default-branch]` was a literal YAML string, never a GitHub expression —
+    # pushes to the default branch never triggered CI. Use the explicit branch
+    # name (verified: default branch is `main`). See issue #375.
+    branches: [main]
     paths:
       - 'scripts/**'
       - 'tests/**'
@@ -24,16 +35,28 @@ on:
       - 'checklists/**'
       - 'references/**'
       - 'evals/**'
+      - 'docs/**'
+      - 'README.md'
+      - 'ARCHITECTURE.md'
+      - 'CHANGELOG.md'
+      - 'SYSTEM-MAP.md'
+      - 'ROADMAP.md'
       - 'ROUTING-MATRIX.md'
       - 'SKILL.md'
       - 'requirements.txt'
+      - 'requirements.lock'
+      - 'pyproject.toml'
       - '.github/workflows/ci.yml'
   workflow_dispatch:
   schedule:
     - cron: '0 3 * * 1'
 
 jobs:
-  quick:
+  # ── Primary gate (issue #375): the full pytest suite. ──────────────────────
+  # Local `python3 -m pytest -q` and this job must be equivalent, so a green CI
+  # implies a green local run. CLI checks run separately below as supplements.
+  pytest:
+    name: pytest (full gate)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +65,24 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.lock
+      - name: Full pytest suite
+        run: python3 -m pytest -q
+      - name: Collection scope sanity
+        run: python3 -m pytest --collect-only -q | tail -1
+
+  # ── CLI checks: explicit per-script runs that supplement (not replace) the
+  #    pytest gate. Kept as individual steps so failures are visible per check.
+  cli-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.lock
       - run: python3 -m py_compile scripts/*.py
       - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md
       - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md --strict
@@ -62,15 +102,28 @@ jobs:
       - run: python3 scripts/test_quantitative_role_audit.py
       - run: python3 scripts/test_source_label_consistency.py
       - run: python3 tests/test_issue_350_contracts.py
-      - run: python3 -m pytest -q tests/test_issue_361_contracts.py
+      # test_issue_361/validate_contract/discipline_registry/route_activation
+      # are covered by the full pytest gate above; running them again here
+      # would be redundant.
       - run: bash scripts/validate-docs-structure.sh
       - run: python3 scripts/validate_route_manifest.py
       - run: python3 tests/test_route_manifest.py
       - run: python3 scripts/test_audit_report.py
       - run: python3 scripts/test_route_decision_tree.py
-      - run: python3 -m pytest -q scripts/test_validate_contract.py tests/test_discipline_registry.py tests/test_route_activation_contract.py
       - run: python3 scripts/validate_contract.py references/report-template.md --require-contract
       - run: python3 scripts/test_issue_pr_acceptance.py
+
+  # ── Workflow config lint (issue #375): validates branch/path filter
+  #    semantics so a broken trigger cannot silently disable CI.
+  workflow-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: actionlint
+        shell: bash
+        run: |
+          bash <(curl -sL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          ./actionlint -color
 
   smoke:
     runs-on: ubuntu-latest
@@ -81,7 +134,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -r requirements.txt
+      - run: pip install -r requirements.lock
       - run: python -m playwright install chromium --with-deps
       - run: |
           temp=$(mktemp -d)
