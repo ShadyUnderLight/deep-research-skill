@@ -2468,10 +2468,15 @@ Body text with citation [S01].
 
 
 class TestManifestConsistency:
-    """Verify audit_report.py ROUTE_VALIDATORS stays in sync with route-manifest.json."""
+    """Verify audit_report.py dispatch stays in sync with route-manifest.json.
+
+    Route → validator bindings live in the manifest; _VALIDATOR_REGISTRY
+    maps binding ids to functions.  Dispatch resolves through the manifest
+    and fails closed on drift (issue #374).
+    """
 
     def test_routes_exist_in_manifest(self):
-        """Every route in ROUTE_VALIDATORS must exist in route-manifest.json."""
+        """Every manifest route must dispatch validators (non-empty bindings)."""
         import json
         manifest_path = (
             Path(__file__).resolve().parent.parent / "schemas" / "route-manifest.json"
@@ -2479,17 +2484,20 @@ class TestManifestConsistency:
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest = json.load(f)
 
-        from audit_report import ROUTE_VALIDATORS
-        manifest_ids = {r["id"] for r in manifest["routes"]}
-
-        extra = set(ROUTE_VALIDATORS.keys()) - manifest_ids
-        assert not extra, (
-            f"ROUTE_VALIDATORS has routes not in manifest: {sorted(extra)}. "
-            f"Either add them to route-manifest.json or remove from ROUTE_VALIDATORS."
-        )
+        from audit_report import _dispatch_validators
+        for route in manifest["routes"]:
+            rid = route["id"]
+            assert route["validator_bindings"], (
+                f"Route '{rid}' has empty validator_bindings in manifest."
+            )
+            # Must resolve to functions — unknown bindings raise RegistryError.
+            fns = _dispatch_validators(rid)
+            assert len(fns) == len(route["validator_bindings"]), (
+                f"Route '{rid}' dispatch count mismatch."
+            )
 
     def test_manifest_routes_exist_in_validators(self):
-        """Every route in manifest must have a validator mapping."""
+        """Every manifest route must have a validator mapping."""
         import json
         manifest_path = (
             Path(__file__).resolve().parent.parent / "schemas" / "route-manifest.json"
@@ -2497,17 +2505,17 @@ class TestManifestConsistency:
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest = json.load(f)
 
-        from audit_report import ROUTE_VALIDATORS
+        from audit_report import _VALIDATOR_REGISTRY
 
         missing: list[str] = []
         for route in manifest["routes"]:
-            rid = route["id"]
-            if rid not in ROUTE_VALIDATORS:
-                missing.append(rid)
+            for binding in route["validator_bindings"]:
+                if binding not in _VALIDATOR_REGISTRY:
+                    missing.append(f"{route['id']}:{binding}")
 
         assert not missing, (
-            f"Manifest routes without ROUTE_VALIDATORS mapping: {sorted(missing)}. "
-            f"Add them to audit_report.py ROUTE_VALIDATORS dict."
+            f"Manifest bindings without _VALIDATOR_REGISTRY function: "
+            f"{sorted(missing)}. Add them to audit_report.py."
         )
 
 

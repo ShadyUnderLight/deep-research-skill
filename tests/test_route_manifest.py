@@ -3,10 +3,11 @@
 Property-based and negative tests for route manifest drift detection.
 
 Tests that schemas/route-manifest.json is consistent with:
-1. _ROUTE_ALIASES canonical targets in scripts/audit_report.py
-2. ROUTE_VALIDATORS keys in scripts/audit_report.py
+1. schemas/discipline-registry.json — required_disciplines
+2. schemas/audit-registry.json — required_audits
 3. Required audit checklist files in checklists/
-4. ROUTING-MATRIX.md route count
+4. ROUTING-MATRIX.md route count / display names / audit lists / hard-fail
+5. scripts/registry_loader.py runtime loading and alias resolution
 
 Includes negative tests that deliberately create inconsistency to verify
 the validator catches drift.
@@ -47,7 +48,27 @@ REQUIRED_MANIFEST_FIELDS = {
     "category",
     "aliases",
     "required_audits",
+    "required_disciplines",
+    "validator_bindings",
+    "primary_reads",
+    "trigger",
+    "do_not_use",
+    "often_confused_with",
+    "artifact_contract",
     "hard_fail_keywords",
+    "hard_fail_source",
+}
+
+KNOWN_VALIDATOR_IDS = {
+    "report-quality",
+    "declared-execution",
+    "table-role-labels",
+    "source-label-consistency",
+    "listed-company-delivery",
+    "scoring-replicability",
+    "market-outlook-monitoring-actionability",
+    "secondary-route-check",
+    "contract-check",
 }
 
 ALLOWED_CATEGORIES = {"specialized", "shared-workflow"}
@@ -67,13 +88,35 @@ def _load_manifest(path: Path) -> dict:
 
 def _make_temp_manifest(routes: list[dict]) -> Path:
     """Create a temporary manifest file for testing."""
-    content = json.dumps({"version": 1, "routes": routes}, indent=2)
+    content = json.dumps({"version": 2, "routes": routes}, indent=2)
     f = tempfile.NamedTemporaryFile(
         mode="w", suffix=".json", delete=False, encoding="utf-8",
     )
     f.write(content)
     f.close()
     return Path(f.name)
+
+
+def _real_routes_with(mutate) -> list[dict]:
+    """Copy the real manifest routes and apply a mutation to one route.
+
+    Negative tests must start from a structurally complete manifest so
+    they fail on the *target* drift, not on missing control-plane fields.
+    """
+    manifest = _load_manifest(MANIFEST_PATH)
+    routes = []
+    for r in manifest["routes"]:
+        r_copy = dict(r)
+        r_copy["aliases"] = list(r["aliases"])
+        r_copy["required_audits"] = list(r["required_audits"])
+        r_copy["hard_fail_keywords"] = list(r["hard_fail_keywords"])
+        r_copy["required_disciplines"] = list(r["required_disciplines"])
+        r_copy["validator_bindings"] = list(r["validator_bindings"])
+        r_copy["primary_reads"] = list(r["primary_reads"])
+        r_copy["often_confused_with"] = list(r["often_confused_with"])
+        mutate(r_copy)
+        routes.append(r_copy)
+    return routes
 
 
 def _run_validator(
@@ -159,6 +202,62 @@ class TestManifestExistsAndIsValid:
                 f"Route '{route['id']}' has no aliases"
             )
 
+    def test_every_route_has_validator_bindings(self) -> None:
+        """Each route must dispatch to a non-empty, known validator set."""
+        manifest = _load_manifest(MANIFEST_PATH)
+        for route in manifest["routes"]:
+            bindings = route["validator_bindings"]
+            assert bindings, f"Route '{route['id']}' has empty validator_bindings"
+            unknown = set(bindings) - KNOWN_VALIDATOR_IDS
+            assert not unknown, (
+                f"Route '{route['id']}' unknown validator bindings: {unknown}"
+            )
+
+    def test_every_route_has_required_disciplines(self) -> None:
+        """required_disciplines must be non-empty for specialized routes and
+        reference discipline ids registered in schemas/discipline-registry.json."""
+        manifest = _load_manifest(MANIFEST_PATH)
+        registry_path = ROOT / "schemas" / "discipline-registry.json"
+        known = {d["id"] for d in json.loads(registry_path.read_text())["disciplines"]}
+        for route in manifest["routes"]:
+            if route["category"] == "specialized":
+                assert route["required_disciplines"], (
+                    f"Specialized route '{route['id']}' has no required_disciplines"
+                )
+            unknown = set(route["required_disciplines"]) - known
+            assert not unknown, (
+                f"Route '{route['id']}' unknown disciplines: {unknown}"
+            )
+
+    def test_every_route_has_primary_reads(self) -> None:
+        """primary_reads must reference files that exist on disk."""
+        manifest = _load_manifest(MANIFEST_PATH)
+        for route in manifest["routes"]:
+            assert route["primary_reads"], (
+                f"Route '{route['id']}' has empty primary_reads"
+            )
+            for ref in route["primary_reads"]:
+                assert (ROOT / ref).is_file(), (
+                    f"Route '{route['id']}' primary read missing: {ref}"
+                )
+
+    def test_every_route_has_trigger_and_boundary_fields(self) -> None:
+        manifest = _load_manifest(MANIFEST_PATH)
+        for route in manifest["routes"]:
+            assert route["trigger"].strip(), f"Route '{route['id']}' empty trigger"
+            assert route["do_not_use"].strip(), (
+                f"Route '{route['id']}' empty do_not_use"
+            )
+            assert route["often_confused_with"], (
+                f"Route '{route['id']}' empty often_confused_with"
+            )
+            assert route["artifact_contract"].strip(), (
+                f"Route '{route['id']}' empty artifact_contract"
+            )
+            assert route["hard_fail_source"].strip(), (
+                f"Route '{route['id']}' empty hard_fail_source"
+            )
+
 
 class TestValidatorAgainstRealManifest:
     """The validator must pass against the real manifest."""
@@ -182,120 +281,99 @@ class TestValidatorRejectsDrift:
     """Negative tests: validator must detect inconsistency."""
 
     def test_missing_route_is_detected(self) -> None:
-        """A manifest missing a canonical route should fail."""
-        routes = [
-            {"id": rid, "display_name": rid, "category": "specialized",
-             "aliases": [rid], "required_audits": ["final-audit"],
-             "hard_fail_keywords": ["test"]}
-            for rid in sorted(EXPECTED_CANONICAL_IDS - {"shared-workflow"})
-        ]
-        tmp = _make_temp_manifest(routes)
-        try:
-            result = _run_validator(tmp)
-            assert result.returncode != 0, (
-                f"Should fail (missing route), got exit {result.returncode}\n"
-                f"stdout:\n{result.stdout}"
-            )
-        finally:
-            tmp.unlink(missing_ok=True)
+        """A manifest missing a canonical route should fail.
 
-    def test_extra_unknown_route_is_detected(self) -> None:
-        """A manifest with an unknown route ID should fail."""
-        routes = [
-            {"id": rid, "display_name": rid, "category": "specialized",
-             "aliases": [rid], "required_audits": ["final-audit"],
-             "hard_fail_keywords": ["test"]}
-            for rid in sorted(EXPECTED_CANONICAL_IDS)
-        ] + [
-            {"id": "unknown-fake-route", "display_name": "Fake Route",
-             "category": "specialized", "aliases": ["fake"],
-             "required_audits": ["final-audit"],
-             "hard_fail_keywords": ["test"]}
-        ]
-        tmp = _make_temp_manifest(routes)
-        try:
-            result = _run_validator(tmp)
-            assert result.returncode != 0, (
-                f"Should fail (extra route), got exit {result.returncode}\n"
-                f"stdout:\n{result.stdout}"
-            )
-        finally:
-            tmp.unlink(missing_ok=True)
-
-    def test_wrong_audit_list_is_detected(self) -> None:
-        """A manifest with wrong required_audits should fail."""
-        real = _load_manifest(MANIFEST_PATH)
-        routes = []
-        for r in real["routes"]:
-            r_copy = dict(r)
-            if r_copy["id"] == "technical-deep-dive":
-                r_copy["required_audits"] = ["wrong-audit-name"]
-            routes.append(r_copy)
-        tmp = _make_temp_manifest(routes)
-        try:
-            result = _run_validator(tmp)
-            assert result.returncode != 0, (
-                f"Should fail (wrong audit), got exit {result.returncode}\n"
-                f"stdout:\n{result.stdout}"
-            )
-        finally:
-            tmp.unlink(missing_ok=True)
-
-    def test_duplicate_alias_is_detected(self) -> None:
-        """A manifest where two routes share an alias should fail."""
-        routes = [
-            {
-                "id": "technical-deep-dive",
-                "display_name": "TD",
-                "category": "specialized",
-                "aliases": ["shared-alias", "tech"],
-                "required_audits": ["final-audit"],
-                "hard_fail_keywords": ["test"],
-            },
-            {
-                "id": "constrained-choice",
-                "display_name": "CC",
-                "category": "specialized",
-                "aliases": ["shared-alias", "choice"],
-                "required_audits": ["final-audit"],
-                "hard_fail_keywords": ["test"],
-            },
-        ]
-        tmp = _make_temp_manifest(routes)
-        try:
-            result = _run_validator(tmp)
-            assert result.returncode != 0, (
-                f"Should fail (duplicate alias), got exit {result.returncode}\n"
-                f"stdout:\n{result.stdout}"
-            )
-        finally:
-            tmp.unlink(missing_ok=True)
-
-    def test_alias_not_in_route_aliases_is_detected(self) -> None:
-        """N3: Manifest alias that cannot be resolved via _ROUTE_ALIASES.
-
-        This is the exact B1/B2 scenario from the code review: a manifest
-        declares an alias that has no corresponding entry in _ROUTE_ALIASES
-        and cannot be resolved via space→hyphen fallback to the correct ID.
+        The manifest is the single fact source now, so a missing route
+        surfaces as a ROUTING-MATRIX.md count drift (matrix still lists it).
         """
         routes = [
-            {
-                "id": "technical-deep-dive",
-                "display_name": "TD",
-                "category": "specialized",
-                "aliases": ["technical deep-dive", "nonexistent-alias-xyz"],
-                "required_audits": ["technical-analysis-audit",
-                                    "source-traceability", "final-audit"],
-                "hard_fail_keywords": ["test"],
-            },
+            r for r in _real_routes_with(lambda r: None)
+            if r["id"] != "academic-review"
         ]
         tmp = _make_temp_manifest(routes)
         try:
             result = _run_validator(tmp)
             output = result.stdout + result.stderr
             assert result.returncode != 0, (
-                f"Should fail (unresolvable alias), got exit {result.returncode}\n"
+                f"Should fail (missing route), got exit {result.returncode}\n"
                 f"output:\n{output}"
+            )
+            assert "drift" in output.lower(), (
+                f"Expected drift message, got:\n{output}"
+            )
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_extra_unknown_route_is_detected(self) -> None:
+        """A manifest with an unknown route ID should fail.
+
+        Extra specialized route surfaces as ROUTING-MATRIX.md count drift.
+        """
+        routes = _real_routes_with(lambda r: None) + [{
+            "id": "unknown-fake-route",
+            "display_name": "Fake Route",
+            "category": "specialized",
+            "aliases": ["fake"],
+            "required_audits": ["final-audit"],
+            "required_disciplines": [],
+            "validator_bindings": ["report-quality"],
+            "primary_reads": ["references/decision-report-template.md"],
+            "trigger": "trigger",
+            "do_not_use": "do not use",
+            "often_confused_with": ["constrained-choice"],
+            "artifact_contract": "artifact",
+            "hard_fail_keywords": ["test"],
+            "hard_fail_source": "ROUTING-MATRIX.md#fake",
+        }]
+        tmp = _make_temp_manifest(routes)
+        try:
+            result = _run_validator(tmp)
+            output = result.stdout + result.stderr
+            assert result.returncode != 0, (
+                f"Should fail (extra route), got exit {result.returncode}\n"
+                f"output:\n{output}"
+            )
+            assert "drift" in output.lower(), (
+                f"Expected drift message, got:\n{output}"
+            )
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_wrong_audit_list_is_detected(self) -> None:
+        """A manifest with wrong required_audits should fail."""
+        routes = _real_routes_with(
+            lambda r: r.update(required_audits=["wrong-audit-name"])
+            if r["id"] == "technical-deep-dive" else None
+        )
+        tmp = _make_temp_manifest(routes)
+        try:
+            result = _run_validator(tmp)
+            output = result.stdout + result.stderr
+            assert result.returncode != 0, (
+                f"Should fail (wrong audit), got exit {result.returncode}\n"
+                f"output:\n{output}"
+            )
+            assert "audit" in output.lower(), (
+                f"Expected audit message, got:\n{output}"
+            )
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_duplicate_alias_is_detected(self) -> None:
+        """A manifest where two routes share an alias should fail."""
+        routes = _real_routes_with(lambda r: None)
+        routes[0]["aliases"].append("duplicated-alias-name")
+        routes[1]["aliases"].append("duplicated-alias-name")
+        tmp = _make_temp_manifest(routes)
+        try:
+            result = _run_validator(tmp)
+            output = result.stdout + result.stderr
+            assert result.returncode != 0, (
+                f"Should fail (duplicate alias), got exit {result.returncode}\n"
+                f"output:\n{output}"
+            )
+            assert "duplicate alias" in output.lower(), (
+                f"Expected duplicate alias message, got:\n{output}"
             )
         finally:
             tmp.unlink(missing_ok=True)
@@ -306,16 +384,12 @@ class TestValidatorRejectsDrift:
         Uses the real manifest but modifies a route's required_audits
         to differ from what's in ROUTING-MATRIX.md.
         """
-        real = _load_manifest(MANIFEST_PATH)
-        routes = []
-        for r in real["routes"]:
-            r_copy = dict(r)
-            if r_copy["id"] == "market-outlook":
-                r_copy["required_audits"] = [
-                    "market-outlook-audit", "source-traceability",
-                    "final-audit",
-                ]
-            routes.append(r_copy)
+        routes = _real_routes_with(
+            lambda r: r.update(required_audits=[
+                "market-outlook-audit", "source-traceability", "final-audit",
+            ])
+            if r["id"] == "market-outlook" else None
+        )
         tmp = _make_temp_manifest(routes)
         try:
             result = _run_validator(tmp)
@@ -330,31 +404,42 @@ class TestValidatorRejectsDrift:
         finally:
             tmp.unlink(missing_ok=True)
 
-    def test_extra_route_not_in_route_validators(self) -> None:
-        """A manifest route not in ROUTE_VALIDATORS must fail (Check 1).
-
-        Note: Check 11 (empty ROUTE_VALIDATORS entry) is a structural
-        guard against manually created empty lists in audit_report.py.
-        It cannot be tested via temp manifest — it reads directly from
-        the real ROUTE_VALIDATORS source and would only trigger if
-        someone writes `"route-key": []` with zero validators."""
-        routes = [
-            {"id": rid, "display_name": rid, "category": "specialized",
-             "aliases": [rid], "required_audits": ["final-audit"],
-             "hard_fail_keywords": ["test"]}
-            for rid in sorted(EXPECTED_CANONICAL_IDS)
-        ] + [
-            {"id": "empty-validator-route", "display_name": "EVR",
-             "category": "specialized", "aliases": ["empty-validator"],
-             "required_audits": ["final-audit"],
-             "hard_fail_keywords": ["test"]}
-        ]
+    def test_empty_validator_bindings_is_detected(self) -> None:
+        """A manifest route with no validator bindings must fail."""
+        routes = _real_routes_with(
+            lambda r: r.update(validator_bindings=[])
+            if r["id"] == "market-entry" else None
+        )
         tmp = _make_temp_manifest(routes)
         try:
             result = _run_validator(tmp)
+            output = result.stdout + result.stderr
             assert result.returncode != 0, (
-                f"Should fail (extra route not in ROUTE_VALIDATORS), "
-                f"got exit {result.returncode}"
+                f"Should fail (empty validator bindings), "
+                f"got exit {result.returncode}\noutput:\n{output}"
+            )
+            assert "validator_bindings" in output.lower(), (
+                f"Expected validator_bindings message, got:\n{output}"
+            )
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_unknown_discipline_is_detected(self) -> None:
+        """A route referencing an unregistered discipline must fail."""
+        routes = _real_routes_with(
+            lambda r: r.update(required_disciplines=["fake-discipline-xyz"])
+            if r["id"] == "constrained-choice" else None
+        )
+        tmp = _make_temp_manifest(routes)
+        try:
+            result = _run_validator(tmp)
+            output = result.stdout + result.stderr
+            assert result.returncode != 0, (
+                f"Should fail (unknown discipline), "
+                f"got exit {result.returncode}\noutput:\n{output}"
+            )
+            assert "discipline" in output.lower(), (
+                f"Expected discipline message, got:\n{output}"
             )
         finally:
             tmp.unlink(missing_ok=True)

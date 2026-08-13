@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """
-Route manifest drift detector.
+Route manifest drift detector (registry-backed).
 
 Validates that schemas/route-manifest.json is consistent with:
-1. _ROUTE_ALIASES canonical targets in scripts/audit_report.py
-2. ROUTE_VALIDATORS keys + non-empty validator lists in scripts/audit_report.py
-3. Required audit checklist files in checklists/
-4. ROUTING-MATRIX.md route headings (count, display name, audit lists, hard-fail keywords)
-5. All manifest aliases are resolvable via _normalize_route logic
-6. evals/INDEX.md Primary/Secondary route column values
+1. schemas/discipline-registry.json  — required_disciplines must be registered
+2. schemas/audit-registry.json       — required_audits must be registered
+3. checklists/ files                 — no orphan checklists, no missing files
+4. ROUTING-MATRIX.md                 — route count, display names, audit lists,
+                                       hard-fail keywords
+5. evals/INDEX.md                    — Primary route column values
+
+Route/alias/discipline/audit identity now comes from the JSON registries
+via registry_loader — this script no longer regex-parses audit_report.py.
+Alias resolution itself (including unknown-route blocking) is enforced by
+the loader at runtime; duplicate aliases surface here as load errors.
 
 Exit codes:
     0 = manifest is consistent with code/docs
@@ -27,105 +32,47 @@ import re
 import sys
 from pathlib import Path
 
+import registry_loader
+from registry_loader import RegistryError
+
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = ROOT / "schemas" / "route-manifest.json"
-AUDIT_REPORT = ROOT / "scripts" / "audit_report.py"
 ROUTING_MATRIX = ROOT / "ROUTING-MATRIX.md"
 CHECKLISTS_DIR = ROOT / "checklists"
+EVALS_INDEX = ROOT / "evals" / "INDEX.md"
+AUDIT_REGISTRY = ROOT / "schemas" / "audit-registry.json"
 
 EXIT_OK = 0
 EXIT_WARN = 1
 EXIT_FAIL = 2
 
-
-# ── Normalization helpers ─────────────────────────────────────────────────────
-
-
-def _normalize_alias(name: str) -> str:
-    """Normalize a display name or alias for comparison.
-
-    Lowercase, collapse whitespace, strip trailing parenthetical notes.
-    Mirrors the behavior of _normalize_route in audit_report.py.
-    """
-    normalized = " ".join(name.strip().lower().split())
-    no_paren = re.sub(r"\s*\([^)]*\)\s*$", "", normalized).strip()
-    return no_paren if no_paren else normalized
-
-
-def _resolve_via_routing(
-    name: str,
-    alias_map: dict[str, str],
-    canonical_ids: set[str],
-) -> tuple[str | None, bool]:
-    """Simulate _normalize_route behavior from audit_report.py.
-
-    Returns (canonical_id, used_fallback).
-    - canonical_id is None if the name cannot resolve to a known canonical ID.
-    - used_fallback is True if the name resolved via space→hyphen fallback
-      (not via explicit _ROUTE_ALIASES entry).
-    """
-    normalized = _normalize_alias(name)
-
-    # 1. Direct alias lookup (exact match in _ROUTE_ALIASES keys)
-    if normalized in alias_map:
-        return alias_map[normalized], False
-
-    # 2. Strip parenthetical notes and retry
-    no_paren = re.sub(r"\s*\([^)]*\)\s*$", "", normalized).strip()
-    if no_paren and no_paren != normalized:
-        if no_paren in alias_map:
-            return alias_map[no_paren], False
-        normalized = no_paren
-
-    # 3. Space→hyphen fallback heuristic
-    fallback = normalized.replace(" ", "-")
-    if fallback in canonical_ids:
-        return fallback, True
-
-    return None, False
+# ── Non-discipline eval tags seen in evals/INDEX.md Primary column ──────────
+# These are eval-asset labels (PDF build, company status, checklist names,
+# delivery concerns), not canonical disciplines.  Canonical disciplines come
+# from schemas/discipline-registry.json; route ids come from the manifest.
+_EVAL_TAG_WHITELIST: set[str] = {
+    "adversarial-input",
+    "comparative-analysis",
+    "company-status",
+    "company-status-boundary",
+    "corporate-status",
+    "delivery-cleanliness",
+    "external-channel-preflight",
+    "finance",
+    "listed-company-report",
+    "listing-status",
+    "pdf-build",
+    "pdf-layout",
+    "pdf-rendering",
+    "private-company",
+    "product-ranking",
+    "ranking",
+    "reporting-period",
+    "valuation-methodology",
+}
 
 
-# ── Parser for audit_report.py source ────────────────────────────────────────
-
-
-def _parse_route_aliases(source: str) -> dict[str, str]:
-    """Extract _ROUTE_ALIASES dict from audit_report.py source.
-
-    Returns {display_name: canonical_id}. Assumes all keys and values are
-    simple string literals (no nested braces in values).
-    """
-    match = re.search(
-        r"_ROUTE_ALIASES\s*:\s*dict\[str,\s*str\]\s*=\s*\{(.+?)\n\s*\}",
-        source,
-        re.DOTALL,
-    )
-    if not match:
-        raise SystemExit(f"ERROR: Cannot find _ROUTE_ALIASES in {AUDIT_REPORT}")
-
-    block = match.group(1)
-    pairs = re.findall(
-        r'"([^"]+)"\s*:\s*"([^"]+)"',
-        block,
-    )
-    if not pairs:
-        raise SystemExit(f"ERROR: No entries found in _ROUTE_ALIASES")
-    return {k.strip(): v.strip() for k, v in pairs}
-
-
-def _parse_route_validator_keys(source: str) -> set[str]:
-    """Extract ROUTE_VALIDATORS keys from audit_report.py source."""
-    match = re.search(
-        r"ROUTE_VALIDATORS\s*:\s*dict\[str,\s*list\[ValidatorFn\]\]\s*=\s*\{(.+?)\n\s*\}",
-        source,
-        re.DOTALL,
-    )
-    if not match:
-        raise SystemExit(f"ERROR: Cannot find ROUTE_VALIDATORS in {AUDIT_REPORT}")
-
-    block = match.group(1)
-    keys = re.findall(r'"([a-z][a-z-]*[a-z])"', block)
-    # Exclude short non-route strings that might accidentally match
-    return {k for k in keys if len(k) > 4}
+# ── Parser for ROUTING-MATRIX.md ─────────────────────────────────────────────
 
 
 def _parse_routing_matrix_headings(text: str) -> list[str]:
@@ -136,8 +83,7 @@ def _parse_routing_matrix_headings(text: str) -> list[str]:
 def _parse_routing_matrix_route_sections(text: str) -> dict[str, str]:
     """Split ROUTING-MATRIX.md into per-route sections by '## Route: ' headings.
 
-    Returns {normalized_heading: section_text}.  Normalized keys use
-    _normalize_alias so they can be joined against manifest display_names.
+    Returns {normalized_heading: section_text}.
     """
     sections: dict[str, str] = {}
     parts = re.split(r"^## Route: ", text, flags=re.M)
@@ -145,15 +91,12 @@ def _parse_routing_matrix_route_sections(text: str) -> dict[str, str]:
         heading_end = part.index("\n") if "\n" in part else len(part)
         heading = part[:heading_end].strip()
         body = part[heading_end:]
-        sections[_normalize_alias(heading)] = body
+        sections[registry_loader._normalize_name(heading)] = body
     return sections
 
 
 def _parse_audits_from_matrix_section(section: str) -> list[str]:
-    """Extract audit checklist names from a ROUTING-MATRIX.md route section.
-
-    Looks for the ### Audit block and extracts `checklists/xxx.md` references.
-    """
+    """Extract audit checklist names from a ROUTING-MATRIX.md route section."""
     audit_match = re.search(
         r"### Audit\n((?:\s*-.*\n?)+)",
         section,
@@ -169,44 +112,36 @@ def _parse_audits_from_matrix_section(section: str) -> list[str]:
     return audits
 
 
-def _parse_matrix_route_name_to_id(headings: list[str], manifest_routes: dict[str, dict]) -> dict[str, str]:
+def _parse_matrix_route_name_to_id(
+    headings: list[str], manifest_routes: dict[str, dict]
+) -> dict[str, str]:
     """Map normalized ROUTING-MATRIX.md headings to manifest route IDs."""
     mapping: dict[str, str] = {}
     for heading in headings:
-        norm = _normalize_alias(heading)
+        norm = registry_loader._normalize_name(heading)
         for route in manifest_routes.values():
-            if _normalize_alias(route["display_name"]) == norm:
+            if registry_loader._normalize_name(route["display_name"]) == norm:
                 mapping[norm] = route["id"]
                 break
     return mapping
 
 
-# ── Known cross-cutting discipline names (from evals/INDEX.md) ───────────────
-
-_CROSS_CUTTING_DISCIPLINES: set[str] = {
-    "source-traceability", "current-state", "forward-looking",
-    "delivery-cleanliness", "decision-utility", "scope-completeness",
-    "quantitative-role", "finance", "product-ranking", "ranking",
-    "adversarial-input", "pdf-rendering", "pdf-build", "pdf-layout",
-    "listing-status", "company-status", "company-status-boundary",
-    "corporate-status", "valuation-methodology", "reporting-period",
-    "comparative-analysis", "external-channel-preflight",
-    "private-company", "listed-company-report",
-}
-
-
-# ── Validation logic ─────────────────────────────────────────────────────────
+# ── Manifest loading ─────────────────────────────────────────────────────────
 
 
 def _load_manifest(path: Path) -> dict:
     """Load and validate top-level manifest structure."""
     try:
-        manifest = json.loads(path.read_text(encoding="utf-8"))
+        text = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         raise SystemExit(f"ERROR: Manifest file not found: {path}")
+    try:
+        manifest = json.loads(text)
     except json.JSONDecodeError as e:
         raise SystemExit(f"ERROR: Invalid JSON in {path}: {e}")
 
+    if not isinstance(manifest, dict):
+        raise SystemExit(f"ERROR: Manifest must be a JSON object: {path}")
     if "version" not in manifest:
         raise SystemExit(f"ERROR: Missing 'version' field in {path}")
     if "routes" not in manifest:
@@ -216,22 +151,23 @@ def _load_manifest(path: Path) -> dict:
     return manifest
 
 
+# ── Validation logic ─────────────────────────────────────────────────────────
+
+
 def validate(path: Path | None = None) -> int:
     """Run full drift validation. Returns exit code."""
     manifest_path = path or DEFAULT_MANIFEST
     manifest = _load_manifest(manifest_path)
-
-    if not AUDIT_REPORT.is_file():
-        raise SystemExit(f"ERROR: {AUDIT_REPORT} not found")
-
-    audit_source = AUDIT_REPORT.read_text(encoding="utf-8")
-    alias_map = _parse_route_aliases(audit_source)
-    validator_keys = _parse_route_validator_keys(audit_source)
-
     errors: list[str] = []
     warnings: list[str] = []
 
-    # Extract manifest data
+    # Route registry load — fail closed on structural errors.
+    registry = None
+    try:
+        registry = registry_loader.load_route_registry(manifest_path)
+    except RegistryError as e:
+        errors.append(str(e))
+
     manifest_routes: dict[str, dict] = {}
     manifest_ids: set[str] = set()
     for route in manifest["routes"]:
@@ -241,100 +177,65 @@ def validate(path: Path | None = None) -> int:
         manifest_routes[rid] = route
         manifest_ids.add(rid)
 
-    # ═══ Check 1: ROUTE_VALIDATORS ↔ manifest bidirectional ═════════════════
-    missing_from_manifest = validator_keys - manifest_ids
-    if missing_from_manifest:
-        errors.append(
-            f"Routes in ROUTE_VALIDATORS but NOT in manifest: "
-            f"{', '.join(sorted(missing_from_manifest))}"
-        )
+    # ═══ Check 1: validator bindings are well-formed ═════════════════════════
+    for rid, route in manifest_routes.items():
+        bindings = route.get("validator_bindings", [])
+        if not isinstance(bindings, list) or not bindings:
+            errors.append(f"Route '{rid}': validator_bindings must be non-empty")
+            continue
+        if len(bindings) != len(set(bindings)):
+            errors.append(f"Route '{rid}': duplicate validator bindings: {bindings}")
+        for b in bindings:
+            if not re.fullmatch(r"[a-z][a-z0-9-]*", b):
+                errors.append(f"Route '{rid}': invalid binding id '{b}'")
 
-    missing_from_validators = manifest_ids - validator_keys
-    if missing_from_validators:
-        errors.append(
-            f"Routes in manifest but NOT in ROUTE_VALIDATORS: "
-            f"{', '.join(sorted(missing_from_validators))}"
-        )
-
-    # ═══ Check 2: _ROUTE_ALIASES canonical targets all in manifest ═══════════
-    alias_targets = set(alias_map.values())
-    missing_targets = alias_targets - manifest_ids
-    if missing_targets:
-        errors.append(
-            f"_ROUTE_ALIASES canonical targets not in manifest: "
-            f"{', '.join(sorted(missing_targets))}"
-        )
-
-    # ═══ Check 3: Manifest aliases — no duplicates across routes ═════════════
-    all_aliases_norm: dict[str, str] = {}  # normalized alias → route_id
-    for route in manifest["routes"]:
-        for alias in route.get("aliases", []):
-            norm = _normalize_alias(alias)
-            if norm in all_aliases_norm and all_aliases_norm[norm] != route["id"]:
+    # ═══ Check 2: required_disciplines are registered ════════════════════════
+    try:
+        discipline_registry = registry_loader.load_discipline_registry()
+        known_disciplines = discipline_registry.discipline_ids()
+        for rid, route in manifest_routes.items():
+            unknown = set(route.get("required_disciplines", [])) - known_disciplines
+            if unknown:
                 errors.append(
-                    f"Duplicate alias '{alias}' (normalized: '{norm}') "
-                    f"claimed by both '{all_aliases_norm[norm]}' and '{route['id']}'"
+                    f"Route '{rid}': required_disciplines not in "
+                    f"discipline-registry.json: {sorted(unknown)}"
                 )
-            all_aliases_norm[norm] = route["id"]
+    except RegistryError as e:
+        errors.append(str(e))
+        known_disciplines = set()
 
-    # ═══ Check 4: Every manifest alias must resolve correctly ════════════════
-    # (This is the strengthened check — catches B1/B2 from code review)
-    for route in manifest["routes"]:
-        route_id = route["id"]
-        has_explicit_match = False
-        for alias in route.get("aliases", []):
-            resolved, used_fallback = _resolve_via_routing(
-                alias, alias_map, manifest_ids
-            )
-            if resolved is None:
-                errors.append(
-                    f"Manifest alias '{alias}' for route '{route_id}' "
-                    f"cannot be resolved via _normalize_route"
-                )
-            elif resolved != route_id:
-                errors.append(
-                    f"Manifest alias '{alias}' for route '{route_id}' "
-                    f"resolves to '{resolved}' — target mismatch"
-                )
-            elif not used_fallback:
-                has_explicit_match = True
-        if not has_explicit_match and route_id != "shared-workflow":
-            warnings.append(
-                f"Route '{route_id}' has no explicit alias in _ROUTE_ALIASES; "
-                f"all aliases rely on space→hyphen fallback"
-            )
+    # ═══ Check 3: required_audits are registered and checklist files exist ═══
+    try:
+        audit_registry = registry_loader.load_audit_registry()
+        known_audits = audit_registry.audit_ids()
+    except RegistryError as e:
+        errors.append(str(e))
+        known_audits = set()
 
-    # ═══ Check 5: All _ROUTE_ALIASES keys represented in manifest ════════════
-    manifest_alias_norms: dict[str, str] = {}  # normalized → route_id
-    for route in manifest["routes"]:
-        for alias in route.get("aliases", []):
-            manifest_alias_norms[_normalize_alias(alias)] = route["id"]
-
-    for alias_key, target in alias_map.items():
-        norm = _normalize_alias(alias_key)
-        if norm not in manifest_alias_norms:
-            warnings.append(
-                f"_ROUTE_ALIASES key '{alias_key}' (→{target}) "
-                f"has no corresponding alias in manifest"
-            )
-        elif manifest_alias_norms[norm] != target:
-            warnings.append(
-                f"_ROUTE_ALIASES key '{alias_key}' maps to '{target}' "
-                f"but manifest alias maps to '{manifest_alias_norms[norm]}'"
-            )
-
-    # ═══ Check 6: Required audits reference existing checklist files ═════════
     existing_checklists = {p.stem for p in CHECKLISTS_DIR.glob("*.md")}
-    for route in manifest["routes"]:
+    for rid, route in manifest_routes.items():
         for audit in route.get("required_audits", []):
-            if audit not in existing_checklists:
+            if audit not in known_audits:
                 errors.append(
-                    f"Route '{route['id']}' requires audit '{audit}' "
-                    f"but checklist file 'checklists/{audit}.md' does not exist"
+                    f"Route '{rid}' requires audit '{audit}' but it is not "
+                    f"registered in schemas/audit-registry.json"
+                )
+            elif audit not in existing_checklists:
+                errors.append(
+                    f"Route '{rid}' requires audit '{audit}' but checklist "
+                    f"file 'checklists/{audit}.md' does not exist"
                 )
 
-    # ═══ Check 7: ROUTING-MATRIX.md route count + display name comparison ════
-    # P1-2a fix: require ROUTING-MATRIX.md, error if missing
+    # Check 3b: audit registry and checklists directory must not drift
+    if known_audits:
+        unregistered = existing_checklists - known_audits
+        if unregistered:
+            errors.append(
+                f"Checklist files without audit-registry entries: "
+                f"{', '.join(sorted(unregistered))}"
+            )
+
+    # ═══ Check 4: ROUTING-MATRIX.md consistency ══════════════════════════════
     if not ROUTING_MATRIX.is_file():
         errors.append(
             f"ROUTING-MATRIX.md not found at {ROUTING_MATRIX} — "
@@ -350,16 +251,22 @@ def validate(path: Path | None = None) -> int:
         if len(matrix_headings) != specialized_in_manifest:
             errors.append(
                 f"ROUTING-MATRIX.md has {len(matrix_headings)} route sections, "
-                f"manifest has {specialized_in_manifest} specialized routes — drift detected"
+                f"manifest has {specialized_in_manifest} specialized routes — "
+                f"drift detected"
             )
         else:
             # Compare display names (normalized)
-            matrix_norms = {_normalize_alias(h): h for h in matrix_headings}
+            matrix_norms = {
+                registry_loader._normalize_name(h): h for h in matrix_headings
+            }
             manifest_display_names = [
                 r["display_name"] for r in manifest["routes"]
                 if r.get("category") == "specialized"
             ]
-            manifest_norms = {_normalize_alias(d): d for d in manifest_display_names}
+            manifest_norms = {
+                registry_loader._normalize_name(d): d
+                for d in manifest_display_names
+            }
 
             missing_in_manifest = set(matrix_norms.keys()) - set(manifest_norms.keys())
             missing_in_matrix = set(manifest_norms.keys()) - set(matrix_norms.keys())
@@ -372,17 +279,19 @@ def validate(path: Path | None = None) -> int:
             if missing_in_matrix:
                 errors.append(
                     f"Manifest display_names not in ROUTING-MATRIX.md: "
-                    f"{', '.join(sorted(manifest_norms[h] for h in missing_in_matrix))}"
+                    f"{', '.join(sorted(manifest_norms[d] for d in missing_in_matrix))}"
                 )
 
-        # ═══ Check 7b (P1-2b): Audit list per route comparison ═══════════════
+        # Check 5b: audit list per route comparison
         matrix_sections = _parse_routing_matrix_route_sections(matrix_text)
         name_to_id = _parse_matrix_route_name_to_id(matrix_headings, manifest_routes)
 
         for heading_norm, route_id in name_to_id.items():
             section = matrix_sections.get(heading_norm, "")
             matrix_audits = set(_parse_audits_from_matrix_section(section))
-            manifest_audits = set(manifest_routes[route_id].get("required_audits", []))
+            manifest_audits = set(
+                manifest_routes[route_id].get("required_audits", [])
+            )
 
             if matrix_audits != manifest_audits:
                 missing = manifest_audits - matrix_audits
@@ -397,11 +306,9 @@ def validate(path: Path | None = None) -> int:
                     f"manifest and ROUTING-MATRIX.md — {'; '.join(parts)}"
                 )
 
-        # ═══ Check 7c (P1-2c): hard_fail_keywords present in matrix section ══
+        # Check 5c: hard_fail_keywords present in matrix section
         for heading_norm, route_id in name_to_id.items():
             section = matrix_sections.get(heading_norm, "")
-            # Find the Hard fail subsection — capture from "### Hard fail"
-            # to the next "## " or "### " or end of section
             hf_match = re.search(
                 r"### Hard fail\n(.*?)(?=\n## |\n### |\Z)",
                 section,
@@ -422,7 +329,9 @@ def validate(path: Path | None = None) -> int:
                     continue
                 matched = sum(1 for w in sig_words if w in hf_text)
                 # Require >50% of significant words to match; <50% = probable deletion
-                if matched == 0 or (len(sig_words) >= 3 and matched < len(sig_words) / 2):
+                if matched == 0 or (
+                    len(sig_words) >= 3 and matched < len(sig_words) / 2
+                ):
                     missing_keywords.append(kw)
             if missing_keywords:
                 errors.append(
@@ -431,10 +340,12 @@ def validate(path: Path | None = None) -> int:
                     f"{missing_keywords}"
                 )
 
-    # ═══ Check 8: Manifest required fields per route ══════════════════════════
+    # ═══ Check 6: required fields per route ══════════════════════════════════
     required_fields = {
         "id", "display_name", "category", "aliases",
-        "required_audits", "hard_fail_keywords",
+        "required_audits", "required_disciplines", "validator_bindings",
+        "primary_reads", "trigger", "do_not_use", "often_confused_with",
+        "artifact_contract", "hard_fail_keywords", "hard_fail_source",
     }
     for route in manifest["routes"]:
         missing_fields = required_fields - set(route.keys())
@@ -443,8 +354,8 @@ def validate(path: Path | None = None) -> int:
                 f"Route '{route.get('id', '?')}' missing fields: {missing_fields}"
             )
 
-    # ═══ Check 9: No duplicate hard_fail_keywords across routes ══════════════
-    all_keywords: dict[str, str] = {}  # lowercase keyword → route_id
+    # ═══ Check 7: no duplicate hard_fail_keywords across routes ══════════════
+    all_keywords: dict[str, str] = {}
     for route in manifest["routes"]:
         for kw in route.get("hard_fail_keywords", []):
             kw_lower = kw.lower().strip()
@@ -455,61 +366,29 @@ def validate(path: Path | None = None) -> int:
                 )
             all_keywords[kw_lower] = route["id"]
 
-    # ═══ Check 10 (P2-1): evals/INDEX.md Primary/Secondary route columns ═════
-    EVALS_INDEX = ROOT / "evals" / "INDEX.md"
+    # ═══ Check 8: evals/INDEX.md Primary route column ════════════════════════
     if EVALS_INDEX.is_file():
         index_text = EVALS_INDEX.read_text(encoding="utf-8")
-        known_disciplines = _CROSS_CUTTING_DISCIPLINES | manifest_ids
+        known_ids = manifest_ids | known_disciplines | _EVAL_TAG_WHITELIST
         for line in index_text.splitlines():
             if not line.startswith("| `evals/cases/"):
                 continue
             cells = [c.strip().strip("`") for c in line.strip("|").split("|")]
+            # cells[1] = path (skipped), cells[2] = Primary route column
             if len(cells) >= 3:
-                # cells[0] = Path, cells[1] = Primary route, cells[2] = Secondary route
-                for col_idx, col_name in [(1, "Primary"), (2, "Secondary")]:
-                    val = cells[col_idx] if col_idx < len(cells) else ""
-                    if not val or val == "-":
+                val = cells[2]
+                if not val or val == "-":
+                    continue
+                for part in val.split("/"):
+                    part = part.strip()
+                    if not part or part == "-":
                         continue
-                    # Skip only actual eval case file paths
-                    if val.startswith("evals/cases/") or val.endswith(".md"):
-                        continue
-                    # Split on '/' for multi-discipline values
-                    # (e.g., "current-state/source-traceability")
-                    parts = [p.strip() for p in val.split("/")]
-                    for part in parts:
-                        if not part or part == "-":
-                            continue
-                        if part not in known_disciplines:
-                            warnings.append(
-                                f"evals/INDEX.md: '{part}' in {col_name} route "
-                                f"column for {cells[0]} is not a known canonical "
-                                f"route or cross-cutting discipline"
-                            )
-
-    # ═══ Check 11 (P2-2): ROUTE_VALIDATORS entries must be non-empty ═════════
-    # Parse the validator lists to verify each has at least one entry
-    vblock_match = re.search(
-        r"ROUTE_VALIDATORS\s*:\s*dict\[str,\s*list\[ValidatorFn\]\]\s*=\s*\{(.+?)\n\s*\}",
-        audit_source,
-        re.DOTALL,
-    )
-    if vblock_match:
-        vblock = vblock_match.group(1)
-        empty_routes: list[str] = []
-        for route_key in validator_keys:
-            # Each entry looks like: "route-key": [\n  validator_fn,\n],
-            # Check that the list between [ and ] contains at least one entry
-            pattern = rf'"{re.escape(route_key)}"\s*:\s*\[(.*?)\]'
-            m = re.search(pattern, vblock, re.DOTALL)
-            if m:
-                list_body = m.group(1).strip()
-                if not list_body or list_body == "":
-                    empty_routes.append(route_key)
-        if empty_routes:
-            errors.append(
-                f"ROUTE_VALIDATORS entries are empty for: "
-                f"{', '.join(sorted(empty_routes))}"
-            )
+                    if part not in known_ids:
+                        warnings.append(
+                            f"evals/INDEX.md: '{part}' in Primary route "
+                            f"column for {cells[1]} is not a known canonical "
+                            f"route, discipline or eval tag"
+                        )
 
     # ── Output ──────────────────────────────────────────────────────────────
     if errors:
@@ -528,7 +407,7 @@ def validate(path: Path | None = None) -> int:
             print(f"  ⚠ {warn}")
         return EXIT_WARN
 
-    print("OK — manifest is consistent with code and docs")
+    print("OK — manifest is consistent with registries, code and docs")
     return EXIT_OK
 
 

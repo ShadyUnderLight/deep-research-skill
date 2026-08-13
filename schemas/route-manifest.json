@@ -1,103 +1,256 @@
 {
-  "version": 1,
-  "description": "Single source of truth for deep-research route identity and execution bindings. Each route maps to a ROUTING-MATRIX.md section, _ROUTE_ALIASES entries, and ROUTE_VALIDATORS keys. DO NOT edit without syncing code and docs.",
-  "last_reviewed": "2026-07-22",
+  "version": 2,
+  "description": "Single source of truth for deep-research route identity and execution bindings. Each route maps to a ROUTING-MATRIX.md section, alias resolution, required disciplines and validator dispatch bindings. Loaded at runtime via scripts/registry_loader.py — do not edit without syncing docs and registry_loader consumers.",
+  "last_reviewed": "2026-08-13",
   "routes": [
     {
       "id": "provider-selection",
       "display_name": "Provider / Vendor Selection",
       "category": "specialized",
       "aliases": ["provider selection", "vendor selection", "provider / vendor selection"],
+      "trigger": "Select among model/API suppliers, vendors or platforms and justify why one wins under explicit constraints.",
+      "do_not_use": "Task mainly describes the market or industry direction without a real selection burden; physical hardware / device procurement belongs to equipment-selection.",
+      "often_confused_with": ["market-outlook", "equipment-selection"],
+      "primary_reads": [
+        "references/option-selection-and-shortlist-discipline.md",
+        "references/source-traceability-and-claim-citation.md",
+        "references/decision-report-template.md"
+      ],
+      "required_disciplines": ["current-state", "source-traceability", "decision-utility", "quantitative-role", "data-conflict"],
       "required_audits": ["option-selection-final-audit", "source-traceability", "final-audit"],
-      "hard_fail_keywords": ["stale anchor products", "accessibility as side note", "vendor overview instead of choice memo"]
+      "artifact_contract": "Current provider snapshot, decision criteria, ranked shortlist, why top option wins, why runner-up stays credible, why others lose, accessibility/compliance/SLA treatment when relevant.",
+      "hard_fail_keywords": ["stale anchor products", "accessibility as side note", "vendor overview instead of choice memo"],
+      "hard_fail_source": "ROUTING-MATRIX.md#provider-vendor-selection",
+      "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "scoring-replicability", "secondary-route-check", "contract-check"]
     },
     {
       "id": "market-entry",
       "display_name": "Market Entry / Regional Expansion",
       "category": "specialized",
       "aliases": ["market entry", "regional expansion", "market entry / regional expansion"],
+      "trigger": "Decide whether to enter a market, where to enter first, when, or how to sequence entry under constrained budget.",
+      "do_not_use": "Task is mainly a generic market overview or a simple option comparison without real entry logic.",
+      "often_confused_with": ["constrained-choice"],
+      "primary_reads": [
+        "references/option-selection-and-shortlist-discipline.md",
+        "references/decision-report-template.md",
+        "references/source-traceability-and-claim-citation.md"
+      ],
+      "required_disciplines": ["current-state", "source-traceability", "decision-utility", "quantitative-role", "sensitivity-analysis"],
       "required_audits": ["option-selection-final-audit", "source-traceability", "final-audit"],
-      "hard_fail_keywords": ["generic market overview", "country notes without unified comparison", "expansion without hard gates", "collapses hub beachhead expansion", "skips country-competition stage", "inconsistent country diligence", "recommendation-constraint mismatch"]
+      "artifact_contract": "Explicit go / not-now / pilot-only recommendation, country shortlist, hard gates, sequencing, two-level decision funnel (regional screening → country competition → beachhead), country diligence cards, sensitivity/switching table, recommendation-constraint consistency.",
+      "hard_fail_keywords": ["generic market overview", "country notes without unified comparison", "expansion without hard gates", "collapses hub beachhead expansion", "skips country-competition stage", "inconsistent country diligence", "recommendation-constraint mismatch"],
+      "hard_fail_source": "ROUTING-MATRIX.md#market-entry-regional-expansion",
+      "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "scoring-replicability", "secondary-route-check", "contract-check"]
     },
     {
       "id": "market-outlook",
       "display_name": "Market Outlook / Industry Evolution",
       "category": "specialized",
       "aliases": ["market outlook", "industry evolution", "market outlook / industry evolution"],
+      "trigger": "Explain how a market will evolve over the next 6-24 months: direction, adoption trajectory, scenario memo.",
+      "do_not_use": "Task has a real recommendation, shortlist, or selection burden (ranking entities, predicting competition outcomes, choosing a provider).",
+      "often_confused_with": ["provider-selection", "constrained-choice"],
+      "primary_reads": [
+        "references/market-outlook-and-scenario-discipline.md",
+        "references/forward-looking-discipline.md",
+        "references/decision-report-template.md",
+        "references/source-traceability-and-claim-citation.md"
+      ],
+      "required_disciplines": ["current-state", "forward-looking", "source-traceability", "scope-completeness", "quantitative-role", "sensitivity-analysis"],
       "required_audits": ["market-outlook-audit", "forward-looking-claims", "source-traceability", "final-audit"],
-      "hard_fail_keywords": ["industry overview instead of outlook", "mixed facts and scenario assumptions", "forecasts without scenario structure", "hidden stakeholder implications", "wrong route for ranking/selection tasks"]
+      "artifact_contract": "Current market snapshot, key drivers and blockers, base case, structured alternative scenarios, stakeholder implications (3+ types), monitoring signals, what would change the conclusion.",
+      "hard_fail_keywords": ["industry overview instead of outlook", "mixed facts and scenario assumptions", "forecasts without scenario structure", "hidden stakeholder implications", "wrong route for ranking/selection tasks"],
+      "hard_fail_source": "ROUTING-MATRIX.md#market-outlook-industry-evolution",
+      "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "market-outlook-monitoring-actionability", "secondary-route-check", "contract-check"]
     },
     {
       "id": "competitive-positioning",
       "display_name": "First-tier / Top-tier / Competitive Positioning",
       "category": "specialized",
       "aliases": ["first-tier", "top-tier", "competitive positioning", "first-tier / top-tier / competitive positioning"],
+      "trigger": "Judge whether an entity belongs in a top group, with dimension-level judgment before any overall label.",
+      "do_not_use": "Task is mainly investment-style company analysis, valuation reasoning, or broad company profiling.",
+      "often_confused_with": ["listed-company"],
+      "primary_reads": [
+        "references/ranking-and-current-claims-discipline.md",
+        "references/source-traceability-and-claim-citation.md",
+        "references/decision-report-template.md"
+      ],
+      "required_disciplines": ["current-state", "source-traceability", "scope-completeness", "quantitative-role"],
       "required_audits": ["source-traceability", "final-audit"],
-      "hard_fail_keywords": ["loose tier labels", "dimensions collapsed into prestige", "treats all evidence equally"]
+      "artifact_contract": "Scope, metric, timeframe, dimension-level conclusions, evidence-strength separation, explicit overall-label gate.",
+      "hard_fail_keywords": ["loose tier labels", "dimensions collapsed into prestige", "treats all evidence equally"],
+      "hard_fail_source": "ROUTING-MATRIX.md#first-tier-top-tier-competitive-positioning",
+      "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "secondary-route-check", "contract-check"]
     },
     {
       "id": "constrained-choice",
       "display_name": "Constrained Choice / Shortlist / Option Selection",
       "category": "specialized",
       "aliases": ["constrained choice", "constrained choice / shortlist", "shortlist", "option selection", "constrained choice / shortlist / option selection"],
+      "trigger": "Choose among defined options using a visible comparison unit, shortlist logic, and ranking-change conditions; includes outcome-ranking / probability-distribution tasks.",
+      "do_not_use": "Real task is market-entry gating, expansion sequencing, or broad market scanning.",
+      "often_confused_with": ["market-entry", "equipment-selection"],
+      "primary_reads": [
+        "references/option-selection-and-shortlist-discipline.md",
+        "references/decision-report-template.md"
+      ],
+      "required_disciplines": ["decision-utility", "quantitative-role"],
       "required_audits": ["option-selection-final-audit", "final-audit"],
-      "hard_fail_keywords": ["recommendation without shortlist", "unlabeled numbers", "descriptive blurbs instead of choice memo", "background-first drift"]
+      "artifact_contract": "Decision architecture, shortlist construction logic, comparison unit, final ranking, why top option wins, why runner-up stays credible, ranking-reversal conditions, hidden operational burdens when relevant.",
+      "hard_fail_keywords": ["recommendation without shortlist", "unlabeled numbers", "descriptive blurbs instead of choice memo", "background-first drift"],
+      "hard_fail_source": "ROUTING-MATRIX.md#constrained-choice-shortlist-option-selection",
+      "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "scoring-replicability", "secondary-route-check", "contract-check"]
     },
     {
       "id": "regulatory-analysis",
       "display_name": "Regulatory / Policy Impact Analysis",
       "category": "specialized",
       "aliases": ["regulatory analysis", "regulatory / policy impact", "regulatory / policy impact analysis"],
+      "trigger": "Assess the regulatory environment, policy risk, or compliance impact on a business or industry.",
+      "do_not_use": "Regulation is background context only; or the primary burden is listed-company valuation, market-entry sequencing, or technical feasibility (attach regulatory analysis as secondary discipline instead).",
+      "often_confused_with": ["listed-company", "market-outlook"],
+      "primary_reads": [
+        "references/current-state-verification.md",
+        "references/forward-looking-discipline.md",
+        "references/source-quality.md",
+        "references/data-conflict-resolution.md",
+        "references/rule-system-and-mechanism-add-on.md"
+      ],
+      "required_disciplines": ["current-state", "source-traceability", "forward-looking", "scope-completeness"],
       "required_audits": ["regulatory-analysis-audit", "source-traceability", "final-audit"],
-      "hard_fail_keywords": ["regulations without business impact", "regulatory text confused with media", "false precision on timing", "ignored enforcement reality", "jurisdictions treated as equivalent", "binary risk instead of graduated"]
+      "artifact_contract": "Current regulatory snapshot, pending legislation, business impact analysis, timeline, uncertainty bounds, scenario analysis, monitoring signals, actionable implications.",
+      "hard_fail_keywords": ["regulations without business impact", "regulatory text confused with media", "false precision on timing", "ignored enforcement reality", "jurisdictions treated as equivalent", "binary risk instead of graduated"],
+      "hard_fail_source": "ROUTING-MATRIX.md#regulatory-policy-impact-analysis",
+      "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "secondary-route-check", "contract-check"]
     },
     {
       "id": "equipment-selection",
       "display_name": "Equipment Selection / Procurement / Home-server Planning",
       "category": "specialized",
       "aliases": ["equipment selection", "equipment selection / procurement", "equipment selection / procurement / home-server planning", "procurement", "home-server planning", "nas", "nas / home server", "homelab"],
+      "trigger": "Produce a purchase-ready or build-ready hardware/device recommendation under visible budget, maintenance, noise, power, storage, networking, or expansion constraints.",
+      "do_not_use": "Task mainly explains hardware categories, compares benchmarks abstractly, or teaches general technical concepts without a real procurement burden.",
+      "often_confused_with": ["constrained-choice", "market-outlook"],
+      "primary_reads": [
+        "references/decision-report-template.md",
+        "references/option-selection-and-shortlist-discipline.md",
+        "references/source-traceability-and-claim-citation.md"
+      ],
+      "required_disciplines": ["current-state", "decision-utility", "quantitative-role", "source-traceability"],
       "required_audits": ["option-selection-final-audit", "final-audit"],
-      "hard_fail_keywords": ["hardware overview instead of procurement", "budget without inclusion assumptions", "hardware and system not bound", "operating costs as side notes", "fails to segment workload", "benchmark performance without method disclosure"]
+      "artifact_contract": "Real purchase/build decision, dominant constraints, workload segmentation, top recommendation, credible runner-up, rejected routes, minimum-viable vs recommended config, budget assumptions, hardware-system fit, operating tradeoffs, what would change the recommendation.",
+      "hard_fail_keywords": ["hardware overview instead of procurement", "budget without inclusion assumptions", "hardware and system not bound", "operating costs as side notes", "fails to segment workload", "benchmark performance without method disclosure"],
+      "hard_fail_source": "ROUTING-MATRIX.md#equipment-selection-procurement-home-server-planning",
+      "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "secondary-route-check", "contract-check"]
     },
     {
       "id": "technical-deep-dive",
       "display_name": "Technical Deep-dive / Architecture Analysis",
       "category": "specialized",
       "aliases": ["technical deep-dive", "architecture analysis", "technical-deep-dive"],
+      "trigger": "Technical judgment: understanding principles, evaluating feasibility, comparing architectures, assessing technology maturity or roadmaps.",
+      "do_not_use": "Task mainly selects a product or vendor (use provider-selection / equipment-selection), describes market evolution (market-outlook), or chooses among defined options (constrained-choice).",
+      "often_confused_with": ["equipment-selection", "constrained-choice", "market-outlook"],
+      "primary_reads": [
+        "references/technical-analysis-discipline.md",
+        "references/source-traceability-and-claim-citation.md",
+        "references/forward-looking-discipline.md"
+      ],
+      "required_disciplines": ["current-state", "source-traceability", "forward-looking", "quantitative-role"],
       "required_audits": ["technical-analysis-audit", "source-traceability", "final-audit"],
-      "hard_fail_keywords": ["technical survey without judgment", "compares architectures without dimensions", "stale technical state", "vendor claims as confirmed facts", "feasibility without viability evidence", "roadmaps without announced vs shipped separation"]
+      "artifact_contract": "For principle/architecture/feasibility/roadmap/patent analysis: explicit question framing, dimension-by-dimension comparison or mechanism breakdown, trade-offs with load-bearing dimensions, evidence of viability, conditional recommendation with reversal criteria, announced vs shipped separation.",
+      "hard_fail_keywords": ["technical survey without judgment", "compares architectures without dimensions", "stale technical state", "vendor claims as confirmed facts", "feasibility without viability evidence", "roadmaps without announced vs shipped separation"],
+      "hard_fail_source": "ROUTING-MATRIX.md#technical-deep-dive-architecture-analysis",
+      "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "secondary-route-check", "contract-check"]
     },
     {
       "id": "listed-company",
       "display_name": "Listed Company / Investment-style Research",
       "category": "specialized",
       "aliases": ["listed company", "investment-style research", "listed company / investment-style research"],
+      "trigger": "Listed-company, valuation, public-market, or investment-style memo judgment burden.",
+      "do_not_use": "Real question is a definition-sensitive positioning judgment rather than an investment-style memo.",
+      "often_confused_with": ["competitive-positioning"],
+      "primary_reads": [
+        "references/finance-date-discipline.md",
+        "references/valuation-methodology.md",
+        "references/analyst-consensus-handling.md",
+        "references/reporting-period-handling.md",
+        "references/forward-looking-discipline.md",
+        "references/market-sizing-and-share-discipline.md",
+        "references/source-traceability-and-claim-citation.md",
+        "references/moat-monopoly-screening.md",
+        "examples/listed-company-judgment-memo-example.md",
+        "examples/china-shenhua-reference-grade-rewrite-skeleton.md"
+      ],
+      "required_disciplines": ["current-state", "forward-looking", "source-traceability", "data-conflict", "scope-completeness", "decision-utility", "sensitivity-analysis", "quantitative-role"],
       "required_audits": ["listed-company-report", "source-traceability", "final-audit"],
-      "hard_fail_keywords": ["mixed reported and forward estimates", "undated financial numbers", "missing research anchor", "missing market snapshot", "market-position without scope", "valuation substitutes for business evidence", "strong claims without evidence", "mixes monopoly moat scarcity"]
+      "artifact_contract": "Judgment-first opening, research-anchor block locking latest reported periods and market snapshot, dated key numbers, reported vs estimates separation, support/weakening/unresolved split, claim-level traceability, risks and counter-evidence, time-horizon valuation stratification when asked.",
+      "hard_fail_keywords": ["mixed reported and forward estimates", "undated financial numbers", "missing research anchor", "missing market snapshot", "market-position without scope", "valuation substitutes for business evidence", "strong claims without evidence", "mixes monopoly moat scarcity"],
+      "hard_fail_source": "ROUTING-MATRIX.md#listed-company-investment-style-research",
+      "validator_bindings": ["report-quality", "declared-execution", "listed-company-delivery", "table-role-labels", "source-label-consistency", "secondary-route-check", "contract-check"]
     },
     {
       "id": "startup-evaluation",
       "display_name": "Private Company / Startup Evaluation",
       "category": "specialized",
       "aliases": ["startup", "private company", "startup evaluation", "private company evaluation", "startup / private company evaluation"],
+      "trigger": "Evaluate a non-public company's current state, prospects, or investment value: due diligence, PMF, funding round, early-stage assessment.",
+      "do_not_use": "Company is publicly listed and trading (use listed-company route); IPO-filing companies use this route with IPO status noted.",
+      "often_confused_with": ["listed-company", "competitive-positioning"],
+      "primary_reads": [
+        "references/startup-evaluation-discipline.md",
+        "references/source-quality.md",
+        "references/source-traceability-and-claim-citation.md",
+        "references/forward-looking-discipline.md"
+      ],
+      "required_disciplines": ["current-state", "source-traceability", "forward-looking", "quantitative-role", "decision-utility"],
       "required_audits": ["startup-company-report", "source-traceability", "final-audit"],
-      "hard_fail_keywords": ["listed-company valuation for private", "unverified founder claims", "weak financials as audited", "unlabeled source reliability", "mini listed-company analysis"]
+      "artifact_contract": "Company overview and stage, team assessment, product and PMF signals, market and competitive position, funding and financial overview labeled by source type, key strengths and risks, 12-24 month milestones, judgment with uncertainty bounds.",
+      "hard_fail_keywords": ["listed-company valuation for private", "unverified founder claims", "weak financials as audited", "unlabeled source reliability", "mini listed-company analysis"],
+      "hard_fail_source": "ROUTING-MATRIX.md#private-company-startup-evaluation",
+      "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "secondary-route-check", "contract-check"]
     },
     {
       "id": "academic-review",
       "display_name": "Academic / Literature Review",
       "category": "specialized",
       "aliases": ["academic review", "literature review", "academic / literature review"],
+      "trigger": "Understand academic evidence, evaluate research quality, or survey field progress through peer-reviewed literature.",
+      "do_not_use": "Task can be adequately answered by the technical deep-dive route; or the decision burden is product selection, vendor choice, or market entry (attach academic evidence discipline instead).",
+      "often_confused_with": ["technical-deep-dive", "market-outlook"],
+      "primary_reads": [
+        "references/academic-evidence-hierarchy.md",
+        "references/source-traceability-and-claim-citation.md",
+        "references/counter-evidence.md"
+      ],
+      "required_disciplines": ["source-traceability", "current-state", "forward-looking", "scope-completeness"],
       "required_audits": ["academic-analysis-audit", "source-traceability", "final-audit"],
-      "hard_fail_keywords": ["preprints as peer-reviewed", "cherry-picked papers", "causation from observation", "p-values without effect sizes", "outdated research", "unlabeled venue status", "ignored publication bias"]
+      "artifact_contract": "Scope and search strategy, key themes and trends, major breakthroughs, state of the art, open questions, evidence quality assessment; field-progress style adds opening verdict, mechanism/benchmark ladder, representative failure cases, conditions that would change the conclusion.",
+      "hard_fail_keywords": ["preprints as peer-reviewed", "cherry-picked papers", "causation from observation", "p-values without effect sizes", "outdated research", "unlabeled venue status", "ignored publication bias"],
+      "hard_fail_source": "ROUTING-MATRIX.md#academic-literature-review",
+      "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "secondary-route-check", "contract-check"]
     },
     {
       "id": "shared-workflow",
       "display_name": "Shared-workflow (no specialized route selected)",
       "category": "shared-workflow",
       "aliases": ["shared-workflow", "shared workflow", "shared-workflow (no specialized route selected)"],
+      "trigger": "No specialized route fits and the task has no option universe, ranking, probability, or selection burden; lightweight fact query.",
+      "do_not_use": "Task fits a specialized route but it is avoided for convenience (escape-hatch misuse).",
+      "often_confused_with": ["constrained-choice"],
+      "primary_reads": [
+        "references/route-activation-and-preflight.md",
+        "references/source-traceability-and-claim-citation.md"
+      ],
+      "required_disciplines": [],
       "required_audits": ["workflow-spine-audit", "final-audit"],
-      "hard_fail_keywords": ["specialized route escape hatch misuse", "missing workflow-spine-audit"]
+      "artifact_contract": "Workflow spine audit plus final audit; no route-specific artifact contract beyond the shared delivery contract.",
+      "hard_fail_keywords": ["specialized route escape hatch misuse", "missing workflow-spine-audit"],
+      "hard_fail_source": "references/route-index.md#shared-workflow",
+      "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "secondary-route-check", "contract-check"]
     }
   ]
 }
