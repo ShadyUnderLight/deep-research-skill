@@ -323,6 +323,45 @@ class TestManualAuditStatus:
         # skipped/partial are recorded but never aggregate to Pass.
         assert data["exit_code"] == 2, f"cell={cell!r} blocked: {data['blocking']}"
 
+    def _report_with_duplicate_declaration(self, first: str, second: str) -> Path:
+        block = (
+            "## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n"
+            "|-------|--------|------|\n"
+            f"| market-outlook-audit | {first} | §3 |\n"
+            f"| market-outlook-audit | {second} | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        return _write(_report(route_block=block, contract=_contract()))
+
+    def test_duplicate_audit_declaration_is_not_run(self) -> None:
+        """A duplicate audit id must not be last-write-wins: ❌ Not run then
+        ✅ Passed must still fail closed (issue #378)."""
+        path = self._report_with_duplicate_declaration("❌ Not run", "✅ Passed")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run", mo
+        assert data["exit_code"] == 2, data["blocking"]
+        assert "duplicate" in mo["reason"].lower(), mo
+
+    def test_duplicate_audit_declaration_reversed_is_not_run(self) -> None:
+        """Opposite order: ✅ Passed first, ❌ Not run second must also fail."""
+        path = self._report_with_duplicate_declaration("✅ Passed", "❌ Not run")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run", mo
+        assert data["exit_code"] == 2, data["blocking"]
+
     @pytest.mark.parametrize("cell", [
         "✅ Passed",
         "✅ passed",
@@ -543,6 +582,31 @@ class TestJsonOutput:
             if audit["status"] == "pass" and audit["execution_type"] == "automated":
                 assert audit["evidence"], audit
                 assert str(path) in audit["evidence"][0], audit
+
+    def test_early_failure_json_has_provenance(self) -> None:
+        """Even early-failure verdicts must carry input hash + version."""
+        report = (
+            "# Test Report\n\n"
+            "## Findings\n\nBody [S01].\n\n"
+            "## Source Register\n\n"
+            "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |\n"
+            "|----|-------------|-------------|------|---------|-------------|------------------|\n"
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |\n"
+        )
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--strict", "--json"])
+        data = json.loads(result.stdout)
+        assert data["overall"] == "fail"
+        assert data["input_sha256"], data
+        assert data["validator_version"], data
+
+    def test_unknown_route_json_has_provenance(self) -> None:
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--route", "no-such-route", "--json"])
+        data = json.loads(result.stdout)
+        assert data["overall"] == "fail"
+        assert data["input_sha256"], data
+        assert data["validator_version"], data
 
 
 class TestSingleCommandCoverage:

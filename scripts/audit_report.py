@@ -898,6 +898,16 @@ def _parse_audit_block_statuses(path: Path) -> dict[str, dict[str, str]]:
         audit_id = cells[0].lower()
         status_cell = cells[1].lower()
         evidence = cells[2] if len(cells) > 2 else ""
+        if audit_id in statuses:
+            # Duplicate declaration is malformed: fail closed instead of
+            # last-write-wins, so a trailing '✅ Passed' cannot override an
+            # earlier '❌ Not run' (issue #378).
+            statuses[audit_id] = {
+                "status": "not_run",
+                "evidence": "",
+                "duplicate": "1",
+            }
+            continue
         statuses[audit_id] = {
             "status": _parse_status_cell(status_cell),
             "evidence": evidence,
@@ -985,6 +995,13 @@ def _execute_required_audits(
             if declared is None:
                 status = "not_run"
                 reason = "not declared in Route and audit status block"
+            elif declared.get("duplicate"):
+                status = "not_run"
+                reason = (
+                    f"audit '{audit_id}' declared multiple times in the "
+                    "Route and audit status block — duplicate declarations "
+                    "are malformed"
+                )
             else:
                 status = declared["status"]
                 reason = None
@@ -1259,7 +1276,7 @@ def _verdict_to_json(verdict: AuditVerdict) -> str:
 # ── Main ────────────────────────────────────────────────────────────────────
 
 
-def audit_report(
+def _audit_report_impl(
     path: Path,
     route: str | None = None,
     strict: bool = False,
@@ -1295,7 +1312,8 @@ def audit_report(
     -------
     AuditVerdict
         Consolidated verdict with blocking errors, warnings, and recommended
-        audit status.
+        audit status.  Provenance (input sha256 / validator version) is
+        filled by the public audit_report() wrapper on every path.
     """
     if not path.is_file():
         return AuditVerdict(
@@ -1388,12 +1406,48 @@ def audit_report(
         blocking_extra=audit_blocking,
         warnings_extra=audit_warnings,
     )
-    verdict.input_sha256 = _sha256(path)
-    verdict.validator_version = (
-        f"audit-registry-v{_AUDIT_REGISTRY.version} "
-        f"(route-manifest-v{_ROUTE_REGISTRY.version})"
-    )
     return verdict
+
+
+def _finalize_verdict(verdict: AuditVerdict, path: Path) -> AuditVerdict:
+    """Fill provenance (input sha256, validator version) on any verdict.
+
+    Runs on every return path of audit_report() — including early failures
+    (missing route declaration, unknown route, registry drift) so JSON
+    consumers always get the artifact hash and validator version
+    (issue #378 acceptance 8).
+    """
+    if verdict.input_sha256 is None:
+        verdict.input_sha256 = _sha256(path)
+    if verdict.validator_version is None:
+        verdict.validator_version = (
+            f"audit-registry-v{_AUDIT_REGISTRY.version} "
+            f"(route-manifest-v{_ROUTE_REGISTRY.version})"
+        )
+    return verdict
+
+
+def audit_report(
+    path: Path,
+    route: str | None = None,
+    strict: bool = False,
+    allow_route_fallback: bool = False,
+    require_contract: bool = False,
+    research_pack: Path | None = None,
+) -> AuditVerdict:
+    """Public entry point: run the audit and attach provenance to the verdict.
+
+    See _audit_report_impl for the parameters and the fail-closed rules.
+    """
+    verdict = _audit_report_impl(
+        path,
+        route=route,
+        strict=strict,
+        allow_route_fallback=allow_route_fallback,
+        require_contract=require_contract,
+        research_pack=research_pack,
+    )
+    return _finalize_verdict(verdict, path)
 
 
 def main(argv: list[str] | None = None) -> int:
