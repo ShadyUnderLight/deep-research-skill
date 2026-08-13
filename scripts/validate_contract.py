@@ -122,7 +122,12 @@ def extract_contract_from_markdown(text: str) -> dict | None:
 
 
 def validate_contract(
-    contract: dict, pack_primary_route: str | None = None
+    contract: dict,
+    pack_primary_route: str | None = None,
+    report_primary_route: str | None = None,
+    pack_artifact_id: str | None = None,
+    research_pack_provided: bool = False,
+    strict: bool = False,
 ) -> ContractValidationResult:
     """Validate a route activation contract against the manifest and registry.
 
@@ -141,12 +146,28 @@ def validate_contract(
     11. the primary route's required_audits are all declared, without duplicates
     12. stable artifact identity fields are present (warning; error under strict)
     13. pack primary route matches contract primary route (when provided)
+    14. report status block primary route matches contract primary route
+        (when provided)
+    15. pack artifact id matches contract artifact_id (when both provided)
 
     Args:
         contract: parsed contract object.
         pack_primary_route: canonical route id declared by the Research Pack
             (resolved by the CLI). When provided and different from the
             contract's primary_route, validation fails.
+        report_primary_route: canonical route id declared in the report's
+            '## Route and audit status' block (resolved by the CLI). When
+            provided and different from the contract's primary_route,
+            validation fails.
+        pack_artifact_id: stable id declared in the pack's '## Artifact id'
+            section. When both this and contract['artifact_id'] are set and
+            differ, validation fails; when only one side is set (and
+            research_pack_provided), a warning is emitted.
+        research_pack_provided: True when the CLI was given --research-pack.
+            Single-side artifact id warnings are only emitted in that case
+            (without --research-pack there is no pack to trace to).
+        strict: when True, missing artifact identity fields are errors
+            instead of warnings.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -514,16 +535,28 @@ def validate_contract(
             )
 
     # 10. Stable artifact identity fields (issue #376 范围 1).
-    # Recommended by default; --strict promotes the warning to an error.
+    # Non-string values are always errors; missing/empty values are
+    # warnings by default and errors under strict.
+    for meta_field in ARTIFACT_META_FIELDS:
+        value = contract.get(meta_field)
+        if value is not None and not isinstance(value, str):
+            errors.append(
+                f"Contract field '{meta_field}' must be a string, "
+                f"got {type(value).__name__}"
+            )
     missing_meta = [f for f in ARTIFACT_META_FIELDS if not contract.get(f)]
     if missing_meta:
-        warnings.append(
+        message = (
             "Contract lacks stable artifact identity fields: "
             f"{', '.join(sorted(missing_meta))}. "
             "Add artifact_id, contract_version and created_at so the report "
             "can be referenced by the Research Pack and future audit runs "
             "(required under --strict)."
         )
+        if strict:
+            errors.append(message)
+        else:
+            warnings.append(message)
 
     # 11. Pack primary route must match contract primary route
     # (issue #376 验收标准 5).
@@ -532,6 +565,43 @@ def validate_contract(
             f"Primary route mismatch: Research Pack declares "
             f"'{pack_primary_route}' but contract declares '{primary}'. "
             f"Pack and contract must agree on the canonical route."
+        )
+
+    # 12. Report status block route must match contract primary route
+    # (issue #376 验收标准 5 — route declared in the report body).
+    if report_primary_route is not None and report_primary_route != primary:
+        errors.append(
+            f"Primary route mismatch: report 'Route and audit status' block "
+            f"declares '{report_primary_route}' but contract declares "
+            f"'{primary}'. Status block and contract must agree on the "
+            f"canonical route."
+        )
+
+    # 13. Pack artifact id must match contract artifact_id when both are set
+    # (issue #376 验收标准 1 — 报告/pack 互指). Single-side warnings only
+    # when --research-pack was explicitly provided.
+    contract_artifact_id = contract.get("artifact_id")
+    if not research_pack_provided:
+        pass
+    elif pack_artifact_id is not None and contract_artifact_id:
+        if pack_artifact_id != contract_artifact_id:
+            errors.append(
+                f"Artifact id mismatch: Research Pack declares "
+                f"'{pack_artifact_id}' but contract declares "
+                f"'{contract_artifact_id}'. Pack and contract must reference "
+                f"the same artifact."
+            )
+    elif pack_artifact_id is not None and not contract_artifact_id:
+        warnings.append(
+            f"Research Pack declares artifact id '{pack_artifact_id}' but "
+            "contract has no artifact_id — the report cannot be traced back "
+            "to the pack."
+        )
+    elif contract_artifact_id and pack_artifact_id is None:
+        warnings.append(
+            f"Contract declares artifact id '{contract_artifact_id}' but the "
+            "Research Pack has no '## Artifact id' section — the pack cannot "
+            "be traced to the report."
         )
 
     return ContractValidationResult(errors=errors, warnings=warnings)
@@ -600,12 +670,24 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     pack_primary_route: str | None = None
+    pack_artifact_id: str | None = None
     if args.research_pack:
         pack_primary_route = _resolve_pack_primary_route(args.research_pack)
         if pack_primary_route is None:
             return 2
+        pack_artifact_id = _extract_pack_artifact_id(args.research_pack)
 
-    result = validate_contract(contract, pack_primary_route=pack_primary_route)
+    # Report status block route (issue #376 验收标准 5 — 三方一致性).
+    report_primary_route = extract_report_primary_route(text)
+
+    result = validate_contract(
+        contract,
+        pack_primary_route=pack_primary_route,
+        report_primary_route=report_primary_route,
+        pack_artifact_id=pack_artifact_id,
+        research_pack_provided=args.research_pack is not None,
+        strict=args.strict,
+    )
     print(result.format())
 
     if result.errors:
@@ -665,6 +747,70 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
     except UnknownRouteError as exc:
         print(f"Error: cannot resolve pack primary route: {exc}", file=sys.stderr)
         return None
+
+
+def extract_report_primary_route(text: str) -> str | None:
+    """Resolve the canonical route declared in the report's
+    '## Route and audit status' block (e.g. '**Primary route**: Market
+    Outlook' or '**Route**: Shared-workflow'). Returns None when the block
+    or a route declaration is missing (no cross-check then)."""
+    match = re.search(
+        r"## Route and audit status\s*\n(.*?)(?=\n## |\Z)", text, re.DOTALL
+    )
+    if not match:
+        return None
+    block = match.group(1)
+
+    # "**Primary route**: X" — first matching declaration line.
+    for line in block.split("\n"):
+        m = re.match(
+            r"\*\*Primary\s+route\*\*\s*[:：]\s*(.+)$", line.strip(), re.IGNORECASE
+        )
+        if m:
+            raw = m.group(1).strip()
+            break
+    else:
+        # "**Route**: Shared-workflow (no specialized route selected)".
+        for line in block.split("\n"):
+            m = re.match(r"\*\*Route\*\*\s*[:：]\s*(.+)$", line.strip(), re.IGNORECASE)
+            if m:
+                raw = m.group(1).strip()
+                break
+        else:
+            return None
+
+    # Strip trailing parenthetical notes, list markers, bold/italic.
+    raw = re.sub(r"\s*\([^)]*\)\s*$", "", raw)
+    raw = re.sub(r"^[-*>]+\s+", "", raw)
+    raw = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", raw)
+    try:
+        return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw)
+    except UnknownRouteError:
+        # Unknown status-block routes are reported by other validators
+        # (audit_report route detection); don't fail the contract check.
+        return None
+
+
+def _extract_pack_artifact_id(pack_path: str) -> str | None:
+    """Extract the first line of the pack's '## Artifact id' section.
+    Returns None when the section is absent (single-side tracing → warning)."""
+    try:
+        text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError):
+        return None
+    match = re.search(
+        r"## Artifact id\s*\n(.+?)(?=\n## |\Z)", text, re.DOTALL
+    )
+    if not match:
+        return None
+    for line in match.group(1).split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        line = re.sub(r"^[-*>]+\s+", "", line)
+        line = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", line)
+        return line or None
+    return None
 
 
 if __name__ == "__main__":

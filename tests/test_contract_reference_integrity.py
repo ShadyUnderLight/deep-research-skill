@@ -217,6 +217,187 @@ def test_artifact_meta_present_no_warnings():
     assert not any("artifact_id" in w for w in result.warnings)
 
 
+def test_artifact_meta_wrong_type_is_error():
+    """Non-string artifact identity fields fail even without --strict."""
+    contract = build_contract(
+        artifact_id=123, contract_version={}, created_at=[]
+    )
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("artifact_id" in e for e in result.errors)
+    assert any("contract_version" in e for e in result.errors)
+    assert any("created_at" in e for e in result.errors)
+
+
+def test_artifact_meta_empty_string_warns():
+    contract = build_contract(artifact_id="", contract_version="", created_at="")
+    result = validate_contract(contract)
+    assert result.is_valid  # warnings only in non-strict mode
+    assert any("artifact_id" in w for w in result.warnings)
+
+
+def test_strict_missing_artifact_meta_is_error():
+    """--strict must fail on missing artifact identity fields."""
+    result = validate_contract(build_contract(), strict=True)
+    assert not result.is_valid
+    assert any("artifact_id" in e for e in result.errors)
+
+
+# ── Report status block ↔ contract route consistency (review P1) ───────────
+
+
+def _write_report(contract_text: str, status_block: str | None = None) -> Path:
+    import tempfile
+
+    f = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".md", delete=False, encoding="utf-8"
+    )
+    body = "# Test report\n\n"
+    if status_block:
+        body += status_block + "\n\n"
+    body += f"```contract\n{contract_text}\n```\n"
+    f.write(body)
+    f.close()
+    return Path(f.name)
+
+
+def test_report_status_block_route_mismatch_fails(monkeypatch):
+    """Report declares 'Market Outlook', contract declares listed-company → fail."""
+    from validate_contract import main as vc_main
+
+    contract = build_contract(primary="listed-company")
+    report = _write_report(
+        json.dumps(contract),
+        status_block=(
+            "## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n"
+        ),
+    )
+    code = vc_main([str(report), "--require-contract"])
+    assert code == 2, "status block/contract route mismatch must fail with exit 2"
+    report.unlink(missing_ok=True)
+
+
+def test_report_status_block_route_match_passes(monkeypatch):
+    """Report declares the same route (display name form) → pass."""
+    from validate_contract import main as vc_main
+
+    contract = build_contract(
+        primary="listed-company",
+        artifact_id="report-A",
+        contract_version="1",
+        created_at="2026-08-13",
+    )
+    report = _write_report(
+        json.dumps(contract),
+        status_block=(
+            "## Route and audit status\n\n"
+            "**Primary route**: Listed Company / Investment-style Research\n"
+        ),
+    )
+    code = vc_main([str(report), "--require-contract"])
+    assert code == 0, "matching status block/contract routes must pass"
+    report.unlink(missing_ok=True)
+
+
+def test_report_without_status_block_skips_route_check(monkeypatch):
+    """Reports without a Route and audit status block are not penalized."""
+    from validate_contract import main as vc_main
+
+    contract = build_contract()
+    report = _write_report(json.dumps(contract))
+    code = vc_main([str(report), "--require-contract"])
+    assert code in (0, 1), "no status block must not fail the route check"
+    report.unlink(missing_ok=True)
+
+
+def test_shared_workflow_status_block_match_passes(monkeypatch):
+    from validate_contract import main as vc_main
+
+    contract = build_contract(primary="shared-workflow")
+    report = _write_report(
+        json.dumps(contract),
+        status_block=(
+            "## Route and audit status\n\n"
+            "**Route**: Shared-workflow (no specialized route selected)\n"
+        ),
+    )
+    code = vc_main([str(report), "--require-contract"])
+    assert code in (0, 1), f"shared-workflow status block should not fail: {code}"
+    report.unlink(missing_ok=True)
+
+
+# ── Pack artifact id ↔ contract artifact_id cross-check (review P1) ────────
+
+
+def _write_pack(primary_route: str, artifact_id: str | None = None) -> Path:
+    """Write a minimal research pack with a Primary route (and optional
+    Artifact id) section."""
+    import tempfile
+
+    body = f"# Test Pack\n\n## Primary route\n{primary_route}\n\n"
+    if artifact_id:
+        body += f"## Artifact id\n{artifact_id}\n\n"
+    body += "## Secondary disciplines\nnone\n"
+    f = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".md", delete=False, encoding="utf-8"
+    )
+    f.write(body)
+    f.close()
+    return Path(f.name)
+
+
+def _constrained_choice_contract(artifact_id: str | None = None):
+    return build_contract(
+        primary="constrained-choice",
+        artifact_id=artifact_id or "pack-A",
+        contract_version="1",
+        created_at="2026-08-13",
+        audits=[
+            {"id": "option-selection-final-audit", "status": "passed", "evidence": "§2"},
+            {"id": "final-audit", "status": "passed", "evidence": "§2"},
+        ],
+    )
+
+
+def test_pack_artifact_id_mismatch_fails(monkeypatch):
+    """Pack artifact id must match contract artifact_id when both are set."""
+    from validate_contract import main as vc_main
+
+    contract = _constrained_choice_contract(artifact_id="report-A")
+    report = _write_report(json.dumps(contract))
+    pack = _write_pack("Constrained choice / shortlist", artifact_id="pack-B")
+    code = vc_main([str(report), "--research-pack", str(pack), "--require-contract"])
+    assert code == 2, "pack/contract artifact id mismatch must fail with exit 2"
+    report.unlink(missing_ok=True)
+    pack.unlink(missing_ok=True)
+
+
+def test_pack_artifact_id_match_passes(monkeypatch):
+    from validate_contract import main as vc_main
+
+    contract = _constrained_choice_contract(artifact_id="pack-A")
+    report = _write_report(json.dumps(contract))
+    pack = _write_pack("Constrained choice / shortlist", artifact_id="pack-A")
+    code = vc_main([str(report), "--research-pack", str(pack), "--require-contract"])
+    assert code == 0, f"matching artifact ids must pass: {code}"
+    report.unlink(missing_ok=True)
+    pack.unlink(missing_ok=True)
+
+
+def test_pack_without_artifact_id_warns(monkeypatch):
+    """Pack without ## Artifact id → warning, not error."""
+    from validate_contract import main as vc_main
+
+    contract = _constrained_choice_contract(artifact_id="report-A")
+    report = _write_report(json.dumps(contract))
+    pack = _write_pack("Constrained choice / shortlist", artifact_id=None)
+    code = vc_main([str(report), "--research-pack", str(pack), "--require-contract"])
+    assert code == 1, "missing pack artifact id should warn (exit 1)"
+    report.unlink(missing_ok=True)
+    pack.unlink(missing_ok=True)
+
+
 # ── Unknown fields fail closed (issue #376 范围 3) ─────────────────────────
 
 
@@ -247,32 +428,24 @@ def test_pack_contract_route_mismatch_fails(monkeypatch):
     contract = build_contract(primary="listed-company")
     report = make_report(json.dumps(contract))
     # Pack declares a different primary route
-    pack = ROOT / "examples" / "research-pack-example.md"
-    assert pack.exists()
+    pack = _write_pack("Constrained choice / shortlist", artifact_id=None)
     code = vc_main([str(report), "--research-pack", str(pack), "--require-contract"])
     assert code == 2, "pack/contract route mismatch must fail with exit 2"
     report.unlink(missing_ok=True)
+    pack.unlink(missing_ok=True)
 
 
 def test_pack_contract_route_match_passes(monkeypatch):
     from validate_contract import main as vc_main
 
-    # The example pack declares constrained-choice; build a matching contract.
-    contract = build_contract(
-        primary="constrained-choice",
-        artifact_id="research-2026-08-13-pack-cross-check",
-        contract_version="1",
-        created_at="2026-08-13",
-        audits=[
-            {"id": "option-selection-final-audit", "status": "passed", "evidence": "§2"},
-            {"id": "final-audit", "status": "passed", "evidence": "§2"},
-        ],
-    )
+    # Pack declares constrained-choice; build a matching contract.
+    contract = _constrained_choice_contract(artifact_id="pack-A")
     report = make_report(json.dumps(contract))
-    pack = ROOT / "examples" / "research-pack-example.md"
+    pack = _write_pack("Constrained choice / shortlist", artifact_id="pack-A")
     code = vc_main([str(report), "--research-pack", str(pack), "--require-contract"])
     assert code == 0, "matching pack/contract routes must pass"
     report.unlink(missing_ok=True)
+    pack.unlink(missing_ok=True)
 
 
 def test_contract_embedded_in_report_extracted_ok():
@@ -283,3 +456,116 @@ def test_contract_embedded_in_report_extracted_ok():
     assert extracted is not None
     assert extracted["primary_route"] == "listed-company"
     report.unlink(missing_ok=True)
+
+
+# ── audit_report.py consumer wiring (review P1: strict 未接入) ─────────────
+
+
+def _audit_report_report(contract_text: str) -> Path:
+    """Minimal report that satisfies audit_report.py's structural checks,
+    with an embedded contract block."""
+    import tempfile
+
+    body = """# Test Report
+
+## Route and audit status
+
+**Primary route**: Technical Deep-dive
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+
+## 执行摘要
+
+Executive summary with citation [S01].
+
+## Findings
+
+Body text with citation [S02].
+
+## 维度结论
+
+Each dimension conclusion is backed by [S01] and [S02].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+
+```contract
+%s
+```
+"""
+    f = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".md", delete=False, encoding="utf-8"
+    )
+    f.write(body % contract_text)
+    f.close()
+    return Path(f.name)
+
+
+def test_audit_report_strict_fails_on_missing_artifact_meta():
+    """audit_report.py --strict must fail when contract lacks artifact id
+    (the real consumer, not just the standalone CLI)."""
+    import subprocess
+    import sys
+
+    contract = build_contract(primary="technical-deep-dive")
+    report = _audit_report_report(json.dumps(contract))
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "audit_report.py"),
+         str(report), "--strict"],
+        capture_output=True, text=True,
+    )
+    report.unlink(missing_ok=True)
+    assert result.returncode != 0, (
+        f"audit_report --strict should fail on missing artifact id\n{result.stdout}"
+    )
+    assert "artifact_id" in result.stdout or "artifact_id" in result.stderr
+
+
+def test_audit_report_non_strict_artifact_meta_is_warning():
+    """Without --strict, missing artifact id must not block the report."""
+    import subprocess
+    import sys
+
+    contract = build_contract(primary="technical-deep-dive")
+    report = _audit_report_report(json.dumps(contract))
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "audit_report.py"), str(report)],
+        capture_output=True, text=True,
+    )
+    report.unlink(missing_ok=True)
+    # Conditional-pass (warnings) or pass — never a blocking failure.
+    assert result.returncode in (0, 1), (
+        f"non-strict should not block on missing artifact id\n{result.stdout}"
+    )
+
+
+def test_audit_report_status_block_mismatch_fails():
+    """audit_report.py must fail when the status block route contradicts
+    the contract primary route."""
+    import subprocess
+    import sys
+
+    contract = build_contract(primary="listed-company")
+    report = _audit_report_report(json.dumps(contract))
+    # Patch the status block to declare a different route.
+    text = report.read_text(encoding="utf-8").replace(
+        "**Primary route**: Technical Deep-dive",
+        "**Primary route**: Market Outlook",
+    )
+    report.write_text(text, encoding="utf-8")
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "audit_report.py"), str(report)],
+        capture_output=True, text=True,
+    )
+    report.unlink(missing_ok=True)
+    assert result.returncode != 0, (
+        f"status block/contract mismatch should fail\n{result.stdout}"
+    )
+    assert "mismatch" in result.stdout or "mismatch" in result.stderr
