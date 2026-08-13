@@ -95,7 +95,8 @@ _AUDIT_REGISTRY = registry_loader.load_audit_registry()
 # These are delivery-pipeline validators rather than checklist audits, so
 # they live in code (not in audit-registry.json which requires a checklist
 # file per audit): audit id → validator binding id.  research-pack is
-# skipped when no --research-pack is given; markdown-delivery always runs
+# skipped outside strict mode when no --research-pack is given (and a
+# not_run + blocking error under --strict); markdown-delivery always runs
 # against the report itself.
 GLOBAL_AUDITS: dict[str, str] = {
     "markdown-delivery": "markdown-delivery",
@@ -907,19 +908,27 @@ def _parse_audit_block_statuses(path: Path) -> dict[str, dict[str, str]]:
 def _parse_status_cell(status_cell: str) -> str:
     """Map a report status cell to a canonical manual-audit status.
 
-    Fail-closed rules (issue #378): negative markers (not passed / 未通过 /
-    ❌ / ✗ / fail / pending) take precedence over the 'passed' substring, so
-    '❌ Not passed' can never parse as pass; anything unrecognized is
-    ``not_run`` rather than pass.
+    Fail-closed rules (issue #378): negative markers (not passed / did not
+    pass / not_passed / unpassed / not passing / 未通过 / ❌ / ✗ / fail /
+    pending / blocked) take precedence over any positive wording, so
+    '❌ Not passed' can never parse as pass.  The positive branch only
+    matches canonical tokens at word boundaries (``\bpass(?:ed)?\b`` or
+    ✅/✓/✔/已通过) — a bare 'pass'/'passed' substring inside unknown or
+    negative wording is never accepted.  Anything unrecognized defaults to
+    ``not_run``.
     """
     cell = status_cell.lower()
-    if re.search(r"not\s*[- ]?passed|未通过|✗|✖|❌|fail(?:ed)?|pending|in progress", cell):
+    if re.search(
+        r"not\s*[-_ ]?pass(?:ed|ing)?|unpassed|未通过|✗|✖|❌|"
+        r"fail(?:ed)?|pending|in progress|blocked",
+        cell,
+    ):
         return "not_run"
     if re.search(r"skipped|已跳过", cell):
         return "skipped"
     if re.search(r"partial|部分", cell):
         return "partial"
-    if re.search(r"(?:✅|✓|✔|passed|pass|已通过)", cell):
+    if re.search(r"(?:✅|✓|✔)|\bpass(?:ed)?\b|已通过", cell):
         return "pass"
     return "not_run"
 
@@ -945,7 +954,8 @@ def _execute_required_audits(
     - automated audit without a validator binding → blocking;
     - manual/process audit with no declaration in the report → ``not_run``,
       which is blocking in strict mode and a warning otherwise;
-    - research-pack without --research-pack → explicit ``skipped``.
+    - research-pack without --research-pack → explicit ``skipped`` outside
+      strict mode, ``not_run`` + blocking under ``--strict``.
     """
     audit_ids = _ROUTE_REGISTRY.required_audits_for(route_id) + list(GLOBAL_AUDITS)
     block_statuses = _parse_audit_block_statuses(path)
@@ -1273,7 +1283,8 @@ def audit_report(
         Require a valid route activation contract. Implied by strict.
     research_pack : Path | None
         Research Pack file to validate as the research-pack required audit.
-        None skips that audit explicitly.
+        None records the audit as ``skipped`` (non-strict) or ``not_run``
+        + blocking (strict, issue #378).
 
     Returns
     -------
@@ -1428,7 +1439,8 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=(
             "Path to the Research Pack .md file. When given, the research-pack "
-            "required audit validates it; without it the audit is skipped."
+            "required audit validates it; without it the audit is skipped "
+            "(or blocking under --strict, issue #378)."
         ),
     )
     parser.add_argument(

@@ -24,6 +24,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS_DIR = ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
@@ -262,6 +264,52 @@ class TestManualAuditStatus:
             a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
         )
         assert mo["status"] == "pass", mo
+
+    # Fail-open variants: the positive branch must only match canonical
+    # status tokens at word boundaries, never 'pass'/'passed' substrings
+    # inside negative or unknown wording.
+    @pytest.mark.parametrize("cell", [
+        "❌ Not passed",
+        "✗ Fail",
+        "not_passed",
+        "did not pass",
+        "unpassed",
+        "not passing",
+        "not-passed",
+        "未通过",
+        "pending",
+        "in progress",
+        "blocked",
+        "unknown status",
+    ])
+    def test_negative_or_unknown_status_is_not_pass(self, cell: str) -> None:
+        path = self._report_with_status(cell)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run", f"cell={cell!r} -> {mo['status']}"
+        assert data["exit_code"] == 2, f"cell={cell!r} blocked: {data['blocking']}"
+
+    @pytest.mark.parametrize("cell", [
+        "✅ Passed",
+        "✅ passed",
+        "Passed",
+        "passed",
+        "Pass",
+        "已通过",
+        "✔ Passed",
+        "✓ Passed",
+    ])
+    def test_canonical_pass_status_is_pass(self, cell: str) -> None:
+        path = self._report_with_status(cell)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "pass", f"cell={cell!r} -> {mo['status']}"
 
     def test_undeclared_manual_audit_is_not_run_non_strict(self) -> None:
         """Non-strict records not_run explicitly without changing exit code."""
