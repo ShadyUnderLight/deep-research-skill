@@ -168,12 +168,17 @@ class TestTopLevelRegistryValidation:
             tmp.unlink(missing_ok=True)
 
     def test_entries_key_must_be_list(self) -> None:
-        tmp = self._tmp(self._minimal_routes_doc(routes="not-a-list"))
-        try:
-            with pytest.raises(RegistryError, match="routes"):
-                load_route_registry(tmp)
-        finally:
-            tmp.unlink(missing_ok=True)
+        for loader, doc in [
+            (load_route_registry, self._minimal_routes_doc(routes="not-a-list")),
+            (load_discipline_registry, self._minimal_disciplines_doc(disciplines="not-a-list")),
+            (load_audit_registry, self._minimal_audits_doc(audits="not-a-list")),
+        ]:
+            tmp = self._tmp(doc)
+            try:
+                with pytest.raises(RegistryError):
+                    loader(tmp)
+            finally:
+                tmp.unlink(missing_ok=True)
 
 
 class TestRouteRegistryLoads:
