@@ -281,6 +281,14 @@ class TestManualAuditStatus:
         "in progress",
         "blocked",
         "unknown status",
+        # Whole-cell canonical-token variants: a bare 'pass'/'passed'
+        # substring anywhere in the cell must NOT count as pass.
+        "passed-ish",
+        "passed with caveats",
+        "conditional-pass",
+        "Status: Pass",
+        "pass (manual)",
+        "Passed ✅ with caveats",
     ])
     def test_negative_or_unknown_status_is_not_pass(self, cell: str) -> None:
         path = self._report_with_status(cell)
@@ -292,6 +300,23 @@ class TestManualAuditStatus:
         assert mo["status"] == "not_run", f"cell={cell!r} -> {mo['status']}"
         assert data["exit_code"] == 2, f"cell={cell!r} blocked: {data['blocking']}"
 
+    @pytest.mark.parametrize("cell,expected", [
+        ("skipped", "skipped"),
+        ("已跳过", "skipped"),
+        ("partial", "partial"),
+        ("部分通过", "partial"),
+    ])
+    def test_canonical_skipped_partial_status(self, cell: str, expected: str) -> None:
+        path = self._report_with_status(cell)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == expected, f"cell={cell!r} -> {mo['status']}"
+        # skipped/partial are recorded but never aggregate to Pass.
+        assert data["exit_code"] == 2, f"cell={cell!r} blocked: {data['blocking']}"
+
     @pytest.mark.parametrize("cell", [
         "✅ Passed",
         "✅ passed",
@@ -301,6 +326,7 @@ class TestManualAuditStatus:
         "已通过",
         "✔ Passed",
         "✓ Passed",
+        "✅Passed",
     ])
     def test_canonical_pass_status_is_pass(self, cell: str) -> None:
         path = self._report_with_status(cell)

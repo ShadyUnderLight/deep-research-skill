@@ -908,14 +908,19 @@ def _parse_audit_block_statuses(path: Path) -> dict[str, dict[str, str]]:
 def _parse_status_cell(status_cell: str) -> str:
     """Map a report status cell to a canonical manual-audit status.
 
-    Fail-closed rules (issue #378): negative markers (not passed / did not
-    pass / not_passed / unpassed / not passing / 未通过 / ❌ / ✗ / fail /
-    pending / blocked) take precedence over any positive wording, so
-    '❌ Not passed' can never parse as pass.  The positive branch only
-    matches canonical tokens at word boundaries (``\bpass(?:ed)?\b`` or
-    ✅/✓/✔/已通过) — a bare 'pass'/'passed' substring inside unknown or
-    negative wording is never accepted.  Anything unrecognized defaults to
-    ``not_run``.
+    Fail-closed rules (issue #378):
+    - negative markers (not passed / did not pass / not_passed / unpassed /
+      not passing / 未通过 / ❌ / ✗ / fail / pending / blocked) take
+      precedence over any positive wording, so '❌ Not passed' can never
+      parse as pass;
+    - the positive branches are whole-cell matches: the cell must BE a
+      canonical token (``Pass``/``Passed``/``✅|✓|✔ Passed``/``已通过``,
+      ``skipped``/``已跳过``, ``partial``/``部分``), optionally with an
+      emoji marker and surrounding whitespace.  A bare 'pass'/'passed'
+      substring inside unknown or caveated wording (``passed-ish``,
+      ``conditional-pass``, ``Status: Pass``, ``pass (manual)``) is never
+      accepted;
+    - anything unrecognized defaults to ``not_run``.
     """
     cell = status_cell.lower()
     if re.search(
@@ -924,11 +929,11 @@ def _parse_status_cell(status_cell: str) -> str:
         cell,
     ):
         return "not_run"
-    if re.search(r"skipped|已跳过", cell):
+    if re.fullmatch(r"(?:skipped|已跳过)\s*", cell):
         return "skipped"
-    if re.search(r"partial|部分", cell):
+    if re.fullmatch(r"(?:partial|部分(?:通过)?)\s*", cell):
         return "partial"
-    if re.search(r"(?:✅|✓|✔)|\bpass(?:ed)?\b|已通过", cell):
+    if re.fullmatch(r"(?:✅|✓|✔)?\s*(?:pass(?:ed)?|已通过)\s*", cell):
         return "pass"
     return "not_run"
 
