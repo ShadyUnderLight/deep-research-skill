@@ -239,23 +239,199 @@ def test_c3_indexed_cases_match_git_tracked_files() -> None:
 # ── C4: CandidateRuleContract ───────────────────────────────────────────────
 
 
+# Canonical stem -> repo-relative source files for the candidate rule
+# registry's `Source file(s)` column. This is an explicit map, not a prefix
+# glob: a truncated or misspelled stem (e.g. `by`, `...outloo`) must be
+# reported instead of silently resolving to a prefix match (issue #375 review
+# P1 round 2). Keep in sync when the registry or eval assets change — the
+# tests below fail closed on any registry stem missing from this map.
+CANONICAL_RULE_SOURCES: dict[str, tuple[str, ...]] = {
+    "agent-api-market-outlook": (
+        "evals/cases/agent-api-market-outlook-full-spectrum-fail-case.md",
+        "evals/comparative-distillation/agent-api-market-outlook-gpt-vs-local-comparative-distillation.md",
+    ),
+    "ai-coding-agent-market-outlook": (
+        "evals/cases/ai-coding-agent-market-outlook-probability-case.md",
+        "evals/comparative-distillation/ai-coding-agent-market-outlook-gpt-vs-minimax-comparative-distillation.md",
+    ),
+    "ai-coding-provider-selection": (
+        "evals/cases/ai-coding-provider-selection-current-state-conflict-case.md",
+        "evals/comparative-distillation/ai-coding-provider-selection-gpt-vs-local-comparative-distillation.md",
+    ),
+    "ai-edu-market-entry": (
+        "evals/cases/ai-edu-market-entry-sensitivity-and-route-intersection-case.md",
+        "evals/comparative-distillation/ai-edu-market-entry-gpt-vs-local-comparative-distillation.md",
+    ),
+    "amd-minimax-equity-report": (
+        "evals/comparative-distillation/amd-minimax-equity-report-distillation.md",
+    ),
+    "api-supplier-selection": (
+        "evals/comparative-distillation/api-supplier-selection-gpt-vs-minimax-comparative-distillation.md",
+    ),
+    "byd": (
+        "evals/cases/byd-competitive-positioning-traceability-hard-fail-case.md",
+        "evals/cases/byd-report-format-discipline-case.md",
+        "evals/comparative-distillation/byd-gpt-vs-minimax-comparative-distillation.md",
+    ),
+    "cas-space-minimax-company-report": (
+        "evals/comparative-distillation/cas-space-minimax-company-report-distillation.md",
+    ),
+    "china-shenhua": (
+        "evals/cases/china-shenhua-listed-company-judgment-and-traceability-case.md",
+        "evals/comparative-distillation/china-shenhua-minimax-vs-reference-grade-company-memo-comparative-distillation.md",
+    ),
+    "dc-power": (
+        "evals/cases/dc-power-market-outlook-forward-looking-label-gap-case.md",
+        "evals/cases/dc-power-market-outlook-inflation-and-monitoring-case.md",
+    ),
+    "home-server-equipment-recommendation": (
+        "evals/comparative-distillation/home-server-equipment-recommendation-minimax-comparative-distillation.md",
+    ),
+    "japan-vs-china-vs-sea-market-entry": (
+        "evals/comparative-distillation/japan-vs-china-vs-sea-market-entry-comparative-distillation.md",
+    ),
+    "multi-origin-meetup-city-selection": (
+        "evals/comparative-distillation/multi-origin-meetup-city-selection-gpt-vs-minimax-comparative-distillation.md",
+    ),
+    "sea-market-entry": (
+        "evals/comparative-distillation/sea-market-entry-gpt-vs-minimax-comparative-distillation.md",
+    ),
+    "small-team-ai-agent": (
+        "evals/comparative-distillation/small-team-ai-agent-gpt-vs-local-comparative-distillation.md",
+    ),
+    "weekend-seaside-destination": (
+        "evals/comparative-distillation/weekend-seaside-destination-gpt-vs-minimax-comparative-distillation.md",
+    ),
+    "world-cup-constrained-choice": (
+        "evals/cases/world-cup-constrained-choice-wrong-route-case.md",
+        "evals/comparative-distillation/world-cup-constrained-choice-gpt-vs-local-comparative-distillation.md",
+    ),
+    "world-cup-group-winner-path-advantage-gpt-vs-local-comparative-distillation": (
+        "evals/comparative-distillation/world-cup-group-winner-path-advantage-gpt-vs-local-comparative-distillation.md",
+    ),
+    "world-cup-transition-vs-possession-gpt-vs-local-comparative-distillation": (
+        "evals/comparative-distillation/world-cup-transition-vs-possession-gpt-vs-local-comparative-distillation.md",
+    ),
+}
+
+
+def _registry_source_problems(registry_text: str, indexed_cases: set[str]) -> list[str]:
+    """Validate the registry table's `Source file(s)` column (bare stems).
+
+    Each stem must be a key of the explicit CANONICAL_RULE_SOURCES map (no
+    prefix globbing — truncated or misspelled stems are reported, not
+    resolved). Every referenced file must exist, and every referenced
+    `evals/cases/*.md` must be registered in INDEX.md.
+
+    Returns a list of problems; an empty list means the registry is healthy.
+    """
+    problems: list[str] = []
+    for line in registry_text.splitlines():
+        cols = [c.strip() for c in line.split("|")]
+        if len(cols) < 9 or not re.match(r"R\d+", cols[1]):
+            continue
+        rule_id = cols[1]
+        for stem in (s.strip() for s in cols[4].split(",") if s.strip()):
+            if stem not in CANONICAL_RULE_SOURCES:
+                problems.append(
+                    f"Source file(s) '{stem}' ({rule_id}) is not a canonical "
+                    f"rule source; add it to CANONICAL_RULE_SOURCES or fix the typo"
+                )
+                continue
+            for rel in CANONICAL_RULE_SOURCES[stem]:
+                path = ROOT / rel
+                if not path.exists():
+                    problems.append(
+                        f"Referenced source file does not exist: {rel} ({rule_id})"
+                    )
+                if rel.startswith("evals/cases/"):
+                    name = rel[len("evals/cases/"):]
+                    if name not in indexed_cases:
+                        problems.append(
+                            f"{rel} ({rule_id} source) is not registered in evals/INDEX.md"
+                        )
+    return problems
+
+
 def test_c4_candidate_rule_sources_exist() -> None:
-    """C4a: All candidate rule source files must exist."""
-    if not REGISTRY_PATH.exists():
-        return
+    """C4a: All candidate rule source files must exist and be indexed."""
+    assert REGISTRY_PATH.exists(), f"Registry missing: {REGISTRY_PATH}"
     text = REGISTRY_PATH.read_text(encoding="utf-8")
-    # Find source files referenced in the registry table rows
-    source_refs = re.findall(r"world-cup-[a-z-]+\.md", text)
+    # References appear in two forms: repo-relative paths (`` `evals/cases/x.md` ``)
+    # and bare filenames (`` `world-cup-x-case.md` ``) that live in either the
+    # eval case directory or the comparative-distillation directory. Resolve
+    # both forms and fail closed on any missing file (issue #375).
+    source_refs = re.findall(r"`([^`]+\.md)`", text)
     for ref in source_refs:
-        # These should refer to comparative-distillation files
-        expected = DISTILL_DIR / ref
-        assert expected.exists(), f"Referenced source file does not exist: {ref}"
+        if ref.startswith("evals/"):
+            expected = ROOT / ref
+            assert expected.exists(), f"Referenced source file does not exist: {ref}"
+        elif "/" not in ref:
+            in_cases = (CASE_DIR / ref).exists()
+            in_distill = (DISTILL_DIR / ref).exists()
+            assert in_cases or in_distill, (
+                f"Referenced source file does not exist: {ref} "
+                f"(looked in {CASE_DIR} and {DISTILL_DIR})"
+            )
+    # The table's `Source file(s)` column uses bare stems (no `.md` suffix, no
+    # backticks). Resolve them through the explicit CANONICAL_RULE_SOURCES map
+    # and fail closed on unknown/truncated stems, missing files, or eval cases
+    # missing from INDEX.md (issue #375 review P1 + P1 round 2).
+    indexed_cases = set(
+        re.findall(
+            r"evals/cases/([^`\s]+\.md)",
+            INDEX_PATH.read_text(encoding="utf-8"),
+        )
+    )
+    problems = _registry_source_problems(text, indexed_cases)
+    assert not problems, (
+        "Candidate rule registry source problems:\n" + "\n".join(problems)
+    )
+
+
+def test_c4_missing_source_stem_detected() -> None:
+    """C4a-negative: unknown or truncated source stems are reported.
+
+    Covers both a fully unknown stem and truncated prefixes of real stems
+    (e.g. `by` must not resolve to `byd-*`; prefix globbing would let these
+    through — issue #375 review P1 round 2).
+    """
+    bad_stems = (
+        "this-stem-does-not-exist-anywhere",
+        "by",                      # truncated prefix of byd
+        "ai-coding-agent-market-outloo",  # truncated prefix of ...outlook
+        "world-cup-transitio",     # truncated prefix of ...transition...
+        "world-cup",               # truncated to a shared token
+    )
+    for stem in bad_stems:
+        fake = (
+            "| ID | Candidate rule | Action type | Source file(s) | Frequency | "
+            "Original label | Existing coverage | Coverage status |\n"
+            f"| R99 | fake rule | NEW_RULE | {stem} | 1 | "
+            "PROMOTE_NOW | - | 无覆盖 |\n"
+        )
+        problems = _registry_source_problems(fake, set())
+        assert any(stem in p for p in problems), (stem, problems)
+
+
+def test_c4_case_not_indexed_detected() -> None:
+    """C4a-negative: an eval case referenced but missing from INDEX.md is reported."""
+    # Use a real canonical stem that maps to an evals/cases/ file ("byd").
+    assert "byd" in CANONICAL_RULE_SOURCES
+    fake = (
+        "| ID | Candidate rule | Action type | Source file(s) | Frequency | "
+        "Original label | Existing coverage | Coverage status |\n"
+        "| R99 | fake rule | NEW_RULE | byd | 1 | "
+        "PROMOTE_NOW | - | 无覆盖 |\n"
+    )
+    problems = _registry_source_problems(fake, set())
+    assert any("byd-report-format-discipline-case.md" in p for p in problems), problems
+    assert any("evals/INDEX.md" in p for p in problems), problems
 
 
 def test_c4_no_duplicate_candidate_ids() -> None:
     """C4b: All candidate rule IDs (Rxx) must be unique."""
-    if not REGISTRY_PATH.exists():
-        return
+    assert REGISTRY_PATH.exists(), f"Registry missing: {REGISTRY_PATH}"
     text = REGISTRY_PATH.read_text(encoding="utf-8")
     ids = re.findall(r"\|\s*(R\d+)\s*\|", text)
     duplicates = [r for r in ids if ids.count(r) > 1]

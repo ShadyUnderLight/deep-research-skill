@@ -1,0 +1,29 @@
+# Explicit pytest configuration (issue #375: trusted local/CI verification baseline).
+#
+# Collection boundary:
+#   - `tests/`         : formal pytest modules — always collected.
+#   - `scripts/test_*.py` : validator regression/contract tests — collected as
+#     pytest modules; several also double as CLI regression runners (they expose
+#     a `main()` and are invoked as `python3 scripts/test_*.py` in CI). The two
+#     styles coexist; the pytest entrypoint is the primary gate.
+#   - CLI-only runners that cannot be parameterized by pytest (e.g.
+#     scripts/test_cjk_pdf_pipeline.py's file-based checks) keep their test
+#     helpers prefixed with `_` so they are never collected, and are documented
+#     in docs/verification-baseline.md.
+#
+# Excluded on purpose:
+#   - scripts/*.py without a test_ prefix (validators, renderers) — never
+#     collected; they are exercised through the tests above.
+#   - Eval case markdown and reference docs — not Python.
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "scripts"]
+python_files = ["test_*.py", "*_test.py"]
+# `-ra` gives a summary that distinguishes failed vs errored (collection /
+# fixture) tests, which CI needs to classify failures (issue #375 scope item 8).
+# `--strict-markers` fails on any marker not registered below (fail-closed).
+addopts = "-ra --strict-markers"
+
+markers = [
+    # Reserve the registry for future markers; none are used today.
+]

@@ -215,7 +215,7 @@ def test_full_pipeline_block_integrity():
     print("  PASS  full pipeline block integrity")
 
 
-def test_file_pipeline(md_path, min_expected_cjk=3000):
+def _test_file_pipeline(md_path, min_expected_cjk=3000):
     """Verify pipeline on a real file produces structurally sound HTML."""
     md_text = md_path.read_text(encoding='utf-8', errors='replace')
     errors, normalized, html = verify_cjk_pipeline(md_text, label=md_path.stem)
@@ -263,7 +263,7 @@ def main():
     print()
     for path, min_cjk in file_tests:
         try:
-            errs = test_file_pipeline(path, min_cjk)
+            errs = _test_file_pipeline(path, min_cjk)
             if errs:
                 failures.append(f"{path.name} ({len(errs)} issues)")
         except Exception as e:
