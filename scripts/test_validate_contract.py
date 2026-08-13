@@ -29,6 +29,30 @@ from validate_contract import (
 # ── Fixtures ────────────────────────────────────────────────────────────────
 
 
+def _required_audit_entries(
+    primary_route: str, extra: list[dict] | None = None
+) -> list[dict]:
+    """Audit entries covering the route's required_audits (issue #376) plus extras.
+
+    Every contract fixture must declare the primary route's required_audits
+    from route-manifest.json, otherwise validation fails.
+    """
+    manifest_path = Path(__file__).resolve().parent.parent / "schemas" / "route-manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    required = next(
+        r["required_audits"] for r in manifest["routes"] if r["id"] == primary_route
+    )
+    extra_ids = {e.get("id") for e in (extra or [])}
+    entries = [
+        {"id": aid, "status": "passed", "evidence": "§2"}
+        for aid in required
+        if aid not in extra_ids
+    ]
+    if extra:
+        entries.extend(extra)
+    return entries
+
+
 SAMPLE_CONTRACT_MD = """# Test Report
 
 ## Route and audit status
@@ -43,6 +67,7 @@ SAMPLE_CONTRACT_MD = """# Test Report
   "disciplines": ["current-state", "source-traceability"],
   "audits": [
     {"id": "listed-company-report", "status": "passed", "evidence": "§3"},
+    {"id": "source-traceability", "status": "passed", "evidence": "[S01]-[S12]"},
     {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "§6 verified"},
     {"id": "final-audit", "status": "passed", "evidence": "§2-§8"}
   ]
@@ -100,9 +125,7 @@ def test_validate_minimal_valid_contract():
         "primary_route": "listed-company",
         "secondary_routes": [],
         "disciplines": [],
-        "audits": [
-            {"id": "final-audit", "status": "passed", "evidence": "§2"},
-        ],
+        "audits": _required_audit_entries("listed-company"),
     }
     result = validate_contract(contract)
     assert result.is_valid, f"Errors: {result.errors}"
@@ -113,13 +136,10 @@ def test_validate_full_contract():
         "primary_route": "market-outlook",
         "secondary_routes": ["regulatory-analysis"],
         "disciplines": ["current-state", "source-traceability", "forward-looking"],
-        "audits": [
-            {"id": "market-outlook-audit", "status": "passed", "evidence": "§3"},
-            {"id": "source-traceability", "status": "passed", "evidence": "[S01]-[S12]"},
-            {"id": "final-audit", "status": "passed", "evidence": "§2-§8"},
+        "audits": _required_audit_entries("market-outlook", extra=[
             {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed",
              "evidence": "§6 verified regulatory hard-fail conditions"},
-        ],
+        ]),
     }
     result = validate_contract(contract)
     assert result.is_valid, f"Errors: {result.errors}"
@@ -130,10 +150,7 @@ def test_validate_shared_workflow_valid():
         "primary_route": "shared-workflow",
         "secondary_routes": [],
         "disciplines": [],
-        "audits": [
-            {"id": "workflow-spine-audit", "status": "passed", "evidence": "§2-§6"},
-            {"id": "final-audit", "status": "passed", "evidence": "§2-§8"},
-        ],
+        "audits": _required_audit_entries("shared-workflow"),
     }
     result = validate_contract(contract)
     assert result.is_valid, f"Errors: {result.errors}"
@@ -149,7 +166,7 @@ def test_validate_all_route_ids_work():
             "primary_route": route["id"],
             "secondary_routes": [],
             "disciplines": [],
-            "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+            "audits": _required_audit_entries(route["id"]),
         }
         result = validate_contract(contract)
         assert result.is_valid, (
@@ -163,10 +180,9 @@ def test_validate_skipped_audit_no_evidence_ok():
         "primary_route": "listed-company",
         "secondary_routes": [],
         "disciplines": [],
-        "audits": [
+        "audits": _required_audit_entries("listed-company", extra=[
             {"id": "source-traceability", "status": "skipped", "evidence": ""},
-            {"id": "final-audit", "status": "passed", "evidence": "§2"},
-        ],
+        ]),
     }
     result = validate_contract(contract)
     assert result.is_valid, f"Errors: {result.errors}"
@@ -178,10 +194,9 @@ def test_validate_not_run_audit_no_evidence_ok():
         "primary_route": "listed-company",
         "secondary_routes": [],
         "disciplines": [],
-        "audits": [
+        "audits": _required_audit_entries("listed-company", extra=[
             {"id": "route-activation-audit", "status": "not_run", "evidence": ""},
-            {"id": "final-audit", "status": "passed", "evidence": "§2"},
-        ],
+        ]),
     }
     result = validate_contract(contract)
     assert result.is_valid, f"Errors: {result.errors}"
@@ -426,7 +441,7 @@ def test_validate_closest_alternative_valid():
         },
         "secondary_routes": [],
         "disciplines": [],
-        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+        "audits": _required_audit_entries("listed-company"),
     }
     result = validate_contract(contract)
     assert result.is_valid, f"Errors: {result.errors}"
@@ -477,6 +492,7 @@ def test_validate_duplicate_secondary_routes():
 
 
 def test_validate_duplicate_audit_ids():
+    """Duplicate audit ids are an error (issue #376 验收标准 4)."""
     contract = {
         "primary_route": "listed-company",
         "secondary_routes": [],
@@ -487,8 +503,8 @@ def test_validate_duplicate_audit_ids():
         ],
     }
     result = validate_contract(contract)
-    assert len(result.warnings) > 0
-    assert any("duplicate" in w.lower() for w in result.warnings)
+    assert not result.is_valid
+    assert any("duplicate" in e.lower() for e in result.errors)
 
 
 # ── New tests for secondary hard-fail audit enforcement ────────────────────
@@ -515,11 +531,10 @@ def test_validate_secondary_with_audit_id_tracking():
         "primary_route": "market-outlook",
         "secondary_routes": ["regulatory-analysis"],
         "disciplines": [],
-        "audits": [
+        "audits": _required_audit_entries("market-outlook", extra=[
             {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed",
              "evidence": "§6 all hard-fail conditions verified"},
-            {"id": "final-audit", "status": "passed", "evidence": "§2"},
-        ],
+        ]),
     }
     result = validate_contract(contract)
     assert result.is_valid, f"Errors: {result.errors}"
@@ -601,7 +616,7 @@ def test_boundary_judgment_valid():
         },
         "secondary_routes": [],
         "disciplines": [],
-        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+        "audits": _required_audit_entries("listed-company"),
     }
     result = validate_contract(contract)
     assert result.is_valid, f"Errors: {result.errors}"
@@ -612,7 +627,7 @@ def test_boundary_judgment_not_required_without_closest():
         "primary_route": "listed-company",
         "secondary_routes": [],
         "disciplines": [],
-        "audits": [{"id": "final-audit", "status": "passed", "evidence": "§2"}],
+        "audits": _required_audit_entries("listed-company"),
     }
     result = validate_contract(contract)
     assert result.is_valid, f"Errors: {result.errors}"

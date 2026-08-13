@@ -3,11 +3,22 @@
 Route activation contract validator.
 
 Validates a contract (extracted from a Markdown report's ```contract fenced block)
-against route-manifest.json and discipline-registry.json. Enforces the four-entity
-separation: primary route, secondary routes, disciplines, and audits.
+against route-manifest.json, discipline-registry.json and audit-registry.json.
+Enforces the four-entity separation: primary route, secondary routes, disciplines,
+and audits, plus reference integrity (issue #376):
+
+- audit ids must belong to audit-registry.json (or be derived
+  `<secondary>-secondary-hard-fail` entries),
+- `closest_alternative` must belong to the primary route's `often_confused_with`
+  set in route-manifest.json,
+- the primary route's `required_audits` must all be declared, without duplicates,
+- stable artifact identity fields (`artifact_id`, `contract_version`,
+  `created_at`) are recommended by default and required under `--strict`,
+- with `--research-pack PATH`, the pack's primary route must match the
+  contract's primary route.
 
 Usage:
-    python3 scripts/validate_contract.py path/to/report.md [--strict]
+    python3 scripts/validate_contract.py path/to/report.md [--strict] [--research-pack path/to/pack.md]
 
 Exit codes:
     0 = contract is valid (or no contract found)
@@ -23,13 +34,24 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from registry_loader import (
+    UnknownRouteError,
+    load_audit_registry,
+    load_discipline_registry,
+    load_route_registry,
+)
+
 # ── Paths relative to project root ──────────────────────────────────────────
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 ROUTE_MANIFEST_PATH = PROJECT_ROOT / "schemas" / "route-manifest.json"
 DISCIPLINE_REGISTRY_PATH = PROJECT_ROOT / "schemas" / "discipline-registry.json"
+AUDIT_REGISTRY_PATH = PROJECT_ROOT / "schemas" / "audit-registry.json"
 
 VALID_AUDIT_STATUSES = {"passed", "skipped", "not_run"}
+
+# Recommended stable artifact identity fields (issue #376 范围 1).
+ARTIFACT_META_FIELDS = ("artifact_id", "contract_version", "created_at")
 
 
 # ── Data types ──────────────────────────────────────────────────────────────
@@ -66,29 +88,6 @@ class ContractError(Exception):
     pass
 
 
-# ── Registry loading ────────────────────────────────────────────────────────
-
-
-def _load_route_manifest() -> dict:
-    with open(ROUTE_MANIFEST_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _load_discipline_registry() -> dict:
-    with open(DISCIPLINE_REGISTRY_PATH, "r", encoding="utf-8") as f:
-        return json.load(f)
-
-
-def _get_route_ids() -> set[str]:
-    manifest = _load_route_manifest()
-    return {r["id"] for r in manifest["routes"]}
-
-
-def _get_discipline_ids() -> set[str]:
-    registry = _load_discipline_registry()
-    return {d["id"] for d in registry["disciplines"]}
-
-
 # ── Contract extraction ─────────────────────────────────────────────────────
 
 
@@ -122,7 +121,14 @@ def extract_contract_from_markdown(text: str) -> dict | None:
 # ── Validation ──────────────────────────────────────────────────────────────
 
 
-def validate_contract(contract: dict) -> ContractValidationResult:
+def validate_contract(
+    contract: dict,
+    pack_primary_route: str | None = None,
+    report_primary_route: str | None = None,
+    pack_artifact_id: str | None = None,
+    research_pack_provided: bool = False,
+    strict: bool = False,
+) -> ContractValidationResult:
     """Validate a route activation contract against the manifest and registry.
 
     Checks:
@@ -134,18 +140,62 @@ def validate_contract(contract: dict) -> ContractValidationResult:
     6. audits have valid status values
     7. passed audits have non-empty evidence
     8. shared-workflow has minimum required audits
+    9. audit ids belong to audit-registry.json (or are derived
+       `<secondary>-secondary-hard-fail` entries)
+    10. closest_alternative belongs to the primary route's often_confused_with
+    11. the primary route's required_audits are all declared, without duplicates
+    12. stable artifact identity fields are present (warning; error under strict)
+    13. pack primary route matches contract primary route (when provided)
+    14. report status block primary route matches contract primary route
+        (when provided)
+    15. pack artifact id matches contract artifact_id (when both provided)
+
+    Args:
+        contract: parsed contract object.
+        pack_primary_route: canonical route id declared by the Research Pack
+            (resolved by the CLI). When provided and different from the
+            contract's primary_route, validation fails.
+        report_primary_route: canonical route id declared in the report's
+            '## Route and audit status' block (resolved by the CLI). When
+            provided and different from the contract's primary_route,
+            validation fails.
+        pack_artifact_id: stable id declared in the pack's '## Artifact id'
+            section. When both this and contract['artifact_id'] are set and
+            differ, validation fails; when only one side is set (and
+            research_pack_provided), a warning is emitted.
+        research_pack_provided: True when the CLI was given --research-pack.
+            Single-side artifact id warnings are only emitted in that case
+            (without --research-pack there is no pack to trace to).
+        strict: when True, missing artifact identity fields are errors
+            instead of warnings.
     """
     errors: list[str] = []
     warnings: list[str] = []
 
-    route_ids = _get_route_ids()
-    discipline_ids = _get_discipline_ids()
+    route_registry = load_route_registry(ROUTE_MANIFEST_PATH)
+    audit_registry = load_audit_registry(AUDIT_REGISTRY_PATH)
+    route_ids = route_registry.route_ids()
+    discipline_ids = load_discipline_registry(DISCIPLINE_REGISTRY_PATH).discipline_ids()
+    audit_ids = audit_registry.audit_ids()
 
     # 1. Required fields
     required_fields = ["primary_route", "secondary_routes", "disciplines", "audits"]
     for field in required_fields:
         if field not in contract:
             errors.append(f"Missing required field: {field}")
+
+    # 1a. Unknown top-level fields fail closed (issue #376 范围 3).
+    known_fields = {
+        "primary_route", "secondary_routes", "disciplines", "audits",
+        "closest_alternative", "boundary_judgment",
+        "artifact_id", "contract_version", "created_at",
+    }
+    for field in contract:
+        if field not in known_fields:
+            errors.append(
+                f"Unknown contract field: '{field}'. "
+                f"Known fields: {sorted(known_fields)}"
+            )
 
     # If we can't validate further due to missing fields, return early
     if "primary_route" not in contract:
@@ -232,6 +282,17 @@ def validate_contract(contract: dict) -> ContractValidationResult:
                 f"closest_alternative '{closest}' is the same as primary_route. "
                 f"Closest alternative must be a different route."
             )
+        elif primary in route_ids:
+            # 4b2. Closest alternative must belong to the primary route's
+            # often-confused boundary (issue #376 验收标准 3).
+            often_confused = route_registry.get_route(primary).often_confused_with
+            if closest not in often_confused:
+                errors.append(
+                    f"closest_alternative '{closest}' is not in route '{primary}'s "
+                    f"often-confused set {sorted(often_confused)}. "
+                    f"A closest alternative must be a route the primary is actually "
+                    f"confused with (see route-manifest.json often_confused_with)."
+                )
 
     # 4c. Boundary judgment — required when closest_alternative is set
     boundary = contract.get("boundary_judgment")
@@ -323,6 +384,32 @@ def validate_contract(contract: dict) -> ContractValidationResult:
             )
             continue
 
+        # 6a0. Unknown audit fields fail closed (issue #376 范围 3).
+        known_audit_fields = {"id", "status", "evidence"}
+        for afield in audit:
+            if afield not in known_audit_fields:
+                errors.append(
+                    f"Audit '{audit_id}' has unknown field '{afield}'. "
+                    f"Known audit fields: {sorted(known_audit_fields)}"
+                )
+
+        # 6a. Audit id must belong to the audit registry, or be a derived
+        # `<secondary>-secondary-hard-fail` entry for a declared secondary
+        # route (issue #376 验收标准 2).
+        derived_prefixes = {
+            sr for sr in secondary if isinstance(sr, str)
+        }
+        is_derived_hard_fail = (
+            audit_id.endswith("-secondary-hard-fail")
+            and audit_id[: -len("-secondary-hard-fail")] in derived_prefixes
+        )
+        if audit_id not in audit_ids and not is_derived_hard_fail:
+            errors.append(
+                f"Audit '{audit_id}' is not in the audit registry "
+                f"(schemas/audit-registry.json). Valid audit ids: "
+                f"{sorted(audit_ids)}"
+            )
+
         status = audit.get("status", "")
         if not isinstance(status, str):
             status = ""
@@ -348,7 +435,8 @@ def validate_contract(contract: dict) -> ContractValidationResult:
                 f"Evidence must reference a concrete location in the artifact."
             )
 
-    # 6b. Duplicate audit ID detection — only string ids
+    # 6b. Duplicate audit ID detection — duplicate ids are an error
+    # (issue #376 验收标准 4).
     audit_id_list_raw = [
         a.get("id", "") for a in audits if isinstance(a, dict)
     ]
@@ -356,7 +444,7 @@ def validate_contract(contract: dict) -> ContractValidationResult:
     seen_audit_ids: set[str] = set()
     for aid in audit_id_list:
         if aid in seen_audit_ids:
-            warnings.append(f"Duplicate audit id: '{aid}'")
+            errors.append(f"Duplicate audit id: '{aid}'")
         seen_audit_ids.add(aid)
 
     # 6c. Secondary route hard-fail audit enforcement
@@ -433,6 +521,89 @@ def validate_contract(contract: dict) -> ContractValidationResult:
         warnings.append("Contract has no audits. This is unusual — most tasks "
                         "should run at least final-audit.")
 
+    # 9. Primary route's required_audits must all be declared
+    # (issue #376 验收标准 4). Missing required audits are errors.
+    if primary in route_ids:
+        required_for_route = route_registry.get_route(primary).required_audits
+        declared = {aid for aid in audit_id_list}
+        missing_required = [aid for aid in required_for_route if aid not in declared]
+        if missing_required:
+            errors.append(
+                f"Primary route '{primary}' requires audits "
+                f"{sorted(required_for_route)} but these are not declared: "
+                f"{sorted(missing_required)}"
+            )
+
+    # 10. Stable artifact identity fields (issue #376 范围 1).
+    # Non-string values are always errors; missing/empty values are
+    # warnings by default and errors under strict.
+    for meta_field in ARTIFACT_META_FIELDS:
+        value = contract.get(meta_field)
+        if value is not None and not isinstance(value, str):
+            errors.append(
+                f"Contract field '{meta_field}' must be a string, "
+                f"got {type(value).__name__}"
+            )
+    missing_meta = [f for f in ARTIFACT_META_FIELDS if not contract.get(f)]
+    if missing_meta:
+        message = (
+            "Contract lacks stable artifact identity fields: "
+            f"{', '.join(sorted(missing_meta))}. "
+            "Add artifact_id, contract_version and created_at so the report "
+            "can be referenced by the Research Pack and future audit runs "
+            "(required under --strict)."
+        )
+        if strict:
+            errors.append(message)
+        else:
+            warnings.append(message)
+
+    # 11. Pack primary route must match contract primary route
+    # (issue #376 验收标准 5).
+    if pack_primary_route is not None and pack_primary_route != primary:
+        errors.append(
+            f"Primary route mismatch: Research Pack declares "
+            f"'{pack_primary_route}' but contract declares '{primary}'. "
+            f"Pack and contract must agree on the canonical route."
+        )
+
+    # 12. Report status block route must match contract primary route
+    # (issue #376 验收标准 5 — route declared in the report body).
+    if report_primary_route is not None and report_primary_route != primary:
+        errors.append(
+            f"Primary route mismatch: report 'Route and audit status' block "
+            f"declares '{report_primary_route}' but contract declares "
+            f"'{primary}'. Status block and contract must agree on the "
+            f"canonical route."
+        )
+
+    # 13. Pack artifact id must match contract artifact_id when both are set
+    # (issue #376 验收标准 1 — 报告/pack 互指). Single-side warnings only
+    # when --research-pack was explicitly provided.
+    contract_artifact_id = contract.get("artifact_id")
+    if not research_pack_provided:
+        pass
+    elif pack_artifact_id is not None and contract_artifact_id:
+        if pack_artifact_id != contract_artifact_id:
+            errors.append(
+                f"Artifact id mismatch: Research Pack declares "
+                f"'{pack_artifact_id}' but contract declares "
+                f"'{contract_artifact_id}'. Pack and contract must reference "
+                f"the same artifact."
+            )
+    elif pack_artifact_id is not None and not contract_artifact_id:
+        warnings.append(
+            f"Research Pack declares artifact id '{pack_artifact_id}' but "
+            "contract has no artifact_id — the report cannot be traced back "
+            "to the pack."
+        )
+    elif contract_artifact_id and pack_artifact_id is None:
+        warnings.append(
+            f"Contract declares artifact id '{contract_artifact_id}' but the "
+            "Research Pack has no '## Artifact id' section — the pack cannot "
+            "be traced to the report."
+        )
+
     return ContractValidationResult(errors=errors, warnings=warnings)
 
 
@@ -458,6 +629,15 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Treat missing contract block as an error (exit code 2). "
              "Use in CI to enforce contract presence.",
+    )
+    parser.add_argument(
+        "--research-pack",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Path to a Research Pack .md file. Cross-checks that the pack's "
+             "primary route matches the contract's primary route (exit code 2 "
+             "on mismatch).",
     )
     args = parser.parse_args(argv)
 
@@ -489,7 +669,25 @@ def main(argv: list[str] | None = None) -> int:
         print(f"No contract block found in {path}. Skipping validation.")
         return 0
 
-    result = validate_contract(contract)
+    pack_primary_route: str | None = None
+    pack_artifact_id: str | None = None
+    if args.research_pack:
+        pack_primary_route = _resolve_pack_primary_route(args.research_pack)
+        if pack_primary_route is None:
+            return 2
+        pack_artifact_id = _extract_pack_artifact_id(args.research_pack)
+
+    # Report status block route (issue #376 验收标准 5 — 三方一致性).
+    report_primary_route = extract_report_primary_route(text)
+
+    result = validate_contract(
+        contract,
+        pack_primary_route=pack_primary_route,
+        report_primary_route=report_primary_route,
+        pack_artifact_id=pack_artifact_id,
+        research_pack_provided=args.research_pack is not None,
+        strict=args.strict,
+    )
     print(result.format())
 
     if result.errors:
@@ -499,6 +697,120 @@ def main(argv: list[str] | None = None) -> int:
     if result.warnings:
         return 1
     return 0
+
+
+def _resolve_pack_primary_route(pack_path: str) -> str | None:
+    """Resolve the canonical route id declared in a Research Pack's
+    '## Primary route' section. Returns None (after reporting) when the
+    pack cannot be read or the route cannot be resolved."""
+    pack = Path(pack_path)
+    if not pack.is_file():
+        print(f"Error: --research-pack file not found: {pack_path}", file=sys.stderr)
+        return None
+
+    try:
+        text = pack.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        print(f"Error: cannot read --research-pack {pack_path}: {exc}", file=sys.stderr)
+        return None
+
+    match = re.search(
+        r"## Primary route\s*\n(.*?)(?=\n## |\Z)", text, re.DOTALL
+    )
+    if not match:
+        print(
+            f"Error: Research Pack {pack_path} has no '## Primary route' section.",
+            file=sys.stderr,
+        )
+        return None
+
+    # First non-empty line that is not "Closest alternative:" prose.
+    lines = [
+        l.strip() for l in match.group(1).split("\n")
+        if l.strip() and not l.strip().lower().startswith("closest")
+    ]
+    if not lines:
+        print(
+            f"Error: Research Pack {pack_path} '## Primary route' section is empty.",
+            file=sys.stderr,
+        )
+        return None
+
+    raw = lines[0]
+    # Strip list markers / bold / italic so display-name forms resolve.
+    raw = re.sub(r"^[-*>]+\s+", "", raw)
+    raw = re.sub(r"^\d+[.)]\s+", "", raw)
+    raw = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", raw)
+
+    try:
+        return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw)
+    except UnknownRouteError as exc:
+        print(f"Error: cannot resolve pack primary route: {exc}", file=sys.stderr)
+        return None
+
+
+def extract_report_primary_route(text: str) -> str | None:
+    """Resolve the canonical route declared in the report's
+    '## Route and audit status' block (e.g. '**Primary route**: Market
+    Outlook' or '**Route**: Shared-workflow'). Returns None when the block
+    or a route declaration is missing (no cross-check then)."""
+    match = re.search(
+        r"## Route and audit status\s*\n(.*?)(?=\n## |\Z)", text, re.DOTALL
+    )
+    if not match:
+        return None
+    block = match.group(1)
+
+    # "**Primary route**: X" — first matching declaration line.
+    for line in block.split("\n"):
+        m = re.match(
+            r"\*\*Primary\s+route\*\*\s*[:：]\s*(.+)$", line.strip(), re.IGNORECASE
+        )
+        if m:
+            raw = m.group(1).strip()
+            break
+    else:
+        # "**Route**: Shared-workflow (no specialized route selected)".
+        for line in block.split("\n"):
+            m = re.match(r"\*\*Route\*\*\s*[:：]\s*(.+)$", line.strip(), re.IGNORECASE)
+            if m:
+                raw = m.group(1).strip()
+                break
+        else:
+            return None
+
+    # Strip trailing parenthetical notes, list markers, bold/italic.
+    raw = re.sub(r"\s*\([^)]*\)\s*$", "", raw)
+    raw = re.sub(r"^[-*>]+\s+", "", raw)
+    raw = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", raw)
+    try:
+        return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw)
+    except UnknownRouteError:
+        # Unknown status-block routes are reported by other validators
+        # (audit_report route detection); don't fail the contract check.
+        return None
+
+
+def _extract_pack_artifact_id(pack_path: str) -> str | None:
+    """Extract the first line of the pack's '## Artifact id' section.
+    Returns None when the section is absent (single-side tracing → warning)."""
+    try:
+        text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError):
+        return None
+    match = re.search(
+        r"## Artifact id\s*\n(.+?)(?=\n## |\Z)", text, re.DOTALL
+    )
+    if not match:
+        return None
+    for line in match.group(1).split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        line = re.sub(r"^[-*>]+\s+", "", line)
+        line = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", line)
+        return line or None
+    return None
 
 
 if __name__ == "__main__":

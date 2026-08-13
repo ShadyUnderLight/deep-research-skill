@@ -58,7 +58,12 @@ from validate_table_role_labels import validate_file as vtr_validate_file
 from validate_source_label_consistency import validate_file as vsl_validate_file
 from validate_listed_company_delivery import validate_file as vlc_validate_file
 from validate_scoring_replicability import validate_file as vsr_validate_file
-from validate_contract import extract_contract_from_markdown, has_contract_block, validate_contract
+from validate_contract import (
+    extract_contract_from_markdown,
+    extract_report_primary_route,
+    has_contract_block,
+    validate_contract,
+)
 
 # ── Runtime control-plane registry (issue #374) ─────────────────────────────
 # Route identity, aliases and validator dispatch bindings come from
@@ -501,7 +506,8 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
 
     When a ```contract fenced block is found, runs full validation
     (route/discipline separation, boundary judgment, secondary hard-fail
-    tracking, audit evidence).
+    tracking, audit evidence, registry wiring, status-block route
+    consistency, artifact identity).
 
     When no contract block is present:
     - With require_contract=True → blocking error.
@@ -509,6 +515,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
       for reports that haven't yet adopted the contract format).
     """
     require_contract = kwargs.get("require_contract", False)
+    strict = kwargs.get("strict", False)
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError) as exc:
@@ -542,7 +549,11 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
         # Migration opt-out: silently skip for reports without contracts.
         return CheckResult(name="contract-check", errors=[], warnings=[])
 
-    result = validate_contract(contract)
+    result = validate_contract(
+        contract,
+        report_primary_route=extract_report_primary_route(text),
+        strict=strict,
+    )
     if result.errors:
         return CheckResult(
             name="contract-check",

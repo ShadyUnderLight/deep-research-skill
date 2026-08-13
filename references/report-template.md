@@ -475,7 +475,7 @@ Status block 中涉及四类实体，使用统一的 canonical id：
 
 | 实体类型 | Canonical ID 来源 | Status Block 中表现 | 示例 |
 |---------|-------------------|-------------------|------|
-| **Primary Route** | `schemas/route-manifest.json` | `**Primary route**: ...` | `listed-company` |
+| **Primary Route** | `schemas/route-manifest.json` | `**Primary route**: ...` | `provider-selection` |
 | **Secondary Route** | `schemas/route-manifest.json` | `**Secondary route**: ...` + hard-fail 验证行 | `regulatory-analysis` |
 | **Discipline** (跨路由方法) | `schemas/discipline-registry.json` | 不直接显示在 status block；通过 audit 间接体现 | `current-state`, `source-traceability` |
 | **Audit** (验证动作) | `checklists/*.md` (文件 stem) | 表格行：`\| audit-name \| status \| 证据 \|` | `final-audit` |
@@ -487,21 +487,25 @@ Status block 中涉及四类实体，使用统一的 canonical id：
 
 #### Contract block（可选，推荐）
 
-对于需要程序化验证实体分离的场景，报告可在 Route and audit status block 附近嵌入 contract：
+对于需要程序化验证实体分离的场景，报告可在 Route and audit status block 附近嵌入 contract。稳定 ID 字段 `artifact_id`、`contract_version`、`created_at` 用于与 Research Pack 互相关联（issue #376）：报告/contract 与 pack 必须对 primary route 和 artifact 归属保持一致。
 
     ```contract
     {
-      "primary_route": "listed-company",
-      "closest_alternative": "competitive-positioning",
+      "artifact_id": "research-2026-08-13-001",
+      "contract_version": "1",
+      "created_at": "2026-08-13",
+      "primary_route": "provider-selection",
+      "closest_alternative": "market-outlook",
       "boundary_judgment": {
-        "checked_conditions": ["uses prestige labels loosely", "collapses dimensions without aggregation"],
-        "why_not_alternative": "Task requires investment judgment with valuation, not tier classification",
-        "switch_conditions": "If task shifts from investment memo to pure positioning without valuation"
+        "checked_conditions": ["treats market direction as the primary question"],
+        "why_not_alternative": "Task selects among providers/plans, not market direction",
+        "switch_conditions": "If the question shifts to market/category trajectory"
       },
       "secondary_routes": ["regulatory-analysis"],
       "disciplines": ["current-state", "source-traceability", "forward-looking"],
       "audits": [
-        {"id": "listed-company-report", "status": "passed", "evidence": "§2-§6"},
+        {"id": "option-selection-final-audit", "status": "passed", "evidence": "§4 短名单、反转条件、次优选项均已执行"},
+        {"id": "source-traceability", "status": "passed", "evidence": "[S01]-[S15]"},
         {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "§6 verified 4 hard-fail conditions; 2 inapplicable"},
         {"id": "final-audit", "status": "passed", "evidence": "§2-§8"}
       ]
@@ -509,6 +513,8 @@ Status block 中涉及四类实体，使用统一的 canonical id：
     ```
 
 验证命令：`python3 scripts/validate_contract.py report.md --require-contract`
+
+跨工件校验（可选）：`python3 scripts/validate_contract.py report.md --require-contract --research-pack path/to/research-pack.md`，pack 的 `## Primary route` 与 contract 的 `primary_route` 不一致会失败。
 
 （建议在 CI 和交付前验证中始终使用 `--require-contract`。不带该 flag 时，缺失 contract 的报告会静默跳过以兼容旧报告。）
 
