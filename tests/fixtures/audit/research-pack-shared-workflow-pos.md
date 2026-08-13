@@ -9,10 +9,10 @@ scope mismatch; would become relevant if market conditions change.
 
 ## Primary route
 
-Market Outlook
+Shared-workflow
 
-Market Outlook selected as primary route. The closest alternative,
-shared-workflow, was rejected because this task needs scenario structure.
+Shared-workflow selected as primary route. The closest alternative,
+market-outlook, was rejected because this task needs scenario structure.
 Boundary: if monitoring signals are not required, shared-workflow would apply.
 
 ## Secondary disciplines
@@ -47,19 +47,17 @@ Stop when evidence saturated.
 
 ## Artifact id
 
-fixture-market-outlook-pos
+fixture-shared-workflow-pos
 
 ## Artifact contract
 
 | Field | Value |
 |-------|-------|
-| artifact_id | fixture-market-outlook-pos |
+| artifact_id | fixture-shared-workflow-pos |
 
 ## Required audits
 
-- market-outlook-audit — passed: executed by author
-- forward-looking-claims — passed: no mislabeled claims
-- source-traceability — passed: register complete
+- workflow-spine-audit — passed: executed by author
 - final-audit — passed: all gates verified
 
 ## Final audit status

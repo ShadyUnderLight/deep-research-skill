@@ -66,6 +66,10 @@ from validate_contract import (
     has_contract_block,
     validate_contract,
 )
+from validate_contract import (
+    _extract_pack_artifact_id as vc_extract_pack_artifact_id,
+    _resolve_pack_primary_route as vc_resolve_pack_primary_route,
+)
 
 # Validators executed only through required-audit bindings (issue #378).
 from validate_markdown_delivery import validate_markdown_delivery as vmd_validate
@@ -587,6 +591,49 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             ],
             warnings=[w for w in result.warnings],
         )
+    # Cross-check the Research Pack against the contract (issue #378 scope 4:
+    # report/pack/contract route and artifact identity must agree).  The
+    # pack checks run inside the contract validator so the same evidence
+    # chain (contract → pack) is verified in one command.
+    research_pack = kwargs.get("research_pack")
+    if research_pack is not None and (result.is_valid or strict):
+        pack_primary = vc_resolve_pack_primary_route(str(research_pack))
+        pack_artifact = vc_extract_pack_artifact_id(str(research_pack))
+        if pack_primary is None:
+            # Matches the standalone validator's fail-closed behavior: a
+            # pack whose '## Primary route' cannot be resolved is an error,
+            # not a silent skip (issue #378 scope 4).
+            return CheckResult(
+                name="contract-check",
+                errors=[
+                    f"Research Pack {research_pack} '## Primary route' "
+                    "cannot be resolved to a canonical route — fix the "
+                    "pack declaration or drop --research-pack"
+                ],
+            )
+        cross = validate_contract(
+            contract,
+            pack_primary_route=pack_primary,
+            pack_artifact_id=pack_artifact,
+            research_pack_provided=True,
+            strict=strict,
+        )
+        if cross.errors:
+            return CheckResult(
+                name="contract-check",
+                errors=[
+                    "Research Pack / contract cross-check failed "
+                    f"({len(cross.errors)} error(s))",
+                    *(f"  {e}" for e in cross.errors[:5]),
+                ],
+                warnings=[w for w in cross.warnings],
+            )
+        if cross.warnings:
+            return CheckResult(
+                name="contract-check",
+                errors=[],
+                warnings=[w for w in cross.warnings],
+            )
     if result.warnings:
         return CheckResult(
             name="contract-check",
@@ -850,18 +897,31 @@ def _parse_audit_block_statuses(path: Path) -> dict[str, dict[str, str]]:
         audit_id = cells[0].lower()
         status_cell = cells[1].lower()
         evidence = cells[2] if len(cells) > 2 else ""
-        if re.search(r"passed|已通过", status_cell):
-            status = "pass"
-        elif re.search(r"skipped|已跳过", status_cell):
-            status = "skipped"
-        elif re.search(r"partial|部分", status_cell):
-            status = "partial"
-        elif re.search(r"not.?run|未运行|fail|失败", status_cell):
-            status = "not_run"
-        else:
-            status = "not_run"
-        statuses[audit_id] = {"status": status, "evidence": evidence}
+        statuses[audit_id] = {
+            "status": _parse_status_cell(status_cell),
+            "evidence": evidence,
+        }
     return statuses
+
+
+def _parse_status_cell(status_cell: str) -> str:
+    """Map a report status cell to a canonical manual-audit status.
+
+    Fail-closed rules (issue #378): negative markers (not passed / 未通过 /
+    ❌ / ✗ / fail / pending) take precedence over the 'passed' substring, so
+    '❌ Not passed' can never parse as pass; anything unrecognized is
+    ``not_run`` rather than pass.
+    """
+    cell = status_cell.lower()
+    if re.search(r"not\s*[- ]?passed|未通过|✗|✖|❌|fail(?:ed)?|pending|in progress", cell):
+        return "not_run"
+    if re.search(r"skipped|已跳过", cell):
+        return "skipped"
+    if re.search(r"partial|部分", cell):
+        return "partial"
+    if re.search(r"(?:✅|✓|✔|passed|pass|已通过)", cell):
+        return "pass"
+    return "not_run"
 
 
 def _audit_validator_fn(binding: str) -> ValidatorFn | None:
@@ -955,17 +1015,25 @@ def _execute_required_audits(
             )
             continue
         if audit_id == "research-pack" and research_pack is None:
+            # Issue #378 acceptance: a strict task without a pack fails
+            # closed; non-strict records an explicit skip (legacy mode).
+            status = "skipped"
+            reason = "no --research-pack path provided"
+            if strict:
+                status = "not_run"
+                reason = "no --research-pack path provided (strict mode requires it)"
+                blocking.append(f"[research-pack] not_run — {reason}")
             results.append(AuditResult(
                 audit_id=audit_id,
                 execution_type="automated",
-                status="skipped",
+                status=status,
                 validator_binding=binding,
-                reason="no --research-pack path provided",
+                reason=reason,
             ))
             continue
         try:
-            check = fn(research_pack if audit_id == "research-pack" else path,
-                       strict=strict)
+            target = research_pack if audit_id == "research-pack" else path
+            check = fn(target, strict=strict)
         except Exception as exc:
             check = CheckResult(
                 name=audit_id,
@@ -981,6 +1049,11 @@ def _execute_required_audits(
         # the audit result but do not change the exit code, so pre-contract
         # reports keep their previous behavior.  In strict mode they block.
         advisory = audit is None and not strict and check.errors
+        if check.errors:
+            evidence = [str(e)[:200] for e in check.errors[:5]]
+        else:
+            # Success carries an evidence location (issue #378 acceptance 8).
+            evidence = [f"{target}: no violations found by {binding}"]
         results.append(AuditResult(
             audit_id=audit_id,
             execution_type="automated",
@@ -988,7 +1061,7 @@ def _execute_required_audits(
             errors=list(check.errors),
             warnings=list(check.warnings),
             validator_binding=binding,
-            evidence=[str(e)[:200] for e in check.errors[:5]],
+            evidence=evidence,
             reason="advisory outside strict mode" if advisory else None,
         ))
         if not advisory:
@@ -1283,6 +1356,7 @@ def audit_report(
             path,
             strict=strict,
             require_contract=effective_require_contract,
+            research_pack=research_pack,
         )
         results.append(result)
 

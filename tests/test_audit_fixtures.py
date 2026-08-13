@@ -31,20 +31,32 @@ def _run(*fixture_names: str, extra: list[str] | None = None) -> subprocess.Comp
 
 class TestPositiveFixtures:
     def test_market_outlook_pos(self) -> None:
-        result = _run("market-outlook-pos.md", extra=["--strict", "--require-contract"])
+        result = _run(
+            "market-outlook-pos.md", "research-pack-pos.md",
+            extra=["--strict", "--require-contract"],
+        )
         assert result.returncode == 0, result.stdout
 
     def test_shared_workflow_pos(self) -> None:
-        result = _run("shared-workflow-pos.md", extra=["--strict", "--require-contract"])
+        result = _run(
+            "shared-workflow-pos.md", "research-pack-shared-workflow-pos.md",
+            extra=["--strict", "--require-contract"],
+        )
         assert result.returncode == 0, result.stdout
 
     def test_mixed_route_pos(self) -> None:
         """Secondary hard-fail has its own audit result and passes."""
-        result = _run("market-outlook-mixed-pos.md", extra=["--strict", "--require-contract"])
+        result = _run(
+            "market-outlook-mixed-pos.md", "research-pack-mixed-pos.md",
+            extra=["--strict", "--require-contract"],
+        )
         assert result.returncode == 0, result.stdout
 
     def test_mixed_route_pos_json_contains_secondary_audit(self) -> None:
-        result = _run("market-outlook-mixed-pos.md", extra=["--strict", "--require-contract", "--json"])
+        result = _run(
+            "market-outlook-mixed-pos.md", "research-pack-mixed-pos.md",
+            extra=["--strict", "--require-contract", "--json"],
+        )
         data = json.loads(result.stdout)
         ids = {a["audit_id"]: a for a in data["audits"]}
         assert ids["constrained-choice-secondary-hard-fail"]["status"] == "pass"
@@ -81,7 +93,10 @@ class TestNegativeFixtures:
 
 class TestJsonConsumability:
     def test_json_has_evidence_and_hash(self) -> None:
-        result = _run("market-outlook-pos.md", extra=["--strict", "--require-contract", "--json"])
+        result = _run(
+            "market-outlook-pos.md", "research-pack-pos.md",
+            extra=["--strict", "--require-contract", "--json"],
+        )
         data = json.loads(result.stdout)
         assert data["overall"] == "pass"
         assert data["exit_code"] == 0
@@ -90,3 +105,4 @@ class TestJsonConsumability:
         # evidence locations present for executed audits
         forward = next(a for a in data["audits"] if a["audit_id"] == "forward-looking-claims")
         assert forward["validator_binding"] == "forward-looking-claims"
+        assert forward["evidence"]

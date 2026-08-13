@@ -47,13 +47,13 @@ Stop when evidence saturated.
 
 ## Artifact id
 
-fixture-market-outlook-pos
+fixture-market-outlook-mixed-pos
 
 ## Artifact contract
 
 | Field | Value |
 |-------|-------|
-| artifact_id | fixture-market-outlook-pos |
+| artifact_id | fixture-market-outlook-mixed-pos |
 
 ## Required audits
 

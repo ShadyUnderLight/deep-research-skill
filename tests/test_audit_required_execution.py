@@ -220,6 +220,49 @@ class TestManualAuditStatus:
         )
         return _write(_report(route_block=block, contract=_contract()))
 
+    def _report_with_status(self, status_cell: str) -> Path:
+        block = (
+            "## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n"
+            "|-------|--------|------|\n"
+            f"| market-outlook-audit | {status_cell} | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        return _write(_report(route_block=block, contract=_contract()))
+
+    def test_negative_status_not_parsed_as_pass(self) -> None:
+        """'❌ Not passed' must not match the 'passed' substring (fail closed)."""
+        path = self._report_with_status("❌ Not passed")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run", mo
+        assert data["exit_code"] == 2, data["blocking"]
+
+    def test_explicit_fail_status_is_not_pass(self) -> None:
+        path = self._report_with_status("✗ Fail")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run", mo
+
+    def test_passed_status_is_pass(self) -> None:
+        path = self._report_with_status("✅ Passed")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "pass", mo
+
     def test_undeclared_manual_audit_is_not_run_non_strict(self) -> None:
         """Non-strict records not_run explicitly without changing exit code."""
         path = self._report_missing_declaration()
@@ -292,6 +335,38 @@ class TestFailClosed:
         data = json.loads(result.stdout)
         pack = next(a for a in data["audits"] if a["audit_id"] == "research-pack")
         assert pack["status"] == "skipped"
+
+    def test_strict_missing_pack_fails(self) -> None:
+        """Issue #378 acceptance: a strict task without a pack fails closed."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--strict"])
+        assert result.returncode == 2, result.stdout
+        assert "research-pack" in result.stdout
+
+    def test_pack_route_mismatch_fails(self) -> None:
+        """Pack primary route must match the contract's primary route."""
+        report = _write(_report(contract=_contract()))
+        pack = _write(PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n",
+            "## Primary route\n\nShared-workflow\n",
+        ))
+        result = _run_audit(
+            report, research_pack=pack, extra_args=["--strict", "--require-contract"]
+        )
+        assert result.returncode == 2, result.stdout
+        assert "route" in result.stdout.lower()
+
+    def test_pack_artifact_id_mismatch_fails(self) -> None:
+        """Pack artifact id must match the contract's artifact_id."""
+        report = _write(_report(contract=_contract()))
+        pack = _write(PACK_FIXTURE.replace(
+            "fixture-market-outlook-pos", "fixture-someone-else"
+        ))
+        result = _run_audit(
+            report, research_pack=pack, extra_args=["--strict", "--require-contract"]
+        )
+        assert result.returncode == 2, result.stdout
+        assert "artifact" in result.stdout.lower()
 
 
 class TestAutomatedAuditBinding:
@@ -376,6 +451,18 @@ class TestJsonOutput:
         )
         assert fl["status"] == "fail"
         assert fl["errors"]
+
+    def test_automated_success_has_evidence_location(self) -> None:
+        """Successful automated audits carry an evidence location, not []."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        for audit in data["audits"]:
+            if audit["audit_id"] == "research-pack":
+                continue  # skipped by design without a pack
+            if audit["status"] == "pass" and audit["execution_type"] == "automated":
+                assert audit["evidence"], audit
+                assert str(path) in audit["evidence"][0], audit
 
 
 class TestSingleCommandCoverage:
@@ -471,6 +558,8 @@ scope mismatch; would become relevant if market conditions change.
 
 ## Primary route
 
+Market Outlook
+
 Market Outlook selected as primary route. The closest alternative,
 shared-workflow, was rejected because this task needs scenario structure.
 Boundary: if monitoring signals are not required, shared-workflow would apply.
@@ -504,6 +593,10 @@ Stop when evidence saturated.
 | Uncertainty | Source ID |
 |-------------|-----------|
 | U01 | S01 |
+
+## Artifact id
+
+fixture-market-outlook-pos
 
 ## Artifact contract
 
