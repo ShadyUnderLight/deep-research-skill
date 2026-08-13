@@ -334,7 +334,7 @@ def _registry_source_problems(registry_text: str, indexed_cases: set[str]) -> li
         for stem in (s.strip() for s in cols[4].split(",") if s.strip()):
             if stem not in CANONICAL_RULE_SOURCES:
                 problems.append(
-                    f"Source file(s) '{stem}' (R{rule_id}) is not a canonical "
+                    f"Source file(s) '{stem}' ({rule_id}) is not a canonical "
                     f"rule source; add it to CANONICAL_RULE_SOURCES or fix the typo"
                 )
                 continue
@@ -342,13 +342,13 @@ def _registry_source_problems(registry_text: str, indexed_cases: set[str]) -> li
                 path = ROOT / rel
                 if not path.exists():
                     problems.append(
-                        f"Referenced source file does not exist: {rel} (R{rule_id})"
+                        f"Referenced source file does not exist: {rel} ({rule_id})"
                     )
                 if rel.startswith("evals/cases/"):
                     name = rel[len("evals/cases/"):]
                     if name not in indexed_cases:
                         problems.append(
-                            f"{rel} (R{rule_id} source) is not registered in evals/INDEX.md"
+                            f"{rel} ({rule_id} source) is not registered in evals/INDEX.md"
                         )
     return problems
 
