@@ -569,3 +569,22 @@ def test_audit_report_status_block_mismatch_fails():
         f"status block/contract mismatch should fail\n{result.stdout}"
     )
     assert "mismatch" in result.stdout or "mismatch" in result.stderr
+
+
+# ── CI regression: references/report-template.md must stay green ────────────
+
+
+def test_ci_template_contract_check_passes():
+    """CI runs `validate_contract.py references/report-template.md
+    --require-contract` (ci.yml); the template's status block example and
+    contract example must agree on the primary route."""
+    from validate_contract import main as vc_main
+
+    template = ROOT / "references" / "report-template.md"
+    assert template.exists()
+    code = vc_main([str(template), "--require-contract"])
+    assert code == 0, (
+        f"CI template check must pass (exit 0), got {code}.\n"
+        "The template's '## Route and audit status' example and its "
+        "```contract example must declare the same primary route."
+    )

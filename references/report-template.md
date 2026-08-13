@@ -475,7 +475,7 @@ Status block 中涉及四类实体，使用统一的 canonical id：
 
 | 实体类型 | Canonical ID 来源 | Status Block 中表现 | 示例 |
 |---------|-------------------|-------------------|------|
-| **Primary Route** | `schemas/route-manifest.json` | `**Primary route**: ...` | `listed-company` |
+| **Primary Route** | `schemas/route-manifest.json` | `**Primary route**: ...` | `provider-selection` |
 | **Secondary Route** | `schemas/route-manifest.json` | `**Secondary route**: ...` + hard-fail 验证行 | `regulatory-analysis` |
 | **Discipline** (跨路由方法) | `schemas/discipline-registry.json` | 不直接显示在 status block；通过 audit 间接体现 | `current-state`, `source-traceability` |
 | **Audit** (验证动作) | `checklists/*.md` (文件 stem) | 表格行：`\| audit-name \| status \| 证据 \|` | `final-audit` |
@@ -494,17 +494,17 @@ Status block 中涉及四类实体，使用统一的 canonical id：
       "artifact_id": "research-2026-08-13-001",
       "contract_version": "1",
       "created_at": "2026-08-13",
-      "primary_route": "listed-company",
-      "closest_alternative": "competitive-positioning",
+      "primary_route": "provider-selection",
+      "closest_alternative": "market-outlook",
       "boundary_judgment": {
-        "checked_conditions": ["uses prestige labels loosely", "collapses dimensions without aggregation"],
-        "why_not_alternative": "Task requires investment judgment with valuation, not tier classification",
-        "switch_conditions": "If task shifts from investment memo to pure positioning without valuation"
+        "checked_conditions": ["treats market direction as the primary question"],
+        "why_not_alternative": "Task selects among providers/plans, not market direction",
+        "switch_conditions": "If the question shifts to market/category trajectory"
       },
       "secondary_routes": ["regulatory-analysis"],
       "disciplines": ["current-state", "source-traceability", "forward-looking"],
       "audits": [
-        {"id": "listed-company-report", "status": "passed", "evidence": "§2-§6"},
+        {"id": "option-selection-final-audit", "status": "passed", "evidence": "§4 短名单、反转条件、次优选项均已执行"},
         {"id": "source-traceability", "status": "passed", "evidence": "[S01]-[S15]"},
         {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "§6 verified 4 hard-fail conditions; 2 inapplicable"},
         {"id": "final-audit", "status": "passed", "evidence": "§2-§8"}
