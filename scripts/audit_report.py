@@ -579,6 +579,18 @@ _VALIDATOR_REGISTRY: dict[str, ValidatorFn] = {
     "contract-check": _run_contract_check,
 }
 
+# The runtime registry must stay in sync with the loader's canonical set —
+# otherwise a binding id the manifest is allowed to use has no function here.
+_missing_functions = registry_loader.KNOWN_VALIDATOR_IDS - set(_VALIDATOR_REGISTRY)
+_unregistered_ids = set(_VALIDATOR_REGISTRY) - registry_loader.KNOWN_VALIDATOR_IDS
+if _missing_functions or _unregistered_ids:
+    raise RegistryError(
+        "_VALIDATOR_REGISTRY and registry_loader.KNOWN_VALIDATOR_IDS are "
+        f"out of sync (registry ids without functions: "
+        f"{sorted(_missing_functions)}; functions without registry ids: "
+        f"{sorted(_unregistered_ids)})"
+    )
+
 
 def _dispatch_validators(route_id: str) -> list[ValidatorFn]:
     """Resolve manifest validator bindings for a route to functions.
@@ -602,7 +614,13 @@ def _dispatch_validators(route_id: str) -> list[ValidatorFn]:
 
 
 def _auto_detect_route(path: Path) -> str | None:
-    """Try to extract the primary route name from the report's audit block."""
+    """Try to extract the raw primary route name from the report's audit block.
+
+    Returns the raw declared name (not normalized) or None when no route is
+    declared.  The caller is responsible for resolving/normalizing the name,
+    so an unknown declared route flows through the unified blocking path in
+    audit_report() instead of raising here.
+    """
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError):
@@ -611,7 +629,7 @@ def _auto_detect_route(path: Path) -> str | None:
     raw = get_route_name(cleaned)
     if raw is None or not raw.strip():
         return None
-    return _normalize_route(raw)
+    return raw.strip()
 
 
 # ── Verdict computation ────────────────────────────────────────────────────
@@ -771,10 +789,10 @@ def audit_report(
             # Unknown route — blocking error, no fallback
             supported = ", ".join(sorted(_ROUTE_REGISTRY.route_ids()))
             return AuditVerdict(
-                route=str(route),
+                route=resolved_route,
                 overall="fail",
                 blocking=[
-                    f"Unknown route '{str(route)}'. "
+                    f"Unknown route '{resolved_route}'. "
                     f"Supported routes: {supported} — {exc}"
                 ],
             )

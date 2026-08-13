@@ -99,5 +99,74 @@ class TestRouteResolutionAtRuntime:
         )
 
 
+class TestAutoDetectedUnknownRoute:
+    """A report declaring an unknown Primary route must be a blocking
+    verdict, not a traceback (P1: auto-detect used to raise before the
+    outer try/except)."""
+
+    @staticmethod
+    def _report_with_primary_route(name: str) -> Path:
+        import tempfile
+
+        content = f"""\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: {name}
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| final-audit | ✅ Passed | §2 |
+
+## Body
+
+Body text.
+"""
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8",
+        )
+        f.write(content)
+        f.close()
+        return Path(f.name)
+
+    def test_unknown_declared_route_is_blocking(self) -> None:
+        path = self._report_with_primary_route("not-a-real-route")
+        try:
+            verdict = audit_report.audit_report(path)
+            assert verdict.overall == "fail"
+            assert verdict.blocking, "Unknown declared route must be blocking"
+            assert "unknown route" in verdict.blocking[0].lower()
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_unknown_declared_route_exit_code_is_blocking(self) -> None:
+        path = self._report_with_primary_route("not-a-real-route")
+        try:
+            verdict = audit_report.audit_report(path)
+            assert verdict.exit_code == audit_report.EXIT_BLOCKING
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_known_declared_route_still_works(self) -> None:
+        path = self._report_with_primary_route("technical-deep-dive")
+        try:
+            verdict = audit_report.audit_report(path)
+            assert verdict.route == "technical-deep-dive"
+            assert verdict.exit_code != audit_report.EXIT_BLOCKING or verdict.blocking
+        finally:
+            path.unlink(missing_ok=True)
+
+    def test_allow_route_fallback_handles_auto_detected_unknown(self) -> None:
+        path = self._report_with_primary_route("not-a-real-route")
+        try:
+            verdict = audit_report.audit_report(
+                path, allow_route_fallback=True
+            )
+            assert verdict.route == audit_report._DEFAULT_ROUTE
+        finally:
+            path.unlink(missing_ok=True)
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-v"]))

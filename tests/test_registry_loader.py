@@ -75,6 +75,32 @@ EXPECTED_VALIDATOR_IDS = {
 }
 
 
+class TestKnownValidatorIds:
+    """KNOWN_VALIDATOR_IDS is the shared contract for binding validity."""
+
+    def test_known_validator_ids_match_expectation(self) -> None:
+        assert set(registry_loader.KNOWN_VALIDATOR_IDS) == EXPECTED_VALIDATOR_IDS
+
+    def test_unknown_binding_rejected_by_route_registry(self) -> None:
+        """A manifest binding outside KNOWN_VALIDATOR_IDS must fail loading."""
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8",
+        )
+        json.dump(
+            {"version": 1, "routes": [
+                _minimal_route({"validator_bindings": ["typo-validator"]})
+            ]},
+            f,
+        )
+        f.close()
+        tmp = Path(f.name)
+        try:
+            with pytest.raises(RegistryError, match="typo-validator"):
+                load_route_registry(tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+
 class TestRouteRegistryLoads:
     def test_loads_real_manifest(self) -> None:
         registry = load_route_registry()
@@ -195,6 +221,28 @@ class TestRouteResolution:
             self._registry().validators_for("no-such-route")
 
 
+def _minimal_route(overrides: dict) -> dict:
+    """A structurally complete route entry for type-validation tests."""
+    route = {
+        "id": "test-route",
+        "display_name": "Test Route",
+        "category": "specialized",
+        "aliases": ["test"],
+        "required_audits": ["final-audit"],
+        "required_disciplines": [],
+        "validator_bindings": ["report-quality"],
+        "primary_reads": ["references/decision-report-template.md"],
+        "trigger": "trigger",
+        "do_not_use": "do not use",
+        "often_confused_with": ["constrained-choice"],
+        "artifact_contract": "artifact",
+        "hard_fail_keywords": ["test"],
+        "hard_fail_source": "ROUTING-MATRIX.md#test",
+    }
+    route.update(overrides)
+    return route
+
+
 class TestRegistryValidation:
     def test_malformed_json_raises_registry_error(self) -> None:
         f = tempfile.NamedTemporaryFile(
@@ -237,6 +285,55 @@ class TestRegistryValidation:
         tmp = Path(f.name)
         try:
             with pytest.raises(RegistryError):
+                load_route_registry(tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_non_list_field_raises_registry_error(self) -> None:
+        """A list-typed field with a non-list value must raise RegistryError,
+        not a raw TypeError."""
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8",
+        )
+        json.dump(
+            {"version": 1, "routes": [_minimal_route({"aliases": None})]}, f,
+        )
+        f.close()
+        tmp = Path(f.name)
+        try:
+            with pytest.raises(RegistryError, match="aliases"):
+                load_route_registry(tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_non_string_field_raises_registry_error(self) -> None:
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8",
+        )
+        json.dump(
+            {"version": 1, "routes": [_minimal_route({"display_name": 42})]}, f,
+        )
+        f.close()
+        tmp = Path(f.name)
+        try:
+            with pytest.raises(RegistryError, match="display_name"):
+                load_route_registry(tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_unexpected_field_raises_registry_error(self) -> None:
+        """Extra fields on a registry entry must be rejected explicitly,
+        not surface as a TypeError from the dataclass constructor."""
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8",
+        )
+        json.dump(
+            {"version": 1, "routes": [_minimal_route({"surprise_field": 1})]}, f,
+        )
+        f.close()
+        tmp = Path(f.name)
+        try:
+            with pytest.raises(RegistryError, match="surprise_field"):
                 load_route_registry(tmp)
         finally:
             tmp.unlink(missing_ok=True)

@@ -35,6 +35,22 @@ DEFAULT_AUDIT_REGISTRY = ROOT / "schemas" / "audit-registry.json"
 
 VALID_EXECUTION_TYPES = {"automated", "manual", "process"}
 
+# Canonical validator binding ids.  audit_report.py maps these ids to
+# validator functions (_VALIDATOR_REGISTRY); the route manifest must only
+# reference ids in this set.  Keeping the set here makes the manifest
+# self-validating without regex-parsing audit_report.py source.
+KNOWN_VALIDATOR_IDS: frozenset[str] = frozenset({
+    "report-quality",
+    "declared-execution",
+    "table-role-labels",
+    "source-label-consistency",
+    "listed-company-delivery",
+    "scoring-replicability",
+    "market-outlook-monitoring-actionability",
+    "secondary-route-check",
+    "contract-check",
+})
+
 ROUTE_REQUIRED_FIELDS = {
     "id", "display_name", "category", "aliases", "required_audits",
     "required_disciplines", "validator_bindings", "primary_reads",
@@ -88,6 +104,46 @@ def _require(obj: dict, fields: set[str], what: str) -> None:
         raise RegistryError(
             f"{what} missing required field(s): {', '.join(sorted(missing))}"
         )
+    unexpected = set(obj.keys()) - fields
+    if unexpected:
+        raise RegistryError(
+            f"{what} has unexpected field(s): {', '.join(sorted(unexpected))}"
+        )
+
+
+def _require_str(obj: dict, key: str, what: str) -> str:
+    """Return obj[key] as a non-empty string, raising RegistryError otherwise."""
+    value = obj[key]
+    if not isinstance(value, str) or not value.strip():
+        raise RegistryError(
+            f"{what} field '{key}' must be a non-empty string, "
+            f"got {type(value).__name__}"
+        )
+    return value
+
+
+def _require_str_list(obj: dict, key: str, what: str) -> list[str]:
+    """Return obj[key] as a list of strings, raising RegistryError otherwise."""
+    value = obj[key]
+    if not isinstance(value, list) or not all(
+        isinstance(item, str) and item.strip() for item in value
+    ):
+        raise RegistryError(
+            f"{what} field '{key}' must be a list of non-empty strings, "
+            f"got {type(value).__name__}"
+        )
+    return list(value)
+
+
+def _require_optional_str(obj: dict, key: str, what: str) -> str | None:
+    """Return obj[key] as a string or None, raising RegistryError otherwise."""
+    value = obj[key]
+    if value is not None and not isinstance(value, str):
+        raise RegistryError(
+            f"{what} field '{key}' must be a string or null, "
+            f"got {type(value).__name__}"
+        )
+    return value
 
 
 @dataclass(frozen=True)
@@ -230,11 +286,34 @@ def load_route_registry(path: Path | None = None) -> RouteRegistry:
         if not isinstance(entry, dict):
             raise RegistryError(f"Route manifest routes[{i}] is not an object")
         _require(entry, ROUTE_REQUIRED_FIELDS, f"Route manifest routes[{i}]")
-        rid = entry["id"]
+        rid = _require_str(entry, "id", f"Route manifest routes[{i}]")
         if rid in seen_ids:
             raise RegistryError(f"Duplicate route id in manifest: '{rid}'")
         seen_ids.add(rid)
-        routes.append(RouteInfo(**entry))
+        typed = {
+            "id": rid,
+            "display_name": _require_str(entry, "display_name", f"Route manifest routes[{i}]"),
+            "category": _require_str(entry, "category", f"Route manifest routes[{i}]"),
+            "aliases": _require_str_list(entry, "aliases", f"Route manifest routes[{i}]"),
+            "required_audits": _require_str_list(entry, "required_audits", f"Route manifest routes[{i}]"),
+            "required_disciplines": _require_str_list(entry, "required_disciplines", f"Route manifest routes[{i}]"),
+            "validator_bindings": _require_str_list(entry, "validator_bindings", f"Route manifest routes[{i}]"),
+            "primary_reads": _require_str_list(entry, "primary_reads", f"Route manifest routes[{i}]"),
+            "trigger": _require_str(entry, "trigger", f"Route manifest routes[{i}]"),
+            "do_not_use": _require_str(entry, "do_not_use", f"Route manifest routes[{i}]"),
+            "often_confused_with": _require_str_list(entry, "often_confused_with", f"Route manifest routes[{i}]"),
+            "artifact_contract": _require_str(entry, "artifact_contract", f"Route manifest routes[{i}]"),
+            "hard_fail_keywords": _require_str_list(entry, "hard_fail_keywords", f"Route manifest routes[{i}]"),
+            "hard_fail_source": _require_str(entry, "hard_fail_source", f"Route manifest routes[{i}]"),
+        }
+        unknown_bindings = set(typed["validator_bindings"]) - KNOWN_VALIDATOR_IDS
+        if unknown_bindings:
+            raise RegistryError(
+                f"Route '{rid}' binds unknown validator id(s): "
+                f"{', '.join(sorted(unknown_bindings))} — must be one of "
+                f"{', '.join(sorted(KNOWN_VALIDATOR_IDS))}"
+            )
+        routes.append(RouteInfo(**typed))
 
     # Fail closed if any primary read reference is missing on disk.
     for route in routes:
@@ -264,15 +343,22 @@ def load_discipline_registry(path: Path | None = None) -> DisciplineRegistry:
         if not isinstance(entry, dict):
             raise RegistryError(f"Discipline registry disciplines[{i}] is not an object")
         _require(entry, DISCIPLINE_REQUIRED_FIELDS, f"Discipline registry disciplines[{i}]")
-        did = entry["id"]
+        did = _require_str(entry, "id", f"Discipline registry disciplines[{i}]")
         if did in seen_ids:
             raise RegistryError(f"Duplicate discipline id: '{did}'")
         seen_ids.add(did)
-        if not (ROOT / entry["reference"]).is_file():
+        reference = _require_str(entry, "reference", f"Discipline registry disciplines[{i}]")
+        if not (ROOT / reference).is_file():
             raise RegistryError(
-                f"Discipline '{did}' reference missing: {entry['reference']}"
+                f"Discipline '{did}' reference missing: {reference}"
             )
-        disciplines.append(DisciplineInfo(**entry))
+        disciplines.append(DisciplineInfo(
+            id=did,
+            display_name=_require_str(entry, "display_name", f"Discipline registry disciplines[{i}]"),
+            category=_require_str(entry, "category", f"Discipline registry disciplines[{i}]"),
+            reference=reference,
+            description=_require_str(entry, "description", f"Discipline registry disciplines[{i}]"),
+        ))
 
     return DisciplineRegistry(version=data["version"], disciplines=disciplines)
 
@@ -292,20 +378,30 @@ def load_audit_registry(path: Path | None = None) -> AuditRegistry:
         if not isinstance(entry, dict):
             raise RegistryError(f"Audit registry audits[{i}] is not an object")
         _require(entry, AUDIT_REQUIRED_FIELDS, f"Audit registry audits[{i}]")
-        aid = entry["id"]
+        aid = _require_str(entry, "id", f"Audit registry audits[{i}]")
         if aid in seen_ids:
             raise RegistryError(f"Duplicate audit id: '{aid}'")
         seen_ids.add(aid)
-        if entry["execution_type"] not in VALID_EXECUTION_TYPES:
+        execution_type = _require_str(entry, "execution_type", f"Audit registry audits[{i}]")
+        if execution_type not in VALID_EXECUTION_TYPES:
             raise RegistryError(
                 f"Audit '{aid}' has invalid execution_type "
-                f"'{entry['execution_type']}' (allowed: "
+                f"'{execution_type}' (allowed: "
                 f"{', '.join(sorted(VALID_EXECUTION_TYPES))})"
             )
-        if not (ROOT / entry["checklist"]).is_file():
+        checklist = _require_str(entry, "checklist", f"Audit registry audits[{i}]")
+        if not (ROOT / checklist).is_file():
             raise RegistryError(
-                f"Audit '{aid}' checklist missing: {entry['checklist']}"
+                f"Audit '{aid}' checklist missing: {checklist}"
             )
-        audits.append(AuditInfo(**entry))
+        audits.append(AuditInfo(
+            id=aid,
+            checklist=checklist,
+            execution_type=execution_type,
+            description=_require_str(entry, "description", f"Audit registry audits[{i}]"),
+            automation_reference=_require_optional_str(
+                entry, "automation_reference", f"Audit registry audits[{i}]"
+            ),
+        ))
 
     return AuditRegistry(version=data["version"], audits=audits)

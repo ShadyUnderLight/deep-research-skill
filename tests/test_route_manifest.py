@@ -453,6 +453,164 @@ class TestValidatorRejectsDrift:
         )
 
 
+class TestEvalsIndexColumns:
+    """evals/INDEX.md route columns must be checked against canonical ids.
+
+    Row layout is | Path | Primary route | Secondary route | ... — after
+    strip("|") + split("|"), cells[1] is Primary, cells[2] is Secondary.
+    """
+
+    @staticmethod
+    def _known() -> set[str]:
+        return {"technical-deep-dive", "listed-company", "current-state",
+                "source-traceability", "pdf-rendering"}
+
+    @staticmethod
+    def _row(primary: str, secondary: str) -> str:
+        return (
+            f"| `evals/cases/some-case.md` | {primary} | {secondary} | "
+            f"some-failure-family |"
+        )
+
+    def test_unknown_primary_route_is_detected(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        errors = v._check_evals_index_line(
+            self._row("fake-unknown-primary", "source-traceability"),
+            self._known(),
+        )
+        assert errors, "Unknown Primary route must be detected"
+        assert "Primary route" in errors[0]
+        assert "fake-unknown-primary" in errors[0]
+
+    def test_unknown_secondary_route_is_detected(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        errors = v._check_evals_index_line(
+            self._row("listed-company", "fake-unknown-secondary"),
+            self._known(),
+        )
+        assert errors, "Unknown Secondary route must be detected"
+        assert "Secondary route" in errors[0]
+
+    def test_known_values_pass(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        errors = v._check_evals_index_line(
+            self._row("listed-company", "source-traceability"),
+            self._known(),
+        )
+        assert errors == []
+
+    def test_slash_joined_disciplines_are_split(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        errors = v._check_evals_index_line(
+            self._row("current-state/source-traceability", "-"),
+            self._known(),
+        )
+        assert errors == []
+
+    def test_dash_and_empty_secondary_pass(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        errors = v._check_evals_index_line(
+            self._row("technical-deep-dive", "-"),
+            self._known(),
+        )
+        assert errors == []
+
+    def test_non_data_rows_are_ignored(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        errors = v._check_evals_index_line("| Path | Primary route |", self._known())
+        assert errors == []
+
+
+class TestRouteIndexConsistency:
+    """references/route-index.md must stay in sync with the manifest
+    (#374 acceptance: route count / trigger / audits without drift)."""
+
+    @staticmethod
+    def _index_with_rows(rows: list[str]) -> str:
+        header = (
+            "| Route ID | Trigger keywords | Reads | Audits |\n"
+            "|----------|-----------------|-------|--------|\n"
+        )
+        return header + "\n".join(rows)
+
+    @staticmethod
+    def _manifest() -> dict:
+        return _load_manifest(MANIFEST_PATH)
+
+    def test_real_route_index_is_consistent(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        manifest = self._manifest()
+        manifest_ids = {r["id"] for r in manifest["routes"]}
+        route_audits = {r["id"]: set(r["required_audits"]) for r in manifest["routes"]}
+        text = (ROOT / "references" / "route-index.md").read_text(encoding="utf-8")
+        errors = v._check_route_index(text, manifest_ids, route_audits)
+        assert errors == [], f"route-index.md drift: {errors}"
+
+    def test_missing_route_in_index_is_detected(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        manifest_ids = {r["id"] for r in self._manifest()["routes"]}
+        route_audits = {r["id"]: set(r["required_audits"]) for r in self._manifest()["routes"]}
+        rows = [
+            "| `listed-company` | lc trigger | `references/a.md` | `final-audit` |",
+        ]
+        errors = v._check_route_index(
+            self._index_with_rows(rows), manifest_ids, route_audits
+        )
+        assert errors, "Missing routes in route-index must be detected"
+        assert any("missing from route-index" in e for e in errors)
+
+    def test_unknown_route_in_index_is_detected(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        manifest = self._manifest()
+        manifest_ids = {r["id"] for r in manifest["routes"]}
+        route_audits = {r["id"]: set(r["required_audits"]) for r in manifest["routes"]}
+        rows = [
+            "| `fake-route` | trigger | `references/a.md` | `final-audit` |",
+        ]
+        errors = v._check_route_index(
+            self._index_with_rows(rows), manifest_ids, route_audits
+        )
+        assert any("not in the manifest" in e for e in errors)
+
+    def test_empty_trigger_is_detected(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        manifest = self._manifest()
+        manifest_ids = {r["id"] for r in manifest["routes"]}
+        route_audits = {r["id"]: set(r["required_audits"]) for r in manifest["routes"]}
+        rows = [
+            "| `listed-company` |  | `references/a.md` | `final-audit` |",
+        ]
+        errors = v._check_route_index(
+            self._index_with_rows(rows), manifest_ids, route_audits
+        )
+        assert any("trigger" in e.lower() for e in errors)
+
+    def test_audit_not_in_route_required_audits_is_detected(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        manifest = self._manifest()
+        manifest_ids = {r["id"] for r in manifest["routes"]}
+        route_audits = {r["id"]: set(r["required_audits"]) for r in manifest["routes"]}
+        rows = [
+            "| `listed-company` | trigger | `references/a.md` | "
+            "`academic-analysis-audit` |",
+        ]
+        errors = v._check_route_index(
+            self._index_with_rows(rows), manifest_ids, route_audits
+        )
+        assert any("academic-analysis-audit" in e for e in errors)
+
+
 class TestValidatorReturnsCorrectExitCodes:
     """Validator exit codes must be well-defined."""
 

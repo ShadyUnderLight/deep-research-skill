@@ -8,7 +8,8 @@ Validates that schemas/route-manifest.json is consistent with:
 3. checklists/ files                 — no orphan checklists, no missing files
 4. ROUTING-MATRIX.md                 — route count, display names, audit lists,
                                        hard-fail keywords
-5. evals/INDEX.md                    — Primary route column values
+5. references/route-index.md         — route ids, trigger keywords, audits
+6. evals/INDEX.md                    — Primary/Secondary route columns
 
 Route/alias/discipline/audit identity now comes from the JSON registries
 via registry_loader — this script no longer regex-parses audit_report.py.
@@ -38,6 +39,7 @@ from registry_loader import RegistryError
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = ROOT / "schemas" / "route-manifest.json"
 ROUTING_MATRIX = ROOT / "ROUTING-MATRIX.md"
+ROUTE_INDEX = ROOT / "references" / "route-index.md"
 CHECKLISTS_DIR = ROOT / "checklists"
 EVALS_INDEX = ROOT / "evals" / "INDEX.md"
 AUDIT_REGISTRY = ROOT / "schemas" / "audit-registry.json"
@@ -151,6 +153,108 @@ def _load_manifest(path: Path) -> dict:
     return manifest
 
 
+# ── evals/INDEX.md parsing ───────────────────────────────────────────────────
+
+
+def _check_evals_index_line(line: str, known_ids: set[str]) -> list[str]:
+    """Validate one evals/INDEX.md data row's route columns.
+
+    Row layout: | Path | Primary route | Secondary route | ... — after
+    strip("|") + split("|"), cells[1] is the Primary route column and
+    cells[2] the Secondary route column.  Both are checked against
+    canonical route ids, discipline ids and the eval-tag whitelist.
+    Returns blocking errors for unknown values.
+    """
+    if not line.startswith("| `evals/cases/"):
+        return []
+    cells = [c.strip().strip("`") for c in line.strip("|").split("|")]
+    if len(cells) < 3:
+        return [f"evals/INDEX.md row has too few columns: {line[:60]}..."]
+    errors: list[str] = []
+    for col_idx, col_name in [(1, "Primary route"), (2, "Secondary route")]:
+        val = cells[col_idx]
+        if not val or val == "-":
+            continue
+        if val.startswith("evals/cases/") or val.endswith(".md"):
+            continue
+        for part in val.split("/"):
+            part = part.strip()
+            if not part or part == "-":
+                continue
+            if part not in known_ids:
+                errors.append(
+                    f"evals/INDEX.md: '{part}' in {col_name} "
+                    f"column for {cells[0]} is not a known canonical "
+                    f"route, discipline or eval tag"
+                )
+    return errors
+
+
+# ── references/route-index.md parsing ───────────────────────────────────────
+
+
+def _check_route_index(
+    text: str,
+    manifest_ids: set[str],
+    route_audits: dict[str, set[str]],
+) -> list[str]:
+    """Validate references/route-index.md trigger table against the manifest.
+
+    Trigger table rows: | Route ID | Trigger keywords | Reads | Audits |.
+    Checks: route id set matches the manifest bidirectionally, trigger
+    keywords are non-empty, and each listed audit is part of that route's
+    required_audits in the manifest.  Returns blocking errors.
+    """
+    errors: list[str] = []
+    index_ids: set[str] = set()
+    in_trigger_table = False
+    for line in text.splitlines():
+        if line.startswith("| Route ID | Trigger keywords"):
+            in_trigger_table = True
+            continue
+        if in_trigger_table and line.startswith("## "):
+            break
+        if not in_trigger_table:
+            continue
+        if not line.startswith("| `"):
+            continue
+        cells = [c.strip().strip("`") for c in line.strip("|").split("|")]
+        # Row: | Route ID | Trigger keywords | Reads | Audits | → 4 cells
+        if len(cells) < 4:
+            continue
+        rid = cells[0]  # after strip("|"), the Route ID is the first cell
+        if rid in {"Route ID", ""} or set(rid) <= {"-"}:
+            continue
+        index_ids.add(rid)
+        if rid not in manifest_ids:
+            errors.append(
+                f"route-index.md lists route '{rid}' which is not in the manifest"
+            )
+            continue
+        trigger = cells[1]
+        if not trigger or trigger == "-":
+            errors.append(
+                f"route-index.md route '{rid}' has empty trigger keywords"
+            )
+        for audit in (a.strip() for a in cells[3].split(",")):
+            audit = audit.strip("`")
+            if not audit or audit == "-":
+                continue
+            if audit not in route_audits.get(rid, set()):
+                errors.append(
+                    f"route-index.md route '{rid}' lists audit '{audit}' "
+                    f"which is not in the route's manifest required_audits"
+                )
+
+    missing = manifest_ids - index_ids
+    if missing:
+        errors.append(
+            f"Manifest routes missing from route-index.md trigger table: "
+            f"{', '.join(sorted(missing))}"
+        )
+    return errors
+
+
 # ── Validation logic ─────────────────────────────────────────────────────────
 
 
@@ -161,12 +265,14 @@ def validate(path: Path | None = None) -> int:
     errors: list[str] = []
     warnings: list[str] = []
 
-    # Route registry load — fail closed on structural errors.
-    registry = None
+    # Route registry load — fail closed on structural errors.  A malformed
+    # registry makes every downstream check meaningless, so report the
+    # structural error and stop instead of continuing into KeyError land.
     try:
         registry = registry_loader.load_route_registry(manifest_path)
     except RegistryError as e:
-        errors.append(str(e))
+        print(f"BLOCKING DRIFT DETECTED (1 issue(s)):\n  ✗ {e}")
+        return EXIT_FAIL
 
     manifest_routes: dict[str, dict] = {}
     manifest_ids: set[str] = set()
@@ -178,6 +284,8 @@ def validate(path: Path | None = None) -> int:
         manifest_ids.add(rid)
 
     # ═══ Check 1: validator bindings are well-formed ═════════════════════════
+    # Existence in KNOWN_VALIDATOR_IDS is enforced by the loader already;
+    # this check guards non-empty and duplicate bindings with clear messages.
     for rid, route in manifest_routes.items():
         bindings = route.get("validator_bindings", [])
         if not isinstance(bindings, list) or not bindings:
@@ -185,9 +293,6 @@ def validate(path: Path | None = None) -> int:
             continue
         if len(bindings) != len(set(bindings)):
             errors.append(f"Route '{rid}': duplicate validator bindings: {bindings}")
-        for b in bindings:
-            if not re.fullmatch(r"[a-z][a-z0-9-]*", b):
-                errors.append(f"Route '{rid}': invalid binding id '{b}'")
 
     # ═══ Check 2: required_disciplines are registered ════════════════════════
     try:
@@ -366,29 +471,29 @@ def validate(path: Path | None = None) -> int:
                 )
             all_keywords[kw_lower] = route["id"]
 
-    # ═══ Check 8: evals/INDEX.md Primary route column ════════════════════════
+    # ═══ Check 8: evals/INDEX.md Primary/Secondary route columns ═════════════
+    # Row layout: | Path | Primary route | Secondary route | ... — after
+    # strip("|") + split("|"), cells[1] is the Primary route column and
+    # cells[2] the Secondary route column.
     if EVALS_INDEX.is_file():
         index_text = EVALS_INDEX.read_text(encoding="utf-8")
         known_ids = manifest_ids | known_disciplines | _EVAL_TAG_WHITELIST
         for line in index_text.splitlines():
-            if not line.startswith("| `evals/cases/"):
-                continue
-            cells = [c.strip().strip("`") for c in line.strip("|").split("|")]
-            # cells[1] = path (skipped), cells[2] = Primary route column
-            if len(cells) >= 3:
-                val = cells[2]
-                if not val or val == "-":
-                    continue
-                for part in val.split("/"):
-                    part = part.strip()
-                    if not part or part == "-":
-                        continue
-                    if part not in known_ids:
-                        warnings.append(
-                            f"evals/INDEX.md: '{part}' in Primary route "
-                            f"column for {cells[1]} is not a known canonical "
-                            f"route, discipline or eval tag"
-                        )
+            errors.extend(_check_evals_index_line(line, known_ids))
+
+    # ═══ Check 9: references/route-index.md trigger table ════════════════════
+    if ROUTE_INDEX.is_file():
+        index_text = ROUTE_INDEX.read_text(encoding="utf-8")
+        route_audits = {
+            rid: set(route.get("required_audits", []))
+            for rid, route in manifest_routes.items()
+        }
+        errors.extend(_check_route_index(index_text, manifest_ids, route_audits))
+    else:
+        errors.append(
+            f"references/route-index.md not found at {ROUTE_INDEX} — "
+            f"cannot verify route-index consistency"
+        )
 
     # ── Output ──────────────────────────────────────────────────────────────
     if errors:

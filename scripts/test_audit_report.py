@@ -1115,6 +1115,31 @@ Body text with citation [S01] and [S02].
 
 
 
+def _report_with_declared_route(name: str) -> str:
+    """Report declaring a specific primary route name in the audit block."""
+    return f"""\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: {name}
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| final-audit | ✅ Passed | §2 |
+
+## Body
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+"""
+
+
 # ── Test helpers ────────────────────────────────────────────────────────────
 
 
@@ -1325,6 +1350,48 @@ class TestRouteOverride:
         # Error message should identify the unknown route, not silently fall back
         assert "unknown route" in (result.stdout + result.stderr).lower(), (
             f"Expected 'unknown route' in output, got stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
+class TestAutoDetectedUnknownRoute:
+    """A report declaring an unknown Primary route must block (exit 2),
+    not traceback (P1 fix: auto-detect no longer raises before the
+    unified unknown-route path)."""
+
+    def test_auto_detected_unknown_route_is_blocking(self) -> None:
+        result = _run_audit(
+            _report_with_declared_route("not-a-real-route")
+        )
+        assert result.returncode == 2, (
+            f"Auto-detected unknown route must block (exit 2), "
+            f"got {result.returncode}\nstdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}"
+        )
+        assert "unknown route" in (result.stdout + result.stderr).lower(), (
+            f"Expected 'unknown route' in output, got stdout:\n{result.stdout}"
+        )
+        assert "not-a-real-route" in result.stdout, (
+            f"Expected declared route name in output, got:\n{result.stdout}"
+        )
+
+    def test_auto_detected_unknown_route_no_traceback(self) -> None:
+        result = _run_audit(
+            _report_with_declared_route("not-a-real-route")
+        )
+        assert "Traceback" not in result.stderr, (
+            f"Unknown route must not traceback, got stderr:\n{result.stderr}"
+        )
+
+    def test_auto_detected_unknown_route_with_fallback_flag(self) -> None:
+        result = _run_audit(
+            _report_with_declared_route("not-a-real-route"),
+            extra_args=["--allow-route-fallback"],
+        )
+        assert result.returncode == 0, (
+            f"With --allow-route-fallback the auto-detected unknown route "
+            f"should fall back to default validators, got exit "
+            f"{result.returncode}\nstdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}"
         )
 
 
@@ -2550,6 +2617,10 @@ if __name__ == "__main__":
         # TestRouteOverride
         ("--route appears in output", TestRouteOverride().test_explicit_route_appears_in_output),
         ("--route unknown is blocking", TestRouteOverride().test_unknown_route_is_blocking),
+        # TestAutoDetectedUnknownRoute
+        ("auto-detected unknown route blocking", TestAutoDetectedUnknownRoute().test_auto_detected_unknown_route_is_blocking),
+        ("auto-detected unknown route no traceback", TestAutoDetectedUnknownRoute().test_auto_detected_unknown_route_no_traceback),
+        ("auto-detected unknown route fallback flag", TestAutoDetectedUnknownRoute().test_auto_detected_unknown_route_with_fallback_flag),
         # TestNonExistentFile
         ("non-existent file exit", TestNonExistentFile().test_exit_code_blocking),
         # TestConstrainedChoice
