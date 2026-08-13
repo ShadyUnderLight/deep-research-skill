@@ -101,6 +101,81 @@ class TestKnownValidatorIds:
             tmp.unlink(missing_ok=True)
 
 
+class TestTopLevelRegistryValidation:
+    """Top-level registry document shape must be strictly validated:
+    version must be an integer, unexpected top-level keys must be
+    rejected — for all three registries (P2)."""
+
+    @staticmethod
+    def _tmp(data: dict) -> Path:
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8",
+        )
+        json.dump(data, f)
+        f.close()
+        return Path(f.name)
+
+    @staticmethod
+    def _minimal_routes_doc(**overrides) -> dict:
+        doc = {"version": 2, "routes": [_minimal_route({})]}
+        doc.update(overrides)
+        return doc
+
+    @staticmethod
+    def _minimal_disciplines_doc(**overrides) -> dict:
+        doc = {"version": 1, "disciplines": []}
+        doc.update(overrides)
+        return doc
+
+    @staticmethod
+    def _minimal_audits_doc(**overrides) -> dict:
+        doc = {"version": 1, "audits": []}
+        doc.update(overrides)
+        return doc
+
+    def test_string_version_raises(self) -> None:
+        for loader, doc in [
+            (load_route_registry, self._minimal_routes_doc(version="2")),
+            (load_discipline_registry, self._minimal_disciplines_doc(version="1")),
+            (load_audit_registry, self._minimal_audits_doc(version="1")),
+        ]:
+            tmp = self._tmp(doc)
+            try:
+                with pytest.raises(RegistryError, match="version"):
+                    loader(tmp)
+            finally:
+                tmp.unlink(missing_ok=True)
+
+    def test_unexpected_top_level_field_raises(self) -> None:
+        for loader, doc in [
+            (load_route_registry, self._minimal_routes_doc(unexpected=True)),
+            (load_discipline_registry, self._minimal_disciplines_doc(unexpected=True)),
+            (load_audit_registry, self._minimal_audits_doc(unexpected=True)),
+        ]:
+            tmp = self._tmp(doc)
+            try:
+                with pytest.raises(RegistryError, match="unexpected"):
+                    loader(tmp)
+            finally:
+                tmp.unlink(missing_ok=True)
+
+    def test_bool_version_raises(self) -> None:
+        tmp = self._tmp(self._minimal_routes_doc(version=True))
+        try:
+            with pytest.raises(RegistryError, match="version"):
+                load_route_registry(tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_entries_key_must_be_list(self) -> None:
+        tmp = self._tmp(self._minimal_routes_doc(routes="not-a-list"))
+        try:
+            with pytest.raises(RegistryError, match="routes"):
+                load_route_registry(tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+
 class TestRouteRegistryLoads:
     def test_loads_real_manifest(self) -> None:
         registry = load_route_registry()

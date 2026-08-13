@@ -97,6 +97,39 @@ def _load_json(path: Path, what: str) -> dict:
     return data
 
 
+# Top-level fields shared by all three registry documents.
+_TOP_LEVEL_FIELDS = {"version", "description", "last_reviewed"}
+
+
+def _validate_top_level(data: dict, what: str, entries_key: str) -> None:
+    """Strictly validate the top-level registry document shape.
+
+    Enforces: version present and an integer (not bool), the entries key
+    present and a list, and no unexpected top-level fields.  Anything else
+    raises RegistryError instead of being silently accepted.
+    """
+    if "version" not in data:
+        raise RegistryError(f"{what} missing top-level 'version'")
+    if entries_key not in data:
+        raise RegistryError(f"{what} missing top-level '{entries_key}'")
+    unexpected = set(data) - _TOP_LEVEL_FIELDS - {entries_key}
+    if unexpected:
+        raise RegistryError(
+            f"{what} has unexpected top-level field(s): "
+            f"{', '.join(sorted(unexpected))}"
+        )
+    version = data["version"]
+    if not isinstance(version, int) or isinstance(version, bool):
+        raise RegistryError(
+            f"{what} 'version' must be an integer, got {type(version).__name__}"
+        )
+    if not isinstance(data[entries_key], list):
+        raise RegistryError(
+            f"{what} '{entries_key}' must be a list, "
+            f"got {type(data[entries_key]).__name__}"
+        )
+
+
 def _require(obj: dict, fields: set[str], what: str) -> None:
     """Ensure all required fields are present on a registry entry."""
     missing = fields - set(obj.keys())
@@ -275,10 +308,7 @@ def load_route_registry(path: Path | None = None) -> RouteRegistry:
     """Load and validate the route manifest."""
     manifest_path = path or DEFAULT_ROUTE_MANIFEST
     data = _load_json(manifest_path, "Route manifest")
-    if "version" not in data:
-        raise RegistryError(f"Route manifest missing 'version': {manifest_path}")
-    if not isinstance(data.get("routes"), list):
-        raise RegistryError(f"Route manifest 'routes' must be a list: {manifest_path}")
+    _validate_top_level(data, "Route manifest", "routes")
 
     routes: list[RouteInfo] = []
     seen_ids: set[str] = set()
@@ -330,12 +360,7 @@ def load_discipline_registry(path: Path | None = None) -> DisciplineRegistry:
     """Load and validate the discipline registry."""
     registry_path = path or DEFAULT_DISCIPLINE_REGISTRY
     data = _load_json(registry_path, "Discipline registry")
-    if "version" not in data:
-        raise RegistryError(f"Discipline registry missing 'version': {registry_path}")
-    if not isinstance(data.get("disciplines"), list):
-        raise RegistryError(
-            f"Discipline registry 'disciplines' must be a list: {registry_path}"
-        )
+    _validate_top_level(data, "Discipline registry", "disciplines")
 
     disciplines: list[DisciplineInfo] = []
     seen_ids: set[str] = set()
@@ -367,10 +392,7 @@ def load_audit_registry(path: Path | None = None) -> AuditRegistry:
     """Load and validate the audit registry."""
     registry_path = path or DEFAULT_AUDIT_REGISTRY
     data = _load_json(registry_path, "Audit registry")
-    if "version" not in data:
-        raise RegistryError(f"Audit registry missing 'version': {registry_path}")
-    if not isinstance(data.get("audits"), list):
-        raise RegistryError(f"Audit registry 'audits' must be a list: {registry_path}")
+    _validate_top_level(data, "Audit registry", "audits")
 
     audits: list[AuditInfo] = []
     seen_ids: set[str] = set()
