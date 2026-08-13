@@ -487,10 +487,13 @@ Status block 中涉及四类实体，使用统一的 canonical id：
 
 #### Contract block（可选，推荐）
 
-对于需要程序化验证实体分离的场景，报告可在 Route and audit status block 附近嵌入 contract：
+对于需要程序化验证实体分离的场景，报告可在 Route and audit status block 附近嵌入 contract。稳定 ID 字段 `artifact_id`、`contract_version`、`created_at` 用于与 Research Pack 互相关联（issue #376）：报告/contract 与 pack 必须对 primary route 和 artifact 归属保持一致。
 
     ```contract
     {
+      "artifact_id": "research-2026-08-13-001",
+      "contract_version": "1",
+      "created_at": "2026-08-13",
       "primary_route": "listed-company",
       "closest_alternative": "competitive-positioning",
       "boundary_judgment": {
@@ -502,6 +505,7 @@ Status block 中涉及四类实体，使用统一的 canonical id：
       "disciplines": ["current-state", "source-traceability", "forward-looking"],
       "audits": [
         {"id": "listed-company-report", "status": "passed", "evidence": "§2-§6"},
+        {"id": "source-traceability", "status": "passed", "evidence": "[S01]-[S15]"},
         {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "§6 verified 4 hard-fail conditions; 2 inapplicable"},
         {"id": "final-audit", "status": "passed", "evidence": "§2-§8"}
       ]
@@ -509,6 +513,8 @@ Status block 中涉及四类实体，使用统一的 canonical id：
     ```
 
 验证命令：`python3 scripts/validate_contract.py report.md --require-contract`
+
+跨工件校验（可选）：`python3 scripts/validate_contract.py report.md --require-contract --research-pack path/to/research-pack.md`，pack 的 `## Primary route` 与 contract 的 `primary_route` 不一致会失败。
 
 （建议在 CI 和交付前验证中始终使用 `--require-contract`。不带该 flag 时，缺失 contract 的报告会静默跳过以兼容旧报告。）
 

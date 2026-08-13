@@ -22,6 +22,18 @@ A minimal Research Pack should contain:
 - Required audits
 - Final audit status
 
+## Optional sections
+
+Include when the pack is part of a tracked delivery (issue #376):
+
+- `## Artifact id` — stable identifier for this pack, e.g. `research-2026-08-13-001`.
+  The final report's contract block should reference the same id via
+  `artifact_id`, and the pack's `## Primary route` must match the contract's
+  `primary_route` (check with
+  `scripts/validate_contract.py report.md --research-pack pack.md`).
+- `## Contract reference` — points back to the final report/contract artifact id
+  once the report is delivered.
+
 ## Conditional sections
 
 Include these when the task requires them:

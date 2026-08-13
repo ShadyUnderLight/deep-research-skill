@@ -11,6 +11,15 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `scripts/validate_contract.py`: reference-integrity wiring for the route activation contract (#376) — audit ids must exist in `schemas/audit-registry.json` (or be derived `<secondary>-secondary-hard-fail` entries for a declared secondary route); `closest_alternative` must belong to the primary route's `often_confused_with` set in `route-manifest.json`; the primary route's `required_audits` must all be declared and duplicate audit ids are now errors; unknown top-level and audit fields fail closed; stable artifact identity fields (`artifact_id`, `contract_version`, `created_at`) are recommended by default and required under `--strict`; new `--research-pack PATH` flag cross-checks that the pack's `## Primary route` matches the contract's `primary_route` (exit 2 on mismatch, display-name/alias resolution via `registry_loader`). Validator now loads all three registries through `scripts/registry_loader.py`.
+- `schemas/route-activation-contract.json`: documented `artifact_id`, `contract_version`, `created_at`; tightened `closest_alternative` (must be in `often_confused_with`) and audit `id` (must be in audit registry or derived hard-fail) semantics.
+- `schemas/research-pack.md`: optional `## Artifact id` / `## Contract reference` sections so packs can carry a stable id and point back at the report contract; `references/report-template.md` example contract now declares the artifact identity fields and the `--research-pack` cross-check command.
+- `tests/test_contract_reference_integrity.py`: 16 tests covering registry-external audit ids, derived hard-fail ids, often-confused boundary violations, missing/duplicate required audits, unknown fields, artifact identity warnings, and pack/contract route mismatch + match.
+
+### Changed
+- `scripts/test_validate_contract.py`: contract fixtures now declare each primary route's `required_audits` (helper `_required_audit_entries`); duplicate audit id assertion upgraded from warning to error per #376.
+
+### Added
 - `schemas/audit-registry.json`, `scripts/registry_loader.py`, `tests/test_registry_loader.py`, `tests/test_audit_registry.py`, `tests/test_audit_report_dispatch.py`: added the runtime control-plane registry layer (#374) — audit identity (14 checklists with execution type automated/manual/process) is now a canonical JSON registry; route/discipline/audit registries load and validate through `scripts/registry_loader.py` with fail-closed structural errors; alias resolution (display name / alias / kebab-case id) moved into the loader; dispatch consistency between manifest `validator_bindings` and `audit_report.py` `_VALIDATOR_REGISTRY` is enforced by tests, and a tampered binding fails closed at runtime.
 - `schemas/route-manifest.json`: version 2 — every route now carries `trigger`, `do_not_use`, `often_confused_with`, `primary_reads`, `required_disciplines`, `artifact_contract`, `hard_fail_source`, and `validator_bindings`; route identity, discipline identity and audit identity are no longer duplicated across code, docs and fixtures.
 
