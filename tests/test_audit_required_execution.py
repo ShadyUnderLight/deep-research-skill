@@ -303,6 +303,12 @@ class TestManualAuditStatus:
     @pytest.mark.parametrize("cell,expected", [
         ("skipped", "skipped"),
         ("已跳过", "skipped"),
+        # Template-canonical form: references/report-template.md uses
+        # ⚠️ Skipped / ⚠️ 已跳过 (with or without the FE0F variation
+        # selector and surrounding whitespace).
+        ("⚠️ Skipped", "skipped"),
+        ("⚠️Skipped", "skipped"),
+        ("⚠️ 已跳过", "skipped"),
         ("partial", "partial"),
         ("部分通过", "partial"),
     ])

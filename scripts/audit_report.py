@@ -929,7 +929,7 @@ def _parse_status_cell(status_cell: str) -> str:
         cell,
     ):
         return "not_run"
-    if re.fullmatch(r"(?:skipped|已跳过)\s*", cell):
+    if re.fullmatch(r"(?:⚠\ufe0f?)?\s*(?:skipped|已跳过)\s*", cell):
         return "skipped"
     if re.fullmatch(r"(?:partial|部分(?:通过)?)\s*", cell):
         return "partial"
