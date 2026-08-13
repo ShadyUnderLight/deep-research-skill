@@ -60,6 +60,15 @@ from validate_listed_company_delivery import validate_file as vlc_validate_file
 from validate_scoring_replicability import validate_file as vsr_validate_file
 from validate_contract import extract_contract_from_markdown, has_contract_block, validate_contract
 
+# ── Runtime control-plane registry (issue #374) ─────────────────────────────
+# Route identity, aliases and validator dispatch bindings come from
+# schemas/route-manifest.json via registry_loader.  Unknown routes and
+# unknown bindings fail closed at runtime.
+import registry_loader
+from registry_loader import RegistryError, UnknownRouteError
+
+_ROUTE_REGISTRY = registry_loader.load_route_registry()
+
 
 # ── Exit codes ──────────────────────────────────────────────────────────────
 
@@ -85,69 +94,17 @@ ValidatorFn = Callable[..., CheckResult]
 
 # ── Route name normalization ────────────────────────────────────────────────
 
-# Maps display-style route names (as they appear in the ## Route and audit
-# status block) to normalized dict keys.  Each entry should be lowercase
-# with whitespace collapsed, so we can match regardless of formatting.
-_ROUTE_ALIASES: dict[str, str] = {
-    "technical deep-dive": "technical-deep-dive",
-    "architecture analysis": "technical-deep-dive",
-    "listed company / investment-style research": "listed-company",
-    "listed company": "listed-company",
-    "investment-style research": "listed-company",
-    "constrained choice": "constrained-choice",
-    "constrained choice / shortlist": "constrained-choice",
-    "constrained choice / shortlist / option selection": "constrained-choice",
-    "option selection": "constrained-choice",
-    "shortlist": "constrained-choice",
-    "market outlook": "market-outlook",
-    "market outlook / industry evolution": "market-outlook",
-    "industry evolution": "market-outlook",
-    # ── Provider / Vendor Selection ──────────────────────────
-    "provider / vendor selection": "provider-selection",
-    "provider selection": "provider-selection",
-    "vendor selection": "provider-selection",
-    # ── Market Entry / Regional Expansion ────────────────────
-    "market entry / regional expansion": "market-entry",
-    "market entry": "market-entry",
-    "regional expansion": "market-entry",
-    # ── Regulatory / Policy Impact Analysis ──────────────────
-    "regulatory / policy impact analysis": "regulatory-analysis",
-    "regulatory analysis": "regulatory-analysis",
-    "regulatory / policy impact": "regulatory-analysis",
-    # ── Equipment Selection / Procurement ────────────────────
-    "equipment selection / procurement / home-server planning": "equipment-selection",
-    "equipment selection": "equipment-selection",
-    "equipment selection / procurement": "equipment-selection",
-    "procurement": "equipment-selection",
-    "home-server planning": "equipment-selection",
-    "nas / home server": "equipment-selection",
-    "homelab": "equipment-selection",
-    "nas": "equipment-selection",
-    # ── Startup / Private Company Evaluation ─────────────────
-    "startup / private company evaluation": "startup-evaluation",
-    "startup evaluation": "startup-evaluation",
-    "private company evaluation": "startup-evaluation",
-    "private company": "startup-evaluation",
-    "startup": "startup-evaluation",
-    # ── First-tier / Top-tier / Competitive Positioning ─────
-    "first-tier / top-tier / competitive positioning": "competitive-positioning",
-    "first-tier": "competitive-positioning",
-    "top-tier": "competitive-positioning",
-    "competitive positioning": "competitive-positioning",
-    # ── Academic / Literature Review ─────────────────────────
-    "academic / literature review": "academic-review",
-    "academic review": "academic-review",
-    "literature review": "academic-review",
-    # ── Shared-workflow (generic fallback) ───────────────────
-    "shared-workflow (no specialized route selected)": "shared-workflow",
-    "shared-workflow": "shared-workflow",
-    "shared workflow": "shared-workflow",
-}
-
 # Default route used when auto-detection fails (no route declared in report).
 # Unknown routes that are explicitly named but unsupported are now a blocking
 # error (exit 2) — they do NOT fall back to this default.
 _DEFAULT_ROUTE = "technical-deep-dive"
+
+# The default route must always be a canonical manifest route id.
+if _DEFAULT_ROUTE not in _ROUTE_REGISTRY.route_ids():
+    raise RegistryError(
+        f"_DEFAULT_ROUTE '{_DEFAULT_ROUTE}' is not a canonical route id "
+        f"in schemas/route-manifest.json"
+    )
 
 # Minimum number of fully-defined monitoring signals required for
 # market-outlook reports to pass the actionability gate.
@@ -155,27 +112,15 @@ MIN_MONITORING_SIGNALS = 3
 
 
 def _normalize_route(name: str) -> str:
-    """Normalize a display route name to a canonical key.
+    """Resolve a display route name to a canonical key.
 
-    Strips leading/trailing whitespace, collapses internal whitespace,
-    lowercases, strips trailing parenthetical notes, and checks the
-    alias table.  Falls back to the canonical version of the name
-    itself (lowercased, spaces → hyphens) so that ``--route
-    technical-deep-dive`` works without an alias entry.
+    Alias resolution now comes from the route manifest via
+    registry_loader: lowercase + whitespace collapse, alias lookup,
+    parenthetical-note stripping, then a space→hyphen fallback against
+    canonical route ids.  Raises UnknownRouteError for unresolvable
+    names — callers must treat that as a blocking error.
     """
-    normalized = " ".join(name.strip().lower().split())
-    canon = _ROUTE_ALIASES.get(normalized)
-    if canon is not None:
-        return canon
-    # Strip trailing parenthetical notes (e.g. "shared-workflow (no specialized route selected)")
-    no_paren = re.sub(r"\s*\([^)]*\)\s*$", "", normalized).strip()
-    if no_paren and no_paren != normalized:
-        canon = _ROUTE_ALIASES.get(no_paren)
-        if canon is not None:
-            return canon
-        normalized = no_paren
-    # Fallback heuristic: replace whitespace with hyphens
-    return normalized.replace(" ", "-")
+    return _ROUTE_REGISTRY.resolve_route(name)
 
 
 # ── Wrapper runners for each validator ─────────────────────────────────────
@@ -531,12 +476,18 @@ def _run_secondary_route_check(path: Path, **kwargs: bool) -> CheckResult:
                 part = part.strip().rstrip(".")
                 if not part:
                     continue
-                canon = _normalize_route(part)
-                if canon not in ROUTE_VALIDATORS:
+                try:
+                    canon = _normalize_route(part)
+                except UnknownRouteError:
                     warnings.append(
                         f"Declared secondary route '{part}' "
-                        f"(normalized: '{canon}') is not in the "
-                        f"supported routes list"
+                        f"is not a supported route"
+                    )
+                    continue
+                if canon not in _ROUTE_REGISTRY.route_ids():
+                    warnings.append(
+                        f"Declared secondary route '{part}' "
+                        f"is not a supported route"
                     )
                 # Even if supported, note that secondary route hard-fail
                 # is not independently verified (per ROUTING-MATRIX.md).
@@ -610,115 +561,66 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
     return CheckResult(name="contract-check", errors=[], warnings=[])
 
 
-# ── Route → validator mapping ──────────────────────────────────────────────
+# ── Validator registry and dispatch ─────────────────────────────────────────
+# Route → validator bindings come from schemas/route-manifest.json
+# (validator_bindings per route).  This dict maps stable binding ids to
+# the actual validator functions; _dispatch_validators resolves a route
+# through the manifest and fails closed on unknown bindings.
 
-ROUTE_VALIDATORS: dict[str, list[ValidatorFn]] = {
-    "technical-deep-dive": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
-    "listed-company": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_listed_company_delivery,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
-    "academic-review": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
-    "constrained-choice": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_scoring_replicability,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
-    "market-outlook": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_market_outlook_monitoring_actionability,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
-    "provider-selection": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_scoring_replicability,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
-    "market-entry": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_scoring_replicability,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
-    "regulatory-analysis": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
-    "equipment-selection": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
-    "startup-evaluation": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
-    "competitive-positioning": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
-    "shared-workflow": [
-        _run_report_quality,
-        _run_declared_execution,
-        _run_table_role_labels,
-        _run_source_label_consistency,
-        _run_secondary_route_check,
-        _run_contract_check,
-    ],
+_VALIDATOR_REGISTRY: dict[str, ValidatorFn] = {
+    "report-quality": _run_report_quality,
+    "declared-execution": _run_declared_execution,
+    "table-role-labels": _run_table_role_labels,
+    "source-label-consistency": _run_source_label_consistency,
+    "listed-company-delivery": _run_listed_company_delivery,
+    "scoring-replicability": _run_scoring_replicability,
+    "market-outlook-monitoring-actionability": _run_market_outlook_monitoring_actionability,
+    "secondary-route-check": _run_secondary_route_check,
+    "contract-check": _run_contract_check,
 }
+
+# The runtime registry must stay in sync with the loader's canonical set —
+# otherwise a binding id the manifest is allowed to use has no function here.
+_missing_functions = registry_loader.KNOWN_VALIDATOR_IDS - set(_VALIDATOR_REGISTRY)
+_unregistered_ids = set(_VALIDATOR_REGISTRY) - registry_loader.KNOWN_VALIDATOR_IDS
+if _missing_functions or _unregistered_ids:
+    raise RegistryError(
+        "_VALIDATOR_REGISTRY and registry_loader.KNOWN_VALIDATOR_IDS are "
+        f"out of sync (registry ids without functions: "
+        f"{sorted(_missing_functions)}; functions without registry ids: "
+        f"{sorted(_unregistered_ids)})"
+    )
+
+
+def _dispatch_validators(route_id: str) -> list[ValidatorFn]:
+    """Resolve manifest validator bindings for a route to functions.
+
+    Raises UnknownRouteError if the route id is not canonical; raises
+    RegistryError if the manifest binds a validator id that has no
+    registered function (manifest/code drift — must fail closed).
+    """
+    bindings = _ROUTE_REGISTRY.validators_for(route_id)
+    validators: list[ValidatorFn] = []
+    for binding in bindings:
+        fn = _VALIDATOR_REGISTRY.get(binding)
+        if fn is None:
+            raise RegistryError(
+                f"Route '{route_id}' binds unknown validator '{binding}' — "
+                f"schemas/route-manifest.json and audit_report.py "
+                f"_VALIDATOR_REGISTRY are out of sync"
+            )
+        validators.append(fn)
+    return validators
 
 
 def _auto_detect_route(path: Path) -> str | None:
-    """Try to extract the primary route name from the report's audit block."""
+    """Try to extract the raw primary route name from the report's audit block.
+
+    Returns the raw declared name (not normalized) or None when no route is
+    declared.  The caller is responsible for resolving/normalizing the name,
+    so an unknown declared route flows through the unified blocking path in
+    audit_report() instead of raising here.
+    """
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError):
@@ -727,7 +629,7 @@ def _auto_detect_route(path: Path) -> str | None:
     raw = get_route_name(cleaned)
     if raw is None or not raw.strip():
         return None
-    return _normalize_route(raw)
+    return raw.strip()
 
 
 # ── Verdict computation ────────────────────────────────────────────────────
@@ -871,32 +773,39 @@ def audit_report(
             resolved_route = _DEFAULT_ROUTE
 
     # Normalize the route (in case user passed --route with a display name)
-    resolved_route = _normalize_route(resolved_route)
-
-    # Look up validators for the resolved route
-    validators = ROUTE_VALIDATORS.get(resolved_route)
-    if validators is None:
+    try:
+        resolved_route = _normalize_route(resolved_route)
+    except UnknownRouteError as exc:
         if allow_route_fallback:
             # Explicit opt-in: fall back to default route (legacy behavior)
             print(
-                f"warning: unknown route '{resolved_route}', "
+                f"warning: unknown route '{route or '(auto-detected)'}', "
                 f"falling back to '{_DEFAULT_ROUTE}' validators "
                 f"(--allow-route-fallback enabled)",
                 file=sys.stderr,
             )
             resolved_route = _DEFAULT_ROUTE
-            validators = ROUTE_VALIDATORS.get(_DEFAULT_ROUTE, [])
         else:
             # Unknown route — blocking error, no fallback
-            supported = ", ".join(sorted(ROUTE_VALIDATORS.keys()))
+            supported = ", ".join(sorted(_ROUTE_REGISTRY.route_ids()))
             return AuditVerdict(
                 route=resolved_route,
                 overall="fail",
                 blocking=[
                     f"Unknown route '{resolved_route}'. "
-                    f"Supported routes: {supported}"
+                    f"Supported routes: {supported} — {exc}"
                 ],
             )
+
+    # Look up validators for the resolved route (fail closed on drift)
+    try:
+        validators = _dispatch_validators(resolved_route)
+    except RegistryError as exc:
+        return AuditVerdict(
+            route=resolved_route,
+            overall="fail",
+            blocking=[str(exc)],
+        )
 
     # Run each validator with shared flags as keyword arguments
     results: list[CheckResult] = []

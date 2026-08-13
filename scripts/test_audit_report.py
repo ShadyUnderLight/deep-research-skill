@@ -1115,6 +1115,31 @@ Body text with citation [S01] and [S02].
 
 
 
+def _report_with_declared_route(name: str) -> str:
+    """Report declaring a specific primary route name in the audit block."""
+    return f"""\
+# Test Report
+
+## Route and audit status
+
+**Primary route**: {name}
+
+| Audit | Status | 证据 |
+|-------|--------|------|
+| final-audit | ✅ Passed | §2 |
+
+## Body
+
+Body text with citation [S01].
+
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+"""
+
+
 # ── Test helpers ────────────────────────────────────────────────────────────
 
 
@@ -1325,6 +1350,48 @@ class TestRouteOverride:
         # Error message should identify the unknown route, not silently fall back
         assert "unknown route" in (result.stdout + result.stderr).lower(), (
             f"Expected 'unknown route' in output, got stdout:\n{result.stdout}\nstderr:\n{result.stderr}"
+        )
+
+
+class TestAutoDetectedUnknownRoute:
+    """A report declaring an unknown Primary route must block (exit 2),
+    not traceback (P1 fix: auto-detect no longer raises before the
+    unified unknown-route path)."""
+
+    def test_auto_detected_unknown_route_is_blocking(self) -> None:
+        result = _run_audit(
+            _report_with_declared_route("not-a-real-route")
+        )
+        assert result.returncode == 2, (
+            f"Auto-detected unknown route must block (exit 2), "
+            f"got {result.returncode}\nstdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}"
+        )
+        assert "unknown route" in (result.stdout + result.stderr).lower(), (
+            f"Expected 'unknown route' in output, got stdout:\n{result.stdout}"
+        )
+        assert "not-a-real-route" in result.stdout, (
+            f"Expected declared route name in output, got:\n{result.stdout}"
+        )
+
+    def test_auto_detected_unknown_route_no_traceback(self) -> None:
+        result = _run_audit(
+            _report_with_declared_route("not-a-real-route")
+        )
+        assert "Traceback" not in result.stderr, (
+            f"Unknown route must not traceback, got stderr:\n{result.stderr}"
+        )
+
+    def test_auto_detected_unknown_route_with_fallback_flag(self) -> None:
+        result = _run_audit(
+            _report_with_declared_route("not-a-real-route"),
+            extra_args=["--allow-route-fallback"],
+        )
+        assert result.returncode == 0, (
+            f"With --allow-route-fallback the auto-detected unknown route "
+            f"should fall back to default validators, got exit "
+            f"{result.returncode}\nstdout:\n{result.stdout}\n"
+            f"stderr:\n{result.stderr}"
         )
 
 
@@ -2468,10 +2535,15 @@ Body text with citation [S01].
 
 
 class TestManifestConsistency:
-    """Verify audit_report.py ROUTE_VALIDATORS stays in sync with route-manifest.json."""
+    """Verify audit_report.py dispatch stays in sync with route-manifest.json.
+
+    Route → validator bindings live in the manifest; _VALIDATOR_REGISTRY
+    maps binding ids to functions.  Dispatch resolves through the manifest
+    and fails closed on drift (issue #374).
+    """
 
     def test_routes_exist_in_manifest(self):
-        """Every route in ROUTE_VALIDATORS must exist in route-manifest.json."""
+        """Every manifest route must dispatch validators (non-empty bindings)."""
         import json
         manifest_path = (
             Path(__file__).resolve().parent.parent / "schemas" / "route-manifest.json"
@@ -2479,17 +2551,20 @@ class TestManifestConsistency:
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest = json.load(f)
 
-        from audit_report import ROUTE_VALIDATORS
-        manifest_ids = {r["id"] for r in manifest["routes"]}
-
-        extra = set(ROUTE_VALIDATORS.keys()) - manifest_ids
-        assert not extra, (
-            f"ROUTE_VALIDATORS has routes not in manifest: {sorted(extra)}. "
-            f"Either add them to route-manifest.json or remove from ROUTE_VALIDATORS."
-        )
+        from audit_report import _dispatch_validators
+        for route in manifest["routes"]:
+            rid = route["id"]
+            assert route["validator_bindings"], (
+                f"Route '{rid}' has empty validator_bindings in manifest."
+            )
+            # Must resolve to functions — unknown bindings raise RegistryError.
+            fns = _dispatch_validators(rid)
+            assert len(fns) == len(route["validator_bindings"]), (
+                f"Route '{rid}' dispatch count mismatch."
+            )
 
     def test_manifest_routes_exist_in_validators(self):
-        """Every route in manifest must have a validator mapping."""
+        """Every manifest route must have a validator mapping."""
         import json
         manifest_path = (
             Path(__file__).resolve().parent.parent / "schemas" / "route-manifest.json"
@@ -2497,17 +2572,17 @@ class TestManifestConsistency:
         with open(manifest_path, "r", encoding="utf-8") as f:
             manifest = json.load(f)
 
-        from audit_report import ROUTE_VALIDATORS
+        from audit_report import _VALIDATOR_REGISTRY
 
         missing: list[str] = []
         for route in manifest["routes"]:
-            rid = route["id"]
-            if rid not in ROUTE_VALIDATORS:
-                missing.append(rid)
+            for binding in route["validator_bindings"]:
+                if binding not in _VALIDATOR_REGISTRY:
+                    missing.append(f"{route['id']}:{binding}")
 
         assert not missing, (
-            f"Manifest routes without ROUTE_VALIDATORS mapping: {sorted(missing)}. "
-            f"Add them to audit_report.py ROUTE_VALIDATORS dict."
+            f"Manifest bindings without _VALIDATOR_REGISTRY function: "
+            f"{sorted(missing)}. Add them to audit_report.py."
         )
 
 
@@ -2542,6 +2617,10 @@ if __name__ == "__main__":
         # TestRouteOverride
         ("--route appears in output", TestRouteOverride().test_explicit_route_appears_in_output),
         ("--route unknown is blocking", TestRouteOverride().test_unknown_route_is_blocking),
+        # TestAutoDetectedUnknownRoute
+        ("auto-detected unknown route blocking", TestAutoDetectedUnknownRoute().test_auto_detected_unknown_route_is_blocking),
+        ("auto-detected unknown route no traceback", TestAutoDetectedUnknownRoute().test_auto_detected_unknown_route_no_traceback),
+        ("auto-detected unknown route fallback flag", TestAutoDetectedUnknownRoute().test_auto_detected_unknown_route_with_fallback_flag),
         # TestNonExistentFile
         ("non-existent file exit", TestNonExistentFile().test_exit_code_blocking),
         # TestConstrainedChoice
