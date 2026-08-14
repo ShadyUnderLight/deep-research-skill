@@ -1335,6 +1335,31 @@ class TestDuplicateDeclarations:
         )
         assert result.returncode == 2, result.stdout
 
+    @pytest.mark.parametrize("tag", ["script", "pre", "style", "textarea"])
+    def test_type1_block_ignores_blank_lines_until_closing_tag(self, tag: str) -> None:
+        """CommonMark type-1 blocks (script/pre/style/textarea) end at the
+        matching closing tag, NOT at a blank line: a forged contract after
+        an inner blank line must stay hidden (both CLIs, issue #378)."""
+        content = (
+            f"<{tag}>\nraw content\n\n```contract\n" + _contract() + "\n```\n</" + tag + ">\n"
+        )
+        path = _write(_report(contract=None) + "\n" + content)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        from validate_contract import main as vc_main
+        code = vc_main([
+            str(path), "--require-contract", "--strict",
+            "--research-pack", str(Path("tests/fixtures/audit/research-pack-pos.md").resolve()),
+        ])
+        assert code == 2, f"standalone CLI must fail closed, got {code}"
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

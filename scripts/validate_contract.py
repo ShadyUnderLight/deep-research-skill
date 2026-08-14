@@ -895,9 +895,16 @@ _HTML_BLOCK_TAGS = (
     "h1", "h2", "h3", "h4", "h5", "h6",
     "head", "header", "hr", "html", "iframe", "legend", "li", "link",
     "main", "menu", "menuitem", "nav", "noframes", "ol", "optgroup",
-    "option", "p", "param", "pre", "script", "search", "section",
-    "source", "style", "summary", "table", "tbody", "td", "textarea",
-    "tfoot", "th", "thead", "title", "tr", "track", "template", "ul",
+    "option", "p", "param", "search", "section", "source", "summary",
+    "table", "tbody", "td", "tfoot", "th", "thead", "title", "tr",
+    "track", "template", "ul",
+)
+
+# CommonMark type-1 block tags: the block runs until the matching closing
+# tag line — blank lines do NOT terminate it (issue #378).
+_HTML_TYPE1_TAGS = ("script", "pre", "style", "textarea")
+_HTML_TYPE1_OPEN_RE = re.compile(
+    rf"^\s*<({'|'.join(_HTML_TYPE1_TAGS)})\b", re.IGNORECASE
 )
 _HTML_BLOCK_OPEN_RE = re.compile(
     rf"^\s*<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
@@ -933,7 +940,7 @@ def _strip_html_blocks(text: str) -> str:
     """
     lines = text.split("\n")
     out: list[str] = []
-    in_block: str | None = None  # "cdata"/"pi"/"decl"/"raw"
+    in_block: str | None = None  # "cdata"/"pi"/"decl"/"raw"/"t1:<tag>"
     for line in lines:
         stripped = line.strip()
         if in_block is not None:
@@ -947,6 +954,13 @@ def _strip_html_blocks(text: str) -> str:
                 continue
             if in_block == "decl":
                 if ">" in stripped:
+                    in_block = None
+                continue
+            if in_block.startswith("t1:"):
+                # Type 1 (script/pre/style/textarea): ends at the matching
+                # closing tag line; blank lines do not terminate it.
+                tag = in_block[3:]
+                if re.match(rf"^\s*</{tag}\s*>", stripped, re.IGNORECASE):
                     in_block = None
                 continue
             # "raw" (types 6/7): ends at the first blank line.
@@ -968,6 +982,10 @@ def _strip_html_blocks(text: str) -> str:
             if ">" in stripped:
                 continue
             in_block = "decl"
+            continue
+        m1 = _HTML_TYPE1_OPEN_RE.match(line)
+        if m1:
+            in_block = "t1:" + m1.group(1).lower()
             continue
         if _HTML_BLOCK_OPEN_ANY_RE.match(line):
             # Type 6 allowlist (complete or incomplete opener).
