@@ -71,6 +71,7 @@ from validate_contract import (
     _extract_pack_artifact_id as vc_extract_pack_artifact_id,
     _resolve_pack_primary_route as vc_resolve_pack_primary_route,
     count_report_route_blocks as vc_count_report_route_blocks,
+    extract_report_route_declaration as vc_extract_report_route_declaration,
     validate_pack_sections as vc_validate_pack_sections,
 )
 
@@ -580,6 +581,10 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
         if pack_section_errors:
             return CheckResult(name="contract-check", errors=pack_section_errors)
 
+    report_route, route_malformed = vc_extract_report_route_declaration(text)
+    if route_malformed:
+        return CheckResult(name="contract-check", errors=route_malformed)
+
     contract = contract_blocks[0] if contract_blocks else None
     if contract is None:
         if has_contract_block(text):
@@ -607,7 +612,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
 
     result = validate_contract(
         contract,
-        report_primary_route=extract_report_primary_route(text),
+        report_primary_route=report_route,
         strict=strict,
     )
     if result.errors:

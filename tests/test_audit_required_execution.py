@@ -806,6 +806,71 @@ class TestDuplicateDeclarations:
             "route and audit status" in b.lower() for b in data["blocking"]
         ), data["blocking"]
 
+    def test_nested_fenced_contract_example_is_ignored(self) -> None:
+        """A ```contract example nested inside a `````markdown fence must
+        not count as the real contract (fence-level parsing)."""
+        full = _contract()
+        nested = (
+            "````markdown\nExample report contract:\n"
+            "```contract\n" + full + "\n```\n````\n"
+        )
+        report = _report(contract=None) + "\n" + nested
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        # No real top-level contract: strict must fail, not silently adopt
+        # the nested example.
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_duplicate_json_key_in_contract_fails(self) -> None:
+        """Duplicate object keys in the contract JSON are malformed —
+        last-write-wins must not let a trailing good value win."""
+        dup = (
+            '{"primary_route": "shared-workflow", '
+            '"primary_route": "market-outlook", '
+            '"secondary_routes": [], "disciplines": [], '
+            '"audits": [{"id": "market-outlook-audit", "status": "passed", '
+            '"evidence": "§3"}, {"id": "forward-looking-claims", '
+            '"status": "passed", "evidence": "§4"}, '
+            '{"id": "source-traceability", "status": "passed", '
+            '"evidence": "§5"}, {"id": "final-audit", "status": "passed", '
+            '"evidence": "§2"}], '
+            '"artifact_id": "fixture-market-outlook-pos", '
+            '"contract_version": "1.0.0", "created_at": "2026-08-13"}'
+        )
+        path = _write(_report(contract=dup))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "duplicate" in result.stdout.lower() or "contract" in result.stdout.lower()
+
+    def test_duplicate_route_declaration_in_block_fails(self) -> None:
+        """Two '**Primary route**' lines in one status block are malformed —
+        the first declaration must not win."""
+        block = (
+            "## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n"
+            "**Primary route**: Technical Deep-dive\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block=block, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "route" in result.stdout.lower()
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

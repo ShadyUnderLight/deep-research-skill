@@ -90,23 +90,64 @@ class ContractError(Exception):
 
 # ── Contract extraction ─────────────────────────────────────────────────────
 
+_FENCE_OPEN_RE = re.compile(r"^\s*(`{3,}|~{3,})([^\s`]*)\s*$")
+
+
+def _top_level_fenced_content(text: str, language_keyword: str) -> list[str]:
+    """Collect the content of every *top-level* fenced block whose opening
+    fence carries *language_keyword*.
+
+    Uses a fence state machine instead of a bare regex: a ```contract
+    example nested inside another fence (e.g. inside a `````markdown
+    block) is content of the outer fence, not a real declaration
+    (issue #378).
+    """
+    blocks: list[str] = []
+    lines = text.split("\n")
+    i = 0
+    while i < len(lines):
+        open_m = _FENCE_OPEN_RE.match(lines[i])
+        if not open_m:
+            i += 1
+            continue
+        fence_char = open_m.group(1)[0]
+        fence_len = len(open_m.group(1))
+        language = open_m.group(2).lower()
+        content: list[str] = []
+        j = i + 1
+        while j < len(lines):
+            close_m = re.match(
+                rf"^\s*({re.escape(fence_char)}{{{fence_len},}})\s*$", lines[j]
+            )
+            if close_m:
+                break
+            content.append(lines[j])
+            j += 1
+        if language_keyword in language:
+            blocks.append("\n".join(content))
+        i = j + 1 if j < len(lines) else len(lines)
+    return blocks
+
 
 def has_contract_block(text: str) -> bool:
-    """Check whether a ```contract fenced block exists in the text,
-    regardless of whether its content is valid JSON."""
-    return bool(re.search(r"```contract\s*\n", text))
+    """Check whether a top-level ```contract fenced block exists in the
+    text, regardless of whether its content is valid JSON.  Nested
+    examples inside other fences do not count (issue #378)."""
+    return bool(_top_level_fenced_content(text, "contract"))
 
 
 def extract_contract_blocks(text: str) -> tuple[list[dict], list[str]]:
-    """Collect every ```contract fenced block in *text*.
+    """Collect every top-level ```contract fenced block in *text*.
 
     Returns ``(contracts, errors)``.  Cardinality rule (issue #378): more
     than one contract block is structural malformation — a second block
     could carry a different route or a broken payload — so callers must
     treat ``errors`` as blocking instead of accepting the first block.
-    A single malformed-JSON block is also reported as an error.
+    A single malformed-JSON block is also reported as an error.  Fences
+    nested inside other fences (```contract examples inside `````markdown)
+    are ignored: only top-level contract fences count.
     """
-    matches = re.findall(r"```contract\s*\n(.*?)```", text, re.DOTALL)
+    matches = _top_level_fenced_content(text, "contract")
     if not matches:
         return [], []
     if len(matches) > 1:
@@ -114,28 +155,44 @@ def extract_contract_blocks(text: str) -> tuple[list[dict], list[str]]:
             f"multiple contract blocks found ({len(matches)}) — exactly "
             "one ```contract block is required (issue #378)"
         ]
-    json_str = matches[0].strip()
+    return _parse_contract_json(matches[0])
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    """json object_pairs_hook: duplicate object keys are malformed
+    (last-write-wins would let a trailing good value hide a broken
+    declaration, issue #378)."""
+    result: dict = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate contract key: '{key}'")
+        result[key] = value
+    return result
+
+
+def _parse_contract_json(json_str: str) -> tuple[list[dict], list[str]]:
+    """Parse one contract JSON payload, rejecting duplicate keys."""
     try:
-        contract = json.loads(json_str)
+        contract = json.loads(json_str.strip(), object_pairs_hook=_reject_duplicate_keys)
         if not isinstance(contract, dict):
             return [], [
                 "contract block JSON is not a valid object — fix the "
                 "```contract fenced block"
             ]
         return [contract], []
-    except (json.JSONDecodeError, ValueError):
+    except (json.JSONDecodeError, ValueError) as exc:
         return [], [
-            "contract block JSON is malformed — fix the ```contract "
-            "fenced block"
+            f"contract block JSON is invalid: {exc} — fix the "
+            "```contract fenced block"
         ]
 
 
 def extract_contract_from_markdown(text: str) -> dict | None:
     """Extract a contract from a ```contract fenced code block in Markdown.
 
-    Returns None if no contract block is found or if the JSON is malformed.
-    Duplicate blocks are handled by :func:`extract_contract_blocks`; this
-    legacy accessor returns the first block for compatibility.
+    Returns None if no top-level contract block is found or if the JSON is
+    malformed.  Duplicate blocks are handled by :func:`extract_contract_blocks`;
+    this legacy accessor returns the first block for compatibility.
     """
     contracts, _ = extract_contract_blocks(text)
     return contracts[0] if contracts else None
@@ -711,7 +768,11 @@ def main(argv: list[str] | None = None) -> int:
         pack_artifact_id = _extract_pack_artifact_id(args.research_pack)
 
     # Report status block route (issue #376 验收标准 5 — 三方一致性).
-    report_primary_route = extract_report_primary_route(text)
+    report_primary_route, route_malformed = extract_report_route_declaration(text)
+    if route_malformed:
+        for err in route_malformed:
+            print(f"Error: {err}", file=sys.stderr)
+        return 2
 
     result = validate_contract(
         contract,
@@ -830,52 +891,67 @@ def count_report_route_blocks(text: str) -> int:
     ))
 
 
-def extract_report_primary_route(text: str) -> str | None:
+def extract_report_route_declaration(text: str) -> tuple[str | None, list[str]]:
     """Resolve the canonical route declared in the report's
     '## Route and audit status' block (e.g. '**Primary route**: Market
-    Outlook' or '**Route**: Shared-workflow'). Returns None when the block
-    or a route declaration is missing (no cross-check then).
+    Outlook' or '**Route**: Shared-workflow').
 
-    Fenced code blocks are stripped first so a fake declaration inside a
-    ```markdown block can never override the visible status block
-    (issue #378).
+    Returns ``(route, malformed)``.  Cardinality rule (issue #378): more
+    than one route declaration line in the block is structural
+    malformation — the first declaration must not win.  Fenced code blocks
+    are stripped first so a fake declaration inside a ```markdown block
+    can never override the visible status block.
     """
     cleaned = _strip_fences(text)
     match = re.search(
         r"## Route and audit status\s*\n(.*?)(?=\n## |\Z)", cleaned, re.DOTALL
     )
     if not match:
-        return None
+        return None, []
     block = match.group(1)
 
-    # "**Primary route**: X" — first matching declaration line.
+    declarations: list[str] = []
     for line in block.split("\n"):
         m = re.match(
             r"\*\*Primary\s+route\*\*\s*[:：]\s*(.+)$", line.strip(), re.IGNORECASE
         )
         if m:
-            raw = m.group(1).strip()
-            break
-    else:
-        # "**Route**: Shared-workflow (no specialized route selected)".
-        for line in block.split("\n"):
-            m = re.match(r"\*\*Route\*\*\s*[:：]\s*(.+)$", line.strip(), re.IGNORECASE)
-            if m:
-                raw = m.group(1).strip()
-                break
-        else:
-            return None
+            declarations.append(m.group(1).strip())
+            continue
+        m = re.match(r"\*\*Route\*\*\s*[:：]\s*(.+)$", line.strip(), re.IGNORECASE)
+        if m:
+            declarations.append(m.group(1).strip())
+
+    if not declarations:
+        return None, []
+    if len(declarations) > 1:
+        return None, [
+            f"multiple route declarations found in the 'Route and audit "
+            f"status' block ({len(declarations)}) — exactly one is "
+            "required (issue #378)"
+        ]
+    raw = declarations[0]
 
     # Strip trailing parenthetical notes, list markers, bold/italic.
     raw = re.sub(r"\s*\([^)]*\)\s*$", "", raw)
     raw = re.sub(r"^[-*>]+\s+", "", raw)
     raw = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", raw)
     try:
-        return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw)
+        return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw), []
     except UnknownRouteError:
         # Unknown status-block routes are reported by other validators
         # (audit_report route detection); don't fail the contract check.
-        return None
+        return None, []
+
+
+def extract_report_primary_route(text: str) -> str | None:
+    """Legacy accessor for the report's declared primary route.
+
+    See :func:`extract_report_route_declaration` for the cardinality-aware
+    version with structured malformed errors.
+    """
+    route, _ = extract_report_route_declaration(text)
+    return route
 
 
 def _extract_pack_artifact_id(pack_path: str) -> str | None:
