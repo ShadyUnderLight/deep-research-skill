@@ -909,6 +909,12 @@ _HTML_BLOCK_OPEN_ANY_RE = re.compile(
     rf"^\s*<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
 )
 
+# CommonMark type-7: any complete open tag at line start (not in the
+# type-6 allowlist) also starts a raw HTML block.
+_HTML_ANY_TAG_OPEN_RE = re.compile(
+    r"^\s*<([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>", re.IGNORECASE
+)
+
 
 def _strip_html_blocks(text: str) -> str:
     """Remove non-Markdown raw HTML containers.
