@@ -137,6 +137,12 @@ def _table_widths(visible: list[tuple[int, str]]) -> list[tuple[int, int, str]]:
 
 def validate_markdown_delivery(text: str) -> ValidationResult:
     result = ValidationResult()
+    # Shared rendered-content sanitizer: fenced code, HTML comments and
+    # raw HTML blocks (div/pre/script/...) are not rendered Markdown, so
+    # headings hidden inside them must not count as document structure
+    # (issue #378).
+    from validate_contract import sanitize_visible_markdown
+    text = sanitize_visible_markdown(text)
     raw_lines = text.splitlines()
     lines = _without_frontmatter(raw_lines)
     visible = _visible_lines(lines)

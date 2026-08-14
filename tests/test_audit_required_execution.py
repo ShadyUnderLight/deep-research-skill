@@ -1360,6 +1360,39 @@ class TestDuplicateDeclarations:
         ])
         assert code == 2, f"standalone CLI must fail closed, got {code}"
 
+    def test_markdown_delivery_ignores_html_block_hidden_structure(self) -> None:
+        """Headings inside raw HTML blocks are not rendered Markdown: a
+        report whose H1 and Executive summary live inside <div> must fail
+        both the markdown-delivery validator and audit_report (issue #378)."""
+        base = _report(contract=_contract())
+        hidden_h1 = "<div>\n# Test Report\n</div>\n\n"
+        hidden_summary = (
+            "<div>\n## Executive summary\n"
+            "**核心判断**：X is Y [S01].\n\n- a\n- b\n</div>\n"
+        )
+        report = hidden_h1 + base.replace("# Test Report\n", "", 1).replace(
+            "## Executive summary\n\n**核心判断**：X is Y [S01].\n\n- a\n- b\n",
+            hidden_summary,
+            1,
+        )
+        path = _write(report)
+
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "h1" in result.stdout.lower() or "executive" in result.stdout.lower()
+
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_markdown_delivery.py"),
+             str(path), "--strict"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode != 0, f"standalone markdown-delivery must fail:\n{r.stdout}"
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result
