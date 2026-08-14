@@ -1296,6 +1296,45 @@ class TestDuplicateDeclarations:
         assert result.returncode == 2, result.stdout
         assert "contract" in result.stdout.lower()
 
+    def test_type6_block_ends_at_blank_line_not_closing_tag(self) -> None:
+        """CommonMark type-6 blocks end at the first blank line: a forged
+        route block right after </div> (no blank line) must be hidden."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block="<div>\n</div>\n" + route_block + "\n", contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    @pytest.mark.parametrize("opener", ["<search", "<search>"])
+    def test_search_type6_tag_hides_route_status(self, opener: str) -> None:
+        """'search' is a CommonMark type-6 block tag; even an incomplete
+        '<search' opener must start a raw HTML block (fail closed)."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block=opener + "\n" + route_block + "\n", contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

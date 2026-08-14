@@ -895,66 +895,18 @@ _HTML_BLOCK_TAGS = (
     "h1", "h2", "h3", "h4", "h5", "h6",
     "head", "header", "hr", "html", "iframe", "legend", "li", "link",
     "main", "menu", "menuitem", "nav", "noframes", "ol", "optgroup",
-    "option", "p", "param", "pre", "script", "section", "source",
-    "style", "summary", "table", "tbody", "td", "textarea", "tfoot",
-    "th", "thead", "title", "tr", "track", "template", "ul",
+    "option", "p", "param", "pre", "script", "search", "section",
+    "source", "style", "summary", "table", "tbody", "td", "textarea",
+    "tfoot", "th", "thead", "title", "tr", "track", "template", "ul",
 )
 _HTML_BLOCK_OPEN_RE = re.compile(
     rf"^\s*<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
 )
-
-
-def _without_quoted(line: str) -> str:
-    """Remove double/single-quoted substrings so tag matching is
-    quote-aware: ``<div data-marker="</div>">`` must not count the
-    quoted ``</div>`` as a real closing tag (issue #378)."""
-    return re.sub(r'"[^"]*"|\'[^\']*\'', "", line)
-
-
-def _count_tag_tokens(line: str, tag: str, quote: str | None) -> tuple[int, int, str | None]:
-    """Count opening/closing tokens of *tag* in *line*, quote-aware.
-
-    Quote state is threaded through (``quote`` in / out) so an attribute
-    value spanning multiple lines keeps its ``</div>``-like content
-    invisible to tag counting (issue #378).  Returns (opens, closes,
-    next_quote_state).
-    """
-    opens = 0
-    closes = 0
-    q = quote
-    i = 0
-    n = len(line)
-    while i < n:
-        ch = line[i]
-        if q is not None:
-            if ch == q:
-                q = None
-            i += 1
-            continue
-        if ch in "\"'":
-            q = ch
-            i += 1
-            continue
-        if ch == "<":
-            rest = line[i:]
-            close_m = re.match(rf"</{tag}\s*>", rest, re.IGNORECASE)
-            if close_m:
-                closes += 1
-                i += close_m.end()
-                continue
-            open_m = re.match(rf"<{tag}\b", rest, re.IGNORECASE)
-            if open_m:
-                opens += 1
-                i += open_m.end()
-                continue
-        i += 1
-    return opens, closes, q
-
-
-# CommonMark type-7: any complete open tag at line start (not in the
-# type-6 allowlist) also starts a raw HTML block.
-_HTML_ANY_TAG_OPEN_RE = re.compile(
-    r"^\s*<([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>", re.IGNORECASE
+# Matches an incomplete allowlist opener too ('<search' without '>'):
+# type-6 start condition is conservative so forged declarations after an
+# unclosed tag opener fail closed (issue #378).
+_HTML_BLOCK_OPEN_ANY_RE = re.compile(
+    rf"^\s*<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
 )
 
 
@@ -964,16 +916,18 @@ def _strip_html_blocks(text: str) -> str:
     Covers CommonMark HTML-block types 1/3/4/5/6/7: script/pre/style/
     textarea, processing instructions (``<?...?>``), declarations
     (``<!DOCTYPE ...>``), CDATA (``<![CDATA[...]]>``), the block-tag
-    allowlist, and any complete open tag at line start (``<span>``,
-    ``<custom-element>``).  Same-tag nesting depth is tracked, opening
-    lines count every opener token, and tag matching is quote-aware with
-    quote state spanning lines (issue #378).
+    allowlist (including ``search``; an incomplete opener like ``<search``
+    is treated conservatively), and any complete open tag or standalone
+    closing tag at line start (``<span>``, ``</span>``, ``<custom-element>``).
+
+    Termination follows the spec: types 3/4/5 end at ``?>``/``>``/``]]>``,
+    types 6/7 end at the first blank line (a matching closing tag does NOT
+    end a type-6 block — ``<div>\n</div>\n## heading`` keeps the heading
+    inside raw HTML until a blank line, issue #378).
     """
     lines = text.split("\n")
     out: list[str] = []
-    in_block: str | None = None  # tag name or "cdata"/"pi"/"decl"/"raw7"
-    depth = 0
-    quote: str | None = None
+    in_block: str | None = None  # "cdata"/"pi"/"decl"/"raw"
     for line in lines:
         stripped = line.strip()
         if in_block is not None:
@@ -989,16 +943,10 @@ def _strip_html_blocks(text: str) -> str:
                 if ">" in stripped:
                     in_block = None
                 continue
-            if in_block == "raw7":
-                # CommonMark type-7 blocks end at the first blank line.
-                if not stripped:
-                    in_block = None
-                    out.append(line)
-                continue
-            opens, closes, quote = _count_tag_tokens(stripped, in_block, quote)
-            depth += opens - closes
-            if depth <= 0:
+            # "raw" (types 6/7): ends at the first blank line.
+            if not stripped:
                 in_block = None
+                out.append(line)
             continue
         if stripped.startswith("<![CDATA["):
             if "]]>" in stripped:
@@ -1015,26 +963,18 @@ def _strip_html_blocks(text: str) -> str:
                 continue
             in_block = "decl"
             continue
-        m = _HTML_BLOCK_OPEN_RE.match(line)
-        if m:
-            tag = m.group(1).lower()
-            opens, closes, quote = _count_tag_tokens(stripped, tag, None)
-            if opens <= closes:
-                continue  # self-contained single-line block
-            in_block = tag
-            depth = opens - closes
+        if _HTML_BLOCK_OPEN_ANY_RE.match(line):
+            # Type 6 allowlist (complete or incomplete opener).
+            in_block = "raw"
             continue
-        m7 = _HTML_ANY_TAG_OPEN_RE.match(line)
-        if m7:
-            # CommonMark type-7 (non-allowlist open tag): raw HTML block
-            # until a blank line.
-            in_block = "raw7"
+        if _HTML_ANY_TAG_OPEN_RE.match(line):
+            # Type 7: complete open tag of any other tag.
+            in_block = "raw"
             continue
-        m7c = re.match(r"^\s*</([a-zA-Z][a-zA-Z0-9-]*)\s*>", stripped)
-        if m7c:
-            # Standalone closing tag also starts a type-7 block that lasts
-            # until a blank line (issue #378).
-            in_block = "raw7"
+        if re.match(r"^\s*</([a-zA-Z][a-zA-Z0-9-]*)\s*>", stripped):
+            # Type 7: standalone closing tag starts a raw block until a
+            # blank line.
+            in_block = "raw"
             continue
         out.append(line)
     return "\n".join(out)
