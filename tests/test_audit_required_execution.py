@@ -871,6 +871,55 @@ class TestDuplicateDeclarations:
         assert result.returncode == 2, result.stdout
         assert "route" in result.stdout.lower()
 
+    @pytest.mark.parametrize("label", ["notcontract", "contract-example", "contracts"])
+    def test_non_contract_fence_label_is_ignored(self, label: str) -> None:
+        """Only an exact 'contract' fence label counts as a contract
+        declaration — substring matches like notcontract /
+        contract-example must not satisfy --require-contract."""
+        report = _report(contract=None)
+        report += f"\n```{label}\n{_contract()}\n```\n"
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_fenced_pack_primary_route_fails(self) -> None:
+        """A pack whose only '## Primary route' is inside a fenced block
+        has no visible route declaration: audit_report must fail closed."""
+        fenced = PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n",
+            "~~~markdown\n## Primary route\n\nMarket Outlook\n~~~\n",
+        )
+        pack = _write(fenced)
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"], research_pack=pack
+        )
+        assert result.returncode == 2, result.stdout
+        assert "route" in result.stdout.lower()
+
+    def test_fenced_pack_primary_route_standalone_cli_fails(self) -> None:
+        """The standalone validate_contract CLI must behave identically:
+        a fenced-only Primary route must not resolve."""
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        from validate_contract import main as vc_main
+
+        fenced = PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n",
+            "~~~markdown\n## Primary route\n\nMarket Outlook\n~~~\n",
+        )
+        pack = _write(fenced)
+        report = _write(_report(contract=_contract()))
+        code = vc_main([
+            str(report), "--require-contract", "--strict",
+            "--research-pack", str(pack),
+        ])
+        assert code == 2, f"standalone CLI must fail closed, got {code}"
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

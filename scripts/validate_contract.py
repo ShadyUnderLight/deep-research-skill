@@ -123,7 +123,7 @@ def _top_level_fenced_content(text: str, language_keyword: str) -> list[str]:
                 break
             content.append(lines[j])
             j += 1
-        if language_keyword in language:
+        if language == language_keyword:
             blocks.append("\n".join(content))
         i = j + 1 if j < len(lines) else len(lines)
     return blocks
@@ -839,6 +839,10 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
         print(f"Error: cannot read --research-pack {pack_path}: {exc}", file=sys.stderr)
         return None
 
+    # Fenced declarations (e.g. a route inside ~~~markdown) do not count
+    # as visible pack sections (issue #378).
+    text = _strip_fences(text)
+
     match = re.search(
         r"## Primary route\s*\n(.*?)(?=\n## |\Z)", text, re.DOTALL
     )
@@ -876,9 +880,19 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
 
 def _strip_fences(text: str) -> str:
     """Remove fenced code blocks so declarations inside fences (e.g. a fake
-    '## Route and audit status' block inside ```markdown) never count as
-    real report declarations (issue #378)."""
-    return re.sub(r"^```[^\n]*\n.*?^```", "", text, flags=re.MULTILINE | re.DOTALL)
+    '## Route and audit status' block inside ```markdown, or a pack route
+    inside ~~~markdown) never count as real declarations (issue #378).
+
+    Handles both backtick and tilde fences; a fence nested inside another
+    fence is removed with its outer fence (outer content is dropped first).
+    """
+    text = re.sub(
+        r"^```[^\n]*\n.*?^```", "", text, flags=re.MULTILINE | re.DOTALL
+    )
+    text = re.sub(
+        r"^~~~[^\n]*\n.*?^~~~", "", text, flags=re.MULTILINE | re.DOTALL
+    )
+    return text
 
 
 def count_report_route_blocks(text: str) -> int:
@@ -956,11 +970,13 @@ def extract_report_primary_route(text: str) -> str | None:
 
 def _extract_pack_artifact_id(pack_path: str) -> str | None:
     """Extract the first line of the pack's '## Artifact id' section.
-    Returns None when the section is absent (single-side tracing → warning)."""
+    Returns None when the section is absent (single-side tracing → warning).
+    Fenced declarations do not count (issue #378)."""
     try:
         text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError):
         return None
+    text = _strip_fences(text)
     match = re.search(
         r"## Artifact id\s*\n(.+?)(?=\n## |\Z)", text, re.DOTALL
     )
