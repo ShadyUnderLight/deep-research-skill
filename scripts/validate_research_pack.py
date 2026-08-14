@@ -59,11 +59,25 @@ def strip_fenced_code_blocks(text: str) -> str:
     lines = text.split("\n")
     out = []
     in_fence = False
+    in_comment = False
     fence_char = None
     fence_len = 0
 
     for line in lines:
         stripped = line.rstrip()
+        if in_comment:
+            if "-->" in stripped:
+                in_comment = False
+            continue
+        if "<!--" in stripped:
+            in_comment = True
+            # 同行的内容在 <!-- 之前仍然可见
+            head = stripped.split("<!--", 1)[0]
+            if head.strip():
+                out.append(head)
+            if "-->" in stripped.split("<!--", 1)[1]:
+                in_comment = False
+            continue
         if not in_fence:
             m = INLINE_FENCE_RE.match(stripped)
             if m:

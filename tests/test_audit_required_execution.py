@@ -974,7 +974,10 @@ class TestDuplicateDeclarations:
             research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
         )
         assert result.returncode == 2, result.stdout
-        assert "route and audit status" in result.stdout.lower()
+        # Comment-hidden route block means no visible route declaration:
+        # strict fails either on the missing declaration or the missing
+        # audit-status block.
+        assert "route" in result.stdout.lower()
 
     def test_html_comment_pack_primary_route_fails(self) -> None:
         """A pack '## Primary route' inside <!-- --> is not a visible
@@ -1000,6 +1003,50 @@ class TestDuplicateDeclarations:
             "--research-pack", str(pack),
         ])
         assert code == 2, f"standalone CLI must fail closed, got {code}"
+
+    def test_comment_monitoring_section_fails(self) -> None:
+        """A '## Monitoring signals' section inside <!-- --> is not
+        rendered content: the market-outlook monitoring audit must fail
+        closed (issue #378)."""
+        commented = "<!--\n" + _monitoring_section() + "-->\n"
+        report = _report(contract=_contract(), include_monitoring=False)
+        report = report.replace(
+            "\n## Comparison Table",
+            "\n" + commented + "\n## Comparison Table",
+        )
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "monitoring" in result.stdout.lower()
+
+    def test_comment_hidden_report_structure_fails_markdown_delivery(self) -> None:
+        """A report whose entire visible structure lives inside <!-- -->
+        has no rendered headings: the markdown-delivery audit must fail."""
+        hidden = "<!--\n" + _report(contract=_contract()) + "\n-->\n"
+        path = _write(hidden)
+        result = _run_audit(
+            path, extra_args=["--route", "market-outlook", "--strict", "--json"]
+        )
+        data = json.loads(result.stdout)
+        assert data["exit_code"] == 2, data["blocking"]
+
+    def test_comment_hidden_pack_section_fails(self) -> None:
+        """Pack sections inside <!-- --> are not visible: the pack fails
+        structure checks."""
+        commented = PACK_FIXTURE.replace(
+            "## Objective\n\nDetermine X, grounded on [S01].\n",
+            "<!--\n## Objective\n\nDetermine X, grounded on [S01].\n-->\n",
+        )
+        pack = _write(commented)
+        report = _write(_report(contract=_contract()))
+        result = _run_audit(
+            report, extra_args=["--strict", "--require-contract"], research_pack=pack
+        )
+        assert result.returncode == 2, result.stdout
+        assert "objective" in result.stdout.lower()
 
 
 class TestSecondaryHardFail:

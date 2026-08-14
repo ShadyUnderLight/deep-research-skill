@@ -52,7 +52,6 @@ from validate_report_quality import (
     check_academic_register_columns,
     check_strict_warnings,
     get_route_name,
-    strip_fenced_code_blocks,
 )
 
 from validate_declared_execution import validate_file as vde_validate_file
@@ -186,7 +185,7 @@ def _run_report_quality(path: Path, **kwargs: bool) -> CheckResult:
             errors=[f"{path}: cannot read file — {exc}"],
         )
 
-    cleaned = strip_fenced_code_blocks(text)
+    cleaned = vc_strip_fences(text)
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -313,6 +312,11 @@ def _run_market_outlook_monitoring_actionability(
             name="market-outlook-monitoring",
             errors=[f"{path}: cannot read file — {exc}"],
         )
+
+    # Shared declaration sanitizer: sections inside ```fences or <!-- -->
+    # are not rendered content and must not count as monitoring signals
+    # (issue #378).
+    text = vc_strip_fences(text)
 
     # ── Split into sections by heading level (## or ###) ──────────────────
     lines = text.split("\n")
@@ -469,7 +473,7 @@ def _run_secondary_route_check(path: Path, **kwargs: bool) -> CheckResult:
             name="secondary-route-check",
             errors=[f"{path}: cannot read file — {exc}"],
         )
-    cleaned = strip_fenced_code_blocks(text)
+    cleaned = vc_strip_fences(text)
 
     # Locate the Route and audit status block — use same patterns as
     # validate_report_quality.ROUTE_AUDIT_HEADING for consistency.
@@ -825,7 +829,7 @@ def _auto_detect_route(path: Path) -> str | None:
         text = path.read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError):
         return None
-    cleaned = strip_fenced_code_blocks(text)
+    cleaned = vc_strip_fences(text)
     raw = get_route_name(cleaned)
     if raw is None or not raw.strip():
         return None
