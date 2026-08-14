@@ -97,25 +97,48 @@ def has_contract_block(text: str) -> bool:
     return bool(re.search(r"```contract\s*\n", text))
 
 
+def extract_contract_blocks(text: str) -> tuple[list[dict], list[str]]:
+    """Collect every ```contract fenced block in *text*.
+
+    Returns ``(contracts, errors)``.  Cardinality rule (issue #378): more
+    than one contract block is structural malformation — a second block
+    could carry a different route or a broken payload — so callers must
+    treat ``errors`` as blocking instead of accepting the first block.
+    A single malformed-JSON block is also reported as an error.
+    """
+    matches = re.findall(r"```contract\s*\n(.*?)```", text, re.DOTALL)
+    if not matches:
+        return [], []
+    if len(matches) > 1:
+        return [], [
+            f"multiple contract blocks found ({len(matches)}) — exactly "
+            "one ```contract block is required (issue #378)"
+        ]
+    json_str = matches[0].strip()
+    try:
+        contract = json.loads(json_str)
+        if not isinstance(contract, dict):
+            return [], [
+                "contract block JSON is not a valid object — fix the "
+                "```contract fenced block"
+            ]
+        return [contract], []
+    except (json.JSONDecodeError, ValueError):
+        return [], [
+            "contract block JSON is malformed — fix the ```contract "
+            "fenced block"
+        ]
+
+
 def extract_contract_from_markdown(text: str) -> dict | None:
     """Extract a contract from a ```contract fenced code block in Markdown.
 
     Returns None if no contract block is found or if the JSON is malformed.
+    Duplicate blocks are handled by :func:`extract_contract_blocks`; this
+    legacy accessor returns the first block for compatibility.
     """
-    # Match ```contract ... ``` fenced block
-    pattern = r"```contract\s*\n(.*?)```"
-    match = re.search(pattern, text, re.DOTALL)
-    if not match:
-        return None
-
-    json_str = match.group(1).strip()
-    try:
-        contract = json.loads(json_str)
-        if not isinstance(contract, dict):
-            return None
-        return contract
-    except (json.JSONDecodeError, ValueError):
-        return None
+    contracts, _ = extract_contract_blocks(text)
+    return contracts[0] if contracts else None
 
 
 # ── Validation ──────────────────────────────────────────────────────────────
@@ -652,7 +675,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: cannot read {path}: {exc}", file=sys.stderr)
         return 2
 
-    contract = extract_contract_from_markdown(text)
+    contract_blocks, contract_errors = extract_contract_blocks(text)
+    if contract_errors:
+        for err in contract_errors:
+            print(f"Error: {err}", file=sys.stderr)
+        return 2
+    contract = contract_blocks[0] if contract_blocks else None
     if contract is None:
         if has_contract_block(text):
             # A ```contract block exists but JSON is malformed — always an error.
@@ -672,6 +700,11 @@ def main(argv: list[str] | None = None) -> int:
     pack_primary_route: str | None = None
     pack_artifact_id: str | None = None
     if args.research_pack:
+        pack_section_errors = validate_pack_sections(args.research_pack)
+        if pack_section_errors:
+            for err in pack_section_errors:
+                print(f"Error: {err}", file=sys.stderr)
+            return 2
         pack_primary_route = _resolve_pack_primary_route(args.research_pack)
         if pack_primary_route is None:
             return 2
@@ -697,6 +730,37 @@ def main(argv: list[str] | None = None) -> int:
     if result.warnings:
         return 1
     return 0
+
+
+def _count_pack_sections(text: str, heading: str) -> int:
+    """Number of visible (non-fenced) occurrences of a pack heading."""
+    cleaned = _strip_fences(text)
+    return len(re.findall(
+        rf"^##\s+{re.escape(heading)}\s*$", cleaned, re.MULTILINE
+    ))
+
+
+def validate_pack_sections(pack_path: str) -> list[str]:
+    """Cardinality check for pack declarations (issue #378).
+
+    '## Primary route' and '## Artifact id' must each appear at most once;
+    a second conflicting declaration would silently bypass the
+    pack/contract cross-check if only the first section were read.
+    Returns structural errors (empty list when well-formed).
+    """
+    try:
+        text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        return [f"cannot read pack {pack_path}: {exc}"]
+    errors: list[str] = []
+    for heading in ("Primary route", "Artifact id"):
+        count = _count_pack_sections(text, heading)
+        if count > 1:
+            errors.append(
+                f"Research Pack {pack_path} declares '## {heading}' "
+                f"{count} times — exactly one is required (issue #378)"
+            )
+    return errors
 
 
 def _resolve_pack_primary_route(pack_path: str) -> str | None:
@@ -749,13 +813,36 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
         return None
 
 
+def _strip_fences(text: str) -> str:
+    """Remove fenced code blocks so declarations inside fences (e.g. a fake
+    '## Route and audit status' block inside ```markdown) never count as
+    real report declarations (issue #378)."""
+    return re.sub(r"^```[^\n]*\n.*?^```", "", text, flags=re.MULTILINE | re.DOTALL)
+
+
+def count_report_route_blocks(text: str) -> int:
+    """Number of visible (non-fenced) '## Route and audit status' blocks."""
+    cleaned = _strip_fences(text)
+    return len(re.findall(
+        r"^#{2,3}\s+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)",
+        cleaned,
+        re.MULTILINE | re.IGNORECASE,
+    ))
+
+
 def extract_report_primary_route(text: str) -> str | None:
     """Resolve the canonical route declared in the report's
     '## Route and audit status' block (e.g. '**Primary route**: Market
     Outlook' or '**Route**: Shared-workflow'). Returns None when the block
-    or a route declaration is missing (no cross-check then)."""
+    or a route declaration is missing (no cross-check then).
+
+    Fenced code blocks are stripped first so a fake declaration inside a
+    ```markdown block can never override the visible status block
+    (issue #378).
+    """
+    cleaned = _strip_fences(text)
     match = re.search(
-        r"## Route and audit status\s*\n(.*?)(?=\n## |\Z)", text, re.DOTALL
+        r"## Route and audit status\s*\n(.*?)(?=\n## |\Z)", cleaned, re.DOTALL
     )
     if not match:
         return None

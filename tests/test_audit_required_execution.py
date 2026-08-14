@@ -687,6 +687,126 @@ class TestSelfAssessmentCannotOverride:
         assert "monitoring" in result.stdout.lower()
 
 
+class TestDuplicateDeclarations:
+    """User-writable declarations (contract / pack sections / route blocks)
+    must be collected in full and reject cardinality != 1 (issue #378)."""
+
+    def _run_with_pack(self, path: Path, pack: Path | None = None) -> dict:
+        args = ["--strict", "--require-contract", "--json"]
+        result = _run_audit(path, extra_args=args, research_pack=pack)
+        return json.loads(result.stdout)
+
+    def test_second_malformed_contract_block_fails(self) -> None:
+        """A second ```contract block (malformed) must not be ignored."""
+        report = _report(contract=_contract())
+        report += '\n```contract\n{"this is": broken\n```\n'
+        path = _write(report)
+        data = self._run_with_pack(
+            path, Path("tests/fixtures/audit/research-pack-pos.md").resolve()
+            if False else None
+        )
+        # strict 缺 pack 也会 fail，这里直接断言 contract 相关阻断
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_second_contract_block_conflicting_route_fails(self) -> None:
+        """A second valid contract with a different route must not be ignored."""
+        report = _report(contract=_contract())
+        report += "\n```contract\n" + _contract("shared-workflow") + "\n```\n"
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_pack_duplicate_primary_route_fails(self) -> None:
+        """A second '## Primary route' section in the pack must not be ignored."""
+        pack_text = PACK_FIXTURE + "\n## Primary route\n\nShared-workflow\n"
+        pack = _write(pack_text)
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=pack,
+        )
+        assert result.returncode == 2, result.stdout
+        assert "primary route" in result.stdout.lower()
+
+    def test_pack_duplicate_artifact_id_fails(self) -> None:
+        """A second '## Artifact id' section in the pack must not be ignored."""
+        pack_text = PACK_FIXTURE + "\n## Artifact id\n\nfixture-someone-else\n"
+        pack = _write(pack_text)
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=pack,
+        )
+        assert result.returncode == 2, result.stdout
+        assert "artifact" in result.stdout.lower()
+
+    def test_fenced_fake_route_block_does_not_bypass_mismatch(self) -> None:
+        """A route declaration inside a fenced code block must not count as
+        the report's real route declaration."""
+        visible_block = (
+            "## Route and audit status\n\n**Primary route**: Shared-workflow\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| workflow-spine-audit | ✅ Passed | §3 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+        )
+        fake = (
+            "```markdown\n## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n```\n"
+        )
+        report = (
+            "# Test Report\n\n" + fake + "\n" + visible_block +
+            "\n## Executive summary\n\n**核心判断**：X is Y [S01].\n\n- a\n- b\n"
+            "\n## Findings\n\nBody [S01] [S02].\n"
+            "\n## Comparison Table\n\n| Metric | A | B | 数字角色 |\n"
+            "|--------|---|---|---------|\n"
+            "| Cost | 100 | 80 | observed |\n"
+            "| Speed | 200 | 150 | observed |\n"
+            "\n## Dimension conclusions\n\nBacked by [S01] and [S02].\n"
+            "\n## Source Register\n\n"
+            "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |\n"
+            "|----|-------------|-------------|------|---------|-------------|------------------|\n"
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |\n"
+            "| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |\n"
+            "\n```contract\n" + _contract() + "\n```\n"
+        )
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_missing_route_block_is_structural_malformation(self) -> None:
+        """Zero Route and audit status blocks is also cardinality != 1:
+        the JSON verdict must report it as structural malformation."""
+        report = (
+            "# Test Report\n\n"
+            "## Findings\n\nBody [S01].\n\n"
+            "## Source Register\n\n"
+            "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |\n"
+            "|----|-------------|-------------|------|---------|-------------|------------------|\n"
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |\n"
+        )
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--route", "market-outlook", "--strict", "--json"])
+        data = json.loads(result.stdout)
+        assert data["exit_code"] == 2
+        assert any(
+            "route and audit status" in b.lower() for b in data["blocking"]
+        ), data["blocking"]
+
+
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result
     (issue #378 acceptance 6) — primary-route coverage is not enough."""

@@ -61,6 +61,7 @@ from validate_source_label_consistency import validate_file as vsl_validate_file
 from validate_listed_company_delivery import validate_file as vlc_validate_file
 from validate_scoring_replicability import validate_file as vsr_validate_file
 from validate_contract import (
+    extract_contract_blocks,
     extract_contract_from_markdown,
     extract_report_primary_route,
     has_contract_block,
@@ -69,6 +70,8 @@ from validate_contract import (
 from validate_contract import (
     _extract_pack_artifact_id as vc_extract_pack_artifact_id,
     _resolve_pack_primary_route as vc_resolve_pack_primary_route,
+    count_report_route_blocks as vc_count_report_route_blocks,
+    validate_pack_sections as vc_validate_pack_sections,
 )
 
 # Validators executed only through required-audit bindings (issue #378).
@@ -553,7 +556,31 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             errors=[f"{path}: cannot read file — {exc}"],
         )
 
-    contract = extract_contract_from_markdown(text)
+    # Cardinality checks on user-writable declarations (issue #378): more
+    # than one contract block / route status block is structural
+    # malformation — a second declaration could carry a conflicting route
+    # or a broken payload, so fail closed instead of accepting the first.
+    contract_blocks, contract_errors = extract_contract_blocks(text)
+    if contract_errors:
+        return CheckResult(name="contract-check", errors=contract_errors)
+    route_block_count = vc_count_report_route_blocks(text)
+    if route_block_count > 1:
+        return CheckResult(
+            name="contract-check",
+            errors=[
+                f"multiple 'Route and audit status' blocks found "
+                f"({route_block_count}) — exactly one is required "
+                "(issue #378)"
+            ],
+        )
+
+    research_pack = kwargs.get("research_pack")
+    if research_pack is not None:
+        pack_section_errors = vc_validate_pack_sections(str(research_pack))
+        if pack_section_errors:
+            return CheckResult(name="contract-check", errors=pack_section_errors)
+
+    contract = contract_blocks[0] if contract_blocks else None
     if contract is None:
         if has_contract_block(text):
             # A ```contract fenced block exists but the JSON is malformed
@@ -881,7 +908,13 @@ def _parse_audit_block_statuses(path: Path) -> tuple[dict[str, dict[str, str]], 
     )
     block_starts = [i for i, line in enumerate(lines) if block_heading_re.match(line)]
     if not block_starts:
-        return {}, []
+        # Zero blocks is also cardinality != 1: the audit status is not
+        # declared at all, so the structural reason is reported explicitly
+        # instead of relying on other validators (issue #378).
+        return {}, [
+            "missing 'Route and audit status' block — exactly one is "
+            "required (issue #378)"
+        ]
     if len(block_starts) > 1:
         return {}, [
             f"multiple 'Route and audit status' blocks found "
