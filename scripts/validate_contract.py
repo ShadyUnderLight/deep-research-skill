@@ -971,7 +971,7 @@ def _strip_html_blocks(text: str) -> str:
     """
     lines = text.split("\n")
     out: list[str] = []
-    in_block: str | None = None  # tag name or "cdata"/"pi"/"decl"
+    in_block: str | None = None  # tag name or "cdata"/"pi"/"decl"/"raw7"
     depth = 0
     quote: str | None = None
     for line in lines:
@@ -988,6 +988,12 @@ def _strip_html_blocks(text: str) -> str:
             if in_block == "decl":
                 if ">" in stripped:
                     in_block = None
+                continue
+            if in_block == "raw7":
+                # CommonMark type-7 blocks end at the first blank line.
+                if not stripped:
+                    in_block = None
+                    out.append(line)
                 continue
             opens, closes, quote = _count_tag_tokens(stripped, in_block, quote)
             depth += opens - closes
@@ -1020,16 +1026,16 @@ def _strip_html_blocks(text: str) -> str:
             continue
         m7 = _HTML_ANY_TAG_OPEN_RE.match(line)
         if m7:
-            tag = m7.group(1).lower()
-            opens, closes, quote = _count_tag_tokens(stripped, tag, None)
-            if opens <= closes:
-                continue  # single-line type-7 block
-            in_block = tag
-            depth = opens - closes
+            # CommonMark type-7 (non-allowlist open tag): raw HTML block
+            # until a blank line.
+            in_block = "raw7"
             continue
         m7c = re.match(r"^\s*</([a-zA-Z][a-zA-Z0-9-]*)\s*>", stripped)
         if m7c:
-            continue  # standalone closing tag line is raw HTML
+            # Standalone closing tag also starts a type-7 block that lasts
+            # until a blank line (issue #378).
+            in_block = "raw7"
+            continue
         out.append(line)
     return "\n".join(out)
 

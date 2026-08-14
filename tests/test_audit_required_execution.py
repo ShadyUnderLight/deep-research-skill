@@ -1264,6 +1264,38 @@ class TestDuplicateDeclarations:
         )
         assert result.returncode == 2, result.stdout
 
+    def test_standalone_closing_tag_suppresses_following_block(self) -> None:
+        """A standalone closing tag at line start starts a CommonMark type-7
+        raw HTML block that lasts until a blank line: a forged route block
+        right after it must not be parsed as Markdown."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block="</span>\n" + route_block + "\n", contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_standalone_closing_tag_suppresses_following_contract(self) -> None:
+        """Same suppression applies to a forged ```contract block."""
+        path = _write(
+            _report(contract=None) + "\n</span>\n```contract\n" + _contract() + "\n```\n"
+        )
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result
