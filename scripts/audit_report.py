@@ -70,6 +70,7 @@ from validate_contract import (
 from validate_contract import (
     _extract_pack_artifact_id as vc_extract_pack_artifact_id,
     _resolve_pack_primary_route as vc_resolve_pack_primary_route,
+    _strip_fences as vc_strip_fences,
     count_report_route_blocks as vc_count_report_route_blocks,
     extract_report_route_declaration as vc_extract_report_route_declaration,
     validate_pack_sections as vc_validate_pack_sections,
@@ -904,7 +905,10 @@ def _parse_audit_block_statuses(path: Path) -> tuple[dict[str, dict[str, str]], 
         text = path.read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError):
         return {}, []
-    cleaned = strip_fenced_code_blocks(text)
+    # Shared declaration sanitizer: strips fences (state machine) and HTML
+    # comments so forged blocks inside ```fences or <!-- --> never count
+    # as real declarations (issue #378).
+    cleaned = vc_strip_fences(text)
     lines = cleaned.split("\n")
 
     block_heading_re = re.compile(

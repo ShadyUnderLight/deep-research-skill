@@ -132,8 +132,9 @@ def _top_level_fenced_content(text: str, language_keyword: str) -> list[str]:
 def has_contract_block(text: str) -> bool:
     """Check whether a top-level ```contract fenced block exists in the
     text, regardless of whether its content is valid JSON.  Nested
-    examples inside other fences do not count (issue #378)."""
-    return bool(_top_level_fenced_content(text, "contract"))
+    examples inside other fences and declarations inside HTML comments do
+    not count (issue #378)."""
+    return bool(_top_level_fenced_content(_strip_html_comments(text), "contract"))
 
 
 def extract_contract_blocks(text: str) -> tuple[list[dict], list[str]]:
@@ -145,9 +146,10 @@ def extract_contract_blocks(text: str) -> tuple[list[dict], list[str]]:
     treat ``errors`` as blocking instead of accepting the first block.
     A single malformed-JSON block is also reported as an error.  Fences
     nested inside other fences (```contract examples inside `````markdown)
-    are ignored: only top-level contract fences count.
+    and declarations inside HTML comments are ignored: only top-level
+    contract fences count.
     """
-    matches = _top_level_fenced_content(text, "contract")
+    matches = _top_level_fenced_content(_strip_html_comments(text), "contract")
     if not matches:
         return [], []
     if len(matches) > 1:
@@ -878,16 +880,32 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
         return None
 
 
+_HTML_COMMENT_RE = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
+
+
+def _strip_html_comments(text: str) -> str:
+    """Remove HTML comments (<!-- ... -->).
+
+    Comment content is non-rendered: a forged '## Route and audit status'
+    or '## Primary route' inside a comment must never count as a real
+    declaration (issue #378).  An unterminated comment is stripped through
+    the end of the file, matching CommonMark's non-rendered HTML block.
+    """
+    return _HTML_COMMENT_RE.sub("", text)
+
+
 def _strip_fences(text: str) -> str:
-    """Remove fenced code blocks so declarations inside fences (e.g. a fake
-    '## Route and audit status' block inside ```markdown, or a pack route
-    inside ~~~markdown) never count as real declarations (issue #378).
+    """Remove fenced code blocks and HTML comments so declarations inside
+    them (e.g. a fake '## Route and audit status' block inside ```markdown,
+    a pack route inside ~~~markdown, or a forged declaration inside
+    <!-- -->) never count as real declarations (issue #378).
 
     Uses the same fence state machine as contract extraction: opening and
     closing fences are matched by character and length, so an inner
     three-backtick fence inside a four-backtick fence (even when left
     unclosed) cannot be mistaken for the outer fence's closing line.
     """
+    text = _strip_html_comments(text)
     lines = text.split("\n")
     out: list[str] = []
     i = 0
