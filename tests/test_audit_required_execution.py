@@ -1164,6 +1164,58 @@ class TestDuplicateDeclarations:
         )
         assert r.returncode != 0, f"standalone pack validator must fail:\n{r.stdout}"
 
+    def test_contract_inside_html_block_is_not_real(self) -> None:
+        """A ```contract block inside <div> is raw HTML content, not a real
+        contract: --require-contract must fail."""
+        div_contract = "<div>\n```contract\n" + _contract() + "\n```\n</div>\n"
+        path = _write(_report(contract=None) + "\n" + div_contract)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_same_line_double_open_html_block_hides_route(self) -> None:
+        """'<div><div>' on one line opens twice: the inner </div> must not
+        close the block and expose a forged route declaration."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        nested = "<div><div>\ninner\n</div>\n" + route_block + "\n</div>\n"
+        path = _write(_report(route_block=nested, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_quoted_close_tag_in_attribute_does_not_close_block(self) -> None:
+        """'<div data-marker="</div>">' is still an open block: the </div>
+        text inside the quoted attribute must not end it."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        quoted = '<div data-marker="</div>">\n' + route_block + "\n</div>\n"
+        path = _write(_report(route_block=quoted, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

@@ -132,9 +132,9 @@ def _top_level_fenced_content(text: str, language_keyword: str) -> list[str]:
 def has_contract_block(text: str) -> bool:
     """Check whether a top-level ```contract fenced block exists in the
     text, regardless of whether its content is valid JSON.  Nested
-    examples inside other fences and declarations inside HTML comments do
-    not count (issue #378)."""
-    return bool(_top_level_fenced_content(_strip_html_comments(text), "contract"))
+    examples inside other fences, declarations inside HTML comments and
+    raw HTML blocks (div/pre/script/style/...) do not count (issue #378)."""
+    return bool(_top_level_fenced_content(_strip_non_fence_containers(text), "contract"))
 
 
 def extract_contract_blocks(text: str) -> tuple[list[dict], list[str]]:
@@ -146,10 +146,10 @@ def extract_contract_blocks(text: str) -> tuple[list[dict], list[str]]:
     treat ``errors`` as blocking instead of accepting the first block.
     A single malformed-JSON block is also reported as an error.  Fences
     nested inside other fences (```contract examples inside `````markdown)
-    and declarations inside HTML comments are ignored: only top-level
-    contract fences count.
+    and declarations inside HTML comments / raw HTML blocks are ignored:
+    only top-level contract fences count.
     """
-    matches = _top_level_fenced_content(_strip_html_comments(text), "contract")
+    matches = _top_level_fenced_content(_strip_non_fence_containers(text), "contract")
     if not matches:
         return [], []
     if len(matches) > 1:
@@ -904,16 +904,23 @@ _HTML_BLOCK_OPEN_RE = re.compile(
 )
 
 
+def _without_quoted(line: str) -> str:
+    """Remove double/single-quoted substrings so tag matching is
+    quote-aware: ``<div data-marker="</div>">`` must not count the
+    quoted ``</div>`` as a real closing tag (issue #378)."""
+    return re.sub(r'"[^"]*"|\'[^\']*\'', "", line)
+
+
 def _strip_html_blocks(text: str) -> str:
     """Remove block-level raw HTML blocks (div/pre/script/style/...).
 
     CommonMark renders the content of these blocks as raw HTML, not as
     Markdown — headings and tables inside them are not visible document
-    structure.  The state machine tracks same-tag nesting depth (an inner
-    ``</div>`` must not close an outer ``<div>``) and drops the block
-    through its matching closing tag; an unclosed block is dropped through
-    the end of the file.  Inline mentions (``<div>`` mid-sentence) are
-    left alone because the opening tag must start a line.
+    structure.  The state machine tracks same-tag nesting depth: opening
+    lines count every opener token (``<div><div>`` opens twice), closing
+    detection is quote-aware, and an unclosed block is dropped through the
+    end of the file.  Inline mentions (``<div>`` mid-sentence) are left
+    alone because the opening tag must start a line.
     """
     lines = text.split("\n")
     out: list[str] = []
@@ -922,21 +929,37 @@ def _strip_html_blocks(text: str) -> str:
     for line in lines:
         stripped = line.strip()
         if in_block is not None:
-            depth += len(re.findall(rf"<{in_block}\b", stripped, re.IGNORECASE))
-            depth -= len(re.findall(rf"</{in_block}\s*>", stripped, re.IGNORECASE))
+            clean = _without_quoted(stripped)
+            depth += len(re.findall(rf"<{in_block}\b", clean, re.IGNORECASE))
+            depth -= len(re.findall(rf"</{in_block}\s*>", clean, re.IGNORECASE))
             if depth <= 0:
                 in_block = None
             continue
         m = _HTML_BLOCK_OPEN_RE.match(line)
         if m:
             tag = m.group(1).lower()
-            if re.search(rf"</{tag}\s*>", stripped, re.IGNORECASE):
+            clean = _without_quoted(stripped)
+            opens = len(re.findall(rf"<{tag}\b", clean, re.IGNORECASE))
+            closes = len(re.findall(rf"</{tag}\s*>", clean, re.IGNORECASE))
+            if opens <= closes:
                 continue  # self-contained single-line block
             in_block = tag
-            depth = 1
+            depth = opens - closes
             continue
         out.append(line)
     return "\n".join(out)
+
+
+def _strip_non_fence_containers(text: str) -> str:
+    """Strip HTML comments and raw HTML blocks but keep fenced code.
+
+    Used before contract extraction: the ```contract fence itself must
+    survive for parsing, while a contract example inside <div> must not
+    count as a real declaration (issue #378).
+    """
+    text = _strip_html_comments(text)
+    text = _strip_html_blocks(text)
+    return text
 
 
 def _strip_html_comments(text: str) -> str:

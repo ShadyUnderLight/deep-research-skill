@@ -65,44 +65,6 @@ def strip_fenced_code_blocks(text: str) -> str:
     from validate_contract import sanitize_visible_markdown
     return sanitize_visible_markdown(text)
 
-    for line in lines:
-        stripped = line.rstrip()
-        if in_comment:
-            if "-->" in stripped:
-                in_comment = False
-            continue
-        if "<!--" in stripped:
-            in_comment = True
-            # 同行的内容在 <!-- 之前仍然可见
-            head = stripped.split("<!--", 1)[0]
-            if head.strip():
-                out.append(head)
-            if "-->" in stripped.split("<!--", 1)[1]:
-                in_comment = False
-            continue
-        if not in_fence:
-            m = INLINE_FENCE_RE.match(stripped)
-            if m:
-                fence_char = m.group(1)[0]
-                fence_len = len(m.group(1))
-                in_fence = True
-                continue
-            out.append(line)
-        else:
-            closing_re = re.compile(
-                r"^[ ]{0,3}"
-                + re.escape(fence_char)
-                + "{"
-                + str(fence_len)
-                + r",}\s*$"
-            )
-            if closing_re.match(stripped):
-                in_fence = False
-                continue
-
-    return "\n".join(out)
-
-
 def _heading_matches(found: set[str], heading: str) -> bool:
     """Check if a heading exists in found set, accepting optional
     suffixes like ' (if applicable)'."""
