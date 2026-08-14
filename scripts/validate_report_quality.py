@@ -1435,7 +1435,8 @@ def validate_file(path: Path, strict: bool = False) -> int:
     except (OSError, UnicodeError) as exc:
         print(f"{path}: cannot read file — {exc}")
         return EXIT_STRUCTURE
-    cleaned = strip_fenced_code_blocks(text)
+    from validate_contract import sanitize_visible_markdown
+    cleaned = sanitize_visible_markdown(text)
 
     errors: list[str] = []
     warnings: list[str] = []

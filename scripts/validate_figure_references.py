@@ -80,67 +80,17 @@ class FigureDef:
 
 
 def strip_fenced_code_blocks(text: str) -> str:
-    """Replace content inside non-mermaid fenced code blocks with empty lines.
+    """Blank non-rendered content, keeping mermaid fences.
 
-    Preserves line count so error line numbers map to original file.
-    Mermaid fences are kept visible (they are figure entities, not code).
-    Supports both backtick (```) and tilde (~~~) fences.  HTML comments
-    and raw HTML blocks are stripped first via the shared sanitizer
-    (issue #378) — line numbers shift only when the report contains such
-    non-rendered content.
+    Uses the shared single-pass sanitizer (fence-aware HTML handling):
+    inside a fence, HTML-looking lines are code and never start an HTML
+    block; mermaid fences stay visible (figure entities); line numbers
+    are preserved via blank lines (issue #378).
     """
-    from validate_contract import _strip_html_comments, _strip_html_blocks
-    text = _strip_html_comments(text)
-    text = _strip_html_blocks(text)
-
-    lines = text.splitlines()
-    result = list(lines)  # copy
-    in_fence = False
-    in_mermaid = False
-    fence_char = ""
-    fence_len = 0
-
-    for i, line in enumerate(lines):
-        stripped = line.rstrip()
-
-        if in_mermaid:
-            # Inside a mermaid block: look for any closing fence
-            closing = re.compile(r'^[ ]{0,3}(`{3,}|~{3,})\s*$')
-            if closing.match(stripped):
-                in_mermaid = False
-            # Mermaid content is preserved (not blanked)
-            continue
-
-        if not in_fence:
-            m = FENCE_OPEN.match(stripped)
-            if m:
-                fence_char = m.group(1)[0]
-                fence_len = len(m.group(1))
-                # Check if this is a mermaid fence
-                rest = stripped[fence_len:].strip()
-                if rest.lower().startswith('mermaid'):
-                    # Mermaid fence — keep visible, track body
-                    in_mermaid = True
-                    continue
-                # Non-mermaid code fence — blank it
-                in_fence = True
-                result[i] = ""
-                continue
-        else:
-            # Inside a non-mermaid code fence — look for matching close
-            closing = re.compile(
-                r'^[ ]{0,3}'
-                + re.escape(fence_char)
-                + '{' + str(fence_len) + r',}\s*$'
-            )
-            if closing.match(stripped):
-                in_fence = False
-                result[i] = ""
-                continue
-            result[i] = ""
-
-    return "\n".join(result)
-
+    from validate_contract import _sanitize_visible_lines
+    return "\n".join(
+        _sanitize_visible_lines(text.splitlines(), keep_mermaid=True, blank=True)
+    )
 def collect_figure_refs(cleaned: str) -> list[FigureRef]:
     """Extract all figure references from body text (outside code fences)."""
     refs: list[FigureRef] = []

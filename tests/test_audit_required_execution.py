@@ -1447,6 +1447,75 @@ class TestDuplicateDeclarations:
         assert result.returncode == 2, result.stdout
         assert "research-anchor" in result.stdout.lower() or "锚定" in result.stdout
 
+    def test_fence_containing_div_line_keeps_following_text(self) -> None:
+        """A '<div>' line inside a fenced code block is code content, not a
+        raw HTML block: the closing fence and the visible text after it
+        must survive sanitization (CommonMark fenced-code rules)."""
+        fence_div = (
+            "## Code sample\n\n```python\n"
+            "<div>\nprint('x')\n```\n\n"
+            "## Outlook\n\n[Confirmed] Shipments will reach 100 units by 2027.\n"
+        )
+        report = _report(contract=_contract()) + "\n" + fence_div
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        # The [Confirmed] forecast is visible: forward-looking must block.
+        assert result.returncode == 2, result.stdout
+        assert "forward-looking" in result.stdout.lower()
+
+    def test_figure_fence_containing_div_keeps_following_text(self) -> None:
+        """The figure validator must not let a '<div>' line inside a code
+        fence swallow the closing fence and following visible definitions."""
+        fig = (
+            "# Report\n\n见图1 for details.\n\n```python\n"
+            "<div>\nx = 1\n```\n\n"
+            "图1: Architecture\n"
+        )
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        # 图1 definition is visible (fence content is code, not HTML) →
+        # the reference is satisfied → pass (0).  A sanitizer bug would
+        # swallow the definition and report an unresolved reference (2).
+        assert r.returncode == 0, r.stdout
+
+    def test_report_quality_cli_div_route_block_fails(self) -> None:
+        """The standalone validate_report_quality CLI must use the shared
+        sanitizer: a Route block inside <div> is not visible structure."""
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        from test_audit_report import _valid_report
+
+        valid = _valid_report()
+        valid = valid.replace(
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |",
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | market grows |",
+        )
+        valid = valid.replace(
+            "| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |",
+            "| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | cost falls |",
+        )
+        start = valid.find("## Route and audit status")
+        end = valid.find("## 执行摘要")
+        route_block = valid[start:end]
+        rest = valid[:start] + valid[end:]
+        div_route = "<div>\n" + route_block + "</div>\n"
+        path = _write("# Test Report\n\n" + div_route + rest[len("# Test Report\n\n"):])
+
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_report_quality.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 2, f"standalone CLI must fail:\n{r.stdout}"
+        assert "route" in r.stdout.lower()
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

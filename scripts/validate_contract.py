@@ -923,157 +923,175 @@ _HTML_ANY_TAG_OPEN_RE = re.compile(
 )
 
 
-def _strip_html_blocks(text: str) -> str:
-    """Remove non-Markdown raw HTML containers.
+def _sanitize_visible_lines(
+    lines: list[str],
+    *,
+    keep_mermaid: bool = False,
+    blank: bool = False,
+    keep_fences: bool = False,
+) -> list[str]:
+    """Single-pass rendered-content sanitizer state machine.
 
-    Covers CommonMark HTML-block types 1/3/4/5/6/7: script/pre/style/
-    textarea, processing instructions (``<?...?>``), declarations
-    (``<!DOCTYPE ...>``), CDATA (``<![CDATA[...]]>``), the block-tag
-    allowlist (including ``search``; an incomplete opener like ``<search``
-    is treated conservatively), and any complete open tag or standalone
-    closing tag at line start (``<span>``, ``</span>``, ``<custom-element>``).
+    Fences, HTML comments and raw HTML blocks (CommonMark types
+    1/3/4/5/6/7) are recognized in ONE pass: inside a fence, HTML-looking
+    lines are code content and never start an HTML block (fenced-code
+    rules, issue #378).
 
-    Termination follows the spec: types 3/4/5 end at ``?>``/``>``/``]]>``,
-    types 6/7 end at the first blank line (a matching closing tag does NOT
-    end a type-6 block — ``<div>\n</div>\n## heading`` keeps the heading
-    inside raw HTML until a blank line, issue #378).
+    Modes:
+    - blank=False (default): non-visible content is dropped.
+    - blank=True: non-visible content becomes empty lines (line numbers
+      preserved; used by validators that report original line numbers).
+    - keep_mermaid=True: mermaid fences and their content are kept
+      (figure entities, used by the figure-reference validator).
+    - keep_fences=True: all fenced content is kept (used before contract
+      extraction so the ```contract fence itself survives).
     """
-    lines = text.split("\n")
     out: list[str] = []
-    in_block: str | None = None  # "cdata"/"pi"/"decl"/"raw"/"t1:<tag>"
+    state: str | None = None  # fence/comment/t1:<tag>/raw/cdata/pi/decl
+    fence_char = ""
+    fence_len = 0
+    t1_tag = ""
+    mermaid = False
+
+    def emit(line: str, visible: bool) -> None:
+        if visible or not blank:
+            out.append(line if visible else "")
+        elif blank:
+            out.append("")
+
     for line in lines:
         stripped = line.strip()
-        if in_block is not None:
-            if in_block == "cdata":
-                if "]]>" in stripped:
-                    in_block = None
-                continue
-            if in_block == "pi":
-                if "?>" in stripped:
-                    in_block = None
-                continue
-            if in_block == "decl":
-                if ">" in stripped:
-                    in_block = None
-                continue
-            if in_block.startswith("t1:"):
-                # Type 1 (script/pre/style/textarea): ends at the matching
-                # closing tag line; blank lines do not terminate it.
-                tag = in_block[3:]
-                if re.match(rf"^\s*</{tag}\s*>", stripped, re.IGNORECASE):
-                    in_block = None
-                continue
-            # "raw" (types 6/7): ends at the first blank line.
-            if not stripped:
-                in_block = None
+        if state == "fence":
+            if re.match(
+                rf"^\s*{re.escape(fence_char)}{{{fence_len},}}\s*$", stripped
+            ):
+                state = None
+            if keep_fences or (keep_mermaid and mermaid):
                 out.append(line)
+            elif blank:
+                out.append("")
+            continue
+        if state == "comment":
+            if "-->" in stripped:
+                state = None
+            if blank:
+                out.append("")
+            continue
+        if state is not None and state.startswith("t1:"):
+            tag = state[3:]
+            if re.match(rf"^\s*</{tag}\s*>", stripped, re.IGNORECASE):
+                state = None
+            if blank:
+                out.append("")
+            continue
+        if state in ("cdata", "pi", "decl", "raw"):
+            if state == "cdata" and "]]>" in stripped:
+                state = None
+            elif state == "pi" and "?>" in stripped:
+                state = None
+            elif state == "decl" and ">" in stripped:
+                state = None
+            elif state == "raw" and not stripped:
+                state = None
+                if blank:
+                    out.append(line)
+                continue
+            if blank:
+                out.append("")
+            continue
+        # ── top level ────────────────────────────────────────────────
+        fm = _FENCE_OPEN_RE.match(line)
+        if fm:
+            fence_char = fm.group(1)[0]
+            fence_len = len(fm.group(1))
+            lang = fm.group(2).lower()
+            mermaid = keep_mermaid and lang.startswith("mermaid")
+            state = "fence"
+            if keep_fences or (keep_mermaid and mermaid):
+                out.append(line)
+            elif blank:
+                out.append("")
+            continue
+        if stripped.startswith("<!--"):
+            if "-->" in stripped:
+                continue
+            state = "comment"
+            if blank:
+                out.append("")
             continue
         if stripped.startswith("<![CDATA["):
             if "]]>" in stripped:
                 continue
-            in_block = "cdata"
+            state = "cdata"
+            if blank:
+                out.append("")
             continue
         if stripped.startswith("<?"):
             if "?>" in stripped:
                 continue
-            in_block = "pi"
+            state = "pi"
+            if blank:
+                out.append("")
             continue
         if stripped.startswith("<!") and not stripped.startswith("<!--"):
             if ">" in stripped:
                 continue
-            in_block = "decl"
+            state = "decl"
+            if blank:
+                out.append("")
             continue
         m1 = _HTML_TYPE1_OPEN_RE.match(line)
         if m1:
-            in_block = "t1:" + m1.group(1).lower()
+            state = "t1:" + m1.group(1).lower()
+            if blank:
+                out.append("")
             continue
         if _HTML_BLOCK_OPEN_ANY_RE.match(line):
-            # Type 6 allowlist (complete or incomplete opener).
-            in_block = "raw"
+            state = "raw"
+            if blank:
+                out.append("")
             continue
         if _HTML_ANY_TAG_OPEN_RE.match(line):
-            # Type 7: complete open tag of any other tag.
-            in_block = "raw"
+            state = "raw"
+            if blank:
+                out.append("")
             continue
         if re.match(r"^\s*</([a-zA-Z][a-zA-Z0-9-]*)\s*>", stripped):
-            # Type 7: standalone closing tag starts a raw block until a
-            # blank line.
-            in_block = "raw"
+            state = "raw"
+            if blank:
+                out.append("")
             continue
         out.append(line)
-    return "\n".join(out)
+    return out
+
+
+def sanitize_visible_markdown(text: str) -> str:
+    """Reduce *text* to rendered Markdown content.
+
+    Single-pass sanitizer: HTML comments, raw HTML blocks and fenced code
+    blocks are removed; inside a fence, HTML-looking lines are code and
+    never start an HTML block.  Whatever remains is what a CommonMark
+    renderer would parse as Markdown structure (issue #378).  Shared by
+    the contract/report/pack declaration parsers and validators.
+    """
+    return "\n".join(_sanitize_visible_lines(text.split("\n")))
 
 
 def _strip_non_fence_containers(text: str) -> str:
     """Strip HTML comments and raw HTML blocks but keep fenced code.
 
     Used before contract extraction: the ```contract fence itself must
-    survive for parsing, while a contract example inside <div> must not
-    count as a real declaration (issue #378).
+    survive for parsing, while declarations inside <div> or <!-- --> must
+    not count (issue #378).
     """
-    text = _strip_html_comments(text)
-    text = _strip_html_blocks(text)
-    return text
-
-
-def _strip_html_comments(text: str) -> str:
-    """Remove HTML comments (<!-- ... -->).
-
-    Comment content is non-rendered: a forged '## Route and audit status'
-    or '## Primary route' inside a comment must never count as a real
-    declaration (issue #378).  An unterminated comment is stripped through
-    the end of the file, matching CommonMark's non-rendered HTML block.
-    """
-    return _HTML_COMMENT_RE.sub("", text)
-
-
-def sanitize_visible_markdown(text: str) -> str:
-    """Reduce *text* to rendered Markdown content.
-
-    Removes, in order: HTML comments, block-level raw HTML blocks
-    (div/pre/script/style/... with same-tag nesting), and fenced code
-    blocks.  Whatever remains is what a CommonMark renderer would parse as
-    Markdown structure, so declarations hidden inside any non-rendered
-    container never count (issue #378).  Shared by the contract/report/
-    pack declaration parsers.
-    """
-    text = _strip_html_comments(text)
-    text = _strip_html_blocks(text)
-    return _strip_fenced_blocks(text)
-
-
-def _strip_fenced_blocks(text: str) -> str:
-    """Remove fenced code blocks (state machine, character/length aware)."""
-    lines = text.split("\n")
-    out: list[str] = []
-    i = 0
-    while i < len(lines):
-        open_m = _FENCE_OPEN_RE.match(lines[i])
-        if not open_m:
-            out.append(lines[i])
-            i += 1
-            continue
-        fence_char = open_m.group(1)[0]
-        fence_len = len(open_m.group(1))
-        j = i + 1
-        while j < len(lines):
-            close_m = re.match(
-                rf"^\s*({re.escape(fence_char)}{{{fence_len},}})\s*$", lines[j]
-            )
-            if close_m:
-                break
-            j += 1
-        # Drop the whole fence (opening line through closing line); an
-        # unclosed fence drops everything to the end of the file.
-        i = j + 1 if j < len(lines) else len(lines)
-    return "\n".join(out)
+    return "\n".join(
+        _sanitize_visible_lines(text.split("\n"), keep_fences=True)
+    )
 
 
 def _strip_fences(text: str) -> str:
     """Legacy alias for :func:`sanitize_visible_markdown`."""
     return sanitize_visible_markdown(text)
-
-
 def count_report_route_blocks(text: str) -> int:
     """Number of visible (non-fenced) '## Route and audit status' blocks."""
     cleaned = _strip_fences(text)
