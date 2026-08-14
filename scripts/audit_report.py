@@ -854,32 +854,41 @@ def _sha256(path: Path) -> str | None:
         return None
 
 
-def _parse_audit_block_statuses(path: Path) -> dict[str, dict[str, str]]:
-    """Parse the report's Route and audit status table.
+def _parse_audit_block_statuses(path: Path) -> tuple[dict[str, dict[str, str]], list[str]]:
+    """Parse the report's Route and audit status tables.
 
-    Returns {audit_id: {"status": ..., "evidence": ...}} where audit_id is
-    the first table column and status is derived from the Status column
-    (passed/已通过 → pass, skipped/已跳过 → skipped, otherwise not_run).
-    Used to record explicit status for manual/process audits that cannot be
-    executed by a validator.
+    Returns ``(statuses, malformed)`` where statuses maps {audit_id:
+    {"status": ..., "evidence": ...}} and malformed lists structural
+    errors.  audit_id is the first table column and status is derived from
+    the Status column.  Used to record explicit status for manual/process
+    audits that cannot be executed by a validator.
+
+    Fail-closed rules (issue #378): more than one Route and audit status
+    block is malformed — a second block could hide a '❌ Not run' after a
+    '✅ Passed' first block, so callers must treat it as blocking instead
+    of parsing only the first occurrence.
     """
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError):
-        return {}
+        return {}, []
     cleaned = strip_fenced_code_blocks(text)
     lines = cleaned.split("\n")
-    block_start = -1
-    for i, line in enumerate(lines):
-        if re.match(
-            r"^#{2,3}\s+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)",
-            line,
-            re.IGNORECASE,
-        ):
-            block_start = i
-            break
-    if block_start < 0:
-        return {}
+
+    block_heading_re = re.compile(
+        r"^#{2,3}\s+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)",
+        re.IGNORECASE,
+    )
+    block_starts = [i for i, line in enumerate(lines) if block_heading_re.match(line)]
+    if not block_starts:
+        return {}, []
+    if len(block_starts) > 1:
+        return {}, [
+            f"multiple 'Route and audit status' blocks found "
+            f"({len(block_starts)}) — exactly one is required; a second "
+            "block could hide a not_run declaration (issue #378)"
+        ]
+    block_start = block_starts[0]
 
     table_lines: list[str] = []
     for line in lines[block_start + 1:]:
@@ -888,7 +897,7 @@ def _parse_audit_block_statuses(path: Path) -> dict[str, dict[str, str]]:
         if line.strip().startswith("|") and "---" not in line:
             table_lines.append(line.strip())
     if len(table_lines) < 2:
-        return {}
+        return {}, []
 
     statuses: dict[str, dict[str, str]] = {}
     for row in table_lines[1:]:  # skip header row
@@ -912,7 +921,7 @@ def _parse_audit_block_statuses(path: Path) -> dict[str, dict[str, str]]:
             "status": _parse_status_cell(status_cell),
             "evidence": evidence,
         }
-    return statuses
+    return statuses, []
 
 
 def _parse_status_cell(status_cell: str) -> str:
@@ -973,10 +982,15 @@ def _execute_required_audits(
       strict mode, ``not_run`` + blocking under ``--strict``.
     """
     audit_ids = _ROUTE_REGISTRY.required_audits_for(route_id) + list(GLOBAL_AUDITS)
-    block_statuses = _parse_audit_block_statuses(path)
+    block_statuses, block_malformed = _parse_audit_block_statuses(path)
     results: list[AuditResult] = []
     blocking: list[str] = []
     warnings: list[str] = []
+
+    # Multiple Route and audit status blocks are structural malformation
+    # (a second block could hide a not_run declaration): blocking in every
+    # mode, not only strict (issue #378).
+    blocking.extend(f"[audit-block] {e}" for e in block_malformed)
 
     for audit_id in audit_ids:
         audit = _AUDIT_REGISTRY.get_audit(audit_id)

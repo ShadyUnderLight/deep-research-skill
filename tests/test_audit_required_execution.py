@@ -362,6 +362,49 @@ class TestManualAuditStatus:
         assert mo["status"] == "not_run", mo
         assert data["exit_code"] == 2, data["blocking"]
 
+    def _report_with_two_route_blocks(self, first: str, second: str) -> Path:
+        block1 = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            f"| market-outlook-audit | {first} | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        block2 = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            f"| market-outlook-audit | {second} | §3 |\n"
+        )
+        return _write(_report(route_block=block1, contract=_contract()) + "\n" + block2)
+
+    def test_multiple_route_blocks_fail_closed(self) -> None:
+        """A second Route and audit status block hiding '❌ Not run' after a
+        '✅ Passed' first block must not be silently ignored (issue #378)."""
+        path = self._report_with_two_route_blocks("✅ Passed", "❌ Not run")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        assert data["exit_code"] == 2, data["blocking"]
+        assert any("multiple" in b.lower() for b in data["blocking"]), data["blocking"]
+
+    def test_multiple_route_blocks_reversed_fail_closed(self) -> None:
+        """Opposite order must fail the same way."""
+        path = self._report_with_two_route_blocks("❌ Not run", "✅ Passed")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        assert data["exit_code"] == 2, data["blocking"]
+        assert any("multiple" in b.lower() for b in data["blocking"]), data["blocking"]
+
+    def test_multiple_route_blocks_fail_closed_even_non_strict(self) -> None:
+        """Multiple route blocks are structural malformation: blocking in
+        every mode, not only strict."""
+        path = self._report_with_two_route_blocks("✅ Passed", "❌ Not run")
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        assert data["exit_code"] == 2, data["blocking"]
+        assert any("multiple" in b.lower() for b in data["blocking"]), data["blocking"]
+
     @pytest.mark.parametrize("cell", [
         "✅ Passed",
         "✅ passed",
