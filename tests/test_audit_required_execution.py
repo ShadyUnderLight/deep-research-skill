@@ -920,6 +920,40 @@ class TestDuplicateDeclarations:
         ])
         assert code == 2, f"standalone CLI must fail closed, got {code}"
 
+    def test_unclosed_inner_fence_does_not_leak_pack_route(self) -> None:
+        """A four-backtick fence containing an unclosed three-backtick fence
+        must still hide its '## Primary route' (fence-length-aware parsing):
+        both CLIs fail closed instead of leaking the section."""
+        nested = (
+            "````markdown\n"
+            "```python\n"
+            "# inner fence never closed\n"
+            "## Primary route\n\n"
+            "Market Outlook\n"
+            "````\n"
+        )
+        pack = _write(PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n", nested
+        ))
+        report = _write(_report(contract=_contract()))
+
+        # audit_report path
+        result = _run_audit(
+            report, extra_args=["--strict", "--require-contract"], research_pack=pack
+        )
+        assert result.returncode == 2, result.stdout
+        assert "primary route" in result.stdout.lower()
+
+        # standalone CLI path must behave identically
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        from validate_contract import main as vc_main
+        code = vc_main([
+            str(report), "--require-contract", "--strict",
+            "--research-pack", str(pack),
+        ])
+        assert code == 2, f"standalone CLI must fail closed, got {code}"
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

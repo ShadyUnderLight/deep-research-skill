@@ -883,16 +883,34 @@ def _strip_fences(text: str) -> str:
     '## Route and audit status' block inside ```markdown, or a pack route
     inside ~~~markdown) never count as real declarations (issue #378).
 
-    Handles both backtick and tilde fences; a fence nested inside another
-    fence is removed with its outer fence (outer content is dropped first).
+    Uses the same fence state machine as contract extraction: opening and
+    closing fences are matched by character and length, so an inner
+    three-backtick fence inside a four-backtick fence (even when left
+    unclosed) cannot be mistaken for the outer fence's closing line.
     """
-    text = re.sub(
-        r"^```[^\n]*\n.*?^```", "", text, flags=re.MULTILINE | re.DOTALL
-    )
-    text = re.sub(
-        r"^~~~[^\n]*\n.*?^~~~", "", text, flags=re.MULTILINE | re.DOTALL
-    )
-    return text
+    lines = text.split("\n")
+    out: list[str] = []
+    i = 0
+    while i < len(lines):
+        open_m = _FENCE_OPEN_RE.match(lines[i])
+        if not open_m:
+            out.append(lines[i])
+            i += 1
+            continue
+        fence_char = open_m.group(1)[0]
+        fence_len = len(open_m.group(1))
+        j = i + 1
+        while j < len(lines):
+            close_m = re.match(
+                rf"^\s*({re.escape(fence_char)}{{{fence_len},}})\s*$", lines[j]
+            )
+            if close_m:
+                break
+            j += 1
+        # Drop the whole fence (opening line through closing line); an
+        # unclosed fence drops everything to the end of the file.
+        i = j + 1 if j < len(lines) else len(lines)
+    return "\n".join(out)
 
 
 def count_report_route_blocks(text: str) -> int:
