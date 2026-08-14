@@ -1216,6 +1216,54 @@ class TestDuplicateDeclarations:
         )
         assert result.returncode == 2, result.stdout
 
+    @pytest.mark.parametrize("opener,closer", [
+        ("<span>", "</span>"),
+        ("<custom-element>", "</custom-element>"),
+        ("<![CDATA[", "]]>"),
+        ("<?xml version=\"1.0\"", "?>"),
+        ("<!DOCTYPE html", ">"),
+    ])
+    def test_other_raw_html_forms_hide_route_status(self, opener: str, closer: str) -> None:
+        """CommonMark type-7 open tags, CDATA, processing instructions and
+        declarations are non-Markdown containers: forged route blocks
+        inside them must fail closed."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        html_block = opener + "\n" + route_block + "\n" + closer + "\n"
+        path = _write(_report(route_block=html_block, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_multiline_quoted_attribute_does_not_close_block(self) -> None:
+        """Quote state must span lines: a </div> inside a multiline
+        attribute value must not close the block."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        multiline = '<div data-marker="\n</div>\n">\n' + route_block + "\n</div>\n"
+        path = _write(_report(route_block=multiline, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

@@ -911,41 +911,125 @@ def _without_quoted(line: str) -> str:
     return re.sub(r'"[^"]*"|\'[^\']*\'', "", line)
 
 
-def _strip_html_blocks(text: str) -> str:
-    """Remove block-level raw HTML blocks (div/pre/script/style/...).
+def _count_tag_tokens(line: str, tag: str, quote: str | None) -> tuple[int, int, str | None]:
+    """Count opening/closing tokens of *tag* in *line*, quote-aware.
 
-    CommonMark renders the content of these blocks as raw HTML, not as
-    Markdown — headings and tables inside them are not visible document
-    structure.  The state machine tracks same-tag nesting depth: opening
-    lines count every opener token (``<div><div>`` opens twice), closing
-    detection is quote-aware, and an unclosed block is dropped through the
-    end of the file.  Inline mentions (``<div>`` mid-sentence) are left
-    alone because the opening tag must start a line.
+    Quote state is threaded through (``quote`` in / out) so an attribute
+    value spanning multiple lines keeps its ``</div>``-like content
+    invisible to tag counting (issue #378).  Returns (opens, closes,
+    next_quote_state).
+    """
+    opens = 0
+    closes = 0
+    q = quote
+    i = 0
+    n = len(line)
+    while i < n:
+        ch = line[i]
+        if q is not None:
+            if ch == q:
+                q = None
+            i += 1
+            continue
+        if ch in "\"'":
+            q = ch
+            i += 1
+            continue
+        if ch == "<":
+            rest = line[i:]
+            close_m = re.match(rf"</{tag}\s*>", rest, re.IGNORECASE)
+            if close_m:
+                closes += 1
+                i += close_m.end()
+                continue
+            open_m = re.match(rf"<{tag}\b", rest, re.IGNORECASE)
+            if open_m:
+                opens += 1
+                i += open_m.end()
+                continue
+        i += 1
+    return opens, closes, q
+
+
+# CommonMark type-7: any complete open tag at line start (not in the
+# type-6 allowlist) also starts a raw HTML block.
+_HTML_ANY_TAG_OPEN_RE = re.compile(
+    r"^\s*<([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>", re.IGNORECASE
+)
+
+
+def _strip_html_blocks(text: str) -> str:
+    """Remove non-Markdown raw HTML containers.
+
+    Covers CommonMark HTML-block types 1/3/4/5/6/7: script/pre/style/
+    textarea, processing instructions (``<?...?>``), declarations
+    (``<!DOCTYPE ...>``), CDATA (``<![CDATA[...]]>``), the block-tag
+    allowlist, and any complete open tag at line start (``<span>``,
+    ``<custom-element>``).  Same-tag nesting depth is tracked, opening
+    lines count every opener token, and tag matching is quote-aware with
+    quote state spanning lines (issue #378).
     """
     lines = text.split("\n")
     out: list[str] = []
-    in_block: str | None = None
+    in_block: str | None = None  # tag name or "cdata"/"pi"/"decl"
     depth = 0
+    quote: str | None = None
     for line in lines:
         stripped = line.strip()
         if in_block is not None:
-            clean = _without_quoted(stripped)
-            depth += len(re.findall(rf"<{in_block}\b", clean, re.IGNORECASE))
-            depth -= len(re.findall(rf"</{in_block}\s*>", clean, re.IGNORECASE))
+            if in_block == "cdata":
+                if "]]>" in stripped:
+                    in_block = None
+                continue
+            if in_block == "pi":
+                if "?>" in stripped:
+                    in_block = None
+                continue
+            if in_block == "decl":
+                if ">" in stripped:
+                    in_block = None
+                continue
+            opens, closes, quote = _count_tag_tokens(stripped, in_block, quote)
+            depth += opens - closes
             if depth <= 0:
                 in_block = None
+            continue
+        if stripped.startswith("<![CDATA["):
+            if "]]>" in stripped:
+                continue
+            in_block = "cdata"
+            continue
+        if stripped.startswith("<?"):
+            if "?>" in stripped:
+                continue
+            in_block = "pi"
+            continue
+        if stripped.startswith("<!") and not stripped.startswith("<!--"):
+            if ">" in stripped:
+                continue
+            in_block = "decl"
             continue
         m = _HTML_BLOCK_OPEN_RE.match(line)
         if m:
             tag = m.group(1).lower()
-            clean = _without_quoted(stripped)
-            opens = len(re.findall(rf"<{tag}\b", clean, re.IGNORECASE))
-            closes = len(re.findall(rf"</{tag}\s*>", clean, re.IGNORECASE))
+            opens, closes, quote = _count_tag_tokens(stripped, tag, None)
             if opens <= closes:
                 continue  # self-contained single-line block
             in_block = tag
             depth = opens - closes
             continue
+        m7 = _HTML_ANY_TAG_OPEN_RE.match(line)
+        if m7:
+            tag = m7.group(1).lower()
+            opens, closes, quote = _count_tag_tokens(stripped, tag, None)
+            if opens <= closes:
+                continue  # single-line type-7 block
+            in_block = tag
+            depth = opens - closes
+            continue
+        m7c = re.match(r"^\s*</([a-zA-Z][a-zA-Z0-9-]*)\s*>", stripped)
+        if m7c:
+            continue  # standalone closing tag line is raw HTML
         out.append(line)
     return "\n".join(out)
 
