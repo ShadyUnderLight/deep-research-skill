@@ -1048,6 +1048,54 @@ class TestDuplicateDeclarations:
         assert result.returncode == 2, result.stdout
         assert "objective" in result.stdout.lower()
 
+    @pytest.mark.parametrize("tag", ["div", "pre", "script", "style"])
+    def test_html_block_route_status_hidden_fails(self, tag: str) -> None:
+        """A whole 'Route and audit status' block inside a raw HTML block
+        (div/pre/script/style) is not rendered Markdown: strict audit must
+        fail closed (issue #378, CommonMark HTML-block semantics)."""
+        html_block = (
+            f"<{tag}>\n## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+            f"</{tag}>\n"
+        )
+        path = _write(_report(route_block=html_block, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_html_block_pack_primary_route_fails(self) -> None:
+        """A pack '## Primary route' inside <div> is not a visible
+        declaration: both CLIs fail closed."""
+        div_pack = PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n",
+            "<div>\n## Primary route\n\nMarket Outlook\n</div>\n",
+        )
+        pack = _write(div_pack)
+        report = _write(_report(contract=_contract()))
+
+        result = _run_audit(
+            report, extra_args=["--strict", "--require-contract"], research_pack=pack
+        )
+        assert result.returncode == 2, result.stdout
+        assert "primary route" in result.stdout.lower()
+
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        from validate_contract import main as vc_main
+        code = vc_main([
+            str(report), "--require-contract", "--strict",
+            "--research-pack", str(pack),
+        ])
+        assert code == 2, f"standalone CLI must fail closed, got {code}"
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

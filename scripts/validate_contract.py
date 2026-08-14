@@ -882,6 +882,50 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
 
 _HTML_COMMENT_RE = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
 
+# Block-level HTML tags (CommonMark HTML-block types 1 & 6).  Content inside
+# these blocks is emitted as raw HTML, not rendered Markdown — a forged
+# '## Route and audit status' or '## Primary route' inside <div> must never
+# count as a real declaration (issue #378).
+_HTML_BLOCK_TAGS = (
+    "div", "pre", "script", "style", "table", "section", "article",
+    "aside", "header", "footer", "nav", "main", "figure", "form",
+    "fieldset", "blockquote", "ul", "ol", "li", "p", "address",
+    "details", "summary", "dl", "dt", "dd",
+)
+_HTML_BLOCK_OPEN_RE = re.compile(
+    rf"^\s*<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
+)
+
+
+def _strip_html_blocks(text: str) -> str:
+    """Remove block-level raw HTML blocks (div/pre/script/style/...).
+
+    CommonMark renders the content of these blocks as raw HTML, not as
+    Markdown — headings and tables inside them are not visible document
+    structure.  The state machine drops the opening tag line through the
+    matching closing tag line; an unclosed block is dropped through the
+    end of the file.  Inline mentions (``<div>`` mid-sentence) are left
+    alone because the opening tag must start a line.
+    """
+    lines = text.split("\n")
+    out: list[str] = []
+    in_block: str | None = None
+    for line in lines:
+        stripped = line.strip()
+        if in_block is not None:
+            if re.search(rf"</{in_block}\s*>", stripped, re.IGNORECASE):
+                in_block = None
+            continue
+        m = _HTML_BLOCK_OPEN_RE.match(line)
+        if m:
+            tag = m.group(1).lower()
+            if re.search(rf"</{tag}\s*>", stripped, re.IGNORECASE):
+                continue  # self-contained single-line block
+            in_block = tag
+            continue
+        out.append(line)
+    return "\n".join(out)
+
 
 def _strip_html_comments(text: str) -> str:
     """Remove HTML comments (<!-- ... -->).
@@ -906,6 +950,7 @@ def _strip_fences(text: str) -> str:
     unclosed) cannot be mistaken for the outer fence's closing line.
     """
     text = _strip_html_comments(text)
+    text = _strip_html_blocks(text)
     lines = text.split("\n")
     out: list[str] = []
     i = 0
