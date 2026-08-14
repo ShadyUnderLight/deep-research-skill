@@ -38,7 +38,10 @@ CAPTION_ENGLISH = re.compile(
 )
 
 # Figure ENTITIES (Mermaid fences, images)
-MERMAID_FENCE_OPEN = re.compile(r'^[ ]{0,3}(?:`{3,}|~{3,})mermaid\s*$', re.IGNORECASE)
+# Mermaid fence: first info-string token is 'mermaid' (options like
+# 'mermaid theme=dark' are allowed; 'mermaid-example' is not) — matches
+# the shared sanitizer's tokenization (issue #378).
+MERMAID_FENCE_OPEN = re.compile(r'^[ ]{0,3}(?:`{3,}|~{3,})mermaid(?:\s|$)', re.IGNORECASE)
 FENCE_CLOSE = re.compile(r'^[ ]{0,3}(`{3,}|~{3,})\s*$')
 IMAGE_REF = re.compile(r'!\[.*?\]\(.*?\)')
 

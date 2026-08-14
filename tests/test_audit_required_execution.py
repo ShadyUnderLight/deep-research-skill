@@ -1566,6 +1566,67 @@ class TestDuplicateDeclarations:
         # 见图1 has no real definition → must fail (exit 2).
         assert r.returncode == 2, r.stdout
 
+    def _claim_report(self, prefix: str) -> Path:
+        """Report with a container prefix directly followed by a
+        [Confirmed] claim (no blank line, so the claim stays inside the
+        container state if mis-parsed)."""
+        claim = "[Confirmed] Shipments will reach 100 units by 2027.\n"
+        return _write(_report(contract=_contract()) + "\n" + prefix + claim)
+
+    def _assert_claim_visible(self, path: Path) -> None:
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "forward-looking" in result.stdout.lower()
+
+    def test_backtick_in_info_string_is_not_fence(self) -> None:
+        """CommonMark forbids backticks in a backtick fence's info string:
+        '```markdown`evil' is not a fence, so the following [Confirmed]
+        claim stays visible."""
+        self._assert_claim_visible(
+            self._claim_report("```markdown`evil\n")
+        )
+
+    def test_four_space_indented_div_is_not_html_block(self) -> None:
+        """Four-space indented content is an indented code block, not raw
+        HTML: '    <div>' must not swallow the following claim."""
+        self._assert_claim_visible(
+            self._claim_report("    <div>\n    x\n")
+        )
+
+    def test_type7_inline_span_is_not_html_block(self) -> None:
+        """'<span>inline' is ordinary inline content (type-7 requires the
+        tag to be followed only by whitespace to end of line)."""
+        self._assert_claim_visible(self._claim_report("<span>inline\n"))
+
+    def test_type1_same_line_and_mid_line_closing_tags(self) -> None:
+        """'<script></script>' on one line and 'raw </script>' inside the
+        block both end the type-1 block: following claims stay visible."""
+        self._assert_claim_visible(self._claim_report("<script></script>\n"))
+        self._assert_claim_visible(self._claim_report("<script>\nraw </script>\n"))
+
+    def test_type4_declaration_requires_ascii_letter(self) -> None:
+        """'<![not-a-declaration' is not a type-4 declaration (needs an
+        ASCII letter after '<!'): the following claim stays visible."""
+        self._assert_claim_visible(self._claim_report("<![not-a-declaration\n"))
+
+    def test_figure_mermaid_with_options_counts_as_entity(self) -> None:
+        """'mermaid theme=dark' is a valid mermaid fence (first info-string
+        token): its captions are figure entities (shared tokenization)."""
+        fig = (
+            "# Report\n\n```mermaid theme=dark\n"
+            "图1: Dark\n```\n\n见图1 for details.\n"
+        )
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stdout
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

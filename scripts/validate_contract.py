@@ -101,6 +101,21 @@ def _fence_language(open_m: re.Match[str]) -> str:
     return open_m.group(2).strip().lower().split()[0] if open_m.group(2).strip() else ""
 
 
+def _fence_open_match(line: str) -> re.Match[str] | None:
+    """Match a valid fence opener.
+
+    CommonMark: a backtick fence's info string must not contain backticks
+    (a tilde fence's info string may); at most 3 leading spaces
+    (issue #378).
+    """
+    m = _FENCE_OPEN_RE.match(line)
+    if m is None:
+        return None
+    if m.group(1)[0] == "`" and "`" in m.group(2):
+        return None
+    return m
+
+
 def _fence_close_re(fence_char: str, fence_len: int) -> re.Pattern[str]:
     """Closing fence: same char, >= opener length, at most 3 leading
     spaces (CommonMark fenced-code rules, issue #378)."""
@@ -123,7 +138,7 @@ def _top_level_fenced_content(text: str, language_keyword: str) -> list[str]:
     lines = text.split("\n")
     i = 0
     while i < len(lines):
-        open_m = _FENCE_OPEN_RE.match(lines[i])
+        open_m = _fence_open_match(lines[i])
         if not open_m:
             i += 1
             continue
@@ -919,22 +934,22 @@ _HTML_BLOCK_TAGS = (
 # tag line — blank lines do NOT terminate it (issue #378).
 _HTML_TYPE1_TAGS = ("script", "pre", "style", "textarea")
 _HTML_TYPE1_OPEN_RE = re.compile(
-    rf"^\s*<({'|'.join(_HTML_TYPE1_TAGS)})\b", re.IGNORECASE
+    rf"^[ ]{{0,3}}<({'|'.join(_HTML_TYPE1_TAGS)})\b", re.IGNORECASE
 )
 _HTML_BLOCK_OPEN_RE = re.compile(
-    rf"^\s*<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
+    rf"^[ ]{{0,3}}<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
 )
 # Matches an incomplete allowlist opener too ('<search' without '>'):
 # type-6 start condition is conservative so forged declarations after an
 # unclosed tag opener fail closed (issue #378).
 _HTML_BLOCK_OPEN_ANY_RE = re.compile(
-    rf"^\s*<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
+    rf"^[ ]{{0,3}}<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
 )
 
 # CommonMark type-7: any complete open tag at line start (not in the
 # type-6 allowlist) also starts a raw HTML block.
 _HTML_ANY_TAG_OPEN_RE = re.compile(
-    r"^\s*<([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>", re.IGNORECASE
+    r"^[ ]{0,3}<([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>(?:\s*$)", re.IGNORECASE
 )
 
 
@@ -992,7 +1007,7 @@ def _sanitize_visible_lines(
             continue
         if state is not None and state.startswith("t1:"):
             tag = state[3:]
-            if re.match(rf"^\s*</{tag}\s*>", stripped, re.IGNORECASE):
+            if re.search(rf"</{tag}\s*>", stripped, re.IGNORECASE):
                 state = None
             if blank:
                 out.append("")
@@ -1013,7 +1028,7 @@ def _sanitize_visible_lines(
                 out.append("")
             continue
         # ── top level ────────────────────────────────────────────────
-        fm = _FENCE_OPEN_RE.match(line)
+        fm = _fence_open_match(line)
         if fm:
             fence_char = fm.group(1)[0]
             fence_len = len(fm.group(1))
@@ -1025,28 +1040,31 @@ def _sanitize_visible_lines(
             elif blank:
                 out.append("")
             continue
-        if stripped.startswith("<!--"):
+        # ── HTML containers (≤3 leading spaces; 4-space indented content
+        #    is an indented code block, not raw HTML, issue #378) ──
+        if re.match(r"^[ ]{0,3}<!--", line):
             if "-->" in stripped:
                 continue
             state = "comment"
             if blank:
                 out.append("")
             continue
-        if stripped.startswith("<![CDATA["):
+        if re.match(r"^[ ]{0,3}<!\[CDATA\[", line):
             if "]]>" in stripped:
                 continue
             state = "cdata"
             if blank:
                 out.append("")
             continue
-        if stripped.startswith("<?"):
+        if re.match(r"^[ ]{0,3}<\?", line):
             if "?>" in stripped:
                 continue
             state = "pi"
             if blank:
                 out.append("")
             continue
-        if stripped.startswith("<!") and not stripped.startswith("<!--"):
+        if re.match(r"^[ ]{0,3}<![A-Za-z]", line):
+            # Type 4: '<!' must be followed by an ASCII letter.
             if ">" in stripped:
                 continue
             state = "decl"
@@ -1055,7 +1073,10 @@ def _sanitize_visible_lines(
             continue
         m1 = _HTML_TYPE1_OPEN_RE.match(line)
         if m1:
-            state = "t1:" + m1.group(1).lower()
+            tag = m1.group(1).lower()
+            if re.search(rf"</{tag}\s*>", stripped, re.IGNORECASE):
+                continue  # same-line close ends the type-1 block
+            state = "t1:" + tag
             if blank:
                 out.append("")
             continue
@@ -1069,7 +1090,9 @@ def _sanitize_visible_lines(
             if blank:
                 out.append("")
             continue
-        if re.match(r"^\s*</([a-zA-Z][a-zA-Z0-9-]*)\s*>", stripped):
+        if re.match(r"^[ ]{0,3}</([a-zA-Z][a-zA-Z0-9-]*)\s*>(?:\s*$)", line):
+            # Type 7 closing tag: complete tag followed only by
+            # whitespace to the end of the line.
             state = "raw"
             if blank:
                 out.append("")
