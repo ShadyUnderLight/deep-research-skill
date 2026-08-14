@@ -1393,6 +1393,60 @@ class TestDuplicateDeclarations:
         )
         assert r.returncode != 0, f"standalone markdown-delivery must fail:\n{r.stdout}"
 
+    def test_listed_company_anchor_hidden_in_html_block_fails(self) -> None:
+        """The listed-company research anchor inside a raw HTML block is
+        not rendered content: the report must fail with a missing-anchor
+        error (shared sanitizer, issue #378)."""
+        block = (
+            "## Route and audit status\n\n**Primary route**: Listed Company\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| listed-company-report | ✅ Passed | §3 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        hidden_anchor = (
+            "<div>\n## 研究锚定块\n"
+            "最新完整财年 FY2025\n最新季度 2026Q1\n快照日期 2026-06-01\n</div>\n"
+        )
+        lc_contract = (
+            '{"primary_route": "listed-company", "secondary_routes": [], '
+            '"disciplines": [], '
+            '"audits": [{"id": "listed-company-report", "status": "passed", '
+            '"evidence": "§3"}, {"id": "source-traceability", "status": "passed", '
+            '"evidence": "§5"}, {"id": "final-audit", "status": "passed", '
+            '"evidence": "§2"}], '
+            '"artifact_id": "fixture-lc", "contract_version": "1.0.0", '
+            '"created_at": "2026-08-13"}'
+        )
+        snapshot = (
+            "## Market Snapshot\n\n"
+            "| Field | Value |\n|-------|-------|\n"
+            "| Share price | 100 |\n| Market cap | 1T |\n"
+            "| PE (TTM) | 20 |\n| PB | 3 |\n| PS | 5 |\n"
+        )
+        report = _report(
+            route_block=block, contract=lc_contract, include_monitoring=False
+        )
+        report = report.replace(
+            "\n## Comparison Table",
+            "\n" + hidden_anchor + "\n" + snapshot + "\n## Comparison Table",
+        )
+        path = _write(report)
+
+        lc_pack = PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n",
+            "## Primary route\n\nListed Company\n",
+        ).replace("fixture-market-outlook-pos", "fixture-lc")
+        pack = _write(lc_pack)
+
+        result = _run_audit(
+            path, extra_args=["--route", "listed-company", "--strict", "--require-contract"],
+            research_pack=pack,
+        )
+        assert result.returncode == 2, result.stdout
+        assert "research-anchor" in result.stdout.lower() or "锚定" in result.stdout
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result
