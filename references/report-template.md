@@ -489,7 +489,7 @@ Status block 中涉及四类实体，使用统一的 canonical id：
 
 对于需要程序化验证实体分离的场景，报告可在 Route and audit status block 附近嵌入 contract。稳定 ID 字段 `artifact_id`、`contract_version`、`created_at` 用于与 Research Pack 互相关联（issue #376）：报告/contract 与 pack 必须对 primary route 和 artifact 归属保持一致。
 
-    ```contract
+   ```contract
     {
       "artifact_id": "research-2026-08-13-001",
       "contract_version": "1",
@@ -510,7 +510,7 @@ Status block 中涉及四类实体，使用统一的 canonical id：
         {"id": "final-audit", "status": "passed", "evidence": "§2-§8"}
       ]
     }
-    ```
+   ```
 
 验证命令：`python3 scripts/validate_contract.py report.md --require-contract`
 

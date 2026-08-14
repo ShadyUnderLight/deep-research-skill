@@ -90,7 +90,23 @@ class ContractError(Exception):
 
 # ── Contract extraction ─────────────────────────────────────────────────────
 
-_FENCE_OPEN_RE = re.compile(r"^\s*(`{3,}|~{3,})([^\s`]*)\s*$")
+# Fence opener: at most 3 leading spaces (CommonMark), backtick or tilde,
+# followed by an info string that MAY contain spaces (```markdown example).
+# The info string's first whitespace-separated token is the language.
+_FENCE_OPEN_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})([^\n]*)$")
+
+
+def _fence_language(open_m: re.Match[str]) -> str:
+    """Normalized first token of a fence info string ('' when absent)."""
+    return open_m.group(2).strip().lower().split()[0] if open_m.group(2).strip() else ""
+
+
+def _fence_close_re(fence_char: str, fence_len: int) -> re.Pattern[str]:
+    """Closing fence: same char, >= opener length, at most 3 leading
+    spaces (CommonMark fenced-code rules, issue #378)."""
+    return re.compile(
+        rf"^[ ]{{0,3}}{re.escape(fence_char)}{{{fence_len},}}\s*$"
+    )
 
 
 def _top_level_fenced_content(text: str, language_keyword: str) -> list[str]:
@@ -100,7 +116,8 @@ def _top_level_fenced_content(text: str, language_keyword: str) -> list[str]:
     Uses a fence state machine instead of a bare regex: a ```contract
     example nested inside another fence (e.g. inside a `````markdown
     block) is content of the outer fence, not a real declaration
-    (issue #378).
+    (issue #378).  An unclosed fence is NOT collected — a contract block
+    must be explicitly closed to count.
     """
     blocks: list[str] = []
     lines = text.split("\n")
@@ -112,18 +129,16 @@ def _top_level_fenced_content(text: str, language_keyword: str) -> list[str]:
             continue
         fence_char = open_m.group(1)[0]
         fence_len = len(open_m.group(1))
-        language = open_m.group(2).lower()
+        language = _fence_language(open_m)
         content: list[str] = []
         j = i + 1
+        close_re = _fence_close_re(fence_char, fence_len)
         while j < len(lines):
-            close_m = re.match(
-                rf"^\s*({re.escape(fence_char)}{{{fence_len},}})\s*$", lines[j]
-            )
-            if close_m:
+            if close_re.match(lines[j]):
                 break
             content.append(lines[j])
             j += 1
-        if language == language_keyword:
+        if j < len(lines) and language == language_keyword:
             blocks.append("\n".join(content))
         i = j + 1 if j < len(lines) else len(lines)
     return blocks
@@ -962,9 +977,7 @@ def _sanitize_visible_lines(
     for line in lines:
         stripped = line.strip()
         if state == "fence":
-            if re.match(
-                rf"^\s*{re.escape(fence_char)}{{{fence_len},}}\s*$", stripped
-            ):
+            if _fence_close_re(fence_char, fence_len).match(line):
                 state = None
             if keep_fences or (keep_mermaid and mermaid):
                 out.append(line)
@@ -1004,8 +1017,8 @@ def _sanitize_visible_lines(
         if fm:
             fence_char = fm.group(1)[0]
             fence_len = len(fm.group(1))
-            lang = fm.group(2).lower()
-            mermaid = keep_mermaid and lang.startswith("mermaid")
+            lang = _fence_language(fm)
+            mermaid = keep_mermaid and lang == "mermaid"
             state = "fence"
             if keep_fences or (keep_mermaid and mermaid):
                 out.append(line)

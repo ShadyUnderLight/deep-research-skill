@@ -1516,6 +1516,56 @@ class TestDuplicateDeclarations:
         assert r.returncode == 2, f"standalone CLI must fail:\n{r.stdout}"
         assert "route" in r.stdout.lower()
 
+    def test_fence_info_string_with_spaces_hides_contract(self) -> None:
+        """An outer fence with a spaced info string (```markdown example)
+        must still be a fence: an inner ```contract is not top-level."""
+        nested = (
+            "```markdown example\n```contract\n" + _contract() + "\n```\n```\n"
+        )
+        path = _write(_report(contract=None) + "\n" + nested)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_unclosed_contract_fence_fails(self) -> None:
+        """An unclosed ```contract block (no closing fence) must not be
+        accepted as a valid contract."""
+        path = _write(_report(contract=None) + "\n```contract\n" + _contract() + "\n")
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_four_space_fence_line_does_not_close_outer_fence(self) -> None:
+        """A closing fence may have at most 3 leading spaces: a 4-space
+        backtick line inside an outer fence is content, not a close."""
+        nested = "```markdown\n    ```\n```contract\n" + _contract() + "\n```\n```\n"
+        path = _write(_report(contract=None) + "\n" + nested)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_mermaid_example_label_does_not_keep_fence_content(self) -> None:
+        """Only the exact 'mermaid' language keeps fence content: a
+        'mermaid-example' fence's captions are code, not figure entities."""
+        fig = "# Report\n\n```mermaid-example\n图1: Fake\n```\n\n见图1 for details.\n"
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        # 见图1 has no real definition → must fail (exit 2).
+        assert r.returncode == 2, r.stdout
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result
