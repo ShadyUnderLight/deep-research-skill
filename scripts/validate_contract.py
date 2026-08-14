@@ -882,15 +882,22 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
 
 _HTML_COMMENT_RE = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
 
-# Block-level HTML tags (CommonMark HTML-block types 1 & 6).  Content inside
-# these blocks is emitted as raw HTML, not rendered Markdown — a forged
-# '## Route and audit status' or '## Primary route' inside <div> must never
-# count as a real declaration (issue #378).
+# Block-level HTML tags.  Content inside these blocks is emitted as raw
+# HTML, not rendered Markdown — a forged '## Route and audit status' or
+# '## Primary route' inside <div> must never count as a real declaration
+# (issue #378).  Covers the CommonMark type-1 block tags (script/pre/
+# style/textarea) plus the type-6 block tag list.
 _HTML_BLOCK_TAGS = (
-    "div", "pre", "script", "style", "table", "section", "article",
-    "aside", "header", "footer", "nav", "main", "figure", "form",
-    "fieldset", "blockquote", "ul", "ol", "li", "p", "address",
-    "details", "summary", "dl", "dt", "dd",
+    "address", "article", "aside", "base", "basefont", "blockquote",
+    "body", "caption", "center", "col", "colgroup", "dd", "details",
+    "dialog", "dir", "div", "dl", "dt", "fieldset", "figcaption",
+    "figure", "footer", "form", "frame", "frameset",
+    "h1", "h2", "h3", "h4", "h5", "h6",
+    "head", "header", "hr", "html", "iframe", "legend", "li", "link",
+    "main", "menu", "menuitem", "nav", "noframes", "ol", "optgroup",
+    "option", "p", "param", "pre", "script", "section", "source",
+    "style", "summary", "table", "tbody", "td", "textarea", "tfoot",
+    "th", "thead", "title", "tr", "track", "template", "ul",
 )
 _HTML_BLOCK_OPEN_RE = re.compile(
     rf"^\s*<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
@@ -902,18 +909,22 @@ def _strip_html_blocks(text: str) -> str:
 
     CommonMark renders the content of these blocks as raw HTML, not as
     Markdown — headings and tables inside them are not visible document
-    structure.  The state machine drops the opening tag line through the
-    matching closing tag line; an unclosed block is dropped through the
-    end of the file.  Inline mentions (``<div>`` mid-sentence) are left
-    alone because the opening tag must start a line.
+    structure.  The state machine tracks same-tag nesting depth (an inner
+    ``</div>`` must not close an outer ``<div>``) and drops the block
+    through its matching closing tag; an unclosed block is dropped through
+    the end of the file.  Inline mentions (``<div>`` mid-sentence) are
+    left alone because the opening tag must start a line.
     """
     lines = text.split("\n")
     out: list[str] = []
     in_block: str | None = None
+    depth = 0
     for line in lines:
         stripped = line.strip()
         if in_block is not None:
-            if re.search(rf"</{in_block}\s*>", stripped, re.IGNORECASE):
+            depth += len(re.findall(rf"<{in_block}\b", stripped, re.IGNORECASE))
+            depth -= len(re.findall(rf"</{in_block}\s*>", stripped, re.IGNORECASE))
+            if depth <= 0:
                 in_block = None
             continue
         m = _HTML_BLOCK_OPEN_RE.match(line)
@@ -922,6 +933,7 @@ def _strip_html_blocks(text: str) -> str:
             if re.search(rf"</{tag}\s*>", stripped, re.IGNORECASE):
                 continue  # self-contained single-line block
             in_block = tag
+            depth = 1
             continue
         out.append(line)
     return "\n".join(out)
@@ -938,19 +950,23 @@ def _strip_html_comments(text: str) -> str:
     return _HTML_COMMENT_RE.sub("", text)
 
 
-def _strip_fences(text: str) -> str:
-    """Remove fenced code blocks and HTML comments so declarations inside
-    them (e.g. a fake '## Route and audit status' block inside ```markdown,
-    a pack route inside ~~~markdown, or a forged declaration inside
-    <!-- -->) never count as real declarations (issue #378).
+def sanitize_visible_markdown(text: str) -> str:
+    """Reduce *text* to rendered Markdown content.
 
-    Uses the same fence state machine as contract extraction: opening and
-    closing fences are matched by character and length, so an inner
-    three-backtick fence inside a four-backtick fence (even when left
-    unclosed) cannot be mistaken for the outer fence's closing line.
+    Removes, in order: HTML comments, block-level raw HTML blocks
+    (div/pre/script/style/... with same-tag nesting), and fenced code
+    blocks.  Whatever remains is what a CommonMark renderer would parse as
+    Markdown structure, so declarations hidden inside any non-rendered
+    container never count (issue #378).  Shared by the contract/report/
+    pack declaration parsers.
     """
     text = _strip_html_comments(text)
     text = _strip_html_blocks(text)
+    return _strip_fenced_blocks(text)
+
+
+def _strip_fenced_blocks(text: str) -> str:
+    """Remove fenced code blocks (state machine, character/length aware)."""
     lines = text.split("\n")
     out: list[str] = []
     i = 0
@@ -974,6 +990,11 @@ def _strip_fences(text: str) -> str:
         # unclosed fence drops everything to the end of the file.
         i = j + 1 if j < len(lines) else len(lines)
     return "\n".join(out)
+
+
+def _strip_fences(text: str) -> str:
+    """Legacy alias for :func:`sanitize_visible_markdown`."""
+    return sanitize_visible_markdown(text)
 
 
 def count_report_route_blocks(text: str) -> int:

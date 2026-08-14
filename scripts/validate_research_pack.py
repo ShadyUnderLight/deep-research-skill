@@ -56,12 +56,14 @@ EXIT_STRICT = 4
 
 
 def strip_fenced_code_blocks(text: str) -> str:
-    lines = text.split("\n")
-    out = []
-    in_fence = False
-    in_comment = False
-    fence_char = None
-    fence_len = 0
+    """Reduce *text* to rendered Markdown content (shared sanitizer).
+
+    Delegates to validate_contract.sanitize_visible_markdown so the pack
+    validation path applies the same HTML-comment / raw-HTML-block / fence
+    stripping as the contract and report declaration parsers (issue #378).
+    """
+    from validate_contract import sanitize_visible_markdown
+    return sanitize_visible_markdown(text)
 
     for line in lines:
         stripped = line.rstrip()

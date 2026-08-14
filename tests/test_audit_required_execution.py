@@ -1096,6 +1096,74 @@ class TestDuplicateDeclarations:
         ])
         assert code == 2, f"standalone CLI must fail closed, got {code}"
 
+    def test_nested_html_block_route_status_hidden_fails(self) -> None:
+        """Same-tag nesting: an inner </div> must not close the outer
+        <div> and expose a forged route block (issue #378)."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        nested = "<div>\n<div>\ninner\n</div>\n" + route_block + "\n</div>\n"
+        path = _write(_report(route_block=nested, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    @pytest.mark.parametrize("tag", [
+        "h1", "h2", "h6", "head", "html", "iframe", "textarea", "template",
+        "body", "title",
+    ])
+    def test_more_html_block_tags_hide_route_status(self, tag: str) -> None:
+        """Additional CommonMark block tags must hide declarations."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        html_block = f"<{tag}>\n" + route_block + f"\n</{tag}>\n"
+        path = _write(_report(route_block=html_block, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_html_block_pack_objective_fails_both_clis(self) -> None:
+        """A pack '## Objective' inside <div> must fail both the pack
+        validator and audit_report (shared sanitizer, issue #378)."""
+        div_pack = PACK_FIXTURE.replace(
+            "## Objective\n\nDetermine X, grounded on [S01].\n",
+            "<div>\n## Objective\n\nDetermine X, grounded on [S01].\n</div>\n",
+        )
+        pack = _write(div_pack)
+        report = _write(_report(contract=_contract()))
+
+        result = _run_audit(
+            report, extra_args=["--strict", "--require-contract"], research_pack=pack
+        )
+        assert result.returncode == 2, result.stdout
+        assert "objective" in result.stdout.lower()
+
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_research_pack.py"),
+             str(pack), "--strict"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode != 0, f"standalone pack validator must fail:\n{r.stdout}"
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result
