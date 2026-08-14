@@ -81,11 +81,18 @@ class FigureDef:
 
 def strip_fenced_code_blocks(text: str) -> str:
     """Replace content inside non-mermaid fenced code blocks with empty lines.
-    
+
     Preserves line count so error line numbers map to original file.
     Mermaid fences are kept visible (they are figure entities, not code).
-    Supports both backtick (```) and tilde (~~~) fences.
+    Supports both backtick (```) and tilde (~~~) fences.  HTML comments
+    and raw HTML blocks are stripped first via the shared sanitizer
+    (issue #378) — line numbers shift only when the report contains such
+    non-rendered content.
     """
+    from validate_contract import _strip_html_comments, _strip_html_blocks
+    text = _strip_html_comments(text)
+    text = _strip_html_blocks(text)
+
     lines = text.splitlines()
     result = list(lines)  # copy
     in_fence = False
@@ -96,8 +103,6 @@ def strip_fenced_code_blocks(text: str) -> str:
     for i, line in enumerate(lines):
         stripped = line.rstrip()
 
-        # Track mermaid block body (skip closing fence detection for fences
-        # that opened while not in_fence — they are mermaid closing fences)
         if in_mermaid:
             # Inside a mermaid block: look for any closing fence
             closing = re.compile(r'^[ ]{0,3}(`{3,}|~{3,})\s*$')
@@ -135,7 +140,6 @@ def strip_fenced_code_blocks(text: str) -> str:
             result[i] = ""
 
     return "\n".join(result)
-
 
 def collect_figure_refs(cleaned: str) -> list[FigureRef]:
     """Extract all figure references from body text (outside code fences)."""
