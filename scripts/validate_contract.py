@@ -118,9 +118,10 @@ def _fence_open_match(line: str) -> re.Match[str] | None:
 
 def _fence_close_re(fence_char: str, fence_len: int) -> re.Pattern[str]:
     """Closing fence: same char, >= opener length, at most 3 leading
-    spaces (CommonMark fenced-code rules, issue #378)."""
+    spaces, trailing spaces/tabs only (CommonMark fenced-code rules —
+    Python \\s would also accept NBSP etc., issue #378)."""
     return re.compile(
-        rf"^[ ]{{0,3}}{re.escape(fence_char)}{{{fence_len},}}\s*$"
+        rf"^[ ]{{0,3}}{re.escape(fence_char)}{{{fence_len},}}[\t ]*$"
     )
 
 
@@ -912,11 +913,8 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
 
 _HTML_COMMENT_RE = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
 
-# Block-level HTML tags.  Content inside these blocks is emitted as raw
-# HTML, not rendered Markdown — a forged '## Route and audit status' or
-# '## Primary route' inside <div> must never count as a real declaration
-# (issue #378).  Covers the CommonMark type-1 block tags (script/pre/
-# style/textarea) plus the type-6 block tag list.
+# CommonMark type-6 block tag list (spec 0.31.2).  Note: source/template
+# are NOT in the spec list and must not be treated as block tags.
 _HTML_BLOCK_TAGS = (
     "address", "article", "aside", "base", "basefont", "blockquote",
     "body", "caption", "center", "col", "colgroup", "dd", "details",
@@ -925,32 +923,81 @@ _HTML_BLOCK_TAGS = (
     "h1", "h2", "h3", "h4", "h5", "h6",
     "head", "header", "hr", "html", "iframe", "legend", "li", "link",
     "main", "menu", "menuitem", "nav", "noframes", "ol", "optgroup",
-    "option", "p", "param", "search", "section", "source", "summary",
+    "option", "p", "param", "search", "section", "summary",
     "table", "tbody", "td", "tfoot", "th", "thead", "title", "tr",
-    "track", "template", "ul",
+    "track", "ul",
 )
 
 # CommonMark type-1 block tags: the block runs until the matching closing
 # tag line — blank lines do NOT terminate it (issue #378).
 _HTML_TYPE1_TAGS = ("script", "pre", "style", "textarea")
+
+# Tag boundary: after the tag name only space/tab, '>', '/>' or EOL are
+# allowed (a '!' or other character means it is not this tag).
+_TAG_BOUNDARY = r"(?=[	 />]|$)"
+
 _HTML_TYPE1_OPEN_RE = re.compile(
-    rf"^[ ]{{0,3}}<({'|'.join(_HTML_TYPE1_TAGS)})\b", re.IGNORECASE
+    rf"^[ ]{{0,3}}<({'|'.join(_HTML_TYPE1_TAGS)}){_TAG_BOUNDARY}", re.IGNORECASE
 )
 _HTML_BLOCK_OPEN_RE = re.compile(
-    rf"^[ ]{{0,3}}<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
+    rf"^[ ]{{0,3}}<({'|'.join(_HTML_BLOCK_TAGS)}){_TAG_BOUNDARY}", re.IGNORECASE
 )
 # Matches an incomplete allowlist opener too ('<search' without '>'):
 # type-6 start condition is conservative so forged declarations after an
 # unclosed tag opener fail closed (issue #378).
 _HTML_BLOCK_OPEN_ANY_RE = re.compile(
-    rf"^[ ]{{0,3}}<({'|'.join(_HTML_BLOCK_TAGS)})\b", re.IGNORECASE
+    rf"^[ ]{{0,3}}<({'|'.join(_HTML_BLOCK_TAGS)}){_TAG_BOUNDARY}", re.IGNORECASE
+)
+# Type-6 closing tag: '</tag' followed by space/tab, '>' or EOL (an
+# incomplete closing tag also starts the block, spec 0.31.2).
+_HTML_BLOCK_CLOSE_RE = re.compile(
+    rf"^[ ]{{0,3}}</({'|'.join(_HTML_BLOCK_TAGS)}){_TAG_BOUNDARY}", re.IGNORECASE
 )
 
-# CommonMark type-7: any complete open tag at line start (not in the
-# type-6 allowlist) also starts a raw HTML block.
-_HTML_ANY_TAG_OPEN_RE = re.compile(
-    r"^[ ]{0,3}<([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*>(?:\s*$)", re.IGNORECASE
-)
+
+def _match_complete_open_tag(line: str) -> re.Match[str] | None:
+    """Match a complete open tag at line start (type-7 start condition).
+
+    Quote-aware: a '>' inside a quoted attribute value is part of the
+    attribute.  After the closing '>' only spaces/tabs may follow to the
+    end of the line (spec 0.31.2, issue #378).
+    """
+    m = re.match(rf"^[ ]{{0,3}}<([a-zA-Z][a-zA-Z0-9-]*){_TAG_BOUNDARY}", line)
+    if m is None:
+        return None
+    i = m.end()
+    quote: str | None = None
+    while i < len(line):
+        ch = line[i]
+        if quote is not None:
+            if ch == quote:
+                quote = None
+        elif ch in "\"'":
+            quote = ch
+        elif ch == ">":
+            if re.match(r"^[\t ]*$", line[i + 1:]):
+                return m
+            return None
+        i += 1
+    return None
+
+
+def _continues_paragraph(stripped: str) -> bool:
+    """True if a top-level line continues an open paragraph.
+
+    Used for the CommonMark type-7 start condition: type-7 HTML blocks
+    cannot interrupt an open paragraph.  Blank lines and the start of
+    other blocks (headings, lists, blockquotes, fences) end the
+    paragraph; everything else continues it.
+    """
+    if not stripped:
+        return False
+    if re.match(
+        r"^(#{1,6}[\t ]|>|[-+*][\t ]|\d+[.)][\t ]|`{3,}|~{3,}|</?[a-zA-Z])",
+        stripped,
+    ):
+        return False
+    return True
 
 
 def _sanitize_visible_lines(
@@ -982,6 +1029,7 @@ def _sanitize_visible_lines(
     fence_len = 0
     t1_tag = ""
     mermaid = False
+    in_paragraph = False
 
     def emit(line: str, visible: bool) -> None:
         if visible or not blank:
@@ -1019,7 +1067,9 @@ def _sanitize_visible_lines(
                 state = None
             elif state == "decl" and ">" in stripped:
                 state = None
-            elif state == "raw" and not stripped:
+            elif state == "raw" and line.strip(" \t") == "":
+                # Blank line (spaces/tabs only) ends a type-6/7 block;
+                # NBSP etc. is content, not blankness (issue #378).
                 state = None
                 if blank:
                     out.append(line)
@@ -1085,19 +1135,29 @@ def _sanitize_visible_lines(
             if blank:
                 out.append("")
             continue
-        if _HTML_ANY_TAG_OPEN_RE.match(line):
+        if _HTML_BLOCK_CLOSE_RE.match(line):
+            # Type-6 closing tag (may be incomplete: '</div' + EOL).
             state = "raw"
             if blank:
                 out.append("")
             continue
-        if re.match(r"^[ ]{0,3}</([a-zA-Z][a-zA-Z0-9-]*)\s*>(?:\s*$)", line):
-            # Type 7 closing tag: complete tag followed only by
-            # whitespace to the end of the line.
-            state = "raw"
-            if blank:
-                out.append("")
-            continue
+        # Type 7 cannot interrupt an open paragraph (CommonMark).
+        if not in_paragraph:
+            if _match_complete_open_tag(line) is not None:
+                state = "raw"
+                if blank:
+                    out.append("")
+                continue
+            if re.match(r"^[ ]{0,3}</([a-zA-Z][a-zA-Z0-9-]*)\s*>(?:[\t ]*$)", line):
+                # Type 7 closing tag: complete tag followed only by
+                # spaces/tabs to the end of the line.
+                state = "raw"
+                if blank:
+                    out.append("")
+                continue
         out.append(line)
+        # Track paragraph context (type-7 start condition).
+        in_paragraph = _continues_paragraph(stripped)
     return out
 
 

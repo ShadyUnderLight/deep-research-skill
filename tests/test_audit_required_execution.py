@@ -1627,6 +1627,99 @@ class TestDuplicateDeclarations:
         )
         assert r.returncode == 0, r.stdout
 
+    @pytest.mark.parametrize("prefix", ["<div!not-a-tag\n", "<script!x\n", "<source\n", "<template\n"])
+    def test_html_tag_boundary_exact(self, prefix: str) -> None:
+        """Tag names must be followed by space/tab/'>'/'/>'/EOL: '<div!'
+        and allowlist tags missing from the spec (source/template) must
+        not start raw HTML."""
+        claim = "[Confirmed] Shipments will reach 100 units by 2027.\n"
+        path = _write(_report(contract=_contract()) + "\n" + prefix + claim)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "forward-looking" in result.stdout.lower()
+
+    def test_incomplete_type6_closing_tag_starts_raw(self) -> None:
+        """'</div' (no '>') at line start is a type-6 start condition:
+        a forged route block after it must stay hidden."""
+        rb = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block="</div\n" + rb + "\n", contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_type7_open_tag_quote_aware(self) -> None:
+        """'<span data=\">\">' is a complete open tag (quoted '>' is part
+        of the attribute): a forged route block after it stays hidden."""
+        rb = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block='<span data=">">\n' + rb + "\n", contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_type7_cannot_interrupt_paragraph(self) -> None:
+        """CommonMark type-7 HTML blocks cannot interrupt an open
+        paragraph: '<span>' after paragraph text must not swallow the
+        following claim."""
+        claim = "[Confirmed] Shipments will reach 100 units by 2027.\n"
+        path = _write(_report(contract=_contract()) + "\nsome paragraph\n<span>\n" + claim)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "forward-looking" in result.stdout.lower()
+
+    def test_nbsp_is_not_fence_whitespace(self) -> None:
+        """Only spaces/tabs are fence whitespace: a closing fence followed
+        by NBSP must not close the outer fence."""
+        nested = "```markdown\n```\u00a0\n```contract\n" + _contract() + "\n```\n```\n"
+        path = _write(_report(contract=None) + "\n" + nested)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_figure_mermaid_mismatched_close_does_not_end_block(self) -> None:
+        """A '~~~' line inside a backtick mermaid fence is content, not a
+        close: a fake caption after it must not count as a figure entity."""
+        fig = (
+            "# Report\n\n```mermaid\ngraph TD\n~~~\n图2: Fake\n```\n"
+            "\n见图2 for details.\n"
+        )
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        # 图2 is not a real figure entity → reference must fail (exit 2).
+        assert r.returncode == 2, r.stdout
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

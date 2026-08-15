@@ -24,6 +24,10 @@ import re
 import sys
 from pathlib import Path
 
+# Shared fence semantics (issue #378): validated opener, first info-string
+# token, same-character minimum-length closer.
+from validate_contract import _fence_close_re, _fence_language, _fence_open_match
+
 # ── Regex patterns ─────────────────────────────────────────────────────────
 
 # Figure REFERENCES in body text (not inside code fences, not captions)
@@ -117,13 +121,50 @@ def collect_figure_refs(cleaned: str) -> list[FigureRef]:
     return refs
 
 
+def _mermaid_spans(text: str) -> list[tuple[int, int]]:
+    """Line spans (start, end-exclusive) of mermaid fences.
+
+    Uses the shared fence semantics: validated opener, first info-string
+    token 'mermaid', same-character minimum-length closer (issue #378).
+    """
+    spans: list[tuple[int, int]] = []
+    lines = text.splitlines()
+    in_mermaid = False
+    start = -1
+    char = ""
+    length = 0
+    for i, line in enumerate(lines):
+        stripped = line.rstrip()
+        if not in_mermaid:
+            fm = _fence_open_match(stripped)
+            if fm is not None and _fence_language(fm) == "mermaid":
+                in_mermaid = True
+                start = i
+                char = fm.group(1)[0]
+                length = len(fm.group(1))
+        else:
+            if _fence_close_re(char, length).match(stripped):
+                spans.append((start, i + 1))
+                in_mermaid = False
+    if in_mermaid:
+        spans.append((start, len(lines)))
+    return spans
+
+
 def collect_figure_defs(text: str) -> list[FigureDef]:
     """Extract all figure definitions from raw text (fences preserved)."""
     defs: list[FigureDef] = []
     lines = text.splitlines()
+    mermaid_spans = _mermaid_spans(text)
 
-    # Phase 1: scan for captions
+    def in_mermaid_block(i: int) -> bool:
+        return any(s <= i < e for s, e in mermaid_spans)
+
+    # Phase 1: scan for captions (mermaid block content is the diagram
+    # itself, not captions — issue #378)
     for i, line in enumerate(lines):
+        if in_mermaid_block(i):
+            continue
         for m in CAPTION_CHINESE.finditer(line):
             num = int(m.group(1))
             rest = line[m.end():].strip()
@@ -134,38 +175,14 @@ def collect_figure_defs(text: str) -> list[FigureDef]:
             rest = line[m.end():].strip()
             defs.append(FigureDef(num, i, "caption", rest))
 
-    # Phase 2: scan for Mermaid fences and image references
-    in_mermaid = False
-    mermaid_start = -1
+    # Phase 2: mermaid entities (one per block) and image references
+    for s, _e in mermaid_spans:
+        defs.append(FigureDef(None, s, "mermaid"))
     for i, line in enumerate(lines):
-        stripped = line.rstrip()
-
-        # Mermaid fence detection
-        if not in_mermaid:
-            if MERMAID_FENCE_OPEN.match(stripped):
-                in_mermaid = True
-                mermaid_start = i
-                continue
-        else:
-            closing = re.compile(
-                r'^[ ]{0,3}(`{3,}|~{3,})\s*$'
-            )
-            if closing.match(stripped):
-                in_mermaid = False
-                # Add mermaid as an entity (caption is a separate FigureDef
-                # with kind="caption" if one exists nearby)
-                defs.append(FigureDef(None, mermaid_start, "mermaid"))
-                mermaid_start = -1
-                continue
-
-        # Image references (outside mermaid blocks)
-        if not in_mermaid:
-            for m in IMAGE_REF.finditer(line):
-                defs.append(FigureDef(None, i, "image"))
-
-    # Handle unclosed mermaid fence
-    if in_mermaid:
-        defs.append(FigureDef(None, mermaid_start, "mermaid"))
+        if in_mermaid_block(i):
+            continue
+        for m in IMAGE_REF.finditer(line):
+            defs.append(FigureDef(None, i, "image"))
 
     return defs
 
