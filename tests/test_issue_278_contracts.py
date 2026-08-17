@@ -76,17 +76,20 @@ def test_d1_no_existing_deleted():
     assert "## Common failure patterns" in content
 
 
-# ── D2: references/report-template.md ───────────────────────────────
+# ── D2: references/templates/listed-company-report.md ────────────────
+# (route-specific template; DCF/valuation content moved here by issue #380)
+
+LC_TEMPLATE = "references/templates/listed-company-report.md"
 
 def test_d2_has_dcf_subsection():
     """D2: MUST contain #### DCF / 反向 DCF（当适用） in valuation section."""
-    content = read("references/report-template.md")
+    content = read(LC_TEMPLATE)
     assert "DCF / 反向 DCF（当适用）" in content, "Missing DCF subsection heading"
 
 
 def test_d2_has_dcf_assumption_table():
     """D2: DCF subsection MUST have assumption table with columns for WACC, terminal growth, etc."""
-    content = read("references/report-template.md")
+    content = read(LC_TEMPLATE)
     dcf_start = content.index("DCF / 反向 DCF（当适用）")
     dcf_section = content[dcf_start:]
     required_terms = ["WACC", "永续增长率", "收入增速", "营业利润率", "CapEx / 收入"]
@@ -96,13 +99,13 @@ def test_d2_has_dcf_assumption_table():
 
 def test_d2_has_sensitivity_matrix_subsection():
     """D2: MUST contain #### 敏感性矩阵 subsection."""
-    content = read("references/report-template.md")
+    content = read(LC_TEMPLATE)
     assert "敏感性矩阵" in content, "Missing sensitivity matrix subsection"
 
 
 def test_d2_sensitivity_matrix_has_template():
     """D2: Sensitivity matrix subsection MUST have a template table with WACC and terminal growth."""
-    content = read("references/report-template.md")
+    content = read(LC_TEMPLATE)
     sens_start = content.index("敏感性矩阵")
     sens_section = content[sens_start:]
     assert "WACC" in sens_section and "永续增长率" in sens_section, \
@@ -111,7 +114,7 @@ def test_d2_sensitivity_matrix_has_template():
 
 def test_d2_sensitivity_disclaimer_present():
     """D2: Sensitivity section MUST distinguish scenario from sensitivity analysis."""
-    content = read("references/report-template.md")
+    content = read(LC_TEMPLATE)
     sens_start = content.index("敏感性矩阵")
     sens_section = content[sens_start:]
     assert "敏感性分析 ≠ 情景分析" in sens_section or "敏感性分析" in sens_section, \
@@ -120,7 +123,7 @@ def test_d2_sensitivity_disclaimer_present():
 
 def test_d2_cross_ref_to_valuation_methodology():
     """D2: MUST reference valuation-methodology.md DCF trigger."""
-    content = read("references/report-template.md")
+    content = read(LC_TEMPLATE)
     dcf_start = content.index("DCF / 反向 DCF（当适用）")
     dcf_section = content[dcf_start:]
     assert "valuation-methodology.md" in dcf_section, \
@@ -129,11 +132,13 @@ def test_d2_cross_ref_to_valuation_methodology():
 
 def test_d2_no_existing_deleted():
     """D2: Existing content in template MUST be intact."""
-    content = read("references/report-template.md")
+    content = read(LC_TEMPLATE)
     assert "### Valuation method and scenario analysis" in content
     assert "EPS假设" in content and "PE倍数" in content
     assert "Time-horizon valuation stratification" in content
-    assert "### 5. Risks and counter-evidence" in content
+    # Core template keeps the risks section (issue #380 split)
+    core = read("references/report-template.md")
+    assert "### 5. Risks and counter-evidence" in core
 
 
 # ── D3: checklists/listed-company-report.md ─────────────────────────
@@ -284,9 +289,12 @@ def test_p1_cross_references_valid():
     assert 'quantitative-role-labeling.md' in valuation, \
         "valuation-methodology.md must reference quantitative-role-labeling.md"
 
-    # report-template.md references valuation-methodology.md
-    assert 'valuation-methodology.md' in template, \
-        "report-template.md must reference valuation-methodology.md"
+    # report-template.md references valuation-methodology.md (DCF content
+    # moved to the route-specific template by issue #380, so either the core
+    # template or the listed-company template must keep the cross-reference)
+    assert 'valuation-methodology.md' in template or \
+        'valuation-methodology.md' in read(LC_TEMPLATE), \
+        "valuation-methodology.md cross-reference lost (core or route template)"
 
     # checklist references valuation-methodology.md DCF trigger
     assert 'valuation-methodology.md' in checklist, \

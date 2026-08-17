@@ -122,16 +122,20 @@ class TestValuationMethodology:
 
 
 class TestReportTemplate:
-    """Tests for references/report-template.md additions."""
+    """Tests for the listed-company route template additions (moved from
+    references/report-template.md by issue #380; the core template keeps the
+    conditional reference)."""
+
+    LC_TEMPLATE = "references/templates/listed-company-report.md"
 
     def test_growth_to_cash_flow_table_exists(self):
-        content = read("references/report-template.md")
+        content = read(self.LC_TEMPLATE)
         assert "### 增长到现金流转换表" in content, (
             "Missing growth-to-cash-flow table section"
         )
 
     def test_table_has_required_columns(self):
-        content = read("references/report-template.md")
+        content = read(self.LC_TEMPLATE)
         # Find the table section
         section_start = content.find("### 增长到现金流转换表")
         assert section_start >= 0
@@ -143,9 +147,16 @@ class TestReportTemplate:
 
     def test_table_inserted_after_four_variable_decomp(self):
         """The new table must appear after the four-variable decomposition section."""
-        content = read("references/report-template.md")
+        content = read(self.LC_TEMPLATE)
         assert content.index("四变量") < content.index("增长到现金流转换表"), (
             "Growth-to-cash-flow table must appear after four-variable decomposition"
+        )
+
+    def test_core_template_links_to_route_template(self):
+        """Core template keeps the conditional reference to the route template."""
+        content = read("references/report-template.md")
+        assert "listed-company-report.md" in content, (
+            "core report-template.md should reference the listed-company route template"
         )
 
 
@@ -214,9 +225,13 @@ class TestCrossReferences:
         )
 
     def test_report_template_refers_to_valuation_methodology(self):
-        content = read("references/report-template.md")
-        assert "valuation-methodology.md" in content, (
-            "report-template.md should cross-reference valuation-methodology.md"
+        # DCF/valuation content moved to the listed-company route template
+        # by issue #380; accept the cross-reference in either location
+        core = read("references/report-template.md")
+        route_template = read(TestReportTemplate.LC_TEMPLATE)
+        assert "valuation-methodology.md" in core or \
+               "valuation-methodology.md" in route_template, (
+            "valuation-methodology.md cross-reference lost (core or route template)"
         )
 
     def test_valuation_methodology_refers_to_report_template(self):

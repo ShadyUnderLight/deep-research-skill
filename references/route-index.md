@@ -1,29 +1,29 @@
 # Route Index (Compact)
 
-Quick route selection before deep collection. Each route maps to a full contract in `ROUTING-MATRIX.md`.
+Quick route selection before deep collection. Each route has a generated card in `references/routes/` (from `schemas/route-manifest.json`) and a full contract in `ROUTING-MATRIX.md`.
 
-**How to use:** (1) Scan the trigger column. (2) Check the boundary table to confirm the route is correct (or switch to a better fit). (3) Read the `reads` files. (4) Apply the listed audits before delivery. If no specialized route matches, use `shared-workflow`.
+**How to use:** (1) Scan the trigger column. (2) Check the boundary table to confirm the route is correct (or switch to a better fit). (3) Open the route's **Card** for its primary reads, required disciplines, audits and artifact contract. (4) Apply the listed audits before delivery. If no specialized route matches, use `shared-workflow`.
 
 ## Trigger table
 
-| Route ID | Trigger keywords | Reads | Audits |
-|----------|-----------------|-------|--------|
-| `listed-company` | listed company, valuation, market cap, growth, investment memo | `references/finance-date-discipline.md`, `references/valuation-methodology.md` | `listed-company-report`, `source-traceability`, `final-audit` |
-| `startup-evaluation` | private company, startup, PMF, funding round, founder evaluation | `references/startup-evaluation-discipline.md`, `references/source-quality.md` | `startup-company-report`, `source-traceability`, `final-audit` |
-| `market-entry` | enter a market, country priority, expansion sequencing, go/no-go entry | `references/option-selection-and-shortlist-discipline.md`, `references/decision-report-template.md` | `option-selection-final-audit`, `source-traceability`, `final-audit` |
-| `regulatory-analysis` | regulatory environment, policy risk, compliance impact, regulatory change | `references/current-state-verification.md`, `references/forward-looking-discipline.md` | `regulatory-analysis-audit`, `source-traceability`, `final-audit` |
-| `provider-selection` | model/API supplier, vendor shortlist, platform choice, provider comparison | `references/option-selection-and-shortlist-discipline.md`, `references/source-traceability-and-claim-citation.md` | `option-selection-final-audit`, `source-traceability`, `final-audit` |
-| `competitive-positioning` | first-tier, top-tier, global standing, prestige label, positioning | `references/ranking-and-current-claims-discipline.md`, `references/source-traceability-and-claim-citation.md` | `source-traceability`, `final-audit` |
-| `technical-deep-dive` | technology principles, architecture comparison, patent portfolio, feasibility, roadmap | `references/technical-analysis-discipline.md`, `references/source-traceability-and-claim-citation.md` | `technical-analysis-audit`, `source-traceability`, `final-audit` |
-| `equipment-selection` | hardware purchase, NAS, home server, homelab, build-ready stack, budget | `references/decision-report-template.md`, `references/option-selection-and-shortlist-discipline.md` | `option-selection-final-audit`, `final-audit` |
-| `market-outlook` | market evolution, adoption trajectory, industry evolution, 6-24 month outlook | `references/market-outlook-and-scenario-discipline.md`, `references/forward-looking-discipline.md` | `market-outlook-audit`, `forward-looking-claims`, `source-traceability`, `final-audit` |
-| `constrained-choice` | choose among options, ranking, shortlist, venue/vendor choice, sports prediction | `references/option-selection-and-shortlist-discipline.md`, `references/decision-report-template.md` | `option-selection-final-audit`, `final-audit` |
-| `academic-review` | academic field progress, literature review, paper comparison, technology origin | `references/academic-evidence-hierarchy.md`, `references/source-traceability-and-claim-citation.md` | `academic-analysis-audit`, `source-traceability`, `final-audit` |
-| `shared-workflow` | no specialized route fits; lightweight fact query without route/audit burden | (workflow spine — see `SKILL.md`) | `workflow-spine-audit`, `final-audit` |
+| Route ID | Trigger keywords | Reads | Audits | Card |
+|----------|-----------------|-------|--------|------|
+| `listed-company` | listed company, valuation, market cap, growth, investment memo | `references/finance-date-discipline.md`, `references/valuation-methodology.md` | `listed-company-report`, `source-traceability`, `final-audit` | [`listed-company`](routes/listed-company.md) |
+| `startup-evaluation` | private company, startup, PMF, funding round, founder evaluation | `references/startup-evaluation-discipline.md`, `references/source-quality.md` | `startup-company-report`, `source-traceability`, `final-audit` | [`startup-evaluation`](routes/startup-evaluation.md) |
+| `market-entry` | enter a market, country priority, expansion sequencing, go/no-go entry | `references/option-selection-and-shortlist-discipline.md`, `references/decision-report-template.md` | `option-selection-final-audit`, `source-traceability`, `final-audit` | [`market-entry`](routes/market-entry.md) |
+| `regulatory-analysis` | regulatory environment, policy risk, compliance impact, regulatory change | `references/current-state-verification.md`, `references/forward-looking-discipline.md` | `regulatory-analysis-audit`, `source-traceability`, `final-audit` | [`regulatory-analysis`](routes/regulatory-analysis.md) |
+| `provider-selection` | model/API supplier, vendor shortlist, platform choice, provider comparison | `references/option-selection-and-shortlist-discipline.md`, `references/source-traceability-and-claim-citation.md` | `option-selection-final-audit`, `source-traceability`, `final-audit` | [`provider-selection`](routes/provider-selection.md) |
+| `competitive-positioning` | first-tier, top-tier, global standing, prestige label, positioning | `references/ranking-and-current-claims-discipline.md`, `references/source-traceability-and-claim-citation.md` | `source-traceability`, `final-audit` | [`competitive-positioning`](routes/competitive-positioning.md) |
+| `technical-deep-dive` | technology principles, architecture comparison, patent portfolio, feasibility, roadmap | `references/technical-analysis-discipline.md`, `references/source-traceability-and-claim-citation.md` | `technical-analysis-audit`, `source-traceability`, `final-audit` | [`technical-deep-dive`](routes/technical-deep-dive.md) |
+| `equipment-selection` | hardware purchase, NAS, home server, homelab, build-ready stack, budget | `references/decision-report-template.md`, `references/option-selection-and-shortlist-discipline.md` | `option-selection-final-audit`, `final-audit` | [`equipment-selection`](routes/equipment-selection.md) |
+| `market-outlook` | market evolution, adoption trajectory, industry evolution, 6-24 month outlook | `references/market-outlook-and-scenario-discipline.md`, `references/forward-looking-discipline.md` | `market-outlook-audit`, `forward-looking-claims`, `source-traceability`, `final-audit` | [`market-outlook`](routes/market-outlook.md) |
+| `constrained-choice` | choose among options, ranking, shortlist, venue/vendor choice, sports prediction | `references/option-selection-and-shortlist-discipline.md`, `references/decision-report-template.md` | `option-selection-final-audit`, `final-audit` | [`constrained-choice`](routes/constrained-choice.md) |
+| `academic-review` | academic field progress, literature review, paper comparison, technology origin | `references/academic-evidence-hierarchy.md`, `references/source-traceability-and-claim-citation.md` | `academic-analysis-audit`, `source-traceability`, `final-audit` | [`academic-review`](routes/academic-review.md) |
+| `shared-workflow` | no specialized route fits; lightweight fact query without route/audit burden | (workflow spine — see `SKILL.md`) | `workflow-spine-audit`, `final-audit` | [`shared-workflow`](routes/shared-workflow.md) |
 
 ## Route boundary reference
 
-Before committing to a route, check this table. If the task matches a "Do NOT use" condition, switch routes. If it partially overlaps "Often confused with", read `references/route-activation-and-preflight.md` for boundary resolution.
+Before committing to a route, check this table. If the task matches a "Do NOT use" condition, switch routes. If it partially overlaps "Often confused with", read the boundary clauses in the route's card (`references/routes/<id>.md`) or `references/route-activation-and-preflight.md` for boundary resolution.
 
 | Route ID | Do NOT use when | Often confused with | Key artifact must-haves |
 |----------|----------------|---------------------|-------------------------|

@@ -81,8 +81,10 @@ Defines the shared research process that applies before any route-specific speci
 Makes mature task families explicit so the right discipline set and delivery contract activate.
 
 ### Primary files
-- `ROUTING-MATRIX.md`
+- `schemas/route-manifest.json` (canonical route registry)
+- `ROUTING-MATRIX.md` (full route contracts)
 - `references/route-index.md` (compact route selection index — read first for quick route identification)
+- `references/routes/` (generated per-route cards — trigger, boundaries, reads, audits, artifact contract)
 - `references/route-activation-and-preflight.md`
 - `evals/meta/rule-activation-and-execution-discipline.md`
 

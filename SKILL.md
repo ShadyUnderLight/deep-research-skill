@@ -35,18 +35,13 @@ Always distinguish:
 
 ## Routing rule
 
-Before deep collection, determine:
+Before deep collection, determine the primary route, the required secondary disciplines, and the visible artifact contract the final report must satisfy.
 
-- the primary route
-- the required secondary disciplines
-- the visible artifact contract the final report must satisfy
+Route lookup is progressive-disclosure — read only what the current step needs:
 
-For route selection, first read `references/route-index.md` for a compact trigger table (one short read to locate the candidate route). Then read `ROUTING-MATRIX.md` for the full route contract including:
-
-- the primary route
-- required secondary disciplines
-- required audits
-- visible output structure
+1. Read `references/route-index.md` for the compact trigger table (one short read to locate the candidate route).
+2. Open the route's **card** in `references/routes/` (one file per route id, e.g. `references/routes/market-outlook.md`) — generated from `schemas/route-manifest.json` — for its trigger, do-not-use, often-confused, primary reads, required disciplines, required audits, artifact contract and failure signs.
+3. Read `ROUTING-MATRIX.md` only when the card is not enough: full route contract (preflight, entity types, secondary hard-fail, boundary resolution, per-route `### Read` / `### Attach` / `### Audit` / `### Hard fail`).
 
 Read `references/route-activation-and-preflight.md` when a specialized route is being considered, and complete its preflight steps before finalizing route selection:
 - "Do not use" / "Often confused with" clause check
@@ -141,7 +136,8 @@ A Research Pack is optional (but recommended as an internal aid — use
       include Tie-break rationale)
     - Secondary disciplines
    - Core subquestions, Stop condition
-   - Artifact contract, Required audits (as listed in `ROUTING-MATRIX.md` for the selected route)
+   - Artifact contract, Required audits (as listed in the route's card in
+     `references/routes/`, generated from `schemas/route-manifest.json`)
    - Channel availability snapshot (if API preflight was run — see `references/external-channel-preflight.md`)
    - Leave Source register, Claim register, Uncertainty register, Counter-evidence log blank for now
 
@@ -339,6 +335,12 @@ Never treat the first plausible story as the final one.
 
 Use `references/report-template.md` by default.
 
+The core template holds only shared structure; route-specific template
+sections are read on demand from `references/templates/` when the selected
+route requires them (listed-company, technical-deep-dive, academic-review,
+market-outlook, market-entry) — see the template-selection section in
+`references/report-template.md`.
+
 Use `references/decision-report-template.md` when the task needs:
 
 - recommendation
@@ -348,8 +350,9 @@ Use `references/decision-report-template.md` when the task needs:
 - action guidance
 
 For listed-company / investment-style work, also use:
+- `references/templates/listed-company-report.md` (research-anchor block, market snapshot, valuation / DCF / sensitivity)
 - `examples/listed-company-judgment-memo-example.md` as the default positive memo shape
-- `examples/china-shenhua-reference-grade-rewrite-skeleton.md` when a more concrete Chinese listed-company reference skeleton would help keep the opening judgment-first
+- `examples/china-shenhua-reference-grade-rewrite-skeleton.md` for a concrete Chinese listed-company skeleton
 - `references/valuation-methodology.md` when making valuation judgments or using target prices
 - `references/analyst-consensus-handling.md` when consensus data, target prices, or analyst ratings appear
 - `references/reporting-period-handling.md` when using reported financials, TTM/NTM, or comparing multiple periods
