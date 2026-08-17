@@ -87,9 +87,10 @@ def test_d1_no_existing_deleted():
     assert "## Market snapshot" in content
 
 
-# ── D2: references/report-template.md ───────────────────────────────
+# ── D2: references/templates/listed-company-report.md ────────────────
+# (route-specific template; customer concentration moved here by issue #380)
 
-TEMPLATE = "references/report-template.md"
+TEMPLATE = "references/templates/listed-company-report.md"
 
 def test_d2_has_customer_concentration_section():
     """D2: MUST contain customer concentration optional section/table."""
@@ -134,10 +135,12 @@ def test_d2_no_existing_deleted():
     assert "### Valuation method and scenario analysis" in content
     assert "EPS假设" in content and "PE倍数" in content
     assert "Time-horizon valuation stratification" in content
-    assert "### 5. Risks and counter-evidence" in content
     assert "Research-anchor block" in content
     assert "Market snapshot table" in content
     assert "#### DCF / 反向 DCF（当适用）" in content, "Lost DCF subsection from #278"
+    # Core template keeps the risks section (issue #380 split)
+    core = read("references/report-template.md")
+    assert "### 5. Risks and counter-evidence" in core
 
 
 # ── D3: references/moat-monopoly-screening.md ───────────────────────
@@ -252,9 +255,10 @@ def test_p1_cross_references_valid():
     template = read(TEMPLATE)
     moat = read(MOAT)
 
-    # checklist references report-template.md
-    assert 'report-template.md' in checklist, \
-        "checklist must reference report-template.md"
+    # checklist references the listed-company route template after issue #380
+    assert 'listed-company-report.md' in checklist or \
+        'report-template.md' in checklist, \
+        "checklist must reference the listed-company or core report template"
 
     # template references checklist
     assert 'listed-company-report.md' in template or 'checklists/' in template, \
@@ -270,14 +274,18 @@ def test_p2_no_false_broad_deletions():
     valuation = read("references/valuation-methodology.md")
     checklist = read(CHECKLIST)
     template = read(TEMPLATE)
+    core_template = read("references/report-template.md")
 
-    # Previous cross-refs from #278 must remain
-    assert 'valuation-methodology.md' in template, \
+    # Previous cross-refs from #278 must remain. The valuation-methodology
+    # reference now lives in the route-specific listed-company template.
+    assert 'valuation-methodology.md' in template or \
+        'valuation-methodology.md' in core_template, \
         "#278 cross-ref (valuation-methodology.md in template) broken"
     assert 'valuation-methodology.md' in checklist, \
         "#278 cross-ref (valuation-methodology.md in checklist) broken"
-    assert 'report-template.md' in valuation, \
-        "#278 cross-ref (report-template.md in valuation-methodology) broken"
+    assert 'listed-company-report.md' in valuation or \
+        'report-template.md' in valuation, \
+        "#278 cross-ref (listed-company/core template in valuation-methodology) broken"
 
 
 def test_p3_index_not_broken():

@@ -29,19 +29,28 @@ else
 fi
 
 echo ""
-echo "=== Contract B: report-template.md ==="
+echo "=== Contract B: report-template.md + route-specific templates ==="
+# Core template keeps the conditional reference; the terminology-boundary
+# table lives in the technical-deep-dive route template (issue #380 split).
 FILE_B="$ROOT/references/report-template.md"
+FILE_B_TDD="$ROOT/references/templates/technical-deep-dive-report.md"
 
-if grep -q "| 概念 | 原始/严格定义 | 当代工程定义 | 本报告采用定义 | 排除边界 |" "$FILE_B" 2>/dev/null; then
+if grep -q "| 概念 | 原始/严格定义 | 当代工程定义 | 本报告采用定义 | 排除边界 |" "$FILE_B_TDD" 2>/dev/null; then
   pass "B1: Has 5-column terminology boundary table"
 else
   fail "B1: Missing terminology boundary table header"
 fi
 
-if grep -q "操作性定义" "$FILE_B" 2>/dev/null; then
+if grep -q "操作性定义" "$FILE_B_TDD" 2>/dev/null; then
   pass "B2: Contains operational definition template"
 else
   fail "B2: Missing operational definition template"
+fi
+
+if grep -q "technical-deep-dive-report.md" "$FILE_B" 2>/dev/null; then
+  pass "B3: Core template links to technical-deep-dive route template"
+else
+  fail "B3: Core template missing conditional link to route template"
 fi
 
 echo ""

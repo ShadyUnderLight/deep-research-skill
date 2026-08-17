@@ -108,6 +108,9 @@ jobs:
       - run: bash scripts/validate-docs-structure.sh
       - run: python3 scripts/validate_route_manifest.py
       - run: python3 tests/test_route_manifest.py
+      # ── Issue #380: route cards must stay in sync with the manifest ────────
+      - run: python3 scripts/generate_route_cards.py --check
+      - run: python3 -m pytest -q tests/test_route_cards.py
       - run: python3 scripts/test_audit_report.py
       - run: python3 scripts/test_route_decision_tree.py
       - run: python3 scripts/validate_contract.py references/report-template.md --require-contract

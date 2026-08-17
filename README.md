@@ -106,11 +106,13 @@ python -m playwright install chromium
 ```text
 .
 ├── SKILL.md                # 主工作流脊柱：给 Agent 的入口说明
-├── ROUTING-MATRIX.md       # 任务路由完整合约 (hard-fail, artifact, audits)
+├── ROUTING-MATRIX.md       # specialized route 完整合约 (shared-workflow 见 SKILL.md)
 ├── ARCHITECTURE.md         # 分层架构视图
 ├── SYSTEM-MAP.md           # 全仓库结构地图 / 问题域地图
 ├── references/
-│   ├── route-index.md      # 紧凑路由选择索引 (读 ROUTING-MATRIX 前先读此)
+│   ├── route-index.md      # 紧凑路由选择索引 (先读此定位候选 route)
+│   ├── routes/             # 每个 route 的短卡片 (从 schemas/route-manifest.json 生成)
+│   ├── templates/          # route-specific 报告模板 (listed-company / market-outlook / ...)
 │   ├── markdown-delivery-contract.md # Markdown-first 阅读交付契约
 │   ├── search-provider-fallback.md  # 降级搜索 fallback 策略和执行纪律
 │   └── ...                 # 可复用研究方法、模板、纪律说明
@@ -131,10 +133,11 @@ python -m playwright install chromium
 1. **`README.md`**：看清仓库目标与结构
 2. **`SKILL.md`**：看 Agent 实际执行时的工作流脊柱
 3. **`references/route-index.md`**：紧凑路由选择索引（一屏读完，快速定位候选路由）
-4. **`ROUTING-MATRIX.md`**：看任务如何分流，以及每类任务挂什么 discipline / audit（完整合约）
-5. **`ARCHITECTURE.md`**：看仓库分层与职责边界
-6. **`SYSTEM-MAP.md`**：看问题域、失败族和干预路径
-7. 按任务需要再进入 `references/`、`checklists/`、`evals/`、`scripts/`
+4. **`references/routes/`**：候选 route 的短卡片（trigger、边界、reads、audits、artifact contract）
+5. **`ROUTING-MATRIX.md` / `SKILL.md#routing-rule`**：specialized route 读矩阵完整合约；shared-workflow 读 SKILL fallback contract
+6. **`ARCHITECTURE.md`**：看仓库分层与职责边界
+7. **`SYSTEM-MAP.md`**：看问题域、失败族和干预路径
+8. 按任务需要再进入 `references/`、`checklists/`、`evals/`、`scripts/`
 
 ---
 
@@ -144,11 +147,12 @@ python -m playwright install chromium
 
 1. **`SKILL.md`** 定义通用工作流脊柱
 2. **`references/route-index.md`** 提供紧凑路由选择（先读此定位候选 route）
-3. **`ROUTING-MATRIX.md`** 识别当前任务族，并挂上对应 discipline / audit（完整合约）
-4. **`references/`** 提供方法、模板、claim discipline 与研究约束
-5. **`checklists/`** 检查最终产物是否真的达到交付标准
-6. **`evals/`** 把真实失败沉淀成可复盘、可回归的资产
-7. **`scripts/`** 负责 Markdown → PDF 等交付层问题；其中
+3. **`references/routes/<id>.md`** 候选 route 短卡片（trigger、边界、required audits、artifact contract）
+4. **`ROUTING-MATRIX.md`** 需要 specialized route 完整合约时再读（hard-fail、micro-audit、decision tree）；shared-workflow 读 `SKILL.md#routing-rule`
+5. **`references/`** 提供方法、模板、claim discipline 与研究约束
+6. **`checklists/`** 检查最终产物是否真的达到交付标准
+7. **`evals/`** 把真实失败沉淀成可复盘、可回归的资产
+8. **`scripts/`** 负责 Markdown → PDF 等交付层问题；其中
    `validate_markdown_delivery.py` 单独检查 Markdown 阅读层的结构与密度
 
 一句话概括：

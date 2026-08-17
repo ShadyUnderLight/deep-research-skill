@@ -125,7 +125,7 @@ If DCF is determined to be not applicable after the above assessment:
 
 ### Relationship to other rules
 
-- `references/report-template.md` §Valuation method and scenario analysis contains the DCF assumption table template and sensitivity matrix template.
+- `references/templates/listed-company-report.md` §Valuation method and scenario analysis contains the DCF assumption table template and sensitivity matrix template.
 - `references/quantitative-role-labeling.md` §Sensitivity classification defines the sensitivity analysis framework that applies to DCF assumptions.
 - `checklists/listed-company-report.md` §DCF / 反向 DCF contains the enforcement checklist.
 
@@ -266,7 +266,7 @@ If segment-level financials are unavailable or unreliable, SOTP creates false pr
 ### 与现有规则的关系
 
 - 本纪律的四变量关联：六个问题中的问题 1-4 对应四变量分解的变量 3（利润率与现金流转换），问题 5-6 对应变量 4（估值透支程度）。本纪律为四变量分解中 CapEx-heavy 场景提供更详细的执行指导。
-- 本纪律与 `references/report-template.md` §增长到现金流转换表 配合使用：该表提供定量框架，本纪律提供分析问题集。
+- 本纪律与 `references/templates/listed-company-report.md` §增长到现金流转换表 配合使用：该表提供定量框架，本纪律提供分析问题集。
 - 本纪律不替代 DCF 触发条件：如果满足 DCF 触发条件（见 §DCF / reverse DCF trigger），DCF 仍然必须执行。本纪律在 DCF 不适用时提供最低限度的资本回收分析框架。
 
 ## Relationship to other discipline files

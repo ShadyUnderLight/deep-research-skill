@@ -159,7 +159,7 @@ These are gaps in the current eval coverage that affect real report quality.
 
 This case should push changes at multiple layers:
 
-- `references/report-template.md` — add research anchor block as a mandatory opening element before evidence labels
+- `references/templates/listed-company-report.md` — add research anchor block as a mandatory opening element before evidence labels
 - `checklists/listed-company-report.md` — add explicit check for "evidence labels not inflating claim strength" and "research anchor block present before business analysis"
 - `checklists/final-audit.md` — add first-screen real-estate audit (is judgment visible before boilerplate/notes?)
 - `ROUTING-MATRIX.md` — verify that listed-company route hard-fail conditions explicitly include "market snapshot present and dated"

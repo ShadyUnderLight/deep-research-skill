@@ -115,7 +115,7 @@ This eval is distinct from existing TSMC eval cases:
 This eval directly tests the behavioral impact of the rules proposed in issue #280:
 
 1. `checklists/listed-company-report.md` §Customer concentration / second-source discipline — 5 new checklist items covering concentration data, positive/negative separation, second-source analysis, valuation linkage, and blocking-level wording-second-source cross-check
-2. `references/report-template.md` §客户集中度与第二供应源风险（如适用） — optional customer concentration table with required columns (top-10 share, top-1 share, top-2 share, second-source signals, valuation implications) and dual-sided analysis requirement
+2. `references/templates/listed-company-report.md` §客户集中度与第二供应源风险（如适用） — optional customer concentration table with required columns (top-10 share, top-1 share, top-2 share, second-source signals, valuation implications) and dual-sided analysis requirement
 3. `references/moat-monopoly-screening.md` — new strong-claim wording note requiring second-source check when customer-lock-in wording is used, and new concept-boundary trap for "customer lock-in → no substitution risk"
 
 ## Related evals

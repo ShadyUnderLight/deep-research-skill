@@ -98,7 +98,7 @@ def test_c3b_dc_power_rejects_gpt_citation():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_c4a_report_template_has_input_boundary():
-    """C4a: report-template.md contains '输入边界' or '未指定项'."""
+    """C4a: shared core template keeps the input boundary section."""
     content = read("references/report-template.md")
     assert re.search(r'输入边界|未指定项', content), \
         "report-template.md missing input boundary section"

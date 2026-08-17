@@ -14,7 +14,8 @@
       "primary_reads": [
         "references/option-selection-and-shortlist-discipline.md",
         "references/source-traceability-and-claim-citation.md",
-        "references/decision-report-template.md"
+        "references/decision-report-template.md",
+        "references/report-template.md"
       ],
       "required_disciplines": ["current-state", "source-traceability", "decision-utility", "quantitative-role", "data-conflict"],
       "required_audits": ["option-selection-final-audit", "source-traceability", "final-audit"],
@@ -34,7 +35,9 @@
       "primary_reads": [
         "references/option-selection-and-shortlist-discipline.md",
         "references/decision-report-template.md",
-        "references/source-traceability-and-claim-citation.md"
+        "references/source-traceability-and-claim-citation.md",
+        "references/templates/market-entry-report.md",
+        "references/report-template.md"
       ],
       "required_disciplines": ["current-state", "source-traceability", "decision-utility", "quantitative-role", "sensitivity-analysis"],
       "required_audits": ["option-selection-final-audit", "source-traceability", "final-audit"],
@@ -55,7 +58,9 @@
         "references/market-outlook-and-scenario-discipline.md",
         "references/forward-looking-discipline.md",
         "references/decision-report-template.md",
-        "references/source-traceability-and-claim-citation.md"
+        "references/source-traceability-and-claim-citation.md",
+        "references/templates/market-outlook-report.md",
+        "references/report-template.md"
       ],
       "required_disciplines": ["current-state", "forward-looking", "source-traceability", "scope-completeness", "quantitative-role", "sensitivity-analysis"],
       "required_audits": ["market-outlook-audit", "forward-looking-claims", "source-traceability", "final-audit"],
@@ -94,7 +99,8 @@
       "often_confused_with": ["market-entry", "equipment-selection"],
       "primary_reads": [
         "references/option-selection-and-shortlist-discipline.md",
-        "references/decision-report-template.md"
+        "references/decision-report-template.md",
+        "references/report-template.md"
       ],
       "required_disciplines": ["decision-utility", "quantitative-role"],
       "required_audits": ["option-selection-final-audit", "final-audit"],
@@ -156,7 +162,8 @@
       "primary_reads": [
         "references/technical-analysis-discipline.md",
         "references/source-traceability-and-claim-citation.md",
-        "references/forward-looking-discipline.md"
+        "references/forward-looking-discipline.md",
+        "references/templates/technical-deep-dive-report.md"
       ],
       "required_disciplines": ["current-state", "source-traceability", "forward-looking", "quantitative-role"],
       "required_audits": ["technical-analysis-audit", "source-traceability", "final-audit"],
@@ -182,6 +189,7 @@
         "references/market-sizing-and-share-discipline.md",
         "references/source-traceability-and-claim-citation.md",
         "references/moat-monopoly-screening.md",
+        "references/templates/listed-company-report.md",
         "examples/listed-company-judgment-memo-example.md",
         "examples/china-shenhua-reference-grade-rewrite-skeleton.md"
       ],
@@ -224,7 +232,8 @@
       "primary_reads": [
         "references/academic-evidence-hierarchy.md",
         "references/source-traceability-and-claim-citation.md",
-        "references/counter-evidence.md"
+        "references/counter-evidence.md",
+        "references/templates/academic-review-report.md"
       ],
       "required_disciplines": ["source-traceability", "current-state", "forward-looking", "scope-completeness"],
       "required_audits": ["academic-analysis-audit", "source-traceability", "final-audit"],
@@ -249,7 +258,7 @@
       "required_audits": ["workflow-spine-audit", "final-audit"],
       "artifact_contract": "Workflow spine audit plus final audit; no route-specific artifact contract beyond the shared delivery contract.",
       "hard_fail_keywords": ["specialized route escape hatch misuse", "missing workflow-spine-audit"],
-      "hard_fail_source": "references/route-index.md#shared-workflow",
+      "hard_fail_source": "SKILL.md#routing-rule",
       "validator_bindings": ["report-quality", "declared-execution", "table-role-labels", "source-label-consistency", "secondary-route-check", "contract-check"]
     }
   ]

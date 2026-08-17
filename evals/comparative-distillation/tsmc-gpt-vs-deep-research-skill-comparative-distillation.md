@@ -93,7 +93,7 @@ It is for:
 ### Current status
 ✅ 已由 [#278](https://github.com/ShadyUnderLight/deep-research-skill/issues/278) 修复：
 - `references/valuation-methodology.md` 新增 DCF/reverse DCF 触发规则
-- `references/report-template.md` 新增 DCF 假设表 + 敏感性矩阵模板
+- `references/templates/listed-company-report.md` 新增 DCF 假设表 + 敏感性矩阵模板
 - `checklists/listed-company-report.md` 新增 DCF/sensitivity 检查项
 
 ### Eval regression assets
@@ -122,8 +122,8 @@ It is for:
 
 ### Current status
 ✅ 已由 [#277](https://github.com/ShadyUnderLight/deep-research-skill/issues/277) 修复：
-- `references/report-template.md` 新增时间分层段落
-- `references/report-template.md` 新增四变量拆解
+- `references/templates/listed-company-report.md` 新增时间分层段落
+- `references/templates/listed-company-report.md` 新增四变量拆解
 - `checklists/listed-company-report.md` 新增 horizon consistency 检查
 
 ### Eval regression assets
@@ -185,7 +185,7 @@ It is for:
 
 ### Current status
 ✅ 已由 [#280](https://github.com/ShadyUnderLight/deep-research-skill/issues/280) 修复：
-- `references/report-template.md` 新增客户集中度表格
+- `references/templates/listed-company-report.md` 新增客户集中度表格
 - `references/moat-monopoly-screening.md` 新增 second-source 检查规则
 - `checklists/listed-company-report.md` 新增 5 个客户集中度检查项
 

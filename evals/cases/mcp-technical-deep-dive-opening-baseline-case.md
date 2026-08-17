@@ -22,7 +22,7 @@ Analyze the MCP protocol's architecture, core mechanisms, capability boundaries,
 - includes counter-evidence (complexity, security model limitations, deprecation risk)
 - provides actionable judgments for practitioners
 - uses claim-level source traceability with a complete 7-column Source Register
-- opens with a clear audience definition, decision scenario, and technical baseline block as described in `references/report-template.md` §Technical deep-dive opening
+- opens with a clear audience definition, decision scenario, and technical baseline block as described in `references/templates/technical-deep-dive-report.md` §Technical deep-dive opening
 
 ## What this eval is testing
 

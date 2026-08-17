@@ -195,26 +195,29 @@ def test_c5c_commercial_numbers_have_role_labels():
 
 
 # ═══════════════════════════════════════════════════════════════════
-# C6: references/report-template.md — Template additions
+# C6: references/templates/market-outlook-report.md — Template additions
+# (moved from references/report-template.md by issue #380)
 # ═══════════════════════════════════════════════════════════════════
 
+MO_TEMPLATE = "references/templates/market-outlook-report.md"
+
 def test_c6a_report_template_has_category_boundary_template():
-    """C6a: report-template.md contains category boundary table template."""
-    content = read("references/report-template.md")
+    """C6a: market-outlook template contains category boundary table template."""
+    content = read(MO_TEMPLATE)
     assert re.search(r'Category\s*Boundary|类别边界|core.*adjacent.*excluded', content), \
-        "report-template.md missing category boundary template"
+        "market-outlook template missing category boundary template"
 
 def test_c6b_report_template_has_demand_segmentation_template():
-    """C6b: report-template.md contains demand segmentation matrix template."""
-    content = read("references/report-template.md")
+    """C6b: market-outlook template contains demand segmentation matrix template."""
+    content = read(MO_TEMPLATE)
     assert re.search(r'Demand\s*Segmentation|需求细分|segmentation.*matrix|segment.*dimension', content), \
-        "report-template.md missing demand segmentation template"
+        "market-outlook template missing demand segmentation template"
 
 def test_c6c_report_template_has_commercialization_memo():
-    """C6c: report-template.md contains commercialization / pricing memo structure."""
-    content = read("references/report-template.md")
+    """C6c: market-outlook template contains commercialization / pricing memo structure."""
+    content = read(MO_TEMPLATE)
     assert re.search(r'Commercialization|商业化|commercial.*memo|pricing.*structure|商业模式', content), \
-        "report-template.md missing commercialization memo structure"
+        "market-outlook template missing commercialization memo structure"
 
 
 # ═══════════════════════════════════════════════════════════════════

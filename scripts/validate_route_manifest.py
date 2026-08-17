@@ -40,6 +40,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_MANIFEST = ROOT / "schemas" / "route-manifest.json"
 ROUTING_MATRIX = ROOT / "ROUTING-MATRIX.md"
 ROUTE_INDEX = ROOT / "references" / "route-index.md"
+ROUTE_CARDS_DIR = ROOT / "references" / "routes"
 CHECKLISTS_DIR = ROOT / "checklists"
 EVALS_INDEX = ROOT / "evals" / "INDEX.md"
 AUDIT_REGISTRY = ROOT / "schemas" / "audit-registry.json"
@@ -200,10 +201,11 @@ def _check_route_index(
 ) -> list[str]:
     """Validate references/route-index.md trigger table against the manifest.
 
-    Trigger table rows: | Route ID | Trigger keywords | Reads | Audits |.
+    Trigger table rows: | Route ID | Trigger keywords | Reads | Audits | Card |.
     Checks: route id set matches the manifest bidirectionally, trigger
-    keywords are non-empty, and each listed audit is part of that route's
-    required_audits in the manifest.  Returns blocking errors.
+    keywords are non-empty, each listed audit is part of that route's
+    required_audits in the manifest, and the Card link points to that route's
+    generated card. Returns blocking errors.
     """
     errors: list[str] = []
     index_ids: set[str] = set()
@@ -219,8 +221,12 @@ def _check_route_index(
         if not line.startswith("| `"):
             continue
         cells = [c.strip().strip("`") for c in line.strip("|").split("|")]
-        # Row: | Route ID | Trigger keywords | Reads | Audits | → 4 cells
-        if len(cells) < 4:
+        # Row: | Route ID | Trigger keywords | Reads | Audits | Card | → 5 cells
+        if len(cells) < 5:
+            errors.append(
+                f"route-index.md row for {cells[0] if cells else '?'} "
+                "is missing the Card column"
+            )
             continue
         rid = cells[0]  # after strip("|"), the Route ID is the first cell
         if rid in {"Route ID", ""} or set(rid) <= {"-"}:
@@ -246,12 +252,108 @@ def _check_route_index(
                     f"which is not in the route's manifest required_audits"
                 )
 
+        card_match = re.search(r"\]\(([^)]+)\)", cells[4])
+        expected_card = f"routes/{rid}.md"
+        if not card_match:
+            errors.append(
+                f"route-index.md route '{rid}' has no valid Card link; "
+                f"expected '{expected_card}'"
+            )
+        else:
+            card_target = card_match.group(1).split("#", 1)[0]
+            if card_target != expected_card:
+                errors.append(
+                    f"route-index.md route '{rid}' Card link points to "
+                    f"'{card_target}', expected '{expected_card}'"
+                )
+            elif not (ROUTE_INDEX.parent / card_target).is_file():
+                errors.append(
+                    f"route-index.md route '{rid}' Card link target does not "
+                    f"exist: '{card_target}'"
+                )
+
     missing = manifest_ids - index_ids
     if missing:
         errors.append(
             f"Manifest routes missing from route-index.md trigger table: "
             f"{', '.join(sorted(missing))}"
         )
+    return errors
+
+
+# ── references/routes/*.md route cards ────────────────────────────────────────
+
+
+def _check_route_cards(
+    cards_dir: Path,
+    manifest_routes: dict[str, dict],
+    manifest_ids: set[str],
+) -> list[str]:
+    """Validate generated route cards (references/routes/<id>.md) against the
+    manifest (issue #380).
+
+    Route cards are generated views of the manifest — their per-route
+    sections (trigger, do-not-use, often-confused, primary reads, required
+    disciplines, required audits, artifact contract, failure signs) must
+    match the manifest fields.  A card is stale when any section disagrees,
+    which means the manifest changed without regenerating the cards.
+    """
+    errors: list[str] = []
+
+    # 1. Every manifest route must have a card file.
+    for rid in sorted(manifest_ids):
+        card = cards_dir / f"{rid}.md"
+        if not card.is_file():
+            errors.append(
+                f"Missing route card: references/routes/{rid}.md — "
+                f"run `python3 scripts/generate_route_cards.py`"
+            )
+
+    # 2. Extra card files (no manifest route) are drift.
+    if cards_dir.is_dir():
+        for card in sorted(cards_dir.glob("*.md")):
+            rid = card.stem
+            if rid not in manifest_ids:
+                errors.append(
+                    f"Orphan route card: references/routes/{rid}.md has no "
+                    f"corresponding route in the manifest"
+                )
+
+    # 3. Section-level sync: each manifest field must appear in the card.
+    #    Card section headings (issue #380 card contract):
+    section_for: dict[str, str] = {
+        "trigger": "## Trigger",
+        "do_not_use": "## Do not use when",
+        "often_confused_with": "## Often confused with",
+        "primary_reads": "## Primary reads",
+        "required_disciplines": "## Required disciplines",
+        "required_audits": "## Required audits",
+        "artifact_contract": "## Artifact contract",
+        "hard_fail_keywords": "## Failure signs (hard-fail keywords)",
+        "hard_fail_source": "## Hard-fail source",
+    }
+    for rid, route in manifest_routes.items():
+        card = cards_dir / f"{rid}.md"
+        if not card.is_file():
+            continue
+        text = card.read_text(encoding="utf-8")
+        for field, heading in section_for.items():
+            value = route.get(field, "")
+            if isinstance(value, str):
+                if not value:
+                    continue
+                if value not in text:
+                    errors.append(
+                        f"Route card '{rid}': field '{field}' value missing "
+                        f"from references/routes/{rid}.md"
+                    )
+            elif isinstance(value, list):
+                for item in value:
+                    if item and item not in text:
+                        errors.append(
+                            f"Route card '{rid}': {field} item '{item}' "
+                            f"missing from references/routes/{rid}.md"
+                        )
     return errors
 
 
@@ -494,6 +596,11 @@ def validate(path: Path | None = None) -> int:
             f"references/route-index.md not found at {ROUTE_INDEX} — "
             f"cannot verify route-index consistency"
         )
+
+    # ═══ Check 10: references/routes/*.md route cards (issue #380) ═══════════
+    errors.extend(
+        _check_route_cards(ROUTE_CARDS_DIR, manifest_routes, manifest_ids)
+    )
 
     # ── Output ──────────────────────────────────────────────────────────────
     if errors:
