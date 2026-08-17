@@ -158,6 +158,31 @@ def find_missing_headings(cleaned: str) -> list[str]:
     return [h for h in REQUIRED_HEADINGS if h not in found]
 
 
+def extract_declared_statuses(text: str) -> dict[str, str | None]:
+    """Extract the optional machine-readable status sections from a pack.
+
+    The Research Pack validator deliberately keeps these sections optional for
+    backwards compatibility.  Forward evals need to observe the values without
+    reimplementing Markdown heading parsing, so this small helper exposes the
+    same visible-content rules used by the validator itself.
+    """
+    cleaned = strip_fenced_code_blocks(text)
+    statuses: dict[str, str | None] = {
+        "research_status": None,
+        "delivery_status": None,
+    }
+    for heading, key in (
+        ("Research status", "research_status"),
+        ("Delivery status", "delivery_status"),
+    ):
+        body = _section_body(cleaned, heading)
+        if not body:
+            continue
+        first_line = next((line.strip() for line in body.split("\n") if line.strip()), "")
+        statuses[key] = first_line.split()[0] if first_line else None
+    return statuses
+
+
 def find_empty_sections(cleaned: str) -> list[str]:
     lines = cleaned.split("\n")
     heading_positions: list[tuple[str, int]] = []

@@ -1,0 +1,293 @@
+{
+  "version": 1,
+  "description": "Executable offline forward-eval registry for route activation, process artifacts, audit execution and delivery status.",
+  "last_reviewed": "2026-08-17",
+  "cases": [
+    {
+      "id": "forward-provider-selection",
+      "type": "positive",
+      "status": "active",
+      "input": {
+        "user_prompt": "应该选择哪个 AI 模型供应商，才能满足当前团队的访问和支持约束？",
+        "parallelization_decision": "single-track"
+      },
+      "expected": {
+        "primary_route": "provider-selection",
+        "closest_alternative": "market-outlook",
+        "secondary_routes": [],
+        "disciplines": ["current-state", "source-traceability", "decision-utility", "quantitative-role", "data-conflict"],
+        "required_audits": ["option-selection-final-audit", "source-traceability", "final-audit"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "md_ready"},
+        "verdict": "pass"
+      },
+      "fixtures": {
+        "report": "tests/fixtures/forward/provider-selection-report.md",
+        "research_pack": "tests/fixtures/forward/provider-selection-pack.md"
+      },
+      "failure_family": null,
+      "related_rule": ["ROUTING-MATRIX.md#provider-vendor-selection", "references/route-activation-and-preflight.md"],
+      "related_validator": ["scripts/audit_report.py", "scripts/validate_contract.py"]
+    },
+    {
+      "id": "forward-constrained-choice",
+      "type": "positive",
+      "status": "active",
+      "input": {
+        "user_prompt": "在定义好的选项集合中，哪一个最适合当前部署约束？",
+        "parallelization_decision": "single-track"
+      },
+      "expected": {
+        "primary_route": "constrained-choice",
+        "closest_alternative": "equipment-selection",
+        "secondary_routes": [],
+        "disciplines": ["decision-utility", "quantitative-role"],
+        "required_audits": ["option-selection-final-audit", "final-audit"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "md_ready"},
+        "verdict": "pass"
+      },
+      "fixtures": {
+        "report": "tests/fixtures/forward/constrained-choice-report.md",
+        "research_pack": "tests/fixtures/forward/constrained-choice-pack.md"
+      },
+      "failure_family": null,
+      "related_rule": ["ROUTING-MATRIX.md#constrained-choice-shortlist-option-selection", "ROUTING-MATRIX.md#route-selection-decision-tree"],
+      "related_validator": ["scripts/audit_report.py", "scripts/validate_scoring_replicability.py"]
+    },
+    {
+      "id": "forward-academic-vs-technical",
+      "type": "positive",
+      "status": "active",
+      "input": {
+        "user_prompt": "请基于学术文献评估这个研究方向的进展、证据质量和当前局限。",
+        "parallelization_decision": "single-track"
+      },
+      "expected": {
+        "primary_route": "academic-review",
+        "closest_alternative": "technical-deep-dive",
+        "secondary_routes": [],
+        "disciplines": ["source-traceability", "current-state", "forward-looking", "scope-completeness"],
+        "required_audits": ["academic-analysis-audit", "source-traceability", "final-audit"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "statuses": {"research_status": "complete", "audit_status": "conditional-pass", "delivery_status": "md_ready"},
+        "verdict": "pass"
+      },
+      "fixtures": {
+        "report": "tests/fixtures/forward/academic-review-report.md",
+        "research_pack": "tests/fixtures/forward/academic-review-pack.md"
+      },
+      "failure_family": null,
+      "related_rule": ["ROUTING-MATRIX.md#academic-review-literature-review", "references/academic-evidence-hierarchy.md"],
+      "related_validator": ["scripts/audit_report.py", "scripts/validate_report_quality.py"]
+    },
+    {
+      "id": "forward-company-technical-mixed",
+      "type": "positive",
+      "status": "active",
+      "input": {
+        "user_prompt": "分析一家上市公司的技术架构可行性，并单独检查公司层面的风险。",
+        "parallelization_decision": "single-track"
+      },
+      "expected": {
+        "primary_route": "technical-deep-dive",
+        "closest_alternative": "market-outlook",
+        "secondary_routes": ["listed-company"],
+        "disciplines": ["current-state", "source-traceability", "forward-looking", "quantitative-role"],
+        "required_audits": ["technical-analysis-audit", "source-traceability", "final-audit", "listed-company-secondary-hard-fail"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "md_ready"},
+        "verdict": "pass"
+      },
+      "fixtures": {
+        "report": "tests/fixtures/forward/company-technical-mixed-report.md",
+        "research_pack": "tests/fixtures/forward/company-technical-mixed-pack.md"
+      },
+      "failure_family": null,
+      "related_rule": ["references/route-activation-and-preflight.md#secondary-route-hard-fail-verification", "schemas/route-activation-contract.json"],
+      "related_validator": ["scripts/audit_report.py", "scripts/validate_contract.py"]
+    },
+    {
+      "id": "forward-shared-workflow-escape-hatch",
+      "type": "positive",
+      "status": "active",
+      "input": {
+        "user_prompt": "把一份轻量的内部流程复盘整理成可审计的工作流说明。",
+        "parallelization_decision": "not-needed"
+      },
+      "expected": {
+        "primary_route": "shared-workflow",
+        "closest_alternative": null,
+        "secondary_routes": [],
+        "disciplines": [],
+        "required_audits": ["workflow-spine-audit", "final-audit"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "md_ready"},
+        "verdict": "pass"
+      },
+      "fixtures": {
+        "report": "tests/fixtures/audit/shared-workflow-pos.md",
+        "research_pack": "tests/fixtures/forward/shared-positive-pack.md"
+      },
+      "failure_family": null,
+      "related_rule": ["ROUTING-MATRIX.md#route-selection-decision-tree", "checklists/workflow-spine-audit.md"],
+      "related_validator": ["scripts/audit_report.py", "scripts/validate_research_pack.py"]
+    },
+    {
+      "id": "forward-channel-blocked",
+      "type": "positive",
+      "status": "active",
+      "input": {
+        "user_prompt": "在外部搜索通道不可用时，给出一个明确标注研究边界的行业展望。",
+        "parallelization_decision": "parallel"
+      },
+      "expected": {
+        "primary_route": "market-outlook",
+        "closest_alternative": null,
+        "secondary_routes": [],
+        "disciplines": [],
+        "required_audits": ["market-outlook-audit", "forward-looking-claims", "source-traceability", "final-audit"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Channel availability snapshot", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "statuses": {"research_status": "blocked", "audit_status": "pass", "delivery_status": "md_ready"},
+        "verdict": "pass"
+      },
+      "fixtures": {
+        "report": "tests/fixtures/audit/market-outlook-pos.md",
+        "research_pack": "tests/fixtures/forward/channel-blocked-pack.md"
+      },
+      "failure_family": null,
+      "related_rule": ["references/external-channel-preflight.md", "schemas/research-pack.md#channel-availability-snapshot"],
+      "related_validator": ["scripts/validate_channel_preflight.py", "scripts/validate_research_pack.py"]
+    },
+    {
+      "id": "forward-markdown-ready-pdf-failed",
+      "type": "positive",
+      "status": "active",
+      "input": {
+        "user_prompt": "交付 Markdown 研究报告，并明确记录 PDF 渲染失败。",
+        "parallelization_decision": "single-track"
+      },
+      "expected": {
+        "primary_route": "market-outlook",
+        "closest_alternative": null,
+        "secondary_routes": [],
+        "disciplines": [],
+        "required_audits": ["market-outlook-audit", "forward-looking-claims", "source-traceability", "final-audit"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "pdf_failed"},
+        "verdict": "pass"
+      },
+      "fixtures": {
+        "report": "tests/fixtures/audit/market-outlook-pos.md",
+        "research_pack": "tests/fixtures/forward/pdf-failed-pack.md"
+      },
+      "failure_family": null,
+      "related_rule": ["schemas/research-pack.md#delivery-status", "references/markdown-delivery-contract.md"],
+      "related_validator": ["scripts/validate_research_pack.py", "scripts/validate_markdown_delivery.py"]
+    },
+    {
+      "id": "forward-market-outlook-baseline",
+      "type": "positive",
+      "status": "active",
+      "input": {
+        "user_prompt": "未来 12 个月这个市场将如何演化，关键监测信号是什么？",
+        "parallelization_decision": "parallel"
+      },
+      "expected": {
+        "primary_route": "market-outlook",
+        "closest_alternative": null,
+        "secondary_routes": [],
+        "disciplines": [],
+        "required_audits": ["market-outlook-audit", "forward-looking-claims", "source-traceability", "final-audit"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "md_ready"},
+        "verdict": "pass"
+      },
+      "fixtures": {
+        "report": "tests/fixtures/audit/market-outlook-pos.md",
+        "research_pack": "tests/fixtures/forward/market-outlook-baseline-pack.md"
+      },
+      "failure_family": null,
+      "related_rule": ["ROUTING-MATRIX.md#market-outlook-industry-evolution", "evals/cases/humanoid-robot-market-outlook-dual-route-case.md"],
+      "related_validator": ["scripts/audit_report.py", "scripts/validate_forward_looking_labels.py"]
+    },
+    {
+      "id": "forward-secondary-route-not-verified",
+      "type": "negative",
+      "status": "active",
+      "input": {
+        "user_prompt": "分析市场展望，同时把一个定义好的选项比较作为次级路由附上。",
+        "parallelization_decision": "parallel"
+      },
+      "expected": {
+        "primary_route": "market-outlook",
+        "closest_alternative": null,
+        "secondary_routes": ["constrained-choice"],
+        "disciplines": [],
+        "required_audits": ["market-outlook-audit", "forward-looking-claims", "source-traceability", "final-audit", "constrained-choice-secondary-hard-fail"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "statuses": {"research_status": "complete", "audit_status": "fail", "delivery_status": "md_ready"},
+        "verdict": "fail"
+      },
+      "fixtures": {
+        "report": "tests/fixtures/audit/market-outlook-mixed-neg.md",
+        "research_pack": "tests/fixtures/forward/mixed-negative-pack.md"
+      },
+      "failure_family": "secondary-route-not-verified",
+      "related_rule": ["references/route-activation-and-preflight.md#secondary-route-hard-fail-verification", "schemas/route-activation-contract.json"],
+      "related_validator": ["scripts/audit_report.py", "scripts/validate_contract.py"]
+    },
+    {
+      "id": "forward-route-misclassification",
+      "type": "negative",
+      "status": "active",
+      "input": {
+        "user_prompt": "AI 编程工具市场中哪家会领先？请给出选择和排序。",
+        "parallelization_decision": "single-track"
+      },
+      "expected": {
+        "primary_route": "constrained-choice",
+        "closest_alternative": "equipment-selection",
+        "secondary_routes": [],
+        "disciplines": ["decision-utility", "quantitative-role"],
+        "required_audits": ["option-selection-final-audit", "final-audit"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "md_ready"},
+        "verdict": "fail"
+      },
+      "fixtures": {
+        "report": "tests/fixtures/audit/market-outlook-pos.md",
+        "research_pack": "tests/fixtures/forward/market-outlook-baseline-pack.md"
+      },
+      "failure_family": "route-misclassification",
+      "related_rule": ["ROUTING-MATRIX.md#route-selection-decision-tree", "evals/cases/world-cup-constrained-choice-wrong-route-case.md"],
+      "related_validator": ["scripts/audit_report.py", "scripts/validate_contract.py"]
+    },
+    {
+      "id": "forward-declared-not-executed",
+      "type": "negative",
+      "status": "active",
+      "input": {
+        "user_prompt": "把轻量工作流复盘交付出来，并声明最终审计已完成。",
+        "parallelization_decision": "not-needed"
+      },
+      "expected": {
+        "primary_route": "shared-workflow",
+        "closest_alternative": null,
+        "secondary_routes": [],
+        "disciplines": [],
+        "required_audits": ["workflow-spine-audit", "final-audit"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "statuses": {"research_status": "complete", "audit_status": "fail", "delivery_status": "md_ready"},
+        "verdict": "fail"
+      },
+      "fixtures": {
+        "report": "tests/fixtures/audit/shared-workflow-neg.md",
+        "research_pack": "tests/fixtures/forward/shared-negative-pack.md"
+      },
+      "failure_family": "declared-not-executed",
+      "related_rule": ["schemas/audit-registry.json", "references/report-template.md#route-and-audit-status"],
+      "related_validator": ["scripts/audit_report.py", "scripts/validate_research_pack.py"]
+    }
+  ]
+}

@@ -96,6 +96,8 @@ jobs:
       - run: python3 scripts/test_report_quality_validator.py
       - run: python3 scripts/test_doc_eval_sync.py
       - run: python3 scripts/test_eval_index.py
+      - run: python3 scripts/validate_eval_registry.py
+      - run: python3 scripts/run_forward_evals.py --offline --check-baseline --json
       - run: python3 scripts/test_rule_trigger_rate_audit.py
       - run: python3 scripts/test_md_to_pdf_preflight.py
       - run: python3 scripts/test_control_plane_architecture_discipline.py

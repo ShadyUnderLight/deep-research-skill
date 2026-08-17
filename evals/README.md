@@ -76,6 +76,36 @@ Status values:
 
 When adding a tracked `evals/cases/*.md` file, add exactly one row to `evals/INDEX.md`. Keep temporary reports, scratch outputs, and unnormalized local material out of the active index until they have a clear eval purpose.
 
+## Executable forward registry
+
+`evals/registry.json` is the canonical machine-readable registry for the small
+offline forward-eval subset. It is intentionally separate from the historical
+Markdown case index:
+
+- `evals/INDEX.md` catalogs all tracked `evals/cases/*.md` files for human
+  coverage scans.
+- `evals/registry.json` describes executable user-prompt, activation, process-
+  artifact, audit, and delivery-status fixtures.
+- `comparative-distillation/candidate-rule-registry.md` tracks candidate rule
+  actions and coverage; it is not an execution registry.
+
+Validate and run the forward subset with:
+
+```bash
+python3 scripts/validate_eval_registry.py
+python3 scripts/run_forward_evals.py --offline --check-baseline
+```
+
+The runner replays local report and Research Pack snapshots. It does not call a
+model or an external search provider, and it consumes the structured JSON
+verdict emitted by `scripts/audit_report.py` rather than parsing human-readable
+audit output.
+
+Forward cases retain a concrete `failure_family` and map it to one of four
+diagnostic classes: `missing-rule`, `missing-trigger`, `execution-drift`, or
+`fixture-reference-drift`. Registry and fixture failures are reported as
+`fixture-reference-drift` before any model or audit result is considered.
+
 ## What not to put here
 
 Do not use `evals/` for:
