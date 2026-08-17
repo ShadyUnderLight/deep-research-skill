@@ -1813,6 +1813,76 @@ class TestDuplicateDeclarations:
         )
         assert result.returncode == 2, result.stdout
 
+    def _route_table(self) -> str:
+        return (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+
+    def _assert_route_hidden(self, prefix: str) -> None:
+        """A type-7 tag after *prefix* must start raw mode: the forged
+        route table behind it fails the audit."""
+        b = prefix + "\n<span data=\"x\">\n" + self._route_table()
+        path = _write(_report(route_block=b, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_type1_same_line_close_resets_paragraph(self) -> None:
+        """'<script></script>' on one line is a type-1 block and ends the
+        paragraph: the following type-7 tag must start raw mode."""
+        self._assert_route_hidden("some paragraph\n<script></script>")
+
+    @pytest.mark.parametrize("indent", ["\tx = 1", "  \tx = 1", " \tx = 1"])
+    def test_tab_indented_code_starts_block(self, indent: str) -> None:
+        """A tab-indented line is indented code (tab = 4 columns in
+        CommonMark) and starts a block: the following type-7 tag must
+        start raw mode."""
+        self._assert_route_hidden("some paragraph\n" + indent)
+
+    def test_invalid_block_tag_line_continues_paragraph(self) -> None:
+        """'<div/foo>' is NOT a valid block-tag line (no complete '/>'
+        pair, no whitespace): it is ordinary text, so the paragraph
+        continues and the claim stays visible."""
+        self._assert_claim_visible(
+            self._claim_report("some paragraph\n<div/foo>\n<span>\n")
+        )
+
+    @pytest.mark.parametrize("tag", ['<span a="foo"bar>', '<span h*#ref="hi">'])
+    def test_malformed_attribute_is_not_complete_open_tag(self, tag: str) -> None:
+        """Malformed attribute syntax is not a complete open tag
+        (CommonMark requires name = quoted/unquoted value): the line is
+        ordinary text and the following claim stays visible."""
+        self._assert_claim_visible(self._claim_report(tag + "\n"))
+
+    def test_valid_attribute_syntax_is_complete_open_tag(self) -> None:
+        """A well-formed attribute tag still starts type-7 raw mode."""
+        self._assert_route_hidden('<span a="foo" bar=\'baz\' data-x=42>')
+
+    def test_nbsp_closing_tag_is_not_type7_close(self) -> None:
+        """'</span\u00a0>' is not a valid type-7 closing tag (only
+        spaces/tabs may separate tag name and '>'): no raw mode, the
+        claim stays visible."""
+        self._assert_claim_visible(self._claim_report("</span\u00a0>\n"))
+
+    def test_nbsp_closing_tag_does_not_end_type1(self) -> None:
+        """'</script\u00a0>' must not end a type-1 block: the forged
+        route table after it stays hidden and fails the audit."""
+        b = "<script>\n</script\u00a0>\n" + self._route_table()
+        path = _write(_report(route_block=b, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

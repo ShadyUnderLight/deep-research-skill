@@ -965,31 +965,86 @@ _HTML_BLOCK_CLOSE_RE = re.compile(
 )
 
 
+_ATTR_NAME_RE = re.compile(r"[A-Za-z_:][A-Za-z0-9_.:-]*")
+_ATTR_UNQUOTED_RE = re.compile(r'[^ \t\n"\'=<>`]+')
+
+
 def _match_complete_open_tag(line: str) -> re.Match[str] | None:
     """Match a complete open tag at line start (type-7 start condition).
 
-    Quote-aware: a '>' inside a quoted attribute value is part of the
-    attribute.  After the closing '>' only spaces/tabs may follow to the
-    end of the line (spec 0.31.2, issue #378).
+    Quote-aware AND grammar-checked: '>' inside a quoted attribute value
+    is part of the attribute; malformed attribute syntax (e.g.
+    '<span a="foo"bar>' or '<span h*#ref="hi">') is not a complete open
+    tag under CommonMark.  After the closing '>' only spaces/tabs may
+    follow to the end of the line (spec 0.31.2, issue #378).
     """
     m = re.match(rf"^[ ]{{0,3}}<([a-zA-Z][a-zA-Z0-9-]*){_TAG_BOUNDARY}", line)
     if m is None:
         return None
     i = m.end()
-    quote: str | None = None
-    while i < len(line):
-        ch = line[i]
-        if quote is not None:
-            if ch == quote:
-                quote = None
-        elif ch in "\"'":
-            quote = ch
-        elif ch == ">":
+    while True:
+        # Optional whitespace before '>', '/>' or the next attribute.
+        ws = False
+        while i < len(line) and line[i] in " \t":
+            i += 1
+            ws = True
+        if i >= len(line):
+            return None  # no closing '>'
+        if line[i] == ">":
             if re.match(r"^[\t ]*$", line[i + 1:]):
                 return m
             return None
-        i += 1
-    return None
+        if line[i] == "/":
+            # The '/' must be followed immediately by '>' (self-closing).
+            if line[i + 1:i + 2] == ">" and re.match(r"^[\t ]*$", line[i + 2:]):
+                return m
+            return None
+        if not ws:
+            return None  # garbage after the tag name / previous attribute
+        # Attribute: name = quoted|unquoted value (fail-closed: a bare
+        # attribute name is NOT accepted as a complete tag, issue #378).
+        nm = _ATTR_NAME_RE.match(line, i)
+        if nm is None:
+            return None
+        i = nm.end()
+        j = i
+        while j < len(line) and line[j] in " \t":
+            j += 1
+        if j >= len(line) or line[j] != "=":
+            return None  # bare attribute → not accepted
+        i = j + 1
+        while i < len(line) and line[i] in " \t":
+            i += 1
+        if i >= len(line):
+            return None
+        if line[i] in "\"'":
+            quote = line[i]
+            i += 1
+            while i < len(line) and line[i] != quote:
+                i += 1
+            if i >= len(line):
+                return None  # unterminated quoted value
+            i += 1
+        else:
+            uv = _ATTR_UNQUOTED_RE.match(line, i)
+            if uv is None:
+                return None
+            i = uv.end()
+    # unreachable
+
+
+def _indent_width(line: str) -> int:
+    """CommonMark indentation width: space = 1, tab advances to the next
+    multiple of 4 (spec 0.31.2 'Tabs')."""
+    w = 0
+    for ch in line:
+        if ch == " ":
+            w += 1
+        elif ch == "\t":
+            w += 4 - (w % 4)
+        else:
+            break
+    return w
 
 
 def _continues_paragraph(line: str) -> bool:
@@ -998,9 +1053,9 @@ def _continues_paragraph(line: str) -> bool:
     Used for the CommonMark type-7 start condition: type-7 HTML blocks
     cannot interrupt an open paragraph.  Block starts — blank lines,
     headings, lists, blockquotes, fences, thematic breaks / setext
-    underlines, indented code — end the paragraph; everything else
-    (including inline HTML tags like <span>) continues it (issue #378).
-    Takes the RAW line (leading spaces matter for indented code).
+    underlines, indented code (spaces or tabs) — end the paragraph;
+    everything else (including inline HTML tags like <span>) continues
+    it (issue #378).  Takes the RAW line (leading whitespace matters).
     """
     stripped = line.strip()
     if not stripped:
@@ -1015,18 +1070,27 @@ def _continues_paragraph(line: str) -> bool:
         return False
     if re.match(r"^=+[\t ]*$", stripped):
         return False
-    # Indented code (4+ leading spaces): starts a block.  (In a real
-    # CommonMark parser an indented line after a paragraph is a lazy
-    # continuation, but treating it as a block boundary is the
+    # Indented code (>= 4 columns of spaces/tabs): starts a block.  (In
+    # a real CommonMark parser an indented line after a paragraph is a
+    # lazy continuation, but treating it as a block boundary is the
     # fail-closed direction for the type-7 gate — issue #378.)
-    if re.match(r"^[ ]{4,}\S", line):
+    if line[:1] in (" ", "\t") and _indent_width(line) >= 4:
         return False
-    # HTML tag line: block tags (types 1/6) interrupt the paragraph;
-    # inline tags (<span>, </span>, <a href=...>) continue it.
-    m = re.match(r"^</?([a-zA-Z][a-zA-Z0-9-]*)", stripped)
-    if m is not None:
-        tag = m.group(1).lower()
-        return tag not in _HTML_TYPE1_TAGS and tag not in _HTML_BLOCK_TAGS
+    # HTML-looking line: only lines that are grammar-valid block starts
+    # (type-6 open/close with a real block tag, type-1 tags) or complete
+    # inline tags are classified by tag; anything else — '<div/foo>',
+    # '<span a="foo"bar>' — is ordinary text and continues the
+    # paragraph (issue #378).
+    if re.match(r"^</?[a-zA-Z]", stripped):
+        if _HTML_BLOCK_OPEN_ANY_RE.match(line) or _HTML_BLOCK_CLOSE_RE.match(line):
+            return False  # type-6 block start interrupts the paragraph
+        if _match_complete_open_tag(line) is not None:
+            return True  # complete inline open tag continues the paragraph
+        m = re.match(r"^[ ]{0,3}</([a-zA-Z][a-zA-Z0-9-]*)[ \t]*>(?:[\t ]*$)", line)
+        if m is not None:
+            tag = m.group(1).lower()
+            return tag not in _HTML_TYPE1_TAGS and tag not in _HTML_BLOCK_TAGS
+        return True  # invalid/incomplete HTML-looking line → ordinary text
     return True
 
 
@@ -1085,7 +1149,11 @@ def _sanitize_visible_lines(
             continue
         if state is not None and state.startswith("t1:"):
             tag = state[3:]
-            if re.search(rf"</{tag}\s*>", stripped, re.IGNORECASE):
+            # Only spaces/tabs may separate the tag name from '>' — NBSP
+            # and other Unicode whitespace do NOT close the block
+            # (issue #378).  The line is not stripped: strip() would
+            # remove NBSP before the regex can reject it.
+            if re.search(rf"</{tag}[ \t]*>", line, re.IGNORECASE):
                 state = None
             if blank:
                 out.append("")
@@ -1125,6 +1193,7 @@ def _sanitize_visible_lines(
         #    is an indented code block, not raw HTML, issue #378) ──
         if re.match(r"^[ ]{0,3}<!--", line):
             if "-->" in stripped:
+                in_paragraph = False  # type-2 block interrupts the paragraph
                 continue
             state = "comment"
             in_paragraph = False
@@ -1133,6 +1202,7 @@ def _sanitize_visible_lines(
             continue
         if re.match(r"^[ ]{0,3}<!\[CDATA\[", line):
             if "]]>" in stripped:
+                in_paragraph = False
                 continue
             state = "cdata"
             in_paragraph = False
@@ -1141,6 +1211,7 @@ def _sanitize_visible_lines(
             continue
         if re.match(r"^[ ]{0,3}<\?", line):
             if "?>" in stripped:
+                in_paragraph = False
                 continue
             state = "pi"
             in_paragraph = False
@@ -1150,6 +1221,7 @@ def _sanitize_visible_lines(
         if re.match(r"^[ ]{0,3}<![A-Za-z]", line):
             # Type 4: '<!' must be followed by an ASCII letter.
             if ">" in stripped:
+                in_paragraph = False
                 continue
             state = "decl"
             in_paragraph = False
@@ -1159,8 +1231,11 @@ def _sanitize_visible_lines(
         m1 = _HTML_TYPE1_OPEN_RE.match(line)
         if m1:
             tag = m1.group(1).lower()
-            if re.search(rf"</{tag}\s*>", stripped, re.IGNORECASE):
-                continue  # same-line close ends the type-1 block
+            # Same-line close ends the type-1 block; only spaces/tabs
+            # may separate the tag name from '>' (issue #378).
+            if re.search(rf"</{tag}[ \t]*>", line, re.IGNORECASE):
+                in_paragraph = False  # type-1 block interrupts the paragraph
+                continue
             state = "t1:" + tag
             in_paragraph = False
             if blank:
@@ -1187,9 +1262,10 @@ def _sanitize_visible_lines(
                 if blank:
                     out.append("")
                 continue
-            if re.match(r"^[ ]{0,3}</([a-zA-Z][a-zA-Z0-9-]*)\s*>(?:[\t ]*$)", line):
-                # Type 7 closing tag: complete tag followed only by
-                # spaces/tabs to the end of the line.
+            if re.match(r"^[ ]{0,3}</([a-zA-Z][a-zA-Z0-9-]*)[ \t]*>(?:[\t ]*$)", line):
+                # Type 7 closing tag: complete tag, only spaces/tabs
+                # between name and '>' and to the end of the line
+                # (issue #378).
                 state = "raw"
                 in_paragraph = False
                 if blank:
