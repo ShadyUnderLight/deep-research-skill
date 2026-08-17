@@ -1720,6 +1720,99 @@ class TestDuplicateDeclarations:
         # 图2 is not a real figure entity → reference must fail (exit 2).
         assert r.returncode == 2, r.stdout
 
+    def test_figure_mermaid_nbsp_close_does_not_end_block(self) -> None:
+        """A backtick fence followed by NBSP is not a valid closer
+        (grammar whitespace is space/tab only): the mermaid block must
+        not end there, so a fake caption inside it does not count."""
+        fig = (
+            "# Report\n\n```mermaid\ngraph TD\n```\u00a0\n图2: Fake\n```\n"
+            "\n见图2 for details.\n"
+        )
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 2, r.stdout
+
+    def test_figure_mermaid_nbsp_language_not_mermaid(self) -> None:
+        """'```mermaid\u00a0' is NOT a mermaid fence: NBSP is part of the
+        info-string token (CommonMark whitespace is space/tab only), so
+        the block is a plain code fence and the caption stays hidden."""
+        fig = (
+            "# Report\n\n```mermaid\u00a0\ngraph TD\n图2: Fake\n```\n"
+            "\n见图2 for details.\n"
+        )
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 2, r.stdout
+
+    @pytest.mark.parametrize("tag_line", ["<div/foo", "<div/ foo", "<div/foo>"])
+    def test_html_block_lone_slash_is_not_type6_start(self, tag_line: str) -> None:
+        """A lone '/' after the tag name is not a valid type-6 start
+        (only the complete '/>' pair is): '<div/foo' and '<div/ foo'
+        must not enter raw mode and hide the following visible claim."""
+        self._assert_claim_visible(self._claim_report(tag_line + "\n"))
+
+    def test_html_block_double_slash_is_valid_type6_start(self) -> None:
+        """'<div/>' and '<div />' ARE valid type-6 starts: the following
+        declarations are raw HTML and must not be counted."""
+        route_block = (
+            "<div/>\n## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+        )
+        path = _write(_report(route_block=route_block, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_inline_span_pair_does_not_start_raw(self) -> None:
+        """'some paragraph → <span> → </span> → [Confirmed]': <span> is an
+        inline tag, so the paragraph continues; </span> (type-7 closing)
+        cannot interrupt the paragraph either.  The claim stays visible."""
+        self._assert_claim_visible(
+            self._claim_report("some paragraph\n<span>\n</span>\n")
+        )
+
+    @pytest.mark.parametrize(
+        "block",
+        [
+            "```python\nx = 1\n```",          # fenced code
+            "---",                             # thematic break
+            "===",                             # setext underline
+            "    x = 1",                       # indented code
+        ],
+        ids=["fence", "thematic", "setext", "indented"],
+    )
+    def test_type7_after_block_boundary_starts_raw(self, block: str) -> None:
+        """After a real block boundary a type-7 open tag starts raw mode:
+        a forged route table behind it must fail the audit (issue #378)."""
+        route_table = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        b = "some paragraph\n" + block + "\n<span data=\"x\">\n" + route_table
+        path = _write(_report(route_block=b, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
 
 class TestSecondaryHardFail:
     """Secondary-route hard-fail verification needs its own audit result

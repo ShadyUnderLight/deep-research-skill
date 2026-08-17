@@ -134,16 +134,19 @@ def _mermaid_spans(text: str) -> list[tuple[int, int]]:
     char = ""
     length = 0
     for i, line in enumerate(lines):
-        stripped = line.rstrip()
+        # No rstrip() here: the shared fence regexes themselves only
+        # accept spaces/tabs as grammar whitespace, so a trailing NBSP
+        # (or any other Unicode whitespace) keeps a line from being a
+        # valid closer/opener (issue #378).
         if not in_mermaid:
-            fm = _fence_open_match(stripped)
+            fm = _fence_open_match(line)
             if fm is not None and _fence_language(fm) == "mermaid":
                 in_mermaid = True
                 start = i
                 char = fm.group(1)[0]
                 length = len(fm.group(1))
         else:
-            if _fence_close_re(char, length).match(stripped):
+            if _fence_close_re(char, length).match(line):
                 spans.append((start, i + 1))
                 in_mermaid = False
     if in_mermaid:

@@ -97,8 +97,16 @@ _FENCE_OPEN_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})([^\n]*)$")
 
 
 def _fence_language(open_m: re.Match[str]) -> str:
-    """Normalized first token of a fence info string ('' when absent)."""
-    return open_m.group(2).strip().lower().split()[0] if open_m.group(2).strip() else ""
+    """First space/tab-separated token of a fence info string, lowercased.
+
+    CommonMark whitespace is space/tab only: NBSP or other Unicode
+    whitespace inside the info string is part of the token, so
+    '```mermaid\\u00a0' has language 'mermaid\\u00a0', NOT 'mermaid'
+    (issue #378).
+    """
+    info = open_m.group(2)
+    m = re.match(r"^[ \t]*([^ \t]*)", info)
+    return m.group(1).lower() if m.group(1) else ""
 
 
 def _fence_open_match(line: str) -> re.Match[str] | None:
@@ -932,9 +940,11 @@ _HTML_BLOCK_TAGS = (
 # tag line — blank lines do NOT terminate it (issue #378).
 _HTML_TYPE1_TAGS = ("script", "pre", "style", "textarea")
 
-# Tag boundary: after the tag name only space/tab, '>', '/>' or EOL are
-# allowed (a '!' or other character means it is not this tag).
-_TAG_BOUNDARY = r"(?=[	 />]|$)"
+# Tag boundary: after the tag name only space/tab, '>', the complete
+# '/>' pair or EOL are allowed.  A lone '/' (as in '<div/foo' or
+# '<div/ foo') is NOT a valid suffix — only the full '/>' sequence
+# (spec 0.31.2, issue #378).
+_TAG_BOUNDARY = r"(?=/>|[\t >]|$)"
 
 _HTML_TYPE1_OPEN_RE = re.compile(
     rf"^[ ]{{0,3}}<({'|'.join(_HTML_TYPE1_TAGS)}){_TAG_BOUNDARY}", re.IGNORECASE
@@ -982,21 +992,41 @@ def _match_complete_open_tag(line: str) -> re.Match[str] | None:
     return None
 
 
-def _continues_paragraph(stripped: str) -> bool:
+def _continues_paragraph(line: str) -> bool:
     """True if a top-level line continues an open paragraph.
 
     Used for the CommonMark type-7 start condition: type-7 HTML blocks
-    cannot interrupt an open paragraph.  Blank lines and the start of
-    other blocks (headings, lists, blockquotes, fences) end the
-    paragraph; everything else continues it.
+    cannot interrupt an open paragraph.  Block starts — blank lines,
+    headings, lists, blockquotes, fences, thematic breaks / setext
+    underlines, indented code — end the paragraph; everything else
+    (including inline HTML tags like <span>) continues it (issue #378).
+    Takes the RAW line (leading spaces matter for indented code).
     """
+    stripped = line.strip()
     if not stripped:
         return False
     if re.match(
-        r"^(#{1,6}[\t ]|>|[-+*][\t ]|\d+[.)][\t ]|`{3,}|~{3,}|</?[a-zA-Z])",
+        r"^(#{1,6}[\t ]|>|[-+*][\t ]|\d+[.)][\t ]|`{3,}|~{3,})",
         stripped,
     ):
         return False
+    # Thematic break / setext underline (---, ***, ___, - - -, ===).
+    if re.match(r"^[-*_](?:[\t ]*[-*_]){2,}[\t ]*$", stripped):
+        return False
+    if re.match(r"^=+[\t ]*$", stripped):
+        return False
+    # Indented code (4+ leading spaces): starts a block.  (In a real
+    # CommonMark parser an indented line after a paragraph is a lazy
+    # continuation, but treating it as a block boundary is the
+    # fail-closed direction for the type-7 gate — issue #378.)
+    if re.match(r"^[ ]{4,}\S", line):
+        return False
+    # HTML tag line: block tags (types 1/6) interrupt the paragraph;
+    # inline tags (<span>, </span>, <a href=...>) continue it.
+    m = re.match(r"^</?([a-zA-Z][a-zA-Z0-9-]*)", stripped)
+    if m is not None:
+        tag = m.group(1).lower()
+        return tag not in _HTML_TYPE1_TAGS and tag not in _HTML_BLOCK_TAGS
     return True
 
 
@@ -1085,6 +1115,7 @@ def _sanitize_visible_lines(
             lang = _fence_language(fm)
             mermaid = keep_mermaid and lang == "mermaid"
             state = "fence"
+            in_paragraph = False  # a fence interrupts an open paragraph
             if keep_fences or (keep_mermaid and mermaid):
                 out.append(line)
             elif blank:
@@ -1096,6 +1127,7 @@ def _sanitize_visible_lines(
             if "-->" in stripped:
                 continue
             state = "comment"
+            in_paragraph = False
             if blank:
                 out.append("")
             continue
@@ -1103,6 +1135,7 @@ def _sanitize_visible_lines(
             if "]]>" in stripped:
                 continue
             state = "cdata"
+            in_paragraph = False
             if blank:
                 out.append("")
             continue
@@ -1110,6 +1143,7 @@ def _sanitize_visible_lines(
             if "?>" in stripped:
                 continue
             state = "pi"
+            in_paragraph = False
             if blank:
                 out.append("")
             continue
@@ -1118,6 +1152,7 @@ def _sanitize_visible_lines(
             if ">" in stripped:
                 continue
             state = "decl"
+            in_paragraph = False
             if blank:
                 out.append("")
             continue
@@ -1127,17 +1162,20 @@ def _sanitize_visible_lines(
             if re.search(rf"</{tag}\s*>", stripped, re.IGNORECASE):
                 continue  # same-line close ends the type-1 block
             state = "t1:" + tag
+            in_paragraph = False
             if blank:
                 out.append("")
             continue
         if _HTML_BLOCK_OPEN_ANY_RE.match(line):
             state = "raw"
+            in_paragraph = False
             if blank:
                 out.append("")
             continue
         if _HTML_BLOCK_CLOSE_RE.match(line):
             # Type-6 closing tag (may be incomplete: '</div' + EOL).
             state = "raw"
+            in_paragraph = False
             if blank:
                 out.append("")
             continue
@@ -1145,6 +1183,7 @@ def _sanitize_visible_lines(
         if not in_paragraph:
             if _match_complete_open_tag(line) is not None:
                 state = "raw"
+                in_paragraph = False
                 if blank:
                     out.append("")
                 continue
@@ -1152,12 +1191,13 @@ def _sanitize_visible_lines(
                 # Type 7 closing tag: complete tag followed only by
                 # spaces/tabs to the end of the line.
                 state = "raw"
+                in_paragraph = False
                 if blank:
                     out.append("")
                 continue
         out.append(line)
         # Track paragraph context (type-7 start condition).
-        in_paragraph = _continues_paragraph(stripped)
+        in_paragraph = _continues_paragraph(line)
     return out
 
 
