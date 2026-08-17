@@ -1,6 +1,6 @@
 # Route Index (Compact)
 
-Quick route selection before deep collection. Each route has a generated card in `references/routes/` (from `schemas/route-manifest.json`) and a full contract in `ROUTING-MATRIX.md`.
+Quick route selection before deep collection. Each route has a generated card in `references/routes/` (from `schemas/route-manifest.json`). Specialized routes use `ROUTING-MATRIX.md` for their full contract; `shared-workflow` uses `SKILL.md#routing-rule` because it has no specialized matrix section.
 
 **How to use:** (1) Scan the trigger column. (2) Check the boundary table to confirm the route is correct (or switch to a better fit). (3) Open the route's **Card** for its primary reads, required disciplines, audits and artifact contract. (4) Apply the listed audits before delivery. If no specialized route matches, use `shared-workflow`.
 

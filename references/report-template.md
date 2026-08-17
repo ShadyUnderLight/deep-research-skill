@@ -33,11 +33,36 @@ selected route requires it** (per the route's card in `references/routes/`):
 - **technical-deep-dive**: `references/templates/technical-deep-dive-report.md` — route-aware opening, terminology-boundary table.
 - **academic-review**: `references/templates/academic-review-report.md` — researcher / practitioner next-steps recommendations (field-progress style).
 - **market-outlook**: `references/templates/market-outlook-report.md` — market-outlook memo discipline, category-boundary / demand-segmentation / commercialization templates.
-- **market-entry / go-no-go**: `references/templates/market-entry-report.md` — go-no-go memo formatting discipline, input-boundary table.
+- **market-entry / go-no-go**: `references/templates/market-entry-report.md` — go-no-go memo formatting discipline. The shared input-boundary table remains in this core template because it also applies to constrained-choice, provider-selection, and market-outlook tasks.
 
 Use `references/decision-report-template.md` when the task needs recommendation,
 go/no-go view, prioritization, comparison, or action guidance (it supplements
 the core sections below).
+
+## Shared decision-scope add-on
+
+For constrained-choice, provider-selection, market-entry, and market-outlook tasks that involve organizational rollout or solution selection, make the decision scope explicit with an input-boundary table. It distinguishes known inputs, assumptions, and unspecified inputs before the recommendation is generalized beyond the evidence.
+
+### 输入边界与未指定项（constrained-choice / market-entry / market-outlook 建议）
+
+对于 constrained-choice、provider-selection、market-entry、market-outlook 中涉及组织落地或方案选择的问题，建议在决策口径块（或等价位置）中包含以下输入边界表，明确哪些输入是已知的、哪些是假设的、哪些是未指定的。
+
+**为什么需要：** 未经明确说明的"未指定项"如果隐含在结论中，会让读者误以为推荐适用于比实际更宽的场景。
+
+| 边界维度 | 当前指定状态 | 说明 / 假设 / 未指定 |
+|---------|-------------|---------------------|
+| 组织规模/范围 | 已指定 / 未指定 | |
+| 角色构成 | 已指定 / 未指定 | |
+| 技术栈现状 | 已指定 / 未指定 | |
+| 时间窗口 | 已指定 / 未指定 | |
+| 合规/地域约束 | 已指定 / 未指定 | |
+| 成本/预算基线 | 已指定 / 未指定 | |
+| 优化目标 | 已指定 / 未指定 | |
+
+**规则：**
+- 未指定项必须转为显式假设（assumption），而非悄悄补全。
+- 若未指定项的任何合理取值会导致结论翻转，该变量必须进入 uncertainty / sensitivity 分析。
+- 该表不替代 Decision Scope 块中的排除项，而是补充说明"作者知道在省略什么"。
 
 
 ## Scanability and paragraph discipline
@@ -444,4 +469,3 @@ When building tables with multi-dimensional comparisons (e.g., product category 
 - **Wide tables with many columns are hard to read in PDF.** Consider splitting a wide table into two separate tables grouped by theme (e.g., one table for product attributes, another for commercial metrics).
 
 When in doubt: write for the reader who will skim the table, not for the analyst who already knows the data.
-

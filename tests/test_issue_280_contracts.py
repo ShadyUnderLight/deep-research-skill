@@ -255,9 +255,10 @@ def test_p1_cross_references_valid():
     template = read(TEMPLATE)
     moat = read(MOAT)
 
-    # checklist references report-template.md
-    assert 'report-template.md' in checklist, \
-        "checklist must reference report-template.md"
+    # checklist references the listed-company route template after issue #380
+    assert 'listed-company-report.md' in checklist or \
+        'report-template.md' in checklist, \
+        "checklist must reference the listed-company or core report template"
 
     # template references checklist
     assert 'listed-company-report.md' in template or 'checklists/' in template, \
@@ -273,17 +274,18 @@ def test_p2_no_false_broad_deletions():
     valuation = read("references/valuation-methodology.md")
     checklist = read(CHECKLIST)
     template = read(TEMPLATE)
+    core_template = read("references/report-template.md")
 
-    # Previous cross-refs from #278 must remain (valuation-methodology.md
-    # reference lives in the route-specific listed-company template after the
-    # issue #380 split; the core template keeps the general reference)
+    # Previous cross-refs from #278 must remain. The valuation-methodology
+    # reference now lives in the route-specific listed-company template.
     assert 'valuation-methodology.md' in template or \
-        'valuation-methodology.md' in read(TEMPLATE), \
+        'valuation-methodology.md' in core_template, \
         "#278 cross-ref (valuation-methodology.md in template) broken"
     assert 'valuation-methodology.md' in checklist, \
         "#278 cross-ref (valuation-methodology.md in checklist) broken"
-    assert 'report-template.md' in valuation, \
-        "#278 cross-ref (report-template.md in valuation-methodology) broken"
+    assert 'listed-company-report.md' in valuation or \
+        'report-template.md' in valuation, \
+        "#278 cross-ref (listed-company/core template in valuation-methodology) broken"
 
 
 def test_p3_index_not_broken():

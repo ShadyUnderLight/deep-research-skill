@@ -15,7 +15,9 @@ Canonical / generated relationship (issue #380):
                                     (drift-checked against the manifest by
                                     validate_route_manifest.py)
     references/routes/<id>.md     → GENERATED route cards (this script)
-    ROUTING-MATRIX.md             → human-readable full contract overview
+    ROUTING-MATRIX.md / SKILL.md  → human-readable full contract overview
+                                    (shared-workflow uses SKILL.md because it
+                                    has no specialized ROUTING-MATRIX section)
                                     (drift-checked against the manifest)
 
 Usage:
@@ -112,6 +114,23 @@ def _primary_read_display(ref: str) -> str:
     return f"[`{ref}`]({_card_relative(ref)})"
 
 
+def _full_contract_display(route: dict) -> str:
+    """Return the full-contract link for a route card.
+
+    Specialized routes have a matching ``## Route:`` section in
+    ROUTING-MATRIX.md.  shared-workflow is the deliberate fallback route and
+    is documented by SKILL.md instead, so it must not receive a dead matrix
+    anchor derived from its display name.
+    """
+    if route.get("category") == "shared-workflow":
+        return "[`SKILL.md`](../../SKILL.md#routing-rule)"
+    display = route["display_name"]
+    return (
+        f"[`ROUTING-MATRIX.md`](../../ROUTING-MATRIX.md#"
+        f"{_anchor_link('Route: ' + display)})"
+    )
+
+
 def render_card(route: dict, known_route_ids: set[str]) -> str:
     """Render a single route card from a manifest route entry.
 
@@ -133,7 +152,7 @@ def render_card(route: dict, known_route_ids: set[str]) -> str:
         f"- **Route ID**: `{rid}`",
         f"- **Category**: `{category}`",
         f"- **Aliases**: {', '.join(f'`{a}`' for a in aliases) if aliases else '—'}",
-        f"- **Full contract**: [`ROUTING-MATRIX.md`](../../ROUTING-MATRIX.md#{_anchor_link('Route: ' + display)})",
+        f"- **Full contract**: {_full_contract_display(route)}",
         f"- **Compact index**: [`references/route-index.md`](../../references/route-index.md)",
         "",
     ]

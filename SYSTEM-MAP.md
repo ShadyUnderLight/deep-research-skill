@@ -82,7 +82,7 @@ Makes mature task families explicit so the right discipline set and delivery con
 
 ### Primary files
 - `schemas/route-manifest.json` (canonical route registry)
-- `ROUTING-MATRIX.md` (full route contracts)
+- `ROUTING-MATRIX.md` (specialized route full contracts; shared-workflow uses `SKILL.md#routing-rule`)
 - `references/route-index.md` (compact route selection index — read first for quick route identification)
 - `references/routes/` (generated per-route cards — trigger, boundaries, reads, audits, artifact contract)
 - `references/route-activation-and-preflight.md`

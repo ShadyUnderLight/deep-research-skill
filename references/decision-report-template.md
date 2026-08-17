@@ -556,7 +556,7 @@ Apply the following order priority for the opening section:
 - 如果读者在第一屏看到的是研究方法而非结论，说明 opening 顺序需要调整
 - 例外：方法本身是核心输出（如学术综述的检索策略），此时方法论可前置（参见 ROUTING-MATRIX.md §Academic / Literature Review）
 
-> **Note for listed-company work:** The research-anchor block and market snapshot table remain mandatory on the front page, but they follow the thesis/executive bullets rather than preceding them. The `report-template.md` §Research-anchor block and §Market snapshot table have been updated accordingly.
+> **Note for listed-company work:** The research-anchor block and market snapshot table remain mandatory on the front page, but they follow the thesis/executive bullets rather than preceding them. The `references/templates/listed-company-report.md` §Research-anchor block and §Market snapshot table have been updated accordingly.
 
 ## Executive summary
 

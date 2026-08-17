@@ -19,6 +19,7 @@
 - [`references/technical-analysis-discipline.md`](../technical-analysis-discipline.md)
 - [`references/source-traceability-and-claim-citation.md`](../source-traceability-and-claim-citation.md)
 - [`references/forward-looking-discipline.md`](../forward-looking-discipline.md)
+- [`references/templates/technical-deep-dive-report.md`](../templates/technical-deep-dive-report.md)
 
 ## Required disciplines
 

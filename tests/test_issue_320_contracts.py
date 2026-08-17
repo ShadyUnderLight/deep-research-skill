@@ -98,12 +98,10 @@ def test_c3b_dc_power_rejects_gpt_citation():
 # ═══════════════════════════════════════════════════════════════════
 
 def test_c4a_report_template_has_input_boundary():
-    """C4a: input boundary section exists (moved to the market-entry route
-    template by issue #380; the core template keeps the conditional
-    reference)."""
-    content = read("references/templates/market-entry-report.md")
+    """C4a: shared core template keeps the input boundary section."""
+    content = read("references/report-template.md")
     assert re.search(r'输入边界|未指定项', content), \
-        "market-entry template missing input boundary section"
+        "report-template.md missing input boundary section"
 
 def test_c4b_decision_template_has_implementation_stages():
     """C4b: decision-report-template.md contains '实施路线' or implementation stages structure."""

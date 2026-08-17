@@ -198,7 +198,7 @@ It is for:
 | 1 | Academic review opening should put thesis before methodology | output structure / information density | `TEMPLATE_CHANGE` | `references/academic-evidence-hierarchy.md` (academic route opening structure) |
 | 2 | Add benchmark comparison table template to academic route | source traceability / evidence weighting | `CHECKLIST_HARDENING` | `checklists/academic-analysis-audit.md` |
 | 3 | Document external-report structural inspiration disclosure in process notes | source traceability / import hygiene | `NO_ACTION` | Already covered by source-traceability.md |
-| 4 | Add optional practitioner/researcher recommendations section | decision usefulness | `TEMPLATE_CHANGE` | `references/report-template.md` (optional academic review recommendations block) |
+| 4 | Add optional practitioner/researcher recommendations section | decision usefulness | `TEMPLATE_CHANGE` | `references/templates/academic-review-report.md` (optional academic review recommendations block) |
 | 5 | Add non-blocking structured table check to academic audit | output structure / information density | `CHECKLIST_HARDENING` | `checklists/academic-analysis-audit.md` |
 | 6 | Document field-progress-analysis sub-style in academic route | route activation | `TEMPLATE_CHANGE` | `ROUTING-MATRIX.md` academic route section |
 
@@ -227,7 +227,7 @@ It is for:
 ### Candidate 4 — Practitioner/researcher recommendations section
 - **Why it matters:** Academic reviews currently prioritize evidence synthesis over actionable implications. Field-progress analyses benefit from explicit researcher or practitioner next steps.
 - **Why it is reusable:** The pattern (opening thesis → benchmark ladder → mechanism map → failure-case table → practitioner recommendations) is content-agnostic and applies to any field-progress review.
-- **Why this home is best:** `references/report-template.md` already contains optional structural blocks. An optional "academic review recommendations" block fits the existing template pattern.
+- **Why this home is best:** `references/templates/academic-review-report.md` is the route-specific home for optional structural blocks. An optional "academic review recommendations" block fits the existing template pattern.
 - **Promotion status:** `WAIT_FOR_SECOND_CASE` — the GPT pattern is aspirational. A real local academic review that uses recommendations needs to confirm this doesn't dilute evidence discipline.
 
 ### Candidate 5 — Non-blocking structured table audit item
@@ -284,4 +284,3 @@ The field-progress-analysis sub-style should be validated against a real academi
 - [x] each accepted candidate has a proposed repo home
 - [x] at least one rejected observation is documented (4 documented)
 - [x] the final judgment distinguishes rule gap vs trigger gap vs execution gap (trigger + output format gap)
-

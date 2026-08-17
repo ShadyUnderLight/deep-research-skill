@@ -4,7 +4,7 @@ Use this checklist when the research is about a publicly listed company.
 
 Run through every item before delivering the final report.
 
-## Market snapshot (对照 references/report-template.md §Market snapshot table)
+## Market snapshot (对照 references/templates/listed-company-report.md §Market snapshot table)
 
 - [ ] 市场快照表已填入完整数据（对照模板必填列：当前股价/快照日期/市值/PE (TTM)/PE (Forward)/PB/PS/52周区间/股息率）
 - [ ] 每项指标都标注了具体数据来源和快照日期
@@ -34,7 +34,7 @@ Run through every item before delivering the final report.
 - [ ] high-growth companies have forward metrics clearly labeled as estimate-based
 - [ ] consensus target prices are presented with source, date, and analyst count when available (never inferred); target prices are not treated as fair value
 - [ ] consensus data timing is checked against latest earnings releases; stale consensus is noted
-- [ ] （非阻塞）估值方法包含倍数区间范围，以及可比公司选择逻辑或估值指标选择理由说明（对照 `references/report-template.md` §Valuation method and scenario analysis）
+- [ ] （非阻塞）估值方法包含倍数区间范围，以及可比公司选择逻辑或估值指标选择理由说明（对照 `references/templates/listed-company-report.md` §Valuation method and scenario analysis）
 - [ ] （非阻塞）情景分析包含乐观/基准/悲观三档，每档有明确的 EPS 假设、PE 倍数和触发条件
 
 ### Capital return discipline (CapEx-heavy 公司适用)
@@ -106,7 +106,7 @@ Run through every item before delivering the final report.
 
 ### Time-horizon valuation stratification (适用于"是否充分反映长期增长"类问题)
 
-- [ ] （阻塞：无分层则至多条件性通过）当任务涉及"是否充分反映长期增长 / 是否便宜 / 是否透支"时，opening 区分了短中期（1-3年 / 3-5年）已定价部分与长期（5-10年）未定价 optionality，而不是只给出一个方向性判断（见 `references/report-template.md` §Time-horizon valuation stratification）
+- [ ] （阻塞：无分层则至多条件性通过）当任务涉及"是否充分反映长期增长 / 是否便宜 / 是否透支"时，opening 区分了短中期（1-3年 / 3-5年）已定价部分与长期（5-10年）未定价 optionality，而不是只给出一个方向性判断（见 `references/templates/listed-company-report.md` §Time-horizon valuation stratification）
 - [ ] （非阻塞）报告明确列出了 3-5 个估值驱动变量（如需求规模、份额捕获、利润率转换、估值透支等），并解释了为什么它们比背景事实更重要；这些变量驱动了报告章节顺序
 - [ ] （非阻塞）投资行动含义与时间层次一致：不把"长期可持有"写成"当前明显低估"；如果短期已充分定价但长期仍有上行空间，行动选项反映这种张力
 
@@ -121,7 +121,7 @@ Run through every item before delivering the final report.
 - [ ] 如果前五大 / 前十大客户或第一大客户占比 materially affects thesis，报告列出最新可得客户集中度及其时间窗口，并标注数据角色（observed / estimate）
 - [ ] 报告区分客户集中度的正面含义（收入可见度、共同研发、客户锁定效应）和负面含义（议价权削弱、单客户波动风险、替代威胁），而非仅作为风险清单条目
 - [ ] 如果出现 second-source / dual-source / supplier de-risking 信号，报告说明该信号是短期边际分流、长期替代风险，还是仅供应链韧性安排，并将其写为 thesis pressure 或 threat-window 分析（参见上文 competition-as-thesis-pressure 规则）
-- [ ] （非阻塞）客户集中度变化影响了最终估值倍数选择、收入可见度情景或 terminal assumption，而不是仅停留在风险列表（参见 `references/report-template.md` §客户集中度与第二供应源风险（如适用））
+- [ ] （非阻塞）客户集中度变化影响了最终估值倍数选择、收入可见度情景或 terminal assumption，而不是仅停留在风险列表（参见 `references/templates/listed-company-report.md` §客户集中度与第二供应源风险（如适用））
 - [ ] （阻断级）当报告使用"客户锁定""深度绑定""不可替代""唯一供应商""供应链核心"等措辞时，必须检查是否存在客户主动建设第二来源的信号（参见 `references/moat-monopoly-screening.md` §Concept-boundary traps）。如果存在但报告未提及，措辞须降级
 
 ## Monopoly / moat / scarcity discipline

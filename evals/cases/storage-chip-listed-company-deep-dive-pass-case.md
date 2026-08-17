@@ -88,7 +88,7 @@ This case serves as:
 The gaps in this pass-level report suggest marginal improvements:
 
 - `references/forward-looking-discipline.md` — strengthen the bare-forecast detection pattern with explicit checklist language
-- `references/report-template.md` — add "Research Anchor" as a compact mandatory block (not split across sections)
+- `references/templates/listed-company-report.md` — add "Research Anchor" as a compact mandatory block (not split across sections)
 - `checklists/final-audit.md` — add non-blocker: "all '预计' instances have a named source" (even in pass-level reports, bare forecasts should be flagged)
 - `checklists/listed-company-report.md` — add non-blocker: "research anchor compact — all time-layer data in one visible block"
 

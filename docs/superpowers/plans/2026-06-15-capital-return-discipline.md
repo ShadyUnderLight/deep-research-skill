@@ -4,7 +4,7 @@
 
 **Goal:** Add capital return discipline for CapEx-heavy listed companies in the deep-research skill, ensuring reports don't conclude "undervalued" based on PE/PEG/growth alone without checking FCF conversion, CapEx burden, and ROIC.
 
-**Architecture:** Four file modifications to existing documentation: (1) new section in `references/valuation-methodology.md` defining trigger conditions and required analysis, (2) new checklist items in `checklists/listed-company-report.md`, (3) new table template in `references/report-template.md` for growth-to-cash-flow conversion, (4) new recall discipline item in `checklists/final-audit.md`. All changes are additive — no existing content is modified or removed.
+**Architecture:** Four file modifications to existing documentation: (1) new section in `references/valuation-methodology.md` defining trigger conditions and required analysis, (2) new checklist items in `checklists/listed-company-report.md`, (3) new table template in `references/templates/listed-company-report.md` for growth-to-cash-flow conversion, (4) new recall discipline item in `checklists/final-audit.md`. All changes are additive — no existing content is modified or removed.
 
 **Tech Stack:** Pure Markdown documentation, no code changes. Validation via existing markdown linters and cross-reference checks.
 
@@ -60,7 +60,7 @@ Content to insert:
 ### 与现有规则的关系
 
 - 本纪律的四变量关联：六个问题中的问题 1-3 对应四变量分解的变量 3（利润率与现金流转换），问题 5-6 对应变量 4（估值透支程度）。本纪律为四变量分解中 CapEx-heavy 场景提供更详细的执行指导。
-- 本纪律与 `references/report-template.md` §增长到现金流转换表 配合使用：该表提供定量框架，本纪律提供分析问题集。
+- 本纪律与 `references/templates/listed-company-report.md` §增长到现金流转换表 配合使用：该表提供定量框架，本纪律提供分析问题集。
 - 本纪律不替代 DCF 触发条件：如果满足 DCF 触发条件（见 §DCF / reverse DCF trigger），DCF 仍然必须执行。本纪律在 DCF 不适用时提供最低限度的资本回收分析框架。
 ```
 
@@ -84,14 +84,14 @@ Toward #279"
 
 ---
 
-### Task 2: Add growth-to-cash-flow conversion table to report-template.md
+### Task 2: Add growth-to-cash-flow conversion table to the listed-company report template
 
 **Files:**
-- Modify: `references/report-template.md` — insert after the Four-variable decomposition section (after line 83), before the next section starting "Do not default to using the front page"
+- Modify: `references/templates/listed-company-report.md` — insert after the Four-variable decomposition section, before the market snapshot section
 
 - [ ] **Step 1: Read the exact insertion point**
 
-Read `references/report-template.md` lines 72-87 to confirm insertion point after the four-variable decomposition block and its existing note.
+Read `references/templates/listed-company-report.md` lines 60-72 to confirm insertion point after the four-variable decomposition block and its existing note.
 
 - [ ] **Step 2: Insert growth-to-cash-flow conversion block after the four-variable decomposition note**
 
@@ -129,7 +129,7 @@ Read the surrounding lines to ensure the insertion points and section structure 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add references/report-template.md
+git add references/templates/listed-company-report.md
 git commit -m "feat(template): add growth-to-cash-flow conversion table for CapEx-heavy companies
 
 Insert mandatory table template after the four-variable decomposition
@@ -231,7 +231,7 @@ Run cross-reference checks:
 # Check that each file's references to other files are correct
 grep -n "valuation-methodology.md" checklists/listed-company-report.md | head -5
 grep -n "valuation-methodology.md" checklists/final-audit.md | head -5
-grep -n "report-template.md" references/valuation-methodology.md | head -5
+grep -n "listed-company-report.md" references/valuation-methodology.md | head -5
 grep -n "listed-company-report.md" checklists/final-audit.md | head -5
 ```
 
@@ -241,7 +241,7 @@ Verify files are valid markdown (no broken syntax):
 ```bash
 python3 -c "
 import os, re
-files = ['references/valuation-methodology.md', 'references/report-template.md',
+files = ['references/valuation-methodology.md', 'references/templates/listed-company-report.md',
          'checklists/listed-company-report.md', 'checklists/final-audit.md']
 for f in files:
     content = open(f).read()

@@ -18,6 +18,7 @@
 - [`references/option-selection-and-shortlist-discipline.md`](../option-selection-and-shortlist-discipline.md)
 - [`references/source-traceability-and-claim-citation.md`](../source-traceability-and-claim-citation.md)
 - [`references/decision-report-template.md`](../decision-report-template.md)
+- [`references/report-template.md`](../report-template.md)
 
 ## Required disciplines
 

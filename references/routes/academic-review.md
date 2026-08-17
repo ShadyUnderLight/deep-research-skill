@@ -18,6 +18,7 @@
 - [`references/academic-evidence-hierarchy.md`](../academic-evidence-hierarchy.md)
 - [`references/source-traceability-and-claim-citation.md`](../source-traceability-and-claim-citation.md)
 - [`references/counter-evidence.md`](../counter-evidence.md)
+- [`references/templates/academic-review-report.md`](../templates/academic-review-report.md)
 
 ## Required disciplines
 

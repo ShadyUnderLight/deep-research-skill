@@ -14,7 +14,7 @@ Route identity and route metadata have a single canonical source — everything 
 - `schemas/route-manifest.json` — **canonical** route registry (ids, aliases, triggers, boundaries, primary reads, required disciplines, required audits, artifact contract, hard-fail keywords). Loaded at runtime by `scripts/registry_loader.py`.
 - `references/routes/<id>.md` — **generated** route cards (one short card per route). Regenerate with `python3 scripts/generate_route_cards.py`; do not edit by hand.
 - `references/route-index.md` — **hand-maintained** compact trigger table that links to the cards; drift-checked against the manifest by `scripts/validate_route_manifest.py`.
-- `ROUTING-MATRIX.md` (this file) — **human-readable** full route contract overview; drift-checked against the manifest by `scripts/validate_route_manifest.py`.
+- `ROUTING-MATRIX.md` (this file) — **human-readable** full contract overview for specialized routes; `shared-workflow` uses `SKILL.md#routing-rule` and the shared final-discipline rules; drift-checked against the manifest by `scripts/validate_route_manifest.py`.
 
 Reading order: `references/route-index.md` → the route's card in `references/routes/` → this file only when the card is not enough.
 

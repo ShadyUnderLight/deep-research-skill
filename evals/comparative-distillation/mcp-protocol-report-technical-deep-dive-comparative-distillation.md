@@ -80,7 +80,7 @@ The existing process-integrity gate (§Process-artifact sufficiency in `final-au
 ## Dimension 3: Technical audience / decision scenario
 
 ### Report A
-- Opening baseline block (per `references/report-template.md` §Technical deep-dive opening) includes target audience and decision scenario
+- Opening baseline block (per `references/templates/technical-deep-dive-report.md` §Technical deep-dive opening) includes target audience and decision scenario
 - Reader knows who the report is for and what decision it supports
 
 ### Report B
@@ -92,7 +92,7 @@ The existing process-integrity gate (§Process-artifact sufficiency in `final-au
 Report B provides more actionable practitioner guidance overall, but without framing the audience and decision scenario, the reader cannot calibrate which parts of the analysis are most relevant to their role. Report A's opening block (mandated by issue #242) solves this at the structural level.
 
 ### Candidate action
-No new action needed. Issue #242 already added the opening baseline requirement to `references/report-template.md` and `checklists/technical-analysis-audit.md`.
+No new action needed. Issue #242 already added the opening baseline requirement to `references/templates/technical-deep-dive-report.md` and `checklists/technical-analysis-audit.md`.
 
 ### Action type
 `NO_ACTION`
@@ -224,7 +224,7 @@ No new action needed. Issue #244's security deep-dive checklist already requires
 | # | Candidate action | Failure family | Action type | Proposed home |
 |---|---|---|---|---|
 | 1 | Source Register 7-column template + `[Sxx]` body citations for technical-deep-dive | source-traceability | NO_ACTION | already in `checklists/source-traceability.md`, `checklists/technical-analysis-audit.md` |
-| 2 | Opening baseline (audience, decision scenario, version baseline) | technical-deep-dive artifact contract | NO_ACTION | already in `references/report-template.md`, `checklists/technical-analysis-audit.md` (#242) |
+| 2 | Opening baseline (audience, decision scenario, version baseline) | technical-deep-dive artifact contract | NO_ACTION | already in `references/templates/technical-deep-dive-report.md`, `checklists/technical-analysis-audit.md` (#242) |
 | 3 | Roadmap state stratification (shipped/announced/speculative) | forward-looking / roadmap discipline | NO_ACTION | already in `checklists/technical-analysis-audit.md`, `references/technical-analysis-discipline.md` (#243) |
 | 4 | Security deep-dive: threat model with assets, trust boundaries, risk matrix, control tiering, detection signals | security deep-dive | NO_ACTION | already in `checklists/technical-analysis-audit.md` §Security deep-dive (#244) |
 | 5 | Architecture comparison: comparator roles, load-bearing trade-offs, reversal conditions | architecture comparison | NO_ACTION | already in `checklists/technical-analysis-audit.md` §Comparison structure (#245) |

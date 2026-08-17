@@ -91,8 +91,8 @@ This eval is distinct from related listed-company cases such as `evals/cases/rep
 
 This eval directly tests the behavioral impact of three new rules proposed in issue #277:
 
-1. `references/report-template.md` §Time-horizon valuation stratification — forces opening to stratify by time horizon
-2. `references/report-template.md` §Four-variable decomposition — forces identification of 3-5 valuation-driving variables
+1. `references/templates/listed-company-report.md` §Time-horizon valuation stratification — forces opening to stratify by time horizon
+2. `references/templates/listed-company-report.md` §Four-variable decomposition — forces identification of 3-5 valuation-driving variables
 3. `checklists/listed-company-report.md` — new checklist items for horizon consistency
 
 ## Related evals

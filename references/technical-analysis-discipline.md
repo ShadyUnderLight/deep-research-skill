@@ -197,7 +197,7 @@ Watch for these failure patterns:
 
 A technical analysis report should visibly show:
 
-- **Opening structure**: the report's front page must define the target audience, decision scenario, and technical baseline (version, date anchor, stable vs. forward-looking boundary) before entering detailed analysis. See `references/report-template.md` §Technical deep-dive opening for the template.
+- **Opening structure**: the report's front page must define the target audience, decision scenario, and technical baseline (version, date anchor, stable vs. forward-looking boundary) before entering detailed analysis. See `references/templates/technical-deep-dive-report.md` §Technical deep-dive opening for the template.
 
 ### For principle analysis
 - Core mechanism explanation

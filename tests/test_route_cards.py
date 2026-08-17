@@ -35,6 +35,13 @@ def _card_text(route_id: str) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def _github_anchor(heading: str) -> str:
+    """Approximate GitHub's anchor slug for the headings used by cards."""
+    lowered = heading.lower().strip()
+    kept = "".join(c for c in lowered if c.isalnum() or c in " -")
+    return kept.replace(" ", "-")
+
+
 # ── Contract A: deterministic generation ────────────────────────────────────
 
 
@@ -157,19 +164,60 @@ class TestCardContentSync:
                     f"Card '{route['id']}' missing primary read '{ref}'"
                 )
 
+    def test_route_specific_templates_are_primary_reads(self):
+        expected = {
+            "listed-company": "references/templates/listed-company-report.md",
+            "technical-deep-dive": "references/templates/technical-deep-dive-report.md",
+            "academic-review": "references/templates/academic-review-report.md",
+            "market-outlook": "references/templates/market-outlook-report.md",
+            "market-entry": "references/templates/market-entry-report.md",
+        }
+        manifest = {route["id"]: route for route in _load_manifest()["routes"]}
+        for route_id, template in expected.items():
+            assert template in manifest[route_id]["primary_reads"], (
+                f"Manifest route '{route_id}' does not expose its route-specific "
+                f"template as a primary read"
+            )
+            assert template in _card_text(route_id), (
+                f"Card '{route_id}' does not expose its route-specific template"
+            )
+
     def test_card_links_are_valid(self):
-        """All markdown links inside cards must resolve to existing files."""
+        """All local markdown links inside cards must resolve to files."""
         manifest = _load_manifest()
         for route in manifest["routes"]:
             text = _card_text(route["id"])
-            for target in re.findall(r"\]\(([^)]+\.md)\)", text):
-                if target.startswith("#"):
-                    continue  # anchor-only links
-                # relative to references/routes/
-                resolved = (CARDS_DIR / target).resolve()
+            for target in re.findall(r"\]\(([^)]+)\)", text):
+                if target.startswith(("http://", "https://", "#")):
+                    continue
+                path = target.split("#", 1)[0]
+                if not path.endswith(".md"):
+                    continue
+                resolved = (CARDS_DIR / path).resolve()
                 assert resolved.is_file(), (
-                    f"Card '{route['id']}' has broken link: {target} "
+                    f"Card '{route['id']}' has broken file link: {target} "
                     f"(resolved to {resolved})"
+                )
+
+    def test_card_link_fragments_are_valid(self):
+        """Markdown links with fragments must target real headings."""
+        for route in _load_manifest()["routes"]:
+            text = _card_text(route["id"])
+            for target in re.findall(r"\]\(([^)]+)\)", text):
+                if target.startswith(("http://", "https://")) or "#" not in target:
+                    continue
+                path, fragment = target.split("#", 1)
+                resolved = (CARDS_DIR / path).resolve()
+                assert resolved.is_file(), (
+                    f"Card '{route['id']}' has broken fragment file: {target}"
+                )
+                headings = re.findall(
+                    r"^#{1,6}\s+(.+?)\s*$",
+                    resolved.read_text(encoding="utf-8"),
+                    re.MULTILINE,
+                )
+                assert fragment in {_github_anchor(h) for h in headings}, (
+                    f"Card '{route['id']}' has broken fragment: {target}"
                 )
 
 
@@ -237,10 +285,47 @@ class TestRouteIndexLinksToCards:
         )
 
     def test_every_route_links_to_its_card(self):
-        text = INDEX_PATH.read_text(encoding="utf-8")
+        rows = {}
+        in_trigger_table = False
+        for line in INDEX_PATH.read_text(encoding="utf-8").splitlines():
+            if line.startswith("| Route ID | Trigger keywords"):
+                in_trigger_table = True
+                continue
+            if in_trigger_table and line.startswith("## "):
+                break
+            if in_trigger_table and line.startswith("| `"):
+                rid = line.split("|", 2)[1].strip().strip("`")
+                rows[rid] = line
         manifest = _load_manifest()
         for route in manifest["routes"]:
             rid = route["id"]
-            assert f"routes/{rid}.md" in text, (
-                f"route-index.md missing link to references/routes/{rid}.md"
+            assert rid in rows, f"route-index.md missing row for '{rid}'"
+            assert f"](routes/{rid}.md)" in rows[rid], (
+                f"route-index.md Card column does not point to '{rid}'"
             )
+
+    def test_card_column_drift_is_blocked(self):
+        target = INDEX_PATH
+        backup = target.read_text(encoding="utf-8")
+        target.write_text(
+            backup.replace(
+                "| [`listed-company`](routes/listed-company.md)",
+                "| [`listed-company`](routes/market-outlook.md)",
+                1,
+            ),
+            encoding="utf-8",
+        )
+        try:
+            result = subprocess.run(
+                [sys.executable, str(VALIDATOR)],
+                capture_output=True,
+                text=True,
+                cwd=str(ROOT),
+            )
+            assert result.returncode == 2, (
+                f"Expected Card-column drift to be blocking, got {result.returncode}\n"
+                f"{result.stdout}"
+            )
+            assert "Card link points to" in result.stdout
+        finally:
+            target.write_text(backup, encoding="utf-8")

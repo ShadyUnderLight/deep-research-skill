@@ -61,7 +61,7 @@ It should not keep absorbing every mature route-specific rule.
 ## Layer 2: routing layer
 
 **Canonical registry:** `schemas/route-manifest.json` (single source of truth, loaded at runtime by `scripts/registry_loader.py`)
-**Primary file:** `ROUTING-MATRIX.md` (full contracts)
+**Primary files:** `ROUTING-MATRIX.md` (specialized route full contracts); `SKILL.md#routing-rule` (shared-workflow fallback contract)
 **Compact index:** `references/route-index.md` (quick route selection — one short read to locate the candidate route)
 **Route cards:** `references/routes/<id>.md` (generated views of the manifest — trigger, boundaries, reads, disciplines, audits, artifact contract; regenerate with `scripts/generate_route_cards.py`)
 
@@ -231,7 +231,7 @@ This layer should answer:
 The intended flow is:
 
 1. `SKILL.md` defines the workflow spine
-2. `references/route-index.md` locates the candidate route; `references/routes/<id>.md` (generated from `schemas/route-manifest.json`) carries its short contract; `ROUTING-MATRIX.md` holds the full contract when needed
+2. `references/route-index.md` locates the candidate route; `references/routes/<id>.md` (generated from `schemas/route-manifest.json`) carries its short contract; specialized cards lead to `ROUTING-MATRIX.md` for the full contract, while `shared-workflow` leads to `SKILL.md#routing-rule`
 3. `references/` provides the method and template files used by that route
 4. `checklists/` verifies the route and disciplines were actually executed
 5. `evals/` records what failed and why when the system misfires

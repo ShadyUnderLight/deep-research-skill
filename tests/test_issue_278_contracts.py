@@ -281,9 +281,10 @@ def test_p1_cross_references_valid():
     template = read("references/report-template.md")
     checklist = read("checklists/listed-company-report.md")
 
-    # valuation-methodology.md references report-template.md
-    assert 'report-template.md' in valuation, \
-        "valuation-methodology.md must reference report-template.md"
+    # valuation-methodology.md references the listed-company route template
+    assert 'listed-company-report.md' in valuation or \
+        'report-template.md' in valuation, \
+        "valuation-methodology.md must reference the listed-company/core template"
 
     # valuation-methodology.md references quantitative-role-labeling.md
     assert 'quantitative-role-labeling.md' in valuation, \

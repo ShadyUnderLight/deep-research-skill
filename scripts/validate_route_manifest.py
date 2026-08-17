@@ -201,10 +201,11 @@ def _check_route_index(
 ) -> list[str]:
     """Validate references/route-index.md trigger table against the manifest.
 
-    Trigger table rows: | Route ID | Trigger keywords | Reads | Audits |.
+    Trigger table rows: | Route ID | Trigger keywords | Reads | Audits | Card |.
     Checks: route id set matches the manifest bidirectionally, trigger
-    keywords are non-empty, and each listed audit is part of that route's
-    required_audits in the manifest.  Returns blocking errors.
+    keywords are non-empty, each listed audit is part of that route's
+    required_audits in the manifest, and the Card link points to that route's
+    generated card. Returns blocking errors.
     """
     errors: list[str] = []
     index_ids: set[str] = set()
@@ -220,8 +221,12 @@ def _check_route_index(
         if not line.startswith("| `"):
             continue
         cells = [c.strip().strip("`") for c in line.strip("|").split("|")]
-        # Row: | Route ID | Trigger keywords | Reads | Audits | → 4 cells
-        if len(cells) < 4:
+        # Row: | Route ID | Trigger keywords | Reads | Audits | Card | → 5 cells
+        if len(cells) < 5:
+            errors.append(
+                f"route-index.md row for {cells[0] if cells else '?'} "
+                "is missing the Card column"
+            )
             continue
         rid = cells[0]  # after strip("|"), the Route ID is the first cell
         if rid in {"Route ID", ""} or set(rid) <= {"-"}:
@@ -245,6 +250,26 @@ def _check_route_index(
                 errors.append(
                     f"route-index.md route '{rid}' lists audit '{audit}' "
                     f"which is not in the route's manifest required_audits"
+                )
+
+        card_match = re.search(r"\]\(([^)]+)\)", cells[4])
+        expected_card = f"routes/{rid}.md"
+        if not card_match:
+            errors.append(
+                f"route-index.md route '{rid}' has no valid Card link; "
+                f"expected '{expected_card}'"
+            )
+        else:
+            card_target = card_match.group(1).split("#", 1)[0]
+            if card_target != expected_card:
+                errors.append(
+                    f"route-index.md route '{rid}' Card link points to "
+                    f"'{card_target}', expected '{expected_card}'"
+                )
+            elif not (ROUTE_INDEX.parent / card_target).is_file():
+                errors.append(
+                    f"route-index.md route '{rid}' Card link target does not "
+                    f"exist: '{card_target}'"
                 )
 
     missing = manifest_ids - index_ids

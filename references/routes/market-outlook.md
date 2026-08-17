@@ -19,6 +19,8 @@
 - [`references/forward-looking-discipline.md`](../forward-looking-discipline.md)
 - [`references/decision-report-template.md`](../decision-report-template.md)
 - [`references/source-traceability-and-claim-citation.md`](../source-traceability-and-claim-citation.md)
+- [`references/templates/market-outlook-report.md`](../templates/market-outlook-report.md)
+- [`references/report-template.md`](../report-template.md)
 
 ## Required disciplines
 

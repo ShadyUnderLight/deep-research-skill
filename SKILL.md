@@ -41,7 +41,7 @@ Route lookup is progressive-disclosure — read only what the current step needs
 
 1. Read `references/route-index.md` for the compact trigger table (one short read to locate the candidate route).
 2. Open the route's **card** in `references/routes/` (one file per route id, e.g. `references/routes/market-outlook.md`) — generated from `schemas/route-manifest.json` — for its trigger, do-not-use, often-confused, primary reads, required disciplines, required audits, artifact contract and failure signs.
-3. Read `ROUTING-MATRIX.md` only when the card is not enough: full route contract (preflight, entity types, secondary hard-fail, boundary resolution, per-route `### Read` / `### Attach` / `### Audit` / `### Hard fail`).
+3. Read the full contract source only when the card is not enough: specialized routes use `ROUTING-MATRIX.md` (preflight, entity types, secondary hard-fail, boundary resolution, per-route `### Read` / `### Attach` / `### Audit` / `### Hard fail`); `shared-workflow` uses `SKILL.md#routing-rule` and the shared final-discipline rules below.
 
 Read `references/route-activation-and-preflight.md` when a specialized route is being considered, and complete its preflight steps before finalizing route selection:
 - "Do not use" / "Often confused with" clause check

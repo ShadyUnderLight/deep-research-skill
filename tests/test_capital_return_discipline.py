@@ -236,8 +236,8 @@ class TestCrossReferences:
 
     def test_valuation_methodology_refers_to_report_template(self):
         content = read("references/valuation-methodology.md")
-        assert "report-template.md" in content, (
-            "valuation-methodology.md should cross-reference report-template.md"
+        assert "listed-company-report.md" in content or "report-template.md" in content, (
+            "valuation-methodology.md should cross-reference the listed-company/core template"
         )
 
     def test_valuation_methodology_refers_to_quantitative_role_labeling(self):

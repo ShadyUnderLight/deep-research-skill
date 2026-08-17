@@ -17,6 +17,7 @@
 
 - [`references/option-selection-and-shortlist-discipline.md`](../option-selection-and-shortlist-discipline.md)
 - [`references/decision-report-template.md`](../decision-report-template.md)
+- [`references/report-template.md`](../report-template.md)
 
 ## Required disciplines
 

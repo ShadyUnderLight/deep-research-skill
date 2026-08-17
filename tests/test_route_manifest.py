@@ -534,8 +534,8 @@ class TestRouteIndexConsistency:
     @staticmethod
     def _index_with_rows(rows: list[str]) -> str:
         header = (
-            "| Route ID | Trigger keywords | Reads | Audits |\n"
-            "|----------|-----------------|-------|--------|\n"
+            "| Route ID | Trigger keywords | Reads | Audits | Card |\n"
+            "|----------|-----------------|-------|--------|------|\n"
         )
         return header + "\n".join(rows)
 
@@ -559,7 +559,7 @@ class TestRouteIndexConsistency:
         manifest_ids = {r["id"] for r in self._manifest()["routes"]}
         route_audits = {r["id"]: set(r["required_audits"]) for r in self._manifest()["routes"]}
         rows = [
-            "| `listed-company` | lc trigger | `references/a.md` | `final-audit` |",
+            "| `listed-company` | lc trigger | `references/a.md` | `final-audit` | [`listed-company`](routes/listed-company.md) |",
         ]
         errors = v._check_route_index(
             self._index_with_rows(rows), manifest_ids, route_audits
@@ -574,7 +574,7 @@ class TestRouteIndexConsistency:
         manifest_ids = {r["id"] for r in manifest["routes"]}
         route_audits = {r["id"]: set(r["required_audits"]) for r in manifest["routes"]}
         rows = [
-            "| `fake-route` | trigger | `references/a.md` | `final-audit` |",
+            "| `fake-route` | trigger | `references/a.md` | `final-audit` | [`fake-route`](routes/fake-route.md) |",
         ]
         errors = v._check_route_index(
             self._index_with_rows(rows), manifest_ids, route_audits
@@ -588,7 +588,7 @@ class TestRouteIndexConsistency:
         manifest_ids = {r["id"] for r in manifest["routes"]}
         route_audits = {r["id"]: set(r["required_audits"]) for r in manifest["routes"]}
         rows = [
-            "| `listed-company` |  | `references/a.md` | `final-audit` |",
+            "| `listed-company` |  | `references/a.md` | `final-audit` | [`listed-company`](routes/listed-company.md) |",
         ]
         errors = v._check_route_index(
             self._index_with_rows(rows), manifest_ids, route_audits
@@ -603,7 +603,7 @@ class TestRouteIndexConsistency:
         route_audits = {r["id"]: set(r["required_audits"]) for r in manifest["routes"]}
         rows = [
             "| `listed-company` | trigger | `references/a.md` | "
-            "`academic-analysis-audit` |",
+            "`academic-analysis-audit` | [`listed-company`](routes/listed-company.md) |",
         ]
         errors = v._check_route_index(
             self._index_with_rows(rows), manifest_ids, route_audits

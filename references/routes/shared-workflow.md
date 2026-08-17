@@ -5,7 +5,7 @@
 - **Route ID**: `shared-workflow`
 - **Category**: `shared-workflow`
 - **Aliases**: `shared-workflow`, `shared workflow`, `shared-workflow (no specialized route selected)`
-- **Full contract**: [`ROUTING-MATRIX.md`](../../ROUTING-MATRIX.md#route-shared-workflow-no-specialized-route-selected)
+- **Full contract**: [`SKILL.md`](../../SKILL.md#routing-rule)
 - **Compact index**: [`references/route-index.md`](../../references/route-index.md)
 
 ## Often confused with
@@ -41,5 +41,5 @@ Workflow spine audit plus final audit; no route-specific artifact contract beyon
 
 ## Hard-fail source
 
-`references/route-index.md#shared-workflow`
+`SKILL.md#routing-rule`
 

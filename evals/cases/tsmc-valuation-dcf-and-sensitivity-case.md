@@ -103,7 +103,7 @@ This eval is distinct from the existing TSMC eval cases:
 This eval directly tests the behavioral impact of three new rules proposed in issue #278:
 
 1. `references/valuation-methodology.md` §DCF / reverse DCF trigger rules — defines when a listed-company valuation must use DCF (cash-flow-positive, long operating history) or provide explicit non-applicability explanation
-2. `references/report-template.md` §DCF assumption table + sensitivity matrix template — provides a structured template for DCF assumptions (revenue growth, margin, CapEx/Rev, WACC, terminal growth) with role labels and a sensitivity matrix format
+2. `references/templates/listed-company-report.md` §DCF assumption table + sensitivity matrix template — provides a structured template for DCF assumptions (revenue growth, margin, CapEx/Rev, WACC, terminal growth) with role labels and a sensitivity matrix format
 3. `checklists/listed-company-report.md` — new checklist items for DCF/sensitivity: "DCF or reverse DCF present or non-applicability explained," "key assumptions labeled with role and source/method," "sensitivity matrix for at least one high-sensitivity assumption," "multi-variable scenarios not replacing single-variable sensitivity"
 
 ## Related evals

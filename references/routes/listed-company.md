@@ -22,6 +22,7 @@
 - [`references/market-sizing-and-share-discipline.md`](../market-sizing-and-share-discipline.md)
 - [`references/source-traceability-and-claim-citation.md`](../source-traceability-and-claim-citation.md)
 - [`references/moat-monopoly-screening.md`](../moat-monopoly-screening.md)
+- [`references/templates/listed-company-report.md`](../templates/listed-company-report.md)
 - [`examples/listed-company-judgment-memo-example.md`](../../examples/listed-company-judgment-memo-example.md)
 - [`examples/china-shenhua-reference-grade-rewrite-skeleton.md`](../../examples/china-shenhua-reference-grade-rewrite-skeleton.md)
 
