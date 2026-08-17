@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -129,6 +130,14 @@ def _audit_statuses(actual: dict[str, Any]) -> dict[str, str]:
     }
 
 
+def _blocking_ids_are_allowed(actual: dict[str, Any], allowed: set[str]) -> bool:
+    for message in actual.get("blocking", []):
+        match = re.match(r"\[([^\]]+)\]", str(message))
+        if match and match.group(1) not in allowed:
+            return False
+    return True
+
+
 def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], checks: dict[str, bool]) -> bool:
     """Require the intended defect shape, not merely any failing audit."""
     family = case.get("failure_family")
@@ -176,6 +185,7 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
             all(common)
             and all(audit_id in statuses and statuses[audit_id] == "pass" for audit_id in primary_ids)
             and failed_ids.issubset(secondary_targets)
+            and _blocking_ids_are_allowed(actual, {"contract-check", *secondary_targets})
             and target_present_and_failed
         )
     if family == "declared-not-executed":
@@ -189,7 +199,12 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
             for audit_id in expected_audits
             if statuses.get(audit_id) in {"not_run", "partial", "skipped"}
         }
-        return all(common) and failed_ids.issubset(allowed_targets) and target_present_and_unrun
+        return (
+            all(common)
+            and failed_ids.issubset(allowed_targets)
+            and _blocking_ids_are_allowed(actual, allowed_targets)
+            and target_present_and_unrun
+        )
     return all(common)
 
 
