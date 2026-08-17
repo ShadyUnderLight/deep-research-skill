@@ -1862,6 +1862,36 @@ class TestDuplicateDeclarations:
         ordinary text and the following claim stays visible."""
         self._assert_claim_visible(self._claim_report(tag + "\n"))
 
+    @pytest.mark.parametrize(
+        "tag",
+        [
+            "<span disabled>",
+            "<input readonly>",
+            "<custom-element data-x=42 disabled>",
+            "<span disabled />",
+        ],
+    )
+    def test_bare_attribute_is_complete_open_tag(self, tag: str) -> None:
+        """A bare attribute (name without '= value') is a valid
+        CommonMark attribute: these are complete open tags and start
+        type-7 raw mode, hiding the forged route table."""
+        self._assert_route_hidden(tag)
+
+    def test_bare_attribute_hides_forged_contract(self) -> None:
+        """A forged contract inside '<span disabled>' raw HTML is not a
+        visible declaration: strict audit must fail."""
+        forged = (
+            "<span disabled>\n" + self._route_table() + "\n```contract\n"
+            + _contract().replace("market-outlook", "forged-route")
+            + "\n```\n"
+        )
+        path = _write(_report(contract=_contract(), route_block=forged))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
     def test_valid_attribute_syntax_is_complete_open_tag(self) -> None:
         """A well-formed attribute tag still starts type-7 raw mode."""
         self._assert_route_hidden('<span a="foo" bar=\'baz\' data-x=42>')

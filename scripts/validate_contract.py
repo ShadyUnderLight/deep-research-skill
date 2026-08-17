@@ -975,8 +975,11 @@ def _match_complete_open_tag(line: str) -> re.Match[str] | None:
     Quote-aware AND grammar-checked: '>' inside a quoted attribute value
     is part of the attribute; malformed attribute syntax (e.g.
     '<span a="foo"bar>' or '<span h*#ref="hi">') is not a complete open
-    tag under CommonMark.  After the closing '>' only spaces/tabs may
-    follow to the end of the line (spec 0.31.2, issue #378).
+    tag under CommonMark.  Bare attributes (name without a value
+    specification, e.g. 'disabled') ARE valid per the spec's attribute
+    grammar 'attribute_name [whitespace = whitespace attribute_value]?'.
+    After the closing '>' only spaces/tabs may follow to the end of the
+    line (spec 0.31.2, issue #378).
     """
     m = re.match(rf"^[ ]{{0,3}}<([a-zA-Z][a-zA-Z0-9-]*){_TAG_BOUNDARY}", line)
     if m is None:
@@ -1001,8 +1004,8 @@ def _match_complete_open_tag(line: str) -> re.Match[str] | None:
             return None
         if not ws:
             return None  # garbage after the tag name / previous attribute
-        # Attribute: name = quoted|unquoted value (fail-closed: a bare
-        # attribute name is NOT accepted as a complete tag, issue #378).
+        # Attribute: 'name' with an optional '= value' specification
+        # (bare attributes are valid CommonMark, issue #378).
         nm = _ATTR_NAME_RE.match(line, i)
         if nm is None:
             return None
@@ -1011,7 +1014,9 @@ def _match_complete_open_tag(line: str) -> re.Match[str] | None:
         while j < len(line) and line[j] in " \t":
             j += 1
         if j >= len(line) or line[j] != "=":
-            return None  # bare attribute → not accepted
+            # Bare attribute — valid; loop back to find '>', '/>' or
+            # the next attribute.
+            continue
         i = j + 1
         while i < len(line) and line[i] in " \t":
             i += 1
