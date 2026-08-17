@@ -96,13 +96,14 @@ python3 scripts/validate_eval_registry.py
 python3 scripts/run_forward_evals.py --offline --check-baseline
 ```
 
-The runner routes each case's prompt through a deterministic offline adapter
-derived from the route-selection decision tree, then replays local report and
-Research Pack snapshots. It does not call a paid model or an external search
-provider, and it consumes the structured JSON verdict emitted by
-`scripts/audit_report.py` rather than parsing human-readable audit output. The
-adapter is a test surface, not a claim that production agent reasoning is a
-keyword classifier.
+The runner binds each prompt to canonical `action_burden`,
+`weight_bearing_object`, secondary-route and prompt-hash fields, resolves that
+structured activation through the route-selection decision tree, then replays
+local report and Research Pack snapshots. It does not call a paid model or an
+external search provider, and it consumes the structured JSON verdict emitted
+by `scripts/audit_report.py` rather than parsing human-readable audit output.
+The adapter is a fail-closed test surface, not a claim that production agent
+reasoning is a keyword classifier.
 
 Forward cases retain a concrete `failure_family` and map it to one of four
 diagnostic classes: `missing-rule`, `missing-trigger`, `execution-drift`, or
@@ -114,6 +115,9 @@ prompt activation over positive cases; `pack_completeness` is complete expected
 pack fields over all active cases; `declared_not_executed_rate` is observed
 manual/process `not_run`/`partial`/`skipped` cases over all active cases; and
 `declared_not_executed_recall` is detection over its negative-case denominator.
+`false_passed_rate` counts negative fixtures whose raw audit verdict is Pass;
+`negative_case_failure_rate` counts negative fixtures the evaluator failed to
+recognize, so the two metrics are intentionally different.
 
 ## What not to put here
 

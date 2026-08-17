@@ -2,10 +2,11 @@
 """Execute the offline route-sharp forward-eval registry.
 
 The runner deliberately consumes the existing command-line audit surface and
-its JSON output.  It does not call a paid model, browse the network, or invent
-a production prompt classifier.  A case's user prompt and expected activation
-are recorded in the registry; the report and Research Pack fixtures represent
-the deterministic activation/output snapshot that is replayed offline.
+its JSON output. It does not call a paid model, browse the network, or invent a
+production prompt classifier. Each case supplies canonical action/object
+activation inputs and a prompt hash; the adapter resolves the structured route
+decision and the report/Research Pack fixtures replay the remaining output
+chain offline.
 """
 
 from __future__ import annotations
@@ -141,6 +142,8 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
                 checks["activation_secondary_routes_match"],
                 checks["report_secondary_routes_match"],
                 checks["parallelization_match"],
+                checks["prompt_identity_match"],
+                checks["statuses_match"],
             ]
         )
 
@@ -153,6 +156,8 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
         checks["disciplines_match"],
         checks["pack_fields_present"],
         checks["parallelization_match"],
+        checks["prompt_identity_match"],
+        checks["statuses_match"],
     ]
     statuses = _audit_statuses(actual)
     expected_audits = set(case["expected"].get("required_audits", []))
@@ -166,13 +171,25 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
             for audit_id in secondary_targets
         )
         primary_ids = expected_audits - secondary_targets
-        return all(common) and all(audit_id in statuses for audit_id in primary_ids) and target_present_and_failed
+        failed_ids = {audit_id for audit_id, status in statuses.items() if status != "pass"}
+        return (
+            all(common)
+            and all(audit_id in statuses and statuses[audit_id] == "pass" for audit_id in primary_ids)
+            and failed_ids.issubset(secondary_targets)
+            and target_present_and_failed
+        )
     if family == "declared-not-executed":
         target_present_and_unrun = any(
             audit_id in expected_audits and statuses.get(audit_id) in {"not_run", "partial", "skipped"}
             for audit_id in expected_audits
         )
-        return all(common) and target_present_and_unrun
+        failed_ids = {audit_id for audit_id, status in statuses.items() if status != "pass"}
+        allowed_targets = {
+            audit_id
+            for audit_id in expected_audits
+            if statuses.get(audit_id) in {"not_run", "partial", "skipped"}
+        }
+        return all(common) and failed_ids.issubset(allowed_targets) and target_present_and_unrun
     return all(common)
 
 
@@ -188,7 +205,12 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
     activation_error: str | None = None
     try:
         activation = activate_prompt(
-            input_data["user_prompt"], input_data["parallelization_decision"]
+            input_data["user_prompt"],
+            input_data["parallelization_decision"],
+            action_category=input_data["action_burden"],
+            weight_bearing_object=input_data["weight_bearing_object"],
+            secondary_routes=input_data["secondary_routes"],
+            expected_prompt_sha256=input_data["prompt_sha256"],
         )
     except RouteActivationError as exc:
         activation = None
@@ -214,6 +236,7 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
         "activation_action_category": activation.action_category if activation else None,
         "activation_weight_bearing_object": activation.weight_bearing_object if activation else None,
         "activation_parallelization_decision": activation.parallelization_decision if activation else None,
+        "activation_prompt_sha256": activation.prompt_sha256 if activation else None,
         "activation_error": activation_error,
         "closest_alternative": contract.get("closest_alternative"),
         "secondary_routes": sorted(contract.get("secondary_routes", []) or []),
@@ -252,8 +275,9 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
     status_match = actual["statuses"] == expected["statuses"]
     parallelization_match = (
         actual["activation_parallelization_decision"]
-        == input_data["parallelization_decision"]
+        == expected["parallelization_decision"]
     )
+    prompt_identity_match = actual["activation_prompt_sha256"] == input_data["prompt_sha256"]
     expected_returncode = {
         "pass": 0,
         "conditional-pass": 1,
@@ -273,6 +297,7 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
                 pack_fields_match,
                 status_match,
                 parallelization_match,
+                prompt_identity_match,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 returncode == expected_returncode,
             ]
@@ -292,6 +317,8 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
             "disciplines_match": discipline_match,
             "pack_fields_present": pack_fields_match,
             "parallelization_match": parallelization_match,
+            "prompt_identity_match": prompt_identity_match,
+            "statuses_match": status_match,
         }
         case_passed = all(
             [
@@ -322,6 +349,7 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
             "activation_action_category": actual["activation_action_category"],
             "activation_weight_bearing_object": actual["activation_weight_bearing_object"],
             "activation_parallelization_decision": actual["activation_parallelization_decision"],
+            "activation_prompt_sha256": actual["activation_prompt_sha256"],
             "activation_error": actual["activation_error"],
             "closest_alternative": actual["closest_alternative"],
             "secondary_routes": actual["secondary_routes"],
@@ -349,6 +377,7 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
             "pack_fields_present": pack_fields_match,
             "statuses_match": status_match,
             "parallelization_match": parallelization_match,
+            "prompt_identity_match": prompt_identity_match,
         },
     }
 
@@ -396,10 +425,10 @@ def _metrics(cases: list[dict[str, Any]], results: list[dict[str, Any]]) -> dict
         )
         for result in results
     )
-    raw_audit_false_passed = sum(
+    false_passed = sum(
         by_id[case["id"]]["actual"]["overall"] == "pass" for case in negatives
     )
-    false_passed = sum(
+    negative_case_failure = sum(
         not by_id[case["id"]]["passed"] for case in negatives
     )
     status_cases = [
@@ -428,7 +457,7 @@ def _metrics(cases: list[dict[str, Any]], results: list[dict[str, Any]]) -> dict
         "declared_not_executed_recall": _ratio(declared_recalled, len(declared_cases)),
         "declared_not_executed_rate": _ratio(declared_not_executed_observed, len(results)),
         "false_passed_rate": _ratio(false_passed, len(negatives)),
-        "raw_audit_false_passed_rate": _ratio(raw_audit_false_passed, len(negatives)),
+        "negative_case_failure_rate": _ratio(negative_case_failure, len(negatives)),
         "negative_detection_rate": _ratio(
             sum(by_id[case["id"]]["passed"] for case in negatives),
             len(negatives),

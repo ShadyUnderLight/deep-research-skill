@@ -1,27 +1,58 @@
 #!/usr/bin/env python3
-"""Deterministic offline adapter for the route-selection decision tree.
+"""Fail-closed offline adapter for the route-selection decision tree.
 
-The production skill is still prose-driven, so this is deliberately a small
-testable adapter rather than a claim that a keyword classifier replaces agent
-reasoning.  It derives action examples and weight-bearing objects from the
-canonical ``ROUTING-MATRIX.md`` decision tree, applies the documented conflict
-pairs, and returns a structured activation snapshot for forward evals.
+Forward evals provide canonical action/object classifications explicitly.  This
+module resolves those structured values against ``ROUTING-MATRIX.md`` and keeps
+the original user prompt as an identity-checked input.  It intentionally does
+not guess from arbitrary prose or fall back to ``shared-workflow``.
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass
 from pathlib import Path
+
+try:
+    from registry_loader import load_route_registry
+except ImportError:  # pragma: no cover - package import fallback
+    from .registry_loader import load_route_registry  # type: ignore[no-redef]
 
 
 ROOT = Path(__file__).resolve().parents[1]
 ROUTING_MATRIX = ROOT / "ROUTING-MATRIX.md"
 ALLOWED_PARALLELIZATION = {"single-track", "parallel", "not-needed"}
+ACTION_CATEGORIES = {
+    "Select / rank / predict",
+    "Enter / phase / sequence",
+    "Judge direction / scenario",
+    "Judge regulation / policy impact",
+    "Judge listed-company value",
+    "Judge private-company quality",
+    "Judge technical mechanism / feasibility",
+    "Judge academic evidence / research",
+    "Judge positioning / tier",
+    "shared-workflow",
+}
+OBJECT_CATEGORIES = {
+    "Defined options / teams / ranking",
+    "Providers / vendors / APIs / models",
+    "Devices / hardware / build",
+    "Market / category trajectory",
+    "Regulation / rules / policy",
+    "Listed / public company",
+    "Private / startup company",
+    "Architecture / mechanism / patent",
+    "Academic literature / research evidence",
+    "Positioning / tier label",
+    "Entry decision / sequencing / gates",
+    "shared-workflow",
+}
 
 
 class RouteActivationError(ValueError):
-    """Raised when an offline prompt cannot be classified safely."""
+    """Raised when a structured activation input is incomplete or invalid."""
 
 
 @dataclass(frozen=True)
@@ -29,9 +60,10 @@ class ActivationResult:
     primary_route: str
     secondary_routes: tuple[str, ...]
     action_category: str
-    weight_bearing_object: str | None
+    weight_bearing_object: str
     parallelization_decision: str
-    mode: str = "offline-decision-tree"
+    prompt_sha256: str
+    mode: str = "offline-decision-tree-structured"
 
 
 def _section_after_heading(content: str, heading: str) -> str:
@@ -46,69 +78,23 @@ def _section_after_heading(content: str, heading: str) -> str:
     return rest
 
 
-def _decision_tree_section() -> str:
+def _step2_object_routes() -> dict[str, list[str]]:
     try:
         content = ROUTING_MATRIX.read_text(encoding="utf-8")
     except OSError as exc:
         raise RouteActivationError(f"cannot read {ROUTING_MATRIX}: {exc}") from exc
-    return _section_after_heading(content, "## Route selection decision tree")
-
-
-def _step1_section() -> str:
-    section = _decision_tree_section()
-    start = section.find("### Step 1")
-    if start == -1:
-        raise RouteActivationError("ROUTING-MATRIX.md is missing Step 1")
-    body = section[start:]
-    next_h3 = re.search(r"\n### Step 2\b", body)
-    if next_h3:
-        body = body[:next_h3.start() + 1]
-    return body
-
-
-def _step2_section() -> str:
-    section = _decision_tree_section()
-    start = section.find("### Step 2")
+    decision_tree = _section_after_heading(content, "## Route selection decision tree")
+    start = decision_tree.find("### Step 2")
     if start == -1:
         raise RouteActivationError("ROUTING-MATRIX.md is missing Step 2")
-    body = section[start:]
-    next_h3 = re.search(r"\n### Step 3\b", body)
+    section = decision_tree[start:]
+    next_h3 = re.search(r"\n### Step 3\b", section)
     if next_h3:
-        body = body[:next_h3.start() + 1]
-    return body
+        section = section[:next_h3.start() + 1]
 
-
-def _parse_step1_phrasings() -> dict[str, list[str]]:
     mapping: dict[str, list[str]] = {}
     in_table = False
-    for line in _step1_section().splitlines():
-        stripped = line.strip()
-        if "| Action category |" in stripped:
-            in_table = True
-            continue
-        if not in_table:
-            continue
-        if stripped.startswith("|---"):
-            continue
-        if not stripped.startswith("|"):
-            break
-        columns = [cell.strip() for cell in stripped.strip("|").split("|")]
-        if len(columns) < 3:
-            continue
-        action_match = re.search(r"\*\*(.+?)\*\*", columns[0])
-        if not action_match:
-            continue
-        examples: list[str] = []
-        for group in re.split(r"\s+/\s+", columns[2]):
-            examples.extend(item.strip() for item in re.findall(r'"([^"]*)"', group) if item.strip())
-        mapping[action_match.group(1).strip()] = examples
-    return mapping
-
-
-def _step2_object_routes() -> dict[str, list[str]]:
-    mapping: dict[str, list[str]] = {}
-    in_table = False
-    for line in _step2_section().splitlines():
+    for line in section.splitlines():
         stripped = line.strip()
         if stripped.startswith("| Weight-bearing object"):
             in_table = True
@@ -126,31 +112,9 @@ def _step2_object_routes() -> dict[str, list[str]]:
     return mapping
 
 
-_STEP2_ZH_KEYWORDS: dict[str, str] = {
-    "球队": "team", "夺冠": "team", "选哪个": "option", "哪一个": "option", "选项": "option", "定义好的": "option", "怎么选": "option", "比较": "option",
-    "供应商": "provider", "API": "provider", "平台": "provider",
-    "NAS": "device", "迷你主机": "device", "硬件": "device", "设备": "device",
-    "产业链": "market", "市场": "market", "演化": "market", "趋势": "market", "行业": "market", "展望": "market",
-    "法规": "regulation", "法案": "regulation", "政策": "regulation", "合规": "regulation",
-    "股票": "listed", "估值": "listed", "特斯拉": "listed", "英伟达": "listed", "Nvidia": "listed",
-    "创业": "private", "PMF": "private", "融资": "private",
-    "架构": "architecture", "GPU": "architecture", "Kubernetes": "architecture", "Docker": "architecture", "技术原理": "architecture", "可行性": "architecture",
-    "文献综述": "academic", "学术": "academic", "文献": "academic", "论文": "academic", "Transformer": "academic", "研究进展": "academic", "研究方向": "academic",
-    "第一梯队": "positioning", "竞争格局": "positioning", "竞争壁垒": "positioning",
-    "进入": "entry", "扩张": "entry", "市场进入": "entry",
-}
+def _normalize_label(value: str) -> str:
+    return re.sub(r"\s*/\s*", "/", value.lower())
 
-_ACTION_ZH_MAP: dict[str, str] = {
-    "架构": "technical", "技术": "technical", "原理": "technical", "对比": "technical", "比较": "technical", "可行性": "technical",
-    "股票": "listed-company", "估值": "listed-company", "投资": "listed-company",
-    "文献": "academic", "论文": "academic", "综述": "academic",
-    "球队": "select", "夺冠": "select", "选": "select", "选择": "select", "哪一个": "select", "哪家": "select", "领先": "select", "排序": "select",
-    "市场": "direction", "演化": "direction", "趋势": "direction",
-    "法规": "regulation", "法案": "regulation",
-    "创业": "private-company", "PMF": "private-company",
-    "第一梯队": "positioning", "竞争": "positioning",
-    "进入": "enter", "扩张": "enter", "供应商": "select", "平台": "select",
-}
 
 _CONFLICT_PAIRS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
     ("select/rank", "market"): ("constrained-choice", ()),
@@ -163,73 +127,36 @@ _CONFLICT_PAIRS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
 }
 
 
-def _normalize_label(value: str) -> str:
-    return re.sub(r"\s*/\s*", "/", value.lower())
-
-
-def _classify_action(description: str) -> str | None:
-    desc_lower = description.lower()
-    best_match: str | None = None
-    best_score = 0
-    for action_name, examples in _parse_step1_phrasings().items():
-        score = 0
-        for example in examples:
-            example_lower = example.lower()
-            if example_lower in desc_lower:
-                score += 10
-            if re.search(r"[\u4e00-\u9fff]", example_lower):
-                example_bigrams = {example_lower[i:i + 2] for i in range(len(example_lower) - 1)}
-                desc_bigrams = {desc_lower[i:i + 2] for i in range(len(desc_lower) - 1)}
-                score += len(example_bigrams & desc_bigrams) * 2
-            else:
-                score += len(set(example_lower.split()) & set(desc_lower.split()))
-        for word in set(re.split(r"\s+/\s+", action_name.lower())):
-            if len(word) >= 4 and word in desc_lower:
-                score += 3
-        for keyword, category in _ACTION_ZH_MAP.items():
-            if keyword.lower() in desc_lower and category in action_name.lower():
-                score += 5
-        if score > best_score:
-            best_score = score
-            best_match = action_name
-    return best_match
-
-
-def _classify_object(description: str) -> str | None:
-    desc_lower = description.lower()
-    mapping = _step2_object_routes()
-    matches: list[tuple[str, int]] = []
-    for object_name in mapping:
-        object_words = [
-            word for word in re.split(r"\s*/\s*", object_name.lower())
-            if len(word) >= 3 and word not in {"the", "or", "and"}
-        ]
-        score = sum(len(word) for word in object_words if word in desc_lower)
-        for keyword, category in _STEP2_ZH_KEYWORDS.items():
-            if keyword.lower() in desc_lower:
-                score += sum(len(keyword) for word in object_words if category in word)
-        if score > 0:
-            matches.append((object_name, score))
-    if not matches:
-        return None
-    matches.sort(key=lambda item: (-item[1], -len(item[0])))
-    return matches[0][0]
-
-
-def _resolve_route(action_name: str, object_name: str) -> tuple[str, tuple[str, ...]]:
-    action_norm = _normalize_label(action_name)
-    object_norm = _normalize_label(object_name)
+def _resolve_route(action_category: str, weight_bearing_object: str) -> tuple[str, tuple[str, ...]]:
+    action = _normalize_label(action_category)
+    obj = _normalize_label(weight_bearing_object)
     for (action_fragment, object_fragment), result in _CONFLICT_PAIRS.items():
-        if action_fragment in action_norm and object_fragment in object_norm:
+        if action_fragment in action and object_fragment in obj:
             return result
-    candidates = _step2_object_routes().get(object_name, [])
+    candidates = _step2_object_routes().get(weight_bearing_object, [])
     if not candidates:
-        raise RouteActivationError(f"no route candidate for object '{object_name}'")
+        raise RouteActivationError(
+            f"no route candidate for structured object '{weight_bearing_object}'"
+        )
     return candidates[0], ()
 
 
-def activate_prompt(prompt: str, parallelization_decision: str) -> ActivationResult:
-    """Resolve one user prompt through the offline decision-tree adapter."""
+def activate_prompt(
+    prompt: str,
+    parallelization_decision: str,
+    *,
+    action_category: str | None = None,
+    weight_bearing_object: str | None = None,
+    secondary_routes: list[str] | tuple[str, ...] | None = None,
+    expected_prompt_sha256: str | None = None,
+) -> ActivationResult:
+    """Resolve structured activation input and verify prompt identity.
+
+    The prompt hash prevents a case from silently changing its natural-language
+    input while retaining the old expected activation.  Route selection itself
+    is based only on canonical action/object fields; an absent or unknown field
+    is a hard error instead of an escape-hatch fallback.
+    """
     if not isinstance(prompt, str) or not prompt.strip():
         raise RouteActivationError("input.user_prompt must be a non-empty string")
     if parallelization_decision not in ALLOWED_PARALLELIZATION:
@@ -237,35 +164,51 @@ def activate_prompt(prompt: str, parallelization_decision: str) -> ActivationRes
             "input.parallelization_decision must be one of "
             f"{sorted(ALLOWED_PARALLELIZATION)}"
         )
-
-    action = _classify_action(prompt)
-    object_name = _classify_object(prompt)
-    if action is None or object_name is None:
-        return ActivationResult(
-            primary_route="shared-workflow",
-            secondary_routes=(),
-            action_category="shared-workflow",
-            weight_bearing_object=object_name,
-            parallelization_decision=parallelization_decision,
+    if not isinstance(action_category, str) or action_category not in ACTION_CATEGORIES:
+        raise RouteActivationError(f"unknown structured action_burden: {action_category!r}")
+    if not isinstance(weight_bearing_object, str) or weight_bearing_object not in OBJECT_CATEGORIES:
+        raise RouteActivationError(
+            f"unknown structured weight_bearing_object: {weight_bearing_object!r}"
         )
-    primary, secondary = _resolve_route(action, object_name)
-    prompt_lower = prompt.lower()
-    if (
-        "次级" in prompt_lower
-        and "市场" in prompt_lower
-        and any(keyword in prompt_lower for keyword in ("选项", "选择", "比较"))
+    if not isinstance(expected_prompt_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_prompt_sha256):
+        raise RouteActivationError("input.prompt_sha256 must be a 64-character lowercase SHA-256")
+    prompt_sha256 = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
+    if prompt_sha256 != expected_prompt_sha256:
+        raise RouteActivationError(
+            "input.user_prompt does not match input.prompt_sha256; refusing stale activation"
+        )
+    if not isinstance(secondary_routes, (list, tuple)) or not all(
+        isinstance(route, str) and route.strip() for route in secondary_routes
     ):
-        primary, secondary = "market-outlook", ("constrained-choice",)
-    elif (
-        primary == "technical-deep-dive"
-        and any(keyword in prompt_lower for keyword in ("上市公司", "股票", "估值", "公司"))
-        and any(keyword in prompt_lower for keyword in ("架构", "技术", "可行性", "机制"))
-    ):
-        secondary = ("listed-company",)
+        raise RouteActivationError("input.secondary_routes must be a string list")
+    route_ids = load_route_registry().route_ids()
+    secondary = tuple(sorted(set(secondary_routes)))
+    unknown_secondary = set(secondary) - route_ids
+    if unknown_secondary:
+        raise RouteActivationError(
+            f"input.secondary_routes contains unknown route(s): {sorted(unknown_secondary)}"
+        )
+
+    if action_category == "shared-workflow" or weight_bearing_object == "shared-workflow":
+        if action_category != "shared-workflow" or weight_bearing_object != "shared-workflow":
+            raise RouteActivationError(
+                "shared-workflow activation requires both action_burden and "
+                "weight_bearing_object to be shared-workflow"
+            )
+        primary = "shared-workflow"
+        derived_secondary: tuple[str, ...] = ()
+    else:
+        primary, derived_secondary = _resolve_route(action_category, weight_bearing_object)
+    if set(secondary) != set(derived_secondary) and derived_secondary:
+        raise RouteActivationError(
+            "structured secondary routes do not match the route decision-tree conflict pair: "
+            f"expected {sorted(derived_secondary)}, got {sorted(secondary)}"
+        )
     return ActivationResult(
         primary_route=primary,
         secondary_routes=secondary,
-        action_category=action,
-        weight_bearing_object=object_name,
+        action_category=action_category,
+        weight_bearing_object=weight_bearing_object,
         parallelization_decision=parallelization_decision,
+        prompt_sha256=prompt_sha256,
     )

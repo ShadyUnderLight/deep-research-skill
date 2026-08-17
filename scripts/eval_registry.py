@@ -27,6 +27,14 @@ except ImportError:  # pragma: no cover - exercised only by package imports
         load_discipline_registry,
         load_route_registry,
     )
+try:
+    from route_activation import ACTION_CATEGORIES, ALLOWED_PARALLELIZATION, OBJECT_CATEGORIES
+except ImportError:  # pragma: no cover - package import fallback
+    from .route_activation import (  # type: ignore[no-redef]
+        ACTION_CATEGORIES,
+        ALLOWED_PARALLELIZATION,
+        OBJECT_CATEGORIES,
+    )
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,7 +44,6 @@ FORWARD_FIXTURE_DIR = ROOT / "tests" / "fixtures" / "forward"
 CASE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]+$")
 ALLOWED_CASE_STATUSES = {"active", "archived"}
 ALLOWED_CASE_TYPES = {"positive", "negative"}
-ALLOWED_PARALLELIZATION = {"single-track", "parallel", "not-needed"}
 ALLOWED_RESEARCH_STATUSES = {"complete", "partial", "blocked"}
 ALLOWED_AUDIT_STATUSES = {
     "pass",
@@ -76,7 +83,14 @@ REQUIRED_CASE_FIELDS = {
     "related_rule",
     "related_validator",
 }
-REQUIRED_INPUT_FIELDS = {"user_prompt", "parallelization_decision"}
+REQUIRED_INPUT_FIELDS = {
+    "user_prompt",
+    "prompt_sha256",
+    "action_burden",
+    "weight_bearing_object",
+    "secondary_routes",
+    "parallelization_decision",
+}
 REQUIRED_EXPECTED_FIELDS = {
     "primary_route",
     "closest_alternative",
@@ -86,6 +100,7 @@ REQUIRED_EXPECTED_FIELDS = {
     "research_pack_fields",
     "statuses",
     "verdict",
+    "parallelization_decision",
 }
 REQUIRED_FIXTURE_FIELDS = {"report", "research_pack"}
 ALLOWED_STATUS_KEYS = {"research_status", "audit_status", "delivery_status"}
@@ -222,6 +237,18 @@ def _validate_case(
             )
         if not _is_non_empty_string(input_data.get("user_prompt")):
             errors.append(f"{prefix}.input.user_prompt must be non-empty")
+        prompt_sha256 = input_data.get("prompt_sha256")
+        if not isinstance(prompt_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", prompt_sha256):
+            errors.append(f"{prefix}.input.prompt_sha256 must be a lowercase SHA-256")
+        action_burden = input_data.get("action_burden")
+        if not isinstance(action_burden, str) or action_burden not in ACTION_CATEGORIES:
+            errors.append(f"{prefix}.input.action_burden is not canonical")
+        weight_bearing_object = input_data.get("weight_bearing_object")
+        if not isinstance(weight_bearing_object, str) or weight_bearing_object not in OBJECT_CATEGORIES:
+            errors.append(f"{prefix}.input.weight_bearing_object is not canonical")
+        input_secondary = input_data.get("secondary_routes")
+        if not _as_string_list(input_secondary):
+            errors.append(f"{prefix}.input.secondary_routes must be a string list")
         parallelization = input_data.get("parallelization_decision")
         if not isinstance(parallelization, str) or parallelization not in ALLOWED_PARALLELIZATION:
             errors.append(
@@ -268,6 +295,11 @@ def _validate_case(
     for route_id in secondary:
         if route_id not in route_ids:
             errors.append(f"{prefix}.expected.secondary_routes has unknown route: {route_id}")
+    if isinstance(input_data, dict) and _as_string_list(input_data.get("secondary_routes")):
+        if set(input_data["secondary_routes"]) != set(secondary):
+            errors.append(
+                f"{prefix}.input.secondary_routes must match expected.secondary_routes"
+            )
 
     disciplines = expected.get("disciplines")
     if not _as_string_list(disciplines):
@@ -330,6 +362,9 @@ def _validate_case(
         errors.append(f"{prefix} positive cases must expect verdict=pass")
     if case_type == "negative" and verdict != "fail":
         errors.append(f"{prefix} negative cases must expect verdict=fail")
+    expected_parallelization = expected.get("parallelization_decision")
+    if not isinstance(expected_parallelization, str) or expected_parallelization not in ALLOWED_PARALLELIZATION:
+        errors.append(f"{prefix}.expected.parallelization_decision is invalid")
 
     fixtures = case["fixtures"]
     if not isinstance(fixtures, dict):

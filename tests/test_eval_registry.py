@@ -22,6 +22,7 @@ from eval_registry import (  # noqa: E402
     validate_registry,
 )
 from run_forward_evals import _evaluate_case, run  # noqa: E402
+from route_activation import RouteActivationError, activate_prompt  # noqa: E402
 
 
 def test_registry_has_eight_active_forward_cases() -> None:
@@ -99,15 +100,20 @@ def test_prompt_mutation_cannot_pass_a_forward_case() -> None:
     assert result["checks"]["activation_route_match"] is False
 
 
+def test_unstructured_prompt_activation_fails_closed() -> None:
+    with pytest.raises(RouteActivationError, match="structured action_burden"):
+        activate_prompt("不要做排名，只分析未来趋势。", "single-track")
+
+
 def test_parallelization_decision_is_consumed() -> None:
     case = copy.deepcopy(next(
         item for item in load_registry()["cases"]
         if item["id"] == "forward-provider-selection"
     ))
-    case["input"]["parallelization_decision"] = "invalid"
+    case["input"]["parallelization_decision"] = "parallel"
     result = _evaluate_case(case)
     assert result["passed"] is False
-    assert "parallelization_decision" in result["actual"]["activation_error"]
+    assert result["checks"]["parallelization_match"] is False
 
 
 def test_negative_oracle_requires_the_declared_secondary_route() -> None:
@@ -121,6 +127,17 @@ def test_negative_oracle_requires_the_declared_secondary_route() -> None:
     assert result["actual"]["failure_family"] is None
 
 
+def test_negative_oracle_requires_complete_status_shape() -> None:
+    case = copy.deepcopy(next(
+        item for item in load_registry()["cases"]
+        if item["id"] == "forward-secondary-route-not-verified"
+    ))
+    case["expected"]["statuses"]["delivery_status"] = "pdf_failed"
+    result = _evaluate_case(case)
+    assert result["passed"] is False
+    assert result["checks"]["statuses_match"] is False
+
+
 def test_offline_forward_runner_passes_and_reports_metrics() -> None:
     report = run(check_baseline=True)
     assert report["passed"] is True
@@ -129,7 +146,8 @@ def test_offline_forward_runner_passes_and_reports_metrics() -> None:
     metrics = report["metrics"]
     assert metrics["case_count"] >= 8
     assert metrics["negative_detection_rate"] == 1.0
-    assert metrics["false_passed_rate"] == 0.0
+    assert metrics["false_passed_rate"] == 0.3333
+    assert metrics["negative_case_failure_rate"] == 0.0
     assert metrics["blocked_partial_and_pdf_failed_status_correctness"] == 1.0
 
 
