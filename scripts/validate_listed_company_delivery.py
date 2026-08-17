@@ -31,12 +31,12 @@ from pathlib import Path
 
 # Reuse shared helpers from validate_report_quality
 from validate_report_quality import (
-    strip_fenced_code_blocks,
     section_bounds,
     section_text,
     parse_table,
     find_col_index,
 )
+from validate_contract import sanitize_visible_markdown
 
 EXIT_PASS = 0
 EXIT_ISSUES = 2
@@ -390,7 +390,7 @@ def validate_file(path: Path) -> tuple[list[str], list[str]]:
     except (OSError, UnicodeError) as exc:
         return [f"{path}: cannot read file — {exc}"], []
 
-    cleaned = strip_fenced_code_blocks(text)
+    cleaned = sanitize_visible_markdown(text)
 
     # Only run Listed-Company-specific checks if the report declares
     # this route.  Non-listed-company reports pass through silently.

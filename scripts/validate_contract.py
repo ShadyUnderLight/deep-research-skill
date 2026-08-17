@@ -90,32 +90,153 @@ class ContractError(Exception):
 
 # ── Contract extraction ─────────────────────────────────────────────────────
 
+# Fence opener: at most 3 leading spaces (CommonMark), backtick or tilde,
+# followed by an info string that MAY contain spaces (```markdown example).
+# The info string's first whitespace-separated token is the language.
+_FENCE_OPEN_RE = re.compile(r"^[ ]{0,3}(`{3,}|~{3,})([^\n]*)$")
+
+
+def _fence_language(open_m: re.Match[str]) -> str:
+    """First space/tab-separated token of a fence info string, lowercased.
+
+    CommonMark whitespace is space/tab only: NBSP or other Unicode
+    whitespace inside the info string is part of the token, so
+    '```mermaid\\u00a0' has language 'mermaid\\u00a0', NOT 'mermaid'
+    (issue #378).
+    """
+    info = open_m.group(2)
+    m = re.match(r"^[ \t]*([^ \t]*)", info)
+    return m.group(1).lower() if m.group(1) else ""
+
+
+def _fence_open_match(line: str) -> re.Match[str] | None:
+    """Match a valid fence opener.
+
+    CommonMark: a backtick fence's info string must not contain backticks
+    (a tilde fence's info string may); at most 3 leading spaces
+    (issue #378).
+    """
+    m = _FENCE_OPEN_RE.match(line)
+    if m is None:
+        return None
+    if m.group(1)[0] == "`" and "`" in m.group(2):
+        return None
+    return m
+
+
+def _fence_close_re(fence_char: str, fence_len: int) -> re.Pattern[str]:
+    """Closing fence: same char, >= opener length, at most 3 leading
+    spaces, trailing spaces/tabs only (CommonMark fenced-code rules —
+    Python \\s would also accept NBSP etc., issue #378)."""
+    return re.compile(
+        rf"^[ ]{{0,3}}{re.escape(fence_char)}{{{fence_len},}}[\t ]*$"
+    )
+
+
+def _top_level_fenced_content(text: str, language_keyword: str) -> list[str]:
+    """Collect the content of every *top-level* fenced block whose opening
+    fence carries *language_keyword*.
+
+    Uses a fence state machine instead of a bare regex: a ```contract
+    example nested inside another fence (e.g. inside a `````markdown
+    block) is content of the outer fence, not a real declaration
+    (issue #378).  An unclosed fence is NOT collected — a contract block
+    must be explicitly closed to count.
+    """
+    blocks: list[str] = []
+    lines = text.split("\n")
+    i = 0
+    while i < len(lines):
+        open_m = _fence_open_match(lines[i])
+        if not open_m:
+            i += 1
+            continue
+        fence_char = open_m.group(1)[0]
+        fence_len = len(open_m.group(1))
+        language = _fence_language(open_m)
+        content: list[str] = []
+        j = i + 1
+        close_re = _fence_close_re(fence_char, fence_len)
+        while j < len(lines):
+            if close_re.match(lines[j]):
+                break
+            content.append(lines[j])
+            j += 1
+        if j < len(lines) and language == language_keyword:
+            blocks.append("\n".join(content))
+        i = j + 1 if j < len(lines) else len(lines)
+    return blocks
+
 
 def has_contract_block(text: str) -> bool:
-    """Check whether a ```contract fenced block exists in the text,
-    regardless of whether its content is valid JSON."""
-    return bool(re.search(r"```contract\s*\n", text))
+    """Check whether a top-level ```contract fenced block exists in the
+    text, regardless of whether its content is valid JSON.  Nested
+    examples inside other fences, declarations inside HTML comments and
+    raw HTML blocks (div/pre/script/style/...) do not count (issue #378)."""
+    return bool(_top_level_fenced_content(_strip_non_fence_containers(text), "contract"))
+
+
+def extract_contract_blocks(text: str) -> tuple[list[dict], list[str]]:
+    """Collect every top-level ```contract fenced block in *text*.
+
+    Returns ``(contracts, errors)``.  Cardinality rule (issue #378): more
+    than one contract block is structural malformation — a second block
+    could carry a different route or a broken payload — so callers must
+    treat ``errors`` as blocking instead of accepting the first block.
+    A single malformed-JSON block is also reported as an error.  Fences
+    nested inside other fences (```contract examples inside `````markdown)
+    and declarations inside HTML comments / raw HTML blocks are ignored:
+    only top-level contract fences count.
+    """
+    matches = _top_level_fenced_content(_strip_non_fence_containers(text), "contract")
+    if not matches:
+        return [], []
+    if len(matches) > 1:
+        return [], [
+            f"multiple contract blocks found ({len(matches)}) — exactly "
+            "one ```contract block is required (issue #378)"
+        ]
+    return _parse_contract_json(matches[0])
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict:
+    """json object_pairs_hook: duplicate object keys are malformed
+    (last-write-wins would let a trailing good value hide a broken
+    declaration, issue #378)."""
+    result: dict = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError(f"duplicate contract key: '{key}'")
+        result[key] = value
+    return result
+
+
+def _parse_contract_json(json_str: str) -> tuple[list[dict], list[str]]:
+    """Parse one contract JSON payload, rejecting duplicate keys."""
+    try:
+        contract = json.loads(json_str.strip(), object_pairs_hook=_reject_duplicate_keys)
+        if not isinstance(contract, dict):
+            return [], [
+                "contract block JSON is not a valid object — fix the "
+                "```contract fenced block"
+            ]
+        return [contract], []
+    except (json.JSONDecodeError, ValueError) as exc:
+        return [], [
+            f"contract block JSON is invalid: {exc} — fix the "
+            "```contract fenced block"
+        ]
 
 
 def extract_contract_from_markdown(text: str) -> dict | None:
     """Extract a contract from a ```contract fenced code block in Markdown.
 
-    Returns None if no contract block is found or if the JSON is malformed.
+    Returns None if no top-level contract block is found or if the JSON is
+    malformed.  Duplicate blocks are handled by :func:`extract_contract_blocks`;
+    this legacy accessor returns the first block for compatibility.
     """
-    # Match ```contract ... ``` fenced block
-    pattern = r"```contract\s*\n(.*?)```"
-    match = re.search(pattern, text, re.DOTALL)
-    if not match:
-        return None
-
-    json_str = match.group(1).strip()
-    try:
-        contract = json.loads(json_str)
-        if not isinstance(contract, dict):
-            return None
-        return contract
-    except (json.JSONDecodeError, ValueError):
-        return None
+    contracts, _ = extract_contract_blocks(text)
+    return contracts[0] if contracts else None
 
 
 # ── Validation ──────────────────────────────────────────────────────────────
@@ -652,7 +773,12 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Error: cannot read {path}: {exc}", file=sys.stderr)
         return 2
 
-    contract = extract_contract_from_markdown(text)
+    contract_blocks, contract_errors = extract_contract_blocks(text)
+    if contract_errors:
+        for err in contract_errors:
+            print(f"Error: {err}", file=sys.stderr)
+        return 2
+    contract = contract_blocks[0] if contract_blocks else None
     if contract is None:
         if has_contract_block(text):
             # A ```contract block exists but JSON is malformed — always an error.
@@ -672,13 +798,22 @@ def main(argv: list[str] | None = None) -> int:
     pack_primary_route: str | None = None
     pack_artifact_id: str | None = None
     if args.research_pack:
+        pack_section_errors = validate_pack_sections(args.research_pack)
+        if pack_section_errors:
+            for err in pack_section_errors:
+                print(f"Error: {err}", file=sys.stderr)
+            return 2
         pack_primary_route = _resolve_pack_primary_route(args.research_pack)
         if pack_primary_route is None:
             return 2
         pack_artifact_id = _extract_pack_artifact_id(args.research_pack)
 
     # Report status block route (issue #376 验收标准 5 — 三方一致性).
-    report_primary_route = extract_report_primary_route(text)
+    report_primary_route, route_malformed = extract_report_route_declaration(text)
+    if route_malformed:
+        for err in route_malformed:
+            print(f"Error: {err}", file=sys.stderr)
+        return 2
 
     result = validate_contract(
         contract,
@@ -699,6 +834,37 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _count_pack_sections(text: str, heading: str) -> int:
+    """Number of visible (non-fenced) occurrences of a pack heading."""
+    cleaned = _strip_fences(text)
+    return len(re.findall(
+        rf"^##\s+{re.escape(heading)}\s*$", cleaned, re.MULTILINE
+    ))
+
+
+def validate_pack_sections(pack_path: str) -> list[str]:
+    """Cardinality check for pack declarations (issue #378).
+
+    '## Primary route' and '## Artifact id' must each appear at most once;
+    a second conflicting declaration would silently bypass the
+    pack/contract cross-check if only the first section were read.
+    Returns structural errors (empty list when well-formed).
+    """
+    try:
+        text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        return [f"cannot read pack {pack_path}: {exc}"]
+    errors: list[str] = []
+    for heading in ("Primary route", "Artifact id"):
+        count = _count_pack_sections(text, heading)
+        if count > 1:
+            errors.append(
+                f"Research Pack {pack_path} declares '## {heading}' "
+                f"{count} times — exactly one is required (issue #378)"
+            )
+    return errors
+
+
 def _resolve_pack_primary_route(pack_path: str) -> str | None:
     """Resolve the canonical route id declared in a Research Pack's
     '## Primary route' section. Returns None (after reporting) when the
@@ -713,6 +879,10 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
     except (OSError, UnicodeError) as exc:
         print(f"Error: cannot read --research-pack {pack_path}: {exc}", file=sys.stderr)
         return None
+
+    # Fenced declarations (e.g. a route inside ~~~markdown) do not count
+    # as visible pack sections (issue #378).
+    text = _strip_fences(text)
 
     match = re.search(
         r"## Primary route\s*\n(.*?)(?=\n## |\Z)", text, re.DOTALL
@@ -749,55 +919,478 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
         return None
 
 
-def extract_report_primary_route(text: str) -> str | None:
+_HTML_COMMENT_RE = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
+
+# CommonMark type-6 block tag list (spec 0.31.2).  Note: source/template
+# are NOT in the spec list and must not be treated as block tags.
+_HTML_BLOCK_TAGS = (
+    "address", "article", "aside", "base", "basefont", "blockquote",
+    "body", "caption", "center", "col", "colgroup", "dd", "details",
+    "dialog", "dir", "div", "dl", "dt", "fieldset", "figcaption",
+    "figure", "footer", "form", "frame", "frameset",
+    "h1", "h2", "h3", "h4", "h5", "h6",
+    "head", "header", "hr", "html", "iframe", "legend", "li", "link",
+    "main", "menu", "menuitem", "nav", "noframes", "ol", "optgroup",
+    "option", "p", "param", "search", "section", "summary",
+    "table", "tbody", "td", "tfoot", "th", "thead", "title", "tr",
+    "track", "ul",
+)
+
+# CommonMark type-1 block tags: the block runs until the matching closing
+# tag line — blank lines do NOT terminate it (issue #378).
+_HTML_TYPE1_TAGS = ("script", "pre", "style", "textarea")
+
+# Tag boundary: after the tag name only space/tab, '>', the complete
+# '/>' pair or EOL are allowed.  A lone '/' (as in '<div/foo' or
+# '<div/ foo') is NOT a valid suffix — only the full '/>' sequence
+# (spec 0.31.2, issue #378).
+_TAG_BOUNDARY = r"(?=/>|[\t >]|$)"
+
+_HTML_TYPE1_OPEN_RE = re.compile(
+    rf"^[ ]{{0,3}}<({'|'.join(_HTML_TYPE1_TAGS)}){_TAG_BOUNDARY}", re.IGNORECASE
+)
+_HTML_BLOCK_OPEN_RE = re.compile(
+    rf"^[ ]{{0,3}}<({'|'.join(_HTML_BLOCK_TAGS)}){_TAG_BOUNDARY}", re.IGNORECASE
+)
+# Matches an incomplete allowlist opener too ('<search' without '>'):
+# type-6 start condition is conservative so forged declarations after an
+# unclosed tag opener fail closed (issue #378).
+_HTML_BLOCK_OPEN_ANY_RE = re.compile(
+    rf"^[ ]{{0,3}}<({'|'.join(_HTML_BLOCK_TAGS)}){_TAG_BOUNDARY}", re.IGNORECASE
+)
+# Type-6 closing tag: '</tag' followed by space/tab, '>' or EOL (an
+# incomplete closing tag also starts the block, spec 0.31.2).
+_HTML_BLOCK_CLOSE_RE = re.compile(
+    rf"^[ ]{{0,3}}</({'|'.join(_HTML_BLOCK_TAGS)}){_TAG_BOUNDARY}", re.IGNORECASE
+)
+
+
+_ATTR_NAME_RE = re.compile(r"[A-Za-z_:][A-Za-z0-9_.:-]*")
+_ATTR_UNQUOTED_RE = re.compile(r'[^ \t\n"\'=<>`]+')
+
+
+def _match_complete_open_tag(line: str) -> re.Match[str] | None:
+    """Match a complete open tag at line start (type-7 start condition).
+
+    Quote-aware AND grammar-checked: '>' inside a quoted attribute value
+    is part of the attribute; malformed attribute syntax (e.g.
+    '<span a="foo"bar>' or '<span h*#ref="hi">') is not a complete open
+    tag under CommonMark.  Bare attributes (name without a value
+    specification, e.g. 'disabled') ARE valid per the spec's attribute
+    grammar 'attribute_name [whitespace = whitespace attribute_value]?'.
+    After the closing '>' only spaces/tabs may follow to the end of the
+    line (spec 0.31.2, issue #378).
+    """
+    m = re.match(rf"^[ ]{{0,3}}<([a-zA-Z][a-zA-Z0-9-]*){_TAG_BOUNDARY}", line)
+    if m is None:
+        return None
+    i = m.end()
+    while True:
+        # Optional whitespace before '>', '/>' or the next attribute.
+        ws = False
+        while i < len(line) and line[i] in " \t":
+            i += 1
+            ws = True
+        if i >= len(line):
+            return None  # no closing '>'
+        if line[i] == ">":
+            if re.match(r"^[\t ]*$", line[i + 1:]):
+                return m
+            return None
+        if line[i] == "/":
+            # The '/' must be followed immediately by '>' (self-closing).
+            if line[i + 1:i + 2] == ">" and re.match(r"^[\t ]*$", line[i + 2:]):
+                return m
+            return None
+        if not ws:
+            return None  # garbage after the tag name / previous attribute
+        # Attribute: 'name' with an optional '= value' specification
+        # (bare attributes are valid CommonMark, issue #378).
+        nm = _ATTR_NAME_RE.match(line, i)
+        if nm is None:
+            return None
+        i = nm.end()
+        j = i
+        while j < len(line) and line[j] in " \t":
+            j += 1
+        if j >= len(line) or line[j] != "=":
+            # Bare attribute — valid; loop back to find '>', '/>' or
+            # the next attribute.
+            continue
+        i = j + 1
+        while i < len(line) and line[i] in " \t":
+            i += 1
+        if i >= len(line):
+            return None
+        if line[i] in "\"'":
+            quote = line[i]
+            i += 1
+            while i < len(line) and line[i] != quote:
+                i += 1
+            if i >= len(line):
+                return None  # unterminated quoted value
+            i += 1
+        else:
+            uv = _ATTR_UNQUOTED_RE.match(line, i)
+            if uv is None:
+                return None
+            i = uv.end()
+    # unreachable
+
+
+def _indent_width(line: str) -> int:
+    """CommonMark indentation width: space = 1, tab advances to the next
+    multiple of 4 (spec 0.31.2 'Tabs')."""
+    w = 0
+    for ch in line:
+        if ch == " ":
+            w += 1
+        elif ch == "\t":
+            w += 4 - (w % 4)
+        else:
+            break
+    return w
+
+
+def _continues_paragraph(line: str) -> bool:
+    """True if a top-level line continues an open paragraph.
+
+    Used for the CommonMark type-7 start condition: type-7 HTML blocks
+    cannot interrupt an open paragraph.  Block starts — blank lines,
+    headings, lists, blockquotes, fences, thematic breaks / setext
+    underlines, indented code (spaces or tabs) — end the paragraph;
+    everything else (including inline HTML tags like <span>) continues
+    it (issue #378).  Takes the RAW line (leading whitespace matters).
+    """
+    stripped = line.strip()
+    if not stripped:
+        return False
+    if re.match(
+        r"^(#{1,6}[\t ]|>|[-+*][\t ]|\d+[.)][\t ]|`{3,}|~{3,})",
+        stripped,
+    ):
+        return False
+    # Thematic break / setext underline (---, ***, ___, - - -, ===).
+    if re.match(r"^[-*_](?:[\t ]*[-*_]){2,}[\t ]*$", stripped):
+        return False
+    if re.match(r"^=+[\t ]*$", stripped):
+        return False
+    # Indented code (>= 4 columns of spaces/tabs): starts a block.  (In
+    # a real CommonMark parser an indented line after a paragraph is a
+    # lazy continuation, but treating it as a block boundary is the
+    # fail-closed direction for the type-7 gate — issue #378.)
+    if line[:1] in (" ", "\t") and _indent_width(line) >= 4:
+        return False
+    # HTML-looking line: only lines that are grammar-valid block starts
+    # (type-6 open/close with a real block tag, type-1 tags) or complete
+    # inline tags are classified by tag; anything else — '<div/foo>',
+    # '<span a="foo"bar>' — is ordinary text and continues the
+    # paragraph (issue #378).
+    if re.match(r"^</?[a-zA-Z]", stripped):
+        if _HTML_BLOCK_OPEN_ANY_RE.match(line) or _HTML_BLOCK_CLOSE_RE.match(line):
+            return False  # type-6 block start interrupts the paragraph
+        if _match_complete_open_tag(line) is not None:
+            return True  # complete inline open tag continues the paragraph
+        m = re.match(r"^[ ]{0,3}</([a-zA-Z][a-zA-Z0-9-]*)[ \t]*>(?:[\t ]*$)", line)
+        if m is not None:
+            tag = m.group(1).lower()
+            return tag not in _HTML_TYPE1_TAGS and tag not in _HTML_BLOCK_TAGS
+        return True  # invalid/incomplete HTML-looking line → ordinary text
+    return True
+
+
+def _sanitize_visible_lines(
+    lines: list[str],
+    *,
+    keep_mermaid: bool = False,
+    blank: bool = False,
+    keep_fences: bool = False,
+) -> list[str]:
+    """Single-pass rendered-content sanitizer state machine.
+
+    Fences, HTML comments and raw HTML blocks (CommonMark types
+    1/3/4/5/6/7) are recognized in ONE pass: inside a fence, HTML-looking
+    lines are code content and never start an HTML block (fenced-code
+    rules, issue #378).
+
+    Modes:
+    - blank=False (default): non-visible content is dropped.
+    - blank=True: non-visible content becomes empty lines (line numbers
+      preserved; used by validators that report original line numbers).
+    - keep_mermaid=True: mermaid fences and their content are kept
+      (figure entities, used by the figure-reference validator).
+    - keep_fences=True: all fenced content is kept (used before contract
+      extraction so the ```contract fence itself survives).
+    """
+    out: list[str] = []
+    state: str | None = None  # fence/comment/t1:<tag>/raw/cdata/pi/decl
+    fence_char = ""
+    fence_len = 0
+    t1_tag = ""
+    mermaid = False
+    in_paragraph = False
+
+    def emit(line: str, visible: bool) -> None:
+        if visible or not blank:
+            out.append(line if visible else "")
+        elif blank:
+            out.append("")
+
+    for line in lines:
+        stripped = line.strip()
+        if state == "fence":
+            if _fence_close_re(fence_char, fence_len).match(line):
+                state = None
+            if keep_fences or (keep_mermaid and mermaid):
+                out.append(line)
+            elif blank:
+                out.append("")
+            continue
+        if state == "comment":
+            if "-->" in stripped:
+                state = None
+            if blank:
+                out.append("")
+            continue
+        if state is not None and state.startswith("t1:"):
+            tag = state[3:]
+            # Only spaces/tabs may separate the tag name from '>' — NBSP
+            # and other Unicode whitespace do NOT close the block
+            # (issue #378).  The line is not stripped: strip() would
+            # remove NBSP before the regex can reject it.
+            if re.search(rf"</{tag}[ \t]*>", line, re.IGNORECASE):
+                state = None
+            if blank:
+                out.append("")
+            continue
+        if state in ("cdata", "pi", "decl", "raw"):
+            if state == "cdata" and "]]>" in stripped:
+                state = None
+            elif state == "pi" and "?>" in stripped:
+                state = None
+            elif state == "decl" and ">" in stripped:
+                state = None
+            elif state == "raw" and line.strip(" \t") == "":
+                # Blank line (spaces/tabs only) ends a type-6/7 block;
+                # NBSP etc. is content, not blankness (issue #378).
+                state = None
+                if blank:
+                    out.append(line)
+                continue
+            if blank:
+                out.append("")
+            continue
+        # ── top level ────────────────────────────────────────────────
+        fm = _fence_open_match(line)
+        if fm:
+            fence_char = fm.group(1)[0]
+            fence_len = len(fm.group(1))
+            lang = _fence_language(fm)
+            mermaid = keep_mermaid and lang == "mermaid"
+            state = "fence"
+            in_paragraph = False  # a fence interrupts an open paragraph
+            if keep_fences or (keep_mermaid and mermaid):
+                out.append(line)
+            elif blank:
+                out.append("")
+            continue
+        # ── HTML containers (≤3 leading spaces; 4-space indented content
+        #    is an indented code block, not raw HTML, issue #378) ──
+        if re.match(r"^[ ]{0,3}<!--", line):
+            if "-->" in stripped:
+                in_paragraph = False  # type-2 block interrupts the paragraph
+                continue
+            state = "comment"
+            in_paragraph = False
+            if blank:
+                out.append("")
+            continue
+        if re.match(r"^[ ]{0,3}<!\[CDATA\[", line):
+            if "]]>" in stripped:
+                in_paragraph = False
+                continue
+            state = "cdata"
+            in_paragraph = False
+            if blank:
+                out.append("")
+            continue
+        if re.match(r"^[ ]{0,3}<\?", line):
+            if "?>" in stripped:
+                in_paragraph = False
+                continue
+            state = "pi"
+            in_paragraph = False
+            if blank:
+                out.append("")
+            continue
+        if re.match(r"^[ ]{0,3}<![A-Za-z]", line):
+            # Type 4: '<!' must be followed by an ASCII letter.
+            if ">" in stripped:
+                in_paragraph = False
+                continue
+            state = "decl"
+            in_paragraph = False
+            if blank:
+                out.append("")
+            continue
+        m1 = _HTML_TYPE1_OPEN_RE.match(line)
+        if m1:
+            tag = m1.group(1).lower()
+            # Same-line close ends the type-1 block; only spaces/tabs
+            # may separate the tag name from '>' (issue #378).
+            if re.search(rf"</{tag}[ \t]*>", line, re.IGNORECASE):
+                in_paragraph = False  # type-1 block interrupts the paragraph
+                continue
+            state = "t1:" + tag
+            in_paragraph = False
+            if blank:
+                out.append("")
+            continue
+        if _HTML_BLOCK_OPEN_ANY_RE.match(line):
+            state = "raw"
+            in_paragraph = False
+            if blank:
+                out.append("")
+            continue
+        if _HTML_BLOCK_CLOSE_RE.match(line):
+            # Type-6 closing tag (may be incomplete: '</div' + EOL).
+            state = "raw"
+            in_paragraph = False
+            if blank:
+                out.append("")
+            continue
+        # Type 7 cannot interrupt an open paragraph (CommonMark).
+        if not in_paragraph:
+            if _match_complete_open_tag(line) is not None:
+                state = "raw"
+                in_paragraph = False
+                if blank:
+                    out.append("")
+                continue
+            if re.match(r"^[ ]{0,3}</([a-zA-Z][a-zA-Z0-9-]*)[ \t]*>(?:[\t ]*$)", line):
+                # Type 7 closing tag: complete tag, only spaces/tabs
+                # between name and '>' and to the end of the line
+                # (issue #378).
+                state = "raw"
+                in_paragraph = False
+                if blank:
+                    out.append("")
+                continue
+        out.append(line)
+        # Track paragraph context (type-7 start condition).
+        in_paragraph = _continues_paragraph(line)
+    return out
+
+
+def sanitize_visible_markdown(text: str) -> str:
+    """Reduce *text* to rendered Markdown content.
+
+    Single-pass sanitizer: HTML comments, raw HTML blocks and fenced code
+    blocks are removed; inside a fence, HTML-looking lines are code and
+    never start an HTML block.  Whatever remains is what a CommonMark
+    renderer would parse as Markdown structure (issue #378).  Shared by
+    the contract/report/pack declaration parsers and validators.
+    """
+    return "\n".join(_sanitize_visible_lines(text.split("\n")))
+
+
+def _strip_non_fence_containers(text: str) -> str:
+    """Strip HTML comments and raw HTML blocks but keep fenced code.
+
+    Used before contract extraction: the ```contract fence itself must
+    survive for parsing, while declarations inside <div> or <!-- --> must
+    not count (issue #378).
+    """
+    return "\n".join(
+        _sanitize_visible_lines(text.split("\n"), keep_fences=True)
+    )
+
+
+def _strip_fences(text: str) -> str:
+    """Legacy alias for :func:`sanitize_visible_markdown`."""
+    return sanitize_visible_markdown(text)
+def count_report_route_blocks(text: str) -> int:
+    """Number of visible (non-fenced) '## Route and audit status' blocks."""
+    cleaned = _strip_fences(text)
+    return len(re.findall(
+        r"^#{2,3}\s+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)",
+        cleaned,
+        re.MULTILINE | re.IGNORECASE,
+    ))
+
+
+def extract_report_route_declaration(text: str) -> tuple[str | None, list[str]]:
     """Resolve the canonical route declared in the report's
     '## Route and audit status' block (e.g. '**Primary route**: Market
-    Outlook' or '**Route**: Shared-workflow'). Returns None when the block
-    or a route declaration is missing (no cross-check then)."""
+    Outlook' or '**Route**: Shared-workflow').
+
+    Returns ``(route, malformed)``.  Cardinality rule (issue #378): more
+    than one route declaration line in the block is structural
+    malformation — the first declaration must not win.  Fenced code blocks
+    are stripped first so a fake declaration inside a ```markdown block
+    can never override the visible status block.
+    """
+    cleaned = _strip_fences(text)
     match = re.search(
-        r"## Route and audit status\s*\n(.*?)(?=\n## |\Z)", text, re.DOTALL
+        r"## Route and audit status\s*\n(.*?)(?=\n## |\Z)", cleaned, re.DOTALL
     )
     if not match:
-        return None
+        return None, []
     block = match.group(1)
 
-    # "**Primary route**: X" — first matching declaration line.
+    declarations: list[str] = []
     for line in block.split("\n"):
         m = re.match(
             r"\*\*Primary\s+route\*\*\s*[:：]\s*(.+)$", line.strip(), re.IGNORECASE
         )
         if m:
-            raw = m.group(1).strip()
-            break
-    else:
-        # "**Route**: Shared-workflow (no specialized route selected)".
-        for line in block.split("\n"):
-            m = re.match(r"\*\*Route\*\*\s*[:：]\s*(.+)$", line.strip(), re.IGNORECASE)
-            if m:
-                raw = m.group(1).strip()
-                break
-        else:
-            return None
+            declarations.append(m.group(1).strip())
+            continue
+        m = re.match(r"\*\*Route\*\*\s*[:：]\s*(.+)$", line.strip(), re.IGNORECASE)
+        if m:
+            declarations.append(m.group(1).strip())
+
+    if not declarations:
+        return None, []
+    if len(declarations) > 1:
+        return None, [
+            f"multiple route declarations found in the 'Route and audit "
+            f"status' block ({len(declarations)}) — exactly one is "
+            "required (issue #378)"
+        ]
+    raw = declarations[0]
 
     # Strip trailing parenthetical notes, list markers, bold/italic.
     raw = re.sub(r"\s*\([^)]*\)\s*$", "", raw)
     raw = re.sub(r"^[-*>]+\s+", "", raw)
     raw = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", raw)
     try:
-        return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw)
+        return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw), []
     except UnknownRouteError:
         # Unknown status-block routes are reported by other validators
         # (audit_report route detection); don't fail the contract check.
-        return None
+        return None, []
+
+
+def extract_report_primary_route(text: str) -> str | None:
+    """Legacy accessor for the report's declared primary route.
+
+    See :func:`extract_report_route_declaration` for the cardinality-aware
+    version with structured malformed errors.
+    """
+    route, _ = extract_report_route_declaration(text)
+    return route
 
 
 def _extract_pack_artifact_id(pack_path: str) -> str | None:
     """Extract the first line of the pack's '## Artifact id' section.
-    Returns None when the section is absent (single-side tracing → warning)."""
+    Returns None when the section is absent (single-side tracing → warning).
+    Fenced declarations do not count (issue #378)."""
     try:
         text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError):
         return None
+    text = _strip_fences(text)
     match = re.search(
         r"## Artifact id\s*\n(.+?)(?=\n## |\Z)", text, re.DOTALL
     )

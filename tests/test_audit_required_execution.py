@@ -1,0 +1,2031 @@
+#!/usr/bin/env python3
+"""
+Tests for issue #378 — required-audit execution and fail-closed semantics.
+
+Verifies that:
+1. Every route's required_audits resolve to a registry binding; automated
+   audits without a binding fail closed.
+2. Required automated audits actually run and appear in structured results.
+3. Manual/process audits not run in the report are recorded as ``not_run``
+   and cannot aggregate to Pass (blocking in strict mode, warning otherwise).
+4. Strict mode fails when route / contract / pack declarations are missing —
+   no silent fallback to technical-deep-dive.
+5. ``--json`` emits a machine-readable verdict with audit id, status,
+   evidence, validator version and input artifact hash.
+6. Markdown delivery, Research Pack (when provided) and route-specific
+   audits run in a single command.
+"""
+
+from __future__ import annotations
+
+import json
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+SCRIPTS_DIR = ROOT / "scripts"
+if str(SCRIPTS_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPTS_DIR))
+
+SCRIPT = str(SCRIPTS_DIR / "audit_report.py")
+
+# Contract template that satisfies all validate_contract rules (issue #376):
+# every primary-route required audit declared, passed with non-empty
+# evidence, plus stable artifact identity fields.
+CONTRACT_TEMPLATE = {
+    "primary_route": "market-outlook",
+    "secondary_routes": [],
+    "disciplines": [],
+    "audits": [
+        {"id": "market-outlook-audit", "status": "passed", "evidence": "§3"},
+        {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"},
+        {"id": "source-traceability", "status": "passed", "evidence": "§5"},
+        {"id": "final-audit", "status": "passed", "evidence": "§2"},
+    ],
+    "artifact_id": "fixture-market-outlook-pos",
+    "contract_version": "1.0.0",
+    "created_at": "2026-08-13",
+}
+
+
+def _contract(primary: str = "market-outlook", **overrides) -> str:
+    data = json.dumps(CONTRACT_TEMPLATE, ensure_ascii=False)
+    if primary != "market-outlook":
+        data = json.dumps(
+            {**CONTRACT_TEMPLATE, "primary_route": primary}, ensure_ascii=False
+        )
+    data = json.dumps(
+        {**json.loads(data), **overrides}, ensure_ascii=False
+    )
+    return data
+
+
+def _route_block(primary: str) -> str:
+    """Route and audit status block declaring the primary route and audits."""
+    audits = {
+        "market-outlook": [
+            ("market-outlook-audit", "§3"),
+            ("forward-looking-claims", "§4"),
+            ("source-traceability", "§5"),
+            ("final-audit", "§2"),
+            # quantitative-role-audit keeps the table role-annotated
+            # (table-role-labels: 3+ row tables need a role keyword).
+            ("quantitative-role-audit", "§6"),
+        ],
+        "technical-deep-dive": [
+            ("technical-analysis-audit", "§4"),
+            ("source-traceability", "§5"),
+            ("final-audit", "§2"),
+            ("quantitative-role-audit", "§6"),
+        ],
+        "shared-workflow": [
+            ("workflow-spine-audit", "§3"),
+            ("final-audit", "§2"),
+            ("quantitative-role-audit", "§6"),
+        ],
+    }
+    rows = audits.get(primary, audits["market-outlook"])
+    body = "".join(
+        f"| {aid} | ✅ Passed | {evidence} |\n" for aid, evidence in rows
+    )
+    display = {
+        "market-outlook": "Market Outlook",
+        "technical-deep-dive": "Technical Deep-dive",
+        "shared-workflow": "Shared-workflow",
+    }[primary]
+    return (
+        "## Route and audit status\n\n"
+        f"**Primary route**: {display}\n\n"
+        "| Audit | Status | 证据 |\n"
+        "|-------|--------|------|\n" + body
+    )
+
+
+def _monitoring_section() -> str:
+    """Monitoring section with 3 fully-defined signals (market-outlook)."""
+    return """\
+## Monitoring signals
+
+| Signal | Threshold | Cadence | Source | Trigger-to-action | 数字角色 |
+|--------|-----------|---------|--------|-------------------|---------|
+| Signal A | ≥2.0 | monthly | [S01] | rebalance | observed |
+| Signal B | ≤1.5 | weekly | [S02] | hedge | observed |
+| Signal C | ≥10% | quarterly | [S03] | reallocate | observed |
+"""
+
+
+def _source_register() -> str:
+    return """\
+## Source Register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+| S03 | Example C | secondary | 2026-03-01 | https://example.com/c | high | §4 |
+"""
+
+
+def _report(
+    primary: str = "market-outlook",
+    contract: str | None = None,
+    include_monitoring: bool = True,
+    route_block: str | None = None,
+) -> str:
+    """Build a report that passes all generic validators."""
+    parts = [
+        "# Test Report\n",
+        route_block or _route_block(primary),
+        "\n## Executive summary\n\n"
+        "**核心判断**：the market will grow, backed by [S01].\n\n"
+        "- Key bullet one\n"
+        "- Key bullet two\n",
+        "\n## Findings\n\nBody text with citations [S01], [S02], [S03].\n",
+        "\n## Comparison Table\n\n"
+        "| Metric | System A | System B | 数字角色 |\n"
+        "|--------|----------|----------|---------|\n"
+        "| Cost | 100 | 80 | observed |\n"
+        "| Speed | 200 | 150 | observed |\n",
+        "\n## Dimension conclusions\n\nBacked by [S01] and [S02].\n",
+    ]
+    if include_monitoring:
+        parts.append("\n" + _monitoring_section())
+    parts.append("\n" + _source_register())
+    if contract is not None:
+        parts.append(f"\n```contract\n{contract}\n```\n")
+    return "".join(parts)
+
+
+def _write(text: str) -> Path:
+    f = tempfile.NamedTemporaryFile(
+        mode="w", suffix=".md", delete=False, encoding="utf-8"
+    )
+    f.write(text)
+    f.close()
+    return Path(f.name)
+
+
+def _run_audit(
+    path: Path,
+    extra_args: list[str] | None = None,
+    research_pack: Path | None = None,
+) -> subprocess.CompletedProcess:
+    args = [sys.executable, SCRIPT, str(path)]
+    if research_pack is not None:
+        args += ["--research-pack", str(research_pack)]
+    args += extra_args or []
+    return subprocess.run(args, capture_output=True, text=True)
+
+
+class TestRequiredAuditExecution:
+    """Required audits must actually execute and appear in results."""
+
+    def test_required_automated_audits_executed(self) -> None:
+        """forward-looking-claims (automated) must run for market-outlook."""
+        report = _report(contract=_contract())
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        audit_ids = {a["audit_id"] for a in data["audits"]}
+        assert "forward-looking-claims" in audit_ids
+        assert "source-traceability" in audit_ids
+        assert "market-outlook-audit" in audit_ids  # manual, declared
+        assert "markdown-delivery" in audit_ids  # global automated
+
+    def test_forward_looking_failure_is_blocking(self) -> None:
+        """A forward-looking numeric claim mislabeled as confirmed must fail."""
+        report = _report(contract=_contract())
+        report += (
+            "\n## Outlook\n\n"
+            "[Confirmed] Shipments will reach 100 units by 2027.\n"
+        )
+        path = _write(report)
+        result = _run_audit(path)
+        assert result.returncode == 2, result.stdout
+        assert "forward-looking" in result.stdout.lower()
+
+
+class TestManualAuditStatus:
+    """Manual/process audits must have explicit not_run/skipped semantics."""
+
+    def _report_missing_declaration(self) -> Path:
+        block = (
+            "## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n"
+            "|-------|--------|------|\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+        )
+        return _write(_report(route_block=block, contract=_contract()))
+
+    def _report_with_status(self, status_cell: str) -> Path:
+        block = (
+            "## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n"
+            "|-------|--------|------|\n"
+            f"| market-outlook-audit | {status_cell} | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        return _write(_report(route_block=block, contract=_contract()))
+
+    def test_negative_status_not_parsed_as_pass(self) -> None:
+        """'❌ Not passed' must not match the 'passed' substring (fail closed)."""
+        path = self._report_with_status("❌ Not passed")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run", mo
+        assert data["exit_code"] == 2, data["blocking"]
+
+    def test_explicit_fail_status_is_not_pass(self) -> None:
+        path = self._report_with_status("✗ Fail")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run", mo
+
+    def test_passed_status_is_pass(self) -> None:
+        path = self._report_with_status("✅ Passed")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "pass", mo
+
+    # Fail-open variants: the positive branch must only match canonical
+    # status tokens at word boundaries, never 'pass'/'passed' substrings
+    # inside negative or unknown wording.
+    @pytest.mark.parametrize("cell", [
+        "❌ Not passed",
+        "✗ Fail",
+        "not_passed",
+        "did not pass",
+        "unpassed",
+        "not passing",
+        "not-passed",
+        "未通过",
+        "pending",
+        "in progress",
+        "blocked",
+        "unknown status",
+        # Whole-cell canonical-token variants: a bare 'pass'/'passed'
+        # substring anywhere in the cell must NOT count as pass.
+        "passed-ish",
+        "passed with caveats",
+        "conditional-pass",
+        "Status: Pass",
+        "pass (manual)",
+        "Passed ✅ with caveats",
+    ])
+    def test_negative_or_unknown_status_is_not_pass(self, cell: str) -> None:
+        path = self._report_with_status(cell)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run", f"cell={cell!r} -> {mo['status']}"
+        assert data["exit_code"] == 2, f"cell={cell!r} blocked: {data['blocking']}"
+
+    @pytest.mark.parametrize("cell,expected", [
+        ("skipped", "skipped"),
+        ("已跳过", "skipped"),
+        # Template-canonical form: references/report-template.md uses
+        # ⚠️ Skipped / ⚠️ 已跳过 (with or without the FE0F variation
+        # selector and surrounding whitespace).
+        ("⚠️ Skipped", "skipped"),
+        ("⚠️Skipped", "skipped"),
+        ("⚠️ 已跳过", "skipped"),
+        ("partial", "partial"),
+        ("部分通过", "partial"),
+    ])
+    def test_canonical_skipped_partial_status(self, cell: str, expected: str) -> None:
+        path = self._report_with_status(cell)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == expected, f"cell={cell!r} -> {mo['status']}"
+        # skipped/partial are recorded but never aggregate to Pass.
+        assert data["exit_code"] == 2, f"cell={cell!r} blocked: {data['blocking']}"
+
+    def _report_with_duplicate_declaration(self, first: str, second: str) -> Path:
+        block = (
+            "## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n"
+            "|-------|--------|------|\n"
+            f"| market-outlook-audit | {first} | §3 |\n"
+            f"| market-outlook-audit | {second} | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        return _write(_report(route_block=block, contract=_contract()))
+
+    def test_duplicate_audit_declaration_is_not_run(self) -> None:
+        """A duplicate audit id must not be last-write-wins: ❌ Not run then
+        ✅ Passed must still fail closed (issue #378)."""
+        path = self._report_with_duplicate_declaration("❌ Not run", "✅ Passed")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run", mo
+        assert data["exit_code"] == 2, data["blocking"]
+        assert "duplicate" in mo["reason"].lower(), mo
+
+    def test_duplicate_audit_declaration_reversed_is_not_run(self) -> None:
+        """Opposite order: ✅ Passed first, ❌ Not run second must also fail."""
+        path = self._report_with_duplicate_declaration("✅ Passed", "❌ Not run")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run", mo
+        assert data["exit_code"] == 2, data["blocking"]
+
+    def _report_with_two_route_blocks(self, first: str, second: str) -> Path:
+        block1 = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            f"| market-outlook-audit | {first} | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        block2 = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            f"| market-outlook-audit | {second} | §3 |\n"
+        )
+        return _write(_report(route_block=block1, contract=_contract()) + "\n" + block2)
+
+    def test_multiple_route_blocks_fail_closed(self) -> None:
+        """A second Route and audit status block hiding '❌ Not run' after a
+        '✅ Passed' first block must not be silently ignored (issue #378)."""
+        path = self._report_with_two_route_blocks("✅ Passed", "❌ Not run")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        assert data["exit_code"] == 2, data["blocking"]
+        assert any("multiple" in b.lower() for b in data["blocking"]), data["blocking"]
+
+    def test_multiple_route_blocks_reversed_fail_closed(self) -> None:
+        """Opposite order must fail the same way."""
+        path = self._report_with_two_route_blocks("❌ Not run", "✅ Passed")
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        assert data["exit_code"] == 2, data["blocking"]
+        assert any("multiple" in b.lower() for b in data["blocking"]), data["blocking"]
+
+    def test_multiple_route_blocks_fail_closed_even_non_strict(self) -> None:
+        """Multiple route blocks are structural malformation: blocking in
+        every mode, not only strict."""
+        path = self._report_with_two_route_blocks("✅ Passed", "❌ Not run")
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        assert data["exit_code"] == 2, data["blocking"]
+        assert any("multiple" in b.lower() for b in data["blocking"]), data["blocking"]
+
+    @pytest.mark.parametrize("cell", [
+        "✅ Passed",
+        "✅ passed",
+        "Passed",
+        "passed",
+        "Pass",
+        "已通过",
+        "✔ Passed",
+        "✓ Passed",
+        "✅Passed",
+    ])
+    def test_canonical_pass_status_is_pass(self, cell: str) -> None:
+        path = self._report_with_status(cell)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "pass", f"cell={cell!r} -> {mo['status']}"
+
+    def test_undeclared_manual_audit_is_not_run_non_strict(self) -> None:
+        """Non-strict records not_run explicitly without changing exit code."""
+        path = self._report_missing_declaration()
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == "not_run"
+        assert mo["reason"] == "not declared in Route and audit status block"
+
+    def test_undeclared_manual_audit_is_blocking_in_strict(self) -> None:
+        path = self._report_missing_declaration()
+        result = _run_audit(path, extra_args=["--strict", "--require-contract"])
+        assert result.returncode == 2, result.stdout
+        assert "market-outlook-audit" in result.stdout
+
+
+class TestFailClosed:
+    """Strict mode must fail closed on missing declarations."""
+
+    def test_strict_no_route_fails(self) -> None:
+        """No route block and no --route: strict must fail, not fall back."""
+        report = (
+            "# Test Report\n\n"
+            "## Findings\n\nBody [S01].\n\n"
+            "## Source Register\n\n"
+            "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |\n"
+            "|----|-------------|-------------|------|---------|-------------|------------------|\n"
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |\n"
+        )
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--strict"])
+        assert result.returncode == 2, result.stdout
+        assert "route" in result.stdout.lower()
+
+    def test_non_strict_no_route_still_falls_back(self) -> None:
+        """Legacy compatibility: non-strict keeps the default-route fallback."""
+        report = (
+            "# Test Report\n\n"
+            "## Findings\n\nBody [S01].\n\n"
+            "## Source Register\n\n"
+            "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |\n"
+            "|----|-------------|-------------|------|---------|-------------|------------------|\n"
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |\n"
+        )
+        path = _write(report)
+        result = _run_audit(path)
+        assert "technical-deep-dive" in result.stdout.lower()
+
+    def test_strict_missing_contract_fails(self) -> None:
+        """Strict implies --require-contract: missing contract is blocking."""
+        path = _write(_report(contract=None))
+        result = _run_audit(path, extra_args=["--strict"])
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_missing_contract_non_strict_skips(self) -> None:
+        """Migration opt-out preserved: non-strict without contract has no
+        contract-related blocking."""
+        path = _write(_report(contract=None))
+        result = _run_audit(path, extra_args=["--route", "market-outlook", "--json"])
+        data = json.loads(result.stdout)
+        assert not any("contract" in b for b in data["blocking"]), data["blocking"]
+
+    def test_research_pack_not_provided_is_skipped(self) -> None:
+        """research-pack audit is explicitly skipped when no pack is given."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        pack = next(a for a in data["audits"] if a["audit_id"] == "research-pack")
+        assert pack["status"] == "skipped"
+
+    def test_strict_missing_pack_fails(self) -> None:
+        """Issue #378 acceptance: a strict task without a pack fails closed."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--strict"])
+        assert result.returncode == 2, result.stdout
+        assert "research-pack" in result.stdout
+
+    def test_pack_route_mismatch_fails(self) -> None:
+        """Pack primary route must match the contract's primary route."""
+        report = _write(_report(contract=_contract()))
+        pack = _write(PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n",
+            "## Primary route\n\nShared-workflow\n",
+        ))
+        result = _run_audit(
+            report, research_pack=pack, extra_args=["--strict", "--require-contract"]
+        )
+        assert result.returncode == 2, result.stdout
+        assert "route" in result.stdout.lower()
+
+    def test_pack_artifact_id_mismatch_fails(self) -> None:
+        """Pack artifact id must match the contract's artifact_id."""
+        report = _write(_report(contract=_contract()))
+        pack = _write(PACK_FIXTURE.replace(
+            "fixture-market-outlook-pos", "fixture-someone-else"
+        ))
+        result = _run_audit(
+            report, research_pack=pack, extra_args=["--strict", "--require-contract"]
+        )
+        assert result.returncode == 2, result.stdout
+        assert "artifact" in result.stdout.lower()
+
+
+class TestAutomatedAuditBinding:
+    """Automated audits without a registry binding must fail closed."""
+
+    def test_missing_binding_fails_closed(self, monkeypatch) -> None:
+        import audit_report
+        import registry_loader
+
+        # Simulate an audit registry where forward-looking-claims lost its
+        # validator binding (registry/code drift).
+        class FakeAuditInfo:
+            def __init__(self, aid, etype, binding):
+                self.id = aid
+                self.execution_type = etype
+                self.validator_binding = binding
+                self.checklist = "checklists/forward-looking-claims.md"
+                self.description = ""
+                self.automation_reference = None
+
+        class FakeAuditRegistry:
+            version = 1
+
+            def __init__(self):
+                self._audits = {
+                    "market-outlook-audit": FakeAuditInfo(
+                        "market-outlook-audit", "manual", None),
+                    "forward-looking-claims": FakeAuditInfo(
+                        "forward-looking-claims", "automated", None),
+                    "source-traceability": FakeAuditInfo(
+                        "source-traceability", "automated",
+                        "source-label-consistency"),
+                    "final-audit": FakeAuditInfo("final-audit", "manual", None),
+                }
+
+            def get_audit(self, aid):
+                return self._audits.get(aid)
+
+            def audit_ids(self):
+                return set(self._audits)
+
+        monkeypatch.setattr(audit_report, "_AUDIT_REGISTRY", FakeAuditRegistry())
+        path = _write(_report(contract=_contract()))
+        verdict = audit_report.audit_report(path, route="market-outlook")
+        assert verdict.overall == "fail"
+        assert any("forward-looking-claims" in e for e in verdict.blocking)
+
+
+class TestJsonOutput:
+    """--json must emit a machine-readable verdict."""
+
+    def test_json_shape(self) -> None:
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        assert result.returncode == 0, result.stdout
+        data = json.loads(result.stdout)
+        assert data["route"] == "market-outlook"
+        assert data["overall"] == "pass"
+        assert data["exit_code"] == 0
+        assert data["input_sha256"]
+        assert data["validator_version"]
+        for audit in data["audits"]:
+            assert audit["audit_id"]
+            assert audit["status"]
+            assert audit["execution_type"]
+        # human-readable summary must not pollute stdout
+        assert "Route:" not in result.stdout
+
+    def test_json_with_failures(self) -> None:
+        report = _report(contract=_contract())
+        report += (
+            "\n## Outlook\n\n"
+            "[Confirmed] Shipments will reach 100 units by 2027.\n"
+        )
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--json"])
+        assert result.returncode == 2
+        data = json.loads(result.stdout)
+        assert data["overall"] == "fail"
+        fl = next(
+            a for a in data["audits"] if a["audit_id"] == "forward-looking-claims"
+        )
+        assert fl["status"] == "fail"
+        assert fl["errors"]
+
+    def test_automated_success_has_evidence_location(self) -> None:
+        """Successful automated audits carry an evidence location, not []."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        for audit in data["audits"]:
+            if audit["audit_id"] == "research-pack":
+                continue  # skipped by design without a pack
+            if audit["status"] == "pass" and audit["execution_type"] == "automated":
+                assert audit["evidence"], audit
+                assert str(path) in audit["evidence"][0], audit
+
+    def test_early_failure_json_has_provenance(self) -> None:
+        """Even early-failure verdicts must carry input hash + version."""
+        report = (
+            "# Test Report\n\n"
+            "## Findings\n\nBody [S01].\n\n"
+            "## Source Register\n\n"
+            "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |\n"
+            "|----|-------------|-------------|------|---------|-------------|------------------|\n"
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |\n"
+        )
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--strict", "--json"])
+        data = json.loads(result.stdout)
+        assert data["overall"] == "fail"
+        assert data["input_sha256"], data
+        assert data["validator_version"], data
+
+    def test_unknown_route_json_has_provenance(self) -> None:
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--route", "no-such-route", "--json"])
+        data = json.loads(result.stdout)
+        assert data["overall"] == "fail"
+        assert data["input_sha256"], data
+        assert data["validator_version"], data
+
+
+class TestSingleCommandCoverage:
+    """Markdown delivery + Research Pack + contract + route audits in one command."""
+
+    def test_markdown_delivery_and_pack_run_together(self) -> None:
+        report = _write(_report(contract=_contract()))
+        pack = _write(PACK_FIXTURE)
+        result = _run_audit(
+            report, research_pack=pack, extra_args=["--strict", "--require-contract"]
+        )
+        assert result.returncode == 0, result.stdout
+
+    def test_invalid_pack_fails(self) -> None:
+        report = _write(_report(contract=_contract()))
+        bad_pack = _write("# Not a pack\n")
+        result = _run_audit(
+            report, research_pack=bad_pack, extra_args=["--strict"]
+        )
+        assert result.returncode == 2, result.stdout
+        assert "research-pack" in result.stdout.lower()
+
+
+class TestSelfAssessmentCannotOverride:
+    """A report claiming Passed must not override validator failures."""
+
+    def test_report_claims_pass_but_validator_fails(self) -> None:
+        # Report declares all audits Passed but body has no monitoring section.
+        report = _report(
+            contract=_contract(), include_monitoring=False, route_block=_route_block("market-outlook")
+        )
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract"])
+        assert result.returncode == 2, result.stdout
+        assert "monitoring" in result.stdout.lower()
+
+
+class TestDuplicateDeclarations:
+    """User-writable declarations (contract / pack sections / route blocks)
+    must be collected in full and reject cardinality != 1 (issue #378)."""
+
+    def _run_with_pack(self, path: Path, pack: Path | None = None) -> dict:
+        args = ["--strict", "--require-contract", "--json"]
+        result = _run_audit(path, extra_args=args, research_pack=pack)
+        return json.loads(result.stdout)
+
+    def test_second_malformed_contract_block_fails(self) -> None:
+        """A second ```contract block (malformed) must not be ignored."""
+        report = _report(contract=_contract())
+        report += '\n```contract\n{"this is": broken\n```\n'
+        path = _write(report)
+        data = self._run_with_pack(
+            path, Path("tests/fixtures/audit/research-pack-pos.md").resolve()
+            if False else None
+        )
+        # strict 缺 pack 也会 fail，这里直接断言 contract 相关阻断
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_second_contract_block_conflicting_route_fails(self) -> None:
+        """A second valid contract with a different route must not be ignored."""
+        report = _report(contract=_contract())
+        report += "\n```contract\n" + _contract("shared-workflow") + "\n```\n"
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_pack_duplicate_primary_route_fails(self) -> None:
+        """A second '## Primary route' section in the pack must not be ignored."""
+        pack_text = PACK_FIXTURE + "\n## Primary route\n\nShared-workflow\n"
+        pack = _write(pack_text)
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=pack,
+        )
+        assert result.returncode == 2, result.stdout
+        assert "primary route" in result.stdout.lower()
+
+    def test_pack_duplicate_artifact_id_fails(self) -> None:
+        """A second '## Artifact id' section in the pack must not be ignored."""
+        pack_text = PACK_FIXTURE + "\n## Artifact id\n\nfixture-someone-else\n"
+        pack = _write(pack_text)
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=pack,
+        )
+        assert result.returncode == 2, result.stdout
+        assert "artifact" in result.stdout.lower()
+
+    def test_fenced_fake_route_block_does_not_bypass_mismatch(self) -> None:
+        """A route declaration inside a fenced code block must not count as
+        the report's real route declaration."""
+        visible_block = (
+            "## Route and audit status\n\n**Primary route**: Shared-workflow\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| workflow-spine-audit | ✅ Passed | §3 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+        )
+        fake = (
+            "```markdown\n## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n```\n"
+        )
+        report = (
+            "# Test Report\n\n" + fake + "\n" + visible_block +
+            "\n## Executive summary\n\n**核心判断**：X is Y [S01].\n\n- a\n- b\n"
+            "\n## Findings\n\nBody [S01] [S02].\n"
+            "\n## Comparison Table\n\n| Metric | A | B | 数字角色 |\n"
+            "|--------|---|---|---------|\n"
+            "| Cost | 100 | 80 | observed |\n"
+            "| Speed | 200 | 150 | observed |\n"
+            "\n## Dimension conclusions\n\nBacked by [S01] and [S02].\n"
+            "\n## Source Register\n\n"
+            "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |\n"
+            "|----|-------------|-------------|------|---------|-------------|------------------|\n"
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |\n"
+            "| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |\n"
+            "\n```contract\n" + _contract() + "\n```\n"
+        )
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_missing_route_block_is_structural_malformation(self) -> None:
+        """Zero Route and audit status blocks is also cardinality != 1:
+        the JSON verdict must report it as structural malformation."""
+        report = (
+            "# Test Report\n\n"
+            "## Findings\n\nBody [S01].\n\n"
+            "## Source Register\n\n"
+            "| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |\n"
+            "|----|-------------|-------------|------|---------|-------------|------------------|\n"
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |\n"
+        )
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--route", "market-outlook", "--strict", "--json"])
+        data = json.loads(result.stdout)
+        assert data["exit_code"] == 2
+        assert any(
+            "route and audit status" in b.lower() for b in data["blocking"]
+        ), data["blocking"]
+
+    def test_nested_fenced_contract_example_is_ignored(self) -> None:
+        """A ```contract example nested inside a `````markdown fence must
+        not count as the real contract (fence-level parsing)."""
+        full = _contract()
+        nested = (
+            "````markdown\nExample report contract:\n"
+            "```contract\n" + full + "\n```\n````\n"
+        )
+        report = _report(contract=None) + "\n" + nested
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        # No real top-level contract: strict must fail, not silently adopt
+        # the nested example.
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_duplicate_json_key_in_contract_fails(self) -> None:
+        """Duplicate object keys in the contract JSON are malformed —
+        last-write-wins must not let a trailing good value win."""
+        dup = (
+            '{"primary_route": "shared-workflow", '
+            '"primary_route": "market-outlook", '
+            '"secondary_routes": [], "disciplines": [], '
+            '"audits": [{"id": "market-outlook-audit", "status": "passed", '
+            '"evidence": "§3"}, {"id": "forward-looking-claims", '
+            '"status": "passed", "evidence": "§4"}, '
+            '{"id": "source-traceability", "status": "passed", '
+            '"evidence": "§5"}, {"id": "final-audit", "status": "passed", '
+            '"evidence": "§2"}], '
+            '"artifact_id": "fixture-market-outlook-pos", '
+            '"contract_version": "1.0.0", "created_at": "2026-08-13"}'
+        )
+        path = _write(_report(contract=dup))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "duplicate" in result.stdout.lower() or "contract" in result.stdout.lower()
+
+    def test_duplicate_route_declaration_in_block_fails(self) -> None:
+        """Two '**Primary route**' lines in one status block are malformed —
+        the first declaration must not win."""
+        block = (
+            "## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n"
+            "**Primary route**: Technical Deep-dive\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block=block, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "route" in result.stdout.lower()
+
+    @pytest.mark.parametrize("label", ["notcontract", "contract-example", "contracts"])
+    def test_non_contract_fence_label_is_ignored(self, label: str) -> None:
+        """Only an exact 'contract' fence label counts as a contract
+        declaration — substring matches like notcontract /
+        contract-example must not satisfy --require-contract."""
+        report = _report(contract=None)
+        report += f"\n```{label}\n{_contract()}\n```\n"
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_fenced_pack_primary_route_fails(self) -> None:
+        """A pack whose only '## Primary route' is inside a fenced block
+        has no visible route declaration: audit_report must fail closed."""
+        fenced = PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n",
+            "~~~markdown\n## Primary route\n\nMarket Outlook\n~~~\n",
+        )
+        pack = _write(fenced)
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"], research_pack=pack
+        )
+        assert result.returncode == 2, result.stdout
+        assert "route" in result.stdout.lower()
+
+    def test_fenced_pack_primary_route_standalone_cli_fails(self) -> None:
+        """The standalone validate_contract CLI must behave identically:
+        a fenced-only Primary route must not resolve."""
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        from validate_contract import main as vc_main
+
+        fenced = PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n",
+            "~~~markdown\n## Primary route\n\nMarket Outlook\n~~~\n",
+        )
+        pack = _write(fenced)
+        report = _write(_report(contract=_contract()))
+        code = vc_main([
+            str(report), "--require-contract", "--strict",
+            "--research-pack", str(pack),
+        ])
+        assert code == 2, f"standalone CLI must fail closed, got {code}"
+
+    def test_unclosed_inner_fence_does_not_leak_pack_route(self) -> None:
+        """A four-backtick fence containing an unclosed three-backtick fence
+        must still hide its '## Primary route' (fence-length-aware parsing):
+        both CLIs fail closed instead of leaking the section."""
+        nested = (
+            "````markdown\n"
+            "```python\n"
+            "# inner fence never closed\n"
+            "## Primary route\n\n"
+            "Market Outlook\n"
+            "````\n"
+        )
+        pack = _write(PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n", nested
+        ))
+        report = _write(_report(contract=_contract()))
+
+        # audit_report path
+        result = _run_audit(
+            report, extra_args=["--strict", "--require-contract"], research_pack=pack
+        )
+        assert result.returncode == 2, result.stdout
+        assert "primary route" in result.stdout.lower()
+
+        # standalone CLI path must behave identically
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        from validate_contract import main as vc_main
+        code = vc_main([
+            str(report), "--require-contract", "--strict",
+            "--research-pack", str(pack),
+        ])
+        assert code == 2, f"standalone CLI must fail closed, got {code}"
+
+    def test_html_comment_route_block_is_not_a_declaration(self) -> None:
+        """A whole 'Route and audit status' block inside <!-- --> is
+        non-rendered content: strict audit must fail closed (issue #378)."""
+        commented_block = (
+            "<!--\n## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+            "-->\n"
+        )
+        path = _write(_report(route_block=commented_block, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        # Comment-hidden route block means no visible route declaration:
+        # strict fails either on the missing declaration or the missing
+        # audit-status block.
+        assert "route" in result.stdout.lower()
+
+    def test_html_comment_pack_primary_route_fails(self) -> None:
+        """A pack '## Primary route' inside <!-- --> is not a visible
+        declaration: both CLIs fail closed."""
+        commented = PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n",
+            "<!--\n## Primary route\n\nMarket Outlook\n-->\n",
+        )
+        pack = _write(commented)
+        report = _write(_report(contract=_contract()))
+
+        result = _run_audit(
+            report, extra_args=["--strict", "--require-contract"], research_pack=pack
+        )
+        assert result.returncode == 2, result.stdout
+        assert "primary route" in result.stdout.lower()
+
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        from validate_contract import main as vc_main
+        code = vc_main([
+            str(report), "--require-contract", "--strict",
+            "--research-pack", str(pack),
+        ])
+        assert code == 2, f"standalone CLI must fail closed, got {code}"
+
+    def test_comment_monitoring_section_fails(self) -> None:
+        """A '## Monitoring signals' section inside <!-- --> is not
+        rendered content: the market-outlook monitoring audit must fail
+        closed (issue #378)."""
+        commented = "<!--\n" + _monitoring_section() + "-->\n"
+        report = _report(contract=_contract(), include_monitoring=False)
+        report = report.replace(
+            "\n## Comparison Table",
+            "\n" + commented + "\n## Comparison Table",
+        )
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "monitoring" in result.stdout.lower()
+
+    def test_comment_hidden_report_structure_fails_markdown_delivery(self) -> None:
+        """A report whose entire visible structure lives inside <!-- -->
+        has no rendered headings: the markdown-delivery audit must fail."""
+        hidden = "<!--\n" + _report(contract=_contract()) + "\n-->\n"
+        path = _write(hidden)
+        result = _run_audit(
+            path, extra_args=["--route", "market-outlook", "--strict", "--json"]
+        )
+        data = json.loads(result.stdout)
+        assert data["exit_code"] == 2, data["blocking"]
+
+    def test_comment_hidden_pack_section_fails(self) -> None:
+        """Pack sections inside <!-- --> are not visible: the pack fails
+        structure checks."""
+        commented = PACK_FIXTURE.replace(
+            "## Objective\n\nDetermine X, grounded on [S01].\n",
+            "<!--\n## Objective\n\nDetermine X, grounded on [S01].\n-->\n",
+        )
+        pack = _write(commented)
+        report = _write(_report(contract=_contract()))
+        result = _run_audit(
+            report, extra_args=["--strict", "--require-contract"], research_pack=pack
+        )
+        assert result.returncode == 2, result.stdout
+        assert "objective" in result.stdout.lower()
+
+    @pytest.mark.parametrize("tag", ["div", "pre", "script", "style"])
+    def test_html_block_route_status_hidden_fails(self, tag: str) -> None:
+        """A whole 'Route and audit status' block inside a raw HTML block
+        (div/pre/script/style) is not rendered Markdown: strict audit must
+        fail closed (issue #378, CommonMark HTML-block semantics)."""
+        html_block = (
+            f"<{tag}>\n## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+            f"</{tag}>\n"
+        )
+        path = _write(_report(route_block=html_block, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_html_block_pack_primary_route_fails(self) -> None:
+        """A pack '## Primary route' inside <div> is not a visible
+        declaration: both CLIs fail closed."""
+        div_pack = PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n",
+            "<div>\n## Primary route\n\nMarket Outlook\n</div>\n",
+        )
+        pack = _write(div_pack)
+        report = _write(_report(contract=_contract()))
+
+        result = _run_audit(
+            report, extra_args=["--strict", "--require-contract"], research_pack=pack
+        )
+        assert result.returncode == 2, result.stdout
+        assert "primary route" in result.stdout.lower()
+
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        from validate_contract import main as vc_main
+        code = vc_main([
+            str(report), "--require-contract", "--strict",
+            "--research-pack", str(pack),
+        ])
+        assert code == 2, f"standalone CLI must fail closed, got {code}"
+
+    def test_nested_html_block_route_status_hidden_fails(self) -> None:
+        """Same-tag nesting: an inner </div> must not close the outer
+        <div> and expose a forged route block (issue #378)."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        nested = "<div>\n<div>\ninner\n</div>\n" + route_block + "\n</div>\n"
+        path = _write(_report(route_block=nested, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    @pytest.mark.parametrize("tag", [
+        "h1", "h2", "h6", "head", "html", "iframe", "textarea", "template",
+        "body", "title",
+    ])
+    def test_more_html_block_tags_hide_route_status(self, tag: str) -> None:
+        """Additional CommonMark block tags must hide declarations."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        html_block = f"<{tag}>\n" + route_block + f"\n</{tag}>\n"
+        path = _write(_report(route_block=html_block, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_html_block_pack_objective_fails_both_clis(self) -> None:
+        """A pack '## Objective' inside <div> must fail both the pack
+        validator and audit_report (shared sanitizer, issue #378)."""
+        div_pack = PACK_FIXTURE.replace(
+            "## Objective\n\nDetermine X, grounded on [S01].\n",
+            "<div>\n## Objective\n\nDetermine X, grounded on [S01].\n</div>\n",
+        )
+        pack = _write(div_pack)
+        report = _write(_report(contract=_contract()))
+
+        result = _run_audit(
+            report, extra_args=["--strict", "--require-contract"], research_pack=pack
+        )
+        assert result.returncode == 2, result.stdout
+        assert "objective" in result.stdout.lower()
+
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_research_pack.py"),
+             str(pack), "--strict"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode != 0, f"standalone pack validator must fail:\n{r.stdout}"
+
+    def test_contract_inside_html_block_is_not_real(self) -> None:
+        """A ```contract block inside <div> is raw HTML content, not a real
+        contract: --require-contract must fail."""
+        div_contract = "<div>\n```contract\n" + _contract() + "\n```\n</div>\n"
+        path = _write(_report(contract=None) + "\n" + div_contract)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_same_line_double_open_html_block_hides_route(self) -> None:
+        """'<div><div>' on one line opens twice: the inner </div> must not
+        close the block and expose a forged route declaration."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        nested = "<div><div>\ninner\n</div>\n" + route_block + "\n</div>\n"
+        path = _write(_report(route_block=nested, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_quoted_close_tag_in_attribute_does_not_close_block(self) -> None:
+        """'<div data-marker="</div>">' is still an open block: the </div>
+        text inside the quoted attribute must not end it."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        quoted = '<div data-marker="</div>">\n' + route_block + "\n</div>\n"
+        path = _write(_report(route_block=quoted, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    @pytest.mark.parametrize("opener,closer", [
+        ("<span>", "</span>"),
+        ("<custom-element>", "</custom-element>"),
+        ("<![CDATA[", "]]>"),
+        ("<?xml version=\"1.0\"", "?>"),
+        ("<!DOCTYPE html", ">"),
+    ])
+    def test_other_raw_html_forms_hide_route_status(self, opener: str, closer: str) -> None:
+        """CommonMark type-7 open tags, CDATA, processing instructions and
+        declarations are non-Markdown containers: forged route blocks
+        inside them must fail closed."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        html_block = opener + "\n" + route_block + "\n" + closer + "\n"
+        path = _write(_report(route_block=html_block, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_multiline_quoted_attribute_does_not_close_block(self) -> None:
+        """Quote state must span lines: a </div> inside a multiline
+        attribute value must not close the block."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        multiline = '<div data-marker="\n</div>\n">\n' + route_block + "\n</div>\n"
+        path = _write(_report(route_block=multiline, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_standalone_closing_tag_suppresses_following_block(self) -> None:
+        """A standalone closing tag at line start starts a CommonMark type-7
+        raw HTML block that lasts until a blank line: a forged route block
+        right after it must not be parsed as Markdown."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block="</span>\n" + route_block + "\n", contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_standalone_closing_tag_suppresses_following_contract(self) -> None:
+        """Same suppression applies to a forged ```contract block."""
+        path = _write(
+            _report(contract=None) + "\n</span>\n```contract\n" + _contract() + "\n```\n"
+        )
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_type6_block_ends_at_blank_line_not_closing_tag(self) -> None:
+        """CommonMark type-6 blocks end at the first blank line: a forged
+        route block right after </div> (no blank line) must be hidden."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block="<div>\n</div>\n" + route_block + "\n", contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    @pytest.mark.parametrize("opener", ["<search", "<search>"])
+    def test_search_type6_tag_hides_route_status(self, opener: str) -> None:
+        """'search' is a CommonMark type-6 block tag; even an incomplete
+        '<search' opener must start a raw HTML block (fail closed)."""
+        route_block = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block=opener + "\n" + route_block + "\n", contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    @pytest.mark.parametrize("tag", ["script", "pre", "style", "textarea"])
+    def test_type1_block_ignores_blank_lines_until_closing_tag(self, tag: str) -> None:
+        """CommonMark type-1 blocks (script/pre/style/textarea) end at the
+        matching closing tag, NOT at a blank line: a forged contract after
+        an inner blank line must stay hidden (both CLIs, issue #378)."""
+        content = (
+            f"<{tag}>\nraw content\n\n```contract\n" + _contract() + "\n```\n</" + tag + ">\n"
+        )
+        path = _write(_report(contract=None) + "\n" + content)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        from validate_contract import main as vc_main
+        code = vc_main([
+            str(path), "--require-contract", "--strict",
+            "--research-pack", str(Path("tests/fixtures/audit/research-pack-pos.md").resolve()),
+        ])
+        assert code == 2, f"standalone CLI must fail closed, got {code}"
+
+    def test_markdown_delivery_ignores_html_block_hidden_structure(self) -> None:
+        """Headings inside raw HTML blocks are not rendered Markdown: a
+        report whose H1 and Executive summary live inside <div> must fail
+        both the markdown-delivery validator and audit_report (issue #378)."""
+        base = _report(contract=_contract())
+        hidden_h1 = "<div>\n# Test Report\n</div>\n\n"
+        hidden_summary = (
+            "<div>\n## Executive summary\n"
+            "**核心判断**：X is Y [S01].\n\n- a\n- b\n</div>\n"
+        )
+        report = hidden_h1 + base.replace("# Test Report\n", "", 1).replace(
+            "## Executive summary\n\n**核心判断**：X is Y [S01].\n\n- a\n- b\n",
+            hidden_summary,
+            1,
+        )
+        path = _write(report)
+
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "h1" in result.stdout.lower() or "executive" in result.stdout.lower()
+
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_markdown_delivery.py"),
+             str(path), "--strict"],
+            capture_output=True, text=True,
+        )
+        assert r.returncode != 0, f"standalone markdown-delivery must fail:\n{r.stdout}"
+
+    def test_listed_company_anchor_hidden_in_html_block_fails(self) -> None:
+        """The listed-company research anchor inside a raw HTML block is
+        not rendered content: the report must fail with a missing-anchor
+        error (shared sanitizer, issue #378)."""
+        block = (
+            "## Route and audit status\n\n**Primary route**: Listed Company\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| listed-company-report | ✅ Passed | §3 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        hidden_anchor = (
+            "<div>\n## 研究锚定块\n"
+            "最新完整财年 FY2025\n最新季度 2026Q1\n快照日期 2026-06-01\n</div>\n"
+        )
+        lc_contract = (
+            '{"primary_route": "listed-company", "secondary_routes": [], '
+            '"disciplines": [], '
+            '"audits": [{"id": "listed-company-report", "status": "passed", '
+            '"evidence": "§3"}, {"id": "source-traceability", "status": "passed", '
+            '"evidence": "§5"}, {"id": "final-audit", "status": "passed", '
+            '"evidence": "§2"}], '
+            '"artifact_id": "fixture-lc", "contract_version": "1.0.0", '
+            '"created_at": "2026-08-13"}'
+        )
+        snapshot = (
+            "## Market Snapshot\n\n"
+            "| Field | Value |\n|-------|-------|\n"
+            "| Share price | 100 |\n| Market cap | 1T |\n"
+            "| PE (TTM) | 20 |\n| PB | 3 |\n| PS | 5 |\n"
+        )
+        report = _report(
+            route_block=block, contract=lc_contract, include_monitoring=False
+        )
+        report = report.replace(
+            "\n## Comparison Table",
+            "\n" + hidden_anchor + "\n" + snapshot + "\n## Comparison Table",
+        )
+        path = _write(report)
+
+        lc_pack = PACK_FIXTURE.replace(
+            "## Primary route\n\nMarket Outlook\n",
+            "## Primary route\n\nListed Company\n",
+        ).replace("fixture-market-outlook-pos", "fixture-lc")
+        pack = _write(lc_pack)
+
+        result = _run_audit(
+            path, extra_args=["--route", "listed-company", "--strict", "--require-contract"],
+            research_pack=pack,
+        )
+        assert result.returncode == 2, result.stdout
+        assert "research-anchor" in result.stdout.lower() or "锚定" in result.stdout
+
+    def test_fence_containing_div_line_keeps_following_text(self) -> None:
+        """A '<div>' line inside a fenced code block is code content, not a
+        raw HTML block: the closing fence and the visible text after it
+        must survive sanitization (CommonMark fenced-code rules)."""
+        fence_div = (
+            "## Code sample\n\n```python\n"
+            "<div>\nprint('x')\n```\n\n"
+            "## Outlook\n\n[Confirmed] Shipments will reach 100 units by 2027.\n"
+        )
+        report = _report(contract=_contract()) + "\n" + fence_div
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        # The [Confirmed] forecast is visible: forward-looking must block.
+        assert result.returncode == 2, result.stdout
+        assert "forward-looking" in result.stdout.lower()
+
+    def test_figure_fence_containing_div_keeps_following_text(self) -> None:
+        """The figure validator must not let a '<div>' line inside a code
+        fence swallow the closing fence and following visible definitions."""
+        fig = (
+            "# Report\n\n见图1 for details.\n\n```python\n"
+            "<div>\nx = 1\n```\n\n"
+            "图1: Architecture\n"
+        )
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        # 图1 definition is visible (fence content is code, not HTML) →
+        # the reference is satisfied → pass (0).  A sanitizer bug would
+        # swallow the definition and report an unresolved reference (2).
+        assert r.returncode == 0, r.stdout
+
+    def test_report_quality_cli_div_route_block_fails(self) -> None:
+        """The standalone validate_report_quality CLI must use the shared
+        sanitizer: a Route block inside <div> is not visible structure."""
+        import sys as _sys
+        _sys.path.insert(0, str(SCRIPTS_DIR))
+        from test_audit_report import _valid_report
+
+        valid = _valid_report()
+        valid = valid.replace(
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |",
+            "| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | market grows |",
+        )
+        valid = valid.replace(
+            "| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |",
+            "| S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | cost falls |",
+        )
+        start = valid.find("## Route and audit status")
+        end = valid.find("## 执行摘要")
+        route_block = valid[start:end]
+        rest = valid[:start] + valid[end:]
+        div_route = "<div>\n" + route_block + "</div>\n"
+        path = _write("# Test Report\n\n" + div_route + rest[len("# Test Report\n\n"):])
+
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_report_quality.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 2, f"standalone CLI must fail:\n{r.stdout}"
+        assert "route" in r.stdout.lower()
+
+    def test_fence_info_string_with_spaces_hides_contract(self) -> None:
+        """An outer fence with a spaced info string (```markdown example)
+        must still be a fence: an inner ```contract is not top-level."""
+        nested = (
+            "```markdown example\n```contract\n" + _contract() + "\n```\n```\n"
+        )
+        path = _write(_report(contract=None) + "\n" + nested)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_unclosed_contract_fence_fails(self) -> None:
+        """An unclosed ```contract block (no closing fence) must not be
+        accepted as a valid contract."""
+        path = _write(_report(contract=None) + "\n```contract\n" + _contract() + "\n")
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_four_space_fence_line_does_not_close_outer_fence(self) -> None:
+        """A closing fence may have at most 3 leading spaces: a 4-space
+        backtick line inside an outer fence is content, not a close."""
+        nested = "```markdown\n    ```\n```contract\n" + _contract() + "\n```\n```\n"
+        path = _write(_report(contract=None) + "\n" + nested)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_mermaid_example_label_does_not_keep_fence_content(self) -> None:
+        """Only the exact 'mermaid' language keeps fence content: a
+        'mermaid-example' fence's captions are code, not figure entities."""
+        fig = "# Report\n\n```mermaid-example\n图1: Fake\n```\n\n见图1 for details.\n"
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        # 见图1 has no real definition → must fail (exit 2).
+        assert r.returncode == 2, r.stdout
+
+    def _claim_report(self, prefix: str) -> Path:
+        """Report with a container prefix directly followed by a
+        [Confirmed] claim (no blank line, so the claim stays inside the
+        container state if mis-parsed)."""
+        claim = "[Confirmed] Shipments will reach 100 units by 2027.\n"
+        return _write(_report(contract=_contract()) + "\n" + prefix + claim)
+
+    def _assert_claim_visible(self, path: Path) -> None:
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "forward-looking" in result.stdout.lower()
+
+    def test_backtick_in_info_string_is_not_fence(self) -> None:
+        """CommonMark forbids backticks in a backtick fence's info string:
+        '```markdown`evil' is not a fence, so the following [Confirmed]
+        claim stays visible."""
+        self._assert_claim_visible(
+            self._claim_report("```markdown`evil\n")
+        )
+
+    def test_four_space_indented_div_is_not_html_block(self) -> None:
+        """Four-space indented content is an indented code block, not raw
+        HTML: '    <div>' must not swallow the following claim."""
+        self._assert_claim_visible(
+            self._claim_report("    <div>\n    x\n")
+        )
+
+    def test_type7_inline_span_is_not_html_block(self) -> None:
+        """'<span>inline' is ordinary inline content (type-7 requires the
+        tag to be followed only by whitespace to end of line)."""
+        self._assert_claim_visible(self._claim_report("<span>inline\n"))
+
+    def test_type1_same_line_and_mid_line_closing_tags(self) -> None:
+        """'<script></script>' on one line and 'raw </script>' inside the
+        block both end the type-1 block: following claims stay visible."""
+        self._assert_claim_visible(self._claim_report("<script></script>\n"))
+        self._assert_claim_visible(self._claim_report("<script>\nraw </script>\n"))
+
+    def test_type4_declaration_requires_ascii_letter(self) -> None:
+        """'<![not-a-declaration' is not a type-4 declaration (needs an
+        ASCII letter after '<!'): the following claim stays visible."""
+        self._assert_claim_visible(self._claim_report("<![not-a-declaration\n"))
+
+    def test_figure_mermaid_with_options_counts_as_entity(self) -> None:
+        """'mermaid theme=dark' is a valid mermaid fence (first info-string
+        token): its captions are figure entities (shared tokenization)."""
+        fig = (
+            "# Report\n\n```mermaid theme=dark\n"
+            "图1: Dark\n```\n\n见图1 for details.\n"
+        )
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stdout
+
+    @pytest.mark.parametrize("prefix", ["<div!not-a-tag\n", "<script!x\n", "<source\n", "<template\n"])
+    def test_html_tag_boundary_exact(self, prefix: str) -> None:
+        """Tag names must be followed by space/tab/'>'/'/>'/EOL: '<div!'
+        and allowlist tags missing from the spec (source/template) must
+        not start raw HTML."""
+        claim = "[Confirmed] Shipments will reach 100 units by 2027.\n"
+        path = _write(_report(contract=_contract()) + "\n" + prefix + claim)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "forward-looking" in result.stdout.lower()
+
+    def test_incomplete_type6_closing_tag_starts_raw(self) -> None:
+        """'</div' (no '>') at line start is a type-6 start condition:
+        a forged route block after it must stay hidden."""
+        rb = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block="</div\n" + rb + "\n", contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_type7_open_tag_quote_aware(self) -> None:
+        """'<span data=\">\">' is a complete open tag (quoted '>' is part
+        of the attribute): a forged route block after it stays hidden."""
+        rb = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        path = _write(_report(route_block='<span data=">">\n' + rb + "\n", contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_type7_cannot_interrupt_paragraph(self) -> None:
+        """CommonMark type-7 HTML blocks cannot interrupt an open
+        paragraph: '<span>' after paragraph text must not swallow the
+        following claim."""
+        claim = "[Confirmed] Shipments will reach 100 units by 2027.\n"
+        path = _write(_report(contract=_contract()) + "\nsome paragraph\n<span>\n" + claim)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "forward-looking" in result.stdout.lower()
+
+    def test_nbsp_is_not_fence_whitespace(self) -> None:
+        """Only spaces/tabs are fence whitespace: a closing fence followed
+        by NBSP must not close the outer fence."""
+        nested = "```markdown\n```\u00a0\n```contract\n" + _contract() + "\n```\n```\n"
+        path = _write(_report(contract=None) + "\n" + nested)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+        assert "contract" in result.stdout.lower()
+
+    def test_figure_mermaid_mismatched_close_does_not_end_block(self) -> None:
+        """A '~~~' line inside a backtick mermaid fence is content, not a
+        close: a fake caption after it must not count as a figure entity."""
+        fig = (
+            "# Report\n\n```mermaid\ngraph TD\n~~~\n图2: Fake\n```\n"
+            "\n见图2 for details.\n"
+        )
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        # 图2 is not a real figure entity → reference must fail (exit 2).
+        assert r.returncode == 2, r.stdout
+
+    def test_figure_mermaid_nbsp_close_does_not_end_block(self) -> None:
+        """A backtick fence followed by NBSP is not a valid closer
+        (grammar whitespace is space/tab only): the mermaid block must
+        not end there, so a fake caption inside it does not count."""
+        fig = (
+            "# Report\n\n```mermaid\ngraph TD\n```\u00a0\n图2: Fake\n```\n"
+            "\n见图2 for details.\n"
+        )
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 2, r.stdout
+
+    def test_figure_mermaid_nbsp_language_not_mermaid(self) -> None:
+        """'```mermaid\u00a0' is NOT a mermaid fence: NBSP is part of the
+        info-string token (CommonMark whitespace is space/tab only), so
+        the block is a plain code fence and the caption stays hidden."""
+        fig = (
+            "# Report\n\n```mermaid\u00a0\ngraph TD\n图2: Fake\n```\n"
+            "\n见图2 for details.\n"
+        )
+        path = _write(fig)
+        r = subprocess.run(
+            [sys.executable, str(SCRIPTS_DIR / "validate_figure_references.py"),
+             str(path)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 2, r.stdout
+
+    @pytest.mark.parametrize("tag_line", ["<div/foo", "<div/ foo", "<div/foo>"])
+    def test_html_block_lone_slash_is_not_type6_start(self, tag_line: str) -> None:
+        """A lone '/' after the tag name is not a valid type-6 start
+        (only the complete '/>' pair is): '<div/foo' and '<div/ foo'
+        must not enter raw mode and hide the following visible claim."""
+        self._assert_claim_visible(self._claim_report(tag_line + "\n"))
+
+    def test_html_block_double_slash_is_valid_type6_start(self) -> None:
+        """'<div/>' and '<div />' ARE valid type-6 starts: the following
+        declarations are raw HTML and must not be counted."""
+        route_block = (
+            "<div/>\n## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+        )
+        path = _write(_report(route_block=route_block, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_inline_span_pair_does_not_start_raw(self) -> None:
+        """'some paragraph → <span> → </span> → [Confirmed]': <span> is an
+        inline tag, so the paragraph continues; </span> (type-7 closing)
+        cannot interrupt the paragraph either.  The claim stays visible."""
+        self._assert_claim_visible(
+            self._claim_report("some paragraph\n<span>\n</span>\n")
+        )
+
+    @pytest.mark.parametrize(
+        "block",
+        [
+            "```python\nx = 1\n```",          # fenced code
+            "---",                             # thematic break
+            "===",                             # setext underline
+            "    x = 1",                       # indented code
+        ],
+        ids=["fence", "thematic", "setext", "indented"],
+    )
+    def test_type7_after_block_boundary_starts_raw(self, block: str) -> None:
+        """After a real block boundary a type-7 open tag starts raw mode:
+        a forged route table behind it must fail the audit (issue #378)."""
+        route_table = (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+        b = "some paragraph\n" + block + "\n<span data=\"x\">\n" + route_table
+        path = _write(_report(route_block=b, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def _route_table(self) -> str:
+        return (
+            "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | §3 |\n"
+            "| forward-looking-claims | ✅ Passed | §4 |\n"
+            "| source-traceability | ✅ Passed | §5 |\n"
+            "| final-audit | ✅ Passed | §2 |\n"
+            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+        )
+
+    def _assert_route_hidden(self, prefix: str) -> None:
+        """A type-7 tag after *prefix* must start raw mode: the forged
+        route table behind it fails the audit."""
+        b = prefix + "\n<span data=\"x\">\n" + self._route_table()
+        path = _write(_report(route_block=b, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_type1_same_line_close_resets_paragraph(self) -> None:
+        """'<script></script>' on one line is a type-1 block and ends the
+        paragraph: the following type-7 tag must start raw mode."""
+        self._assert_route_hidden("some paragraph\n<script></script>")
+
+    @pytest.mark.parametrize("indent", ["\tx = 1", "  \tx = 1", " \tx = 1"])
+    def test_tab_indented_code_starts_block(self, indent: str) -> None:
+        """A tab-indented line is indented code (tab = 4 columns in
+        CommonMark) and starts a block: the following type-7 tag must
+        start raw mode."""
+        self._assert_route_hidden("some paragraph\n" + indent)
+
+    def test_invalid_block_tag_line_continues_paragraph(self) -> None:
+        """'<div/foo>' is NOT a valid block-tag line (no complete '/>'
+        pair, no whitespace): it is ordinary text, so the paragraph
+        continues and the claim stays visible."""
+        self._assert_claim_visible(
+            self._claim_report("some paragraph\n<div/foo>\n<span>\n")
+        )
+
+    @pytest.mark.parametrize("tag", ['<span a="foo"bar>', '<span h*#ref="hi">'])
+    def test_malformed_attribute_is_not_complete_open_tag(self, tag: str) -> None:
+        """Malformed attribute syntax is not a complete open tag
+        (CommonMark requires name = quoted/unquoted value): the line is
+        ordinary text and the following claim stays visible."""
+        self._assert_claim_visible(self._claim_report(tag + "\n"))
+
+    @pytest.mark.parametrize(
+        "tag",
+        [
+            "<span disabled>",
+            "<input readonly>",
+            "<custom-element data-x=42 disabled>",
+            "<span disabled />",
+        ],
+    )
+    def test_bare_attribute_is_complete_open_tag(self, tag: str) -> None:
+        """A bare attribute (name without '= value') is a valid
+        CommonMark attribute: these are complete open tags and start
+        type-7 raw mode, hiding the forged route table."""
+        self._assert_route_hidden(tag)
+
+    def test_bare_attribute_hides_forged_contract(self) -> None:
+        """A forged contract inside '<span disabled>' raw HTML is not a
+        visible declaration: strict audit must fail."""
+        forged = (
+            "<span disabled>\n" + self._route_table() + "\n```contract\n"
+            + _contract().replace("market-outlook", "forged-route")
+            + "\n```\n"
+        )
+        path = _write(_report(contract=_contract(), route_block=forged))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+    def test_valid_attribute_syntax_is_complete_open_tag(self) -> None:
+        """A well-formed attribute tag still starts type-7 raw mode."""
+        self._assert_route_hidden('<span a="foo" bar=\'baz\' data-x=42>')
+
+    def test_nbsp_closing_tag_is_not_type7_close(self) -> None:
+        """'</span\u00a0>' is not a valid type-7 closing tag (only
+        spaces/tabs may separate tag name and '>'): no raw mode, the
+        claim stays visible."""
+        self._assert_claim_visible(self._claim_report("</span\u00a0>\n"))
+
+    def test_nbsp_closing_tag_does_not_end_type1(self) -> None:
+        """'</script\u00a0>' must not end a type-1 block: the forged
+        route table after it stays hidden and fails the audit."""
+        b = "<script>\n</script\u00a0>\n" + self._route_table()
+        path = _write(_report(route_block=b, contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract"],
+            research_pack=Path("tests/fixtures/audit/research-pack-pos.md").resolve(),
+        )
+        assert result.returncode == 2, result.stdout
+
+
+class TestSecondaryHardFail:
+    """Secondary-route hard-fail verification needs its own audit result
+    (issue #378 acceptance 6) — primary-route coverage is not enough."""
+
+    def _secondary_report(self, contract_text: str) -> Path:
+        block = _route_block("market-outlook")
+        return _write(_report(contract=contract_text, route_block=block))
+
+    def test_declared_secondary_hard_fail_present_passes(self) -> None:
+        contract = _contract(
+            secondary_routes=["constrained-choice"],
+            audits=[
+                {"id": "market-outlook-audit", "status": "passed", "evidence": "§3"},
+                {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"},
+                {"id": "source-traceability", "status": "passed", "evidence": "§5"},
+                {"id": "final-audit", "status": "passed", "evidence": "§2"},
+                {"id": "constrained-choice-secondary-hard-fail", "status": "passed",
+                 "evidence": "§6 verified hard-fail conditions"},
+            ],
+        )
+        path = self._secondary_report(contract)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract", "--json"])
+        data = json.loads(result.stdout)
+        ids = {a["audit_id"]: a for a in data["audits"]}
+        assert "constrained-choice-secondary-hard-fail" in ids
+        assert ids["constrained-choice-secondary-hard-fail"]["status"] == "pass"
+
+    def test_missing_secondary_hard_fail_is_not_run_blocking(self) -> None:
+        """Secondary declared but no hard-fail audit entry: must not pass."""
+        contract = _contract(
+            secondary_routes=["constrained-choice"],
+            audits=[
+                {"id": "market-outlook-audit", "status": "passed", "evidence": "§3"},
+                {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"},
+                {"id": "source-traceability", "status": "passed", "evidence": "§5"},
+                {"id": "final-audit", "status": "passed", "evidence": "§2"},
+            ],
+        )
+        path = self._secondary_report(contract)
+        result = _run_audit(path, extra_args=["--strict", "--require-contract"])
+        assert result.returncode == 2, result.stdout
+        assert "constrained-choice-secondary-hard-fail" in result.stdout
+
+
+# A minimal valid Research Pack satisfying validate_research_pack structure
+# and strict semantic checks (see scripts/validate_research_pack.py).
+PACK_FIXTURE = """\
+## Objective
+
+Determine X, grounded on [S01].
+
+## Decision context
+
+Context with boundary judgment: chosen over alternative Y, rejected because
+scope mismatch; would become relevant if market conditions change.
+
+## Primary route
+
+Market Outlook
+
+Market Outlook selected as primary route. The closest alternative,
+shared-workflow, was rejected because this task needs scenario structure.
+Boundary: if monitoring signals are not required, shared-workflow would apply.
+
+## Secondary disciplines
+
+- none
+
+## Core subquestions
+
+- Q1
+
+## Stop condition
+
+Stop when evidence saturated.
+
+## Source register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+
+## Claim register
+
+| Claim | Source ID |
+|-------|-----------|
+| C1 | S01 |
+
+## Uncertainty register
+
+| Uncertainty | Source ID |
+|-------------|-----------|
+| U01 | S01 |
+
+## Artifact id
+
+fixture-market-outlook-pos
+
+## Artifact contract
+
+| Field | Value |
+|-------|-------|
+| artifact_id | fixture-market-outlook-pos |
+
+## Required audits
+
+- market-outlook-audit — passed: executed by author
+- forward-looking-claims — passed: no mislabeled claims
+- source-traceability — passed: register complete
+- final-audit — passed: all gates verified
+
+## Final audit status
+
+Pass
+"""

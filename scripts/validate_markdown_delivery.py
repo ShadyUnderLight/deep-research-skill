@@ -66,12 +66,27 @@ def _without_frontmatter(lines: list[str]) -> list[str]:
 
 
 def _visible_lines(lines: list[str]) -> list[tuple[int, str]]:
-    """Return (line number, line) pairs outside fenced code blocks."""
+    """Return (line number, line) pairs outside fenced code blocks and
+    HTML comments (rendered content only, issue #378)."""
     visible: list[tuple[int, str]] = []
     in_fence = False
+    in_comment = False
     fence_char = ""
     fence_length = 0
     for number, line in enumerate(lines, start=1):
+        stripped = line.rstrip()
+        if in_comment:
+            if "-->" in stripped:
+                in_comment = False
+            continue
+        if "<!--" in stripped:
+            in_comment = True
+            head = stripped.split("<!--", 1)[0]
+            if head.strip():
+                visible.append((number, head))
+            if "-->" in stripped.split("<!--", 1)[1]:
+                in_comment = False
+            continue
         match = FENCE_RE.match(line)
         if not in_fence and match:
             in_fence = True
@@ -81,7 +96,7 @@ def _visible_lines(lines: list[str]) -> list[tuple[int, str]]:
         if in_fence:
             if re.match(
                 rf"^[ ]{{0,3}}{re.escape(fence_char)}{{{fence_length},}}\s*$",
-                line.rstrip(),
+                stripped,
             ):
                 in_fence = False
             continue
@@ -122,6 +137,12 @@ def _table_widths(visible: list[tuple[int, str]]) -> list[tuple[int, int, str]]:
 
 def validate_markdown_delivery(text: str) -> ValidationResult:
     result = ValidationResult()
+    # Shared rendered-content sanitizer: fenced code, HTML comments and
+    # raw HTML blocks (div/pre/script/...) are not rendered Markdown, so
+    # headings hidden inside them must not count as document structure
+    # (issue #378).
+    from validate_contract import sanitize_visible_markdown
+    text = sanitize_visible_markdown(text)
     raw_lines = text.splitlines()
     lines = _without_frontmatter(raw_lines)
     visible = _visible_lines(lines)

@@ -75,43 +75,15 @@ _KEY_VALUE_PATTERNS: set[tuple[str, str]] = {
 
 
 def strip_fenced_code_blocks(text: str) -> str:
-    """Replace content inside fenced code blocks with empty lines.
+    """Reduce *text* to rendered Markdown content (shared sanitizer).
 
-    Preserves original line count so that ``line_no`` reporting
-    in the caller maps back to the original file.
+    Delegates to validate_contract.sanitize_visible_markdown so this
+    validator applies the same HTML-comment / raw-HTML-block / fence
+    stripping as the contract, pack and report declaration parsers
+    (issue #378).
     """
-    lines = text.splitlines()
-    result = list(lines)  # start with a copy
-    in_fence = False
-    fence_char = ""
-    fence_len = 0
-
-    for i, line in enumerate(lines):
-        stripped = line.rstrip()
-        if not in_fence:
-            m = re.match(r"^[ ]{0,3}(`{3,}|~{3,})", stripped)
-            if m:
-                fence_char = m.group(1)[0]
-                fence_len = len(m.group(1))
-                in_fence = True
-                result[i] = ""
-                continue
-        else:
-            closing = re.compile(
-                r"^[ ]{0,3}"
-                + re.escape(fence_char)
-                + "{"
-                + str(fence_len)
-                + r",}\s*$"
-            )
-            if closing.match(stripped):
-                in_fence = False
-                result[i] = ""
-                continue
-            result[i] = ""
-
-    return "\n".join(result)
-
+    from validate_contract import sanitize_visible_markdown
+    return sanitize_visible_markdown(text)
 
 def get_cells(line: str) -> list[str]:
     """Split a Markdown table row into stripped cell values.

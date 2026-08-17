@@ -76,32 +76,15 @@ MAPPING_HEADER_RE = re.compile(
 
 
 def strip_fenced_code_blocks(text: str) -> str:
-    lines = text.splitlines()
-    out: list[str] = []
-    in_fence = False
-    fence_char = ""
-    fence_len = 0
+    """Reduce *text* to rendered Markdown content (shared sanitizer).
 
-    for line in lines:
-        stripped = line.rstrip()
-        if not in_fence:
-            m = FENCE_RE.match(stripped)
-            if m:
-                fence_char = m.group(1)[0]
-                fence_len = len(m.group(1))
-                in_fence = True
-                continue
-            out.append(line)
-            continue
-
-        closing = re.compile(
-            r"^[ ]{0,3}" + re.escape(fence_char) + "{" + str(fence_len) + r",}\s*$"
-        )
-        if closing.match(stripped):
-            in_fence = False
-
-    return "\n".join(out)
-
+    Delegates to validate_contract.sanitize_visible_markdown so this
+    validator applies the same HTML-comment / raw-HTML-block / fence
+    stripping as the contract, pack and report declaration parsers
+    (issue #378).
+    """
+    from validate_contract import sanitize_visible_markdown
+    return sanitize_visible_markdown(text)
 
 def section_bounds(lines: list[str], heading_re: re.Pattern[str]) -> tuple[int, int] | None:
     start = None

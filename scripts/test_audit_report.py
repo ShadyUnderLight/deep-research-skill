@@ -33,6 +33,8 @@ def _valid_report() -> str:
     - A table with role labels must exist to satisfy quantitative-role-labeling claim
     - Source Register must have 7 columns
     - Each key section must have [Sxx] citation
+    - A route activation contract declaring the route's required audits
+      (issue #378: strict mode implies --require-contract)
     """
     return """\
 # Test Report
@@ -46,10 +48,14 @@ def _valid_report() -> str:
 | source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
 | final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
 | quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
+| technical-analysis-audit | ✅ Passed | §4 判断与维度结论可追溯 |
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：the report concludes X is viable [S01].
+
+- Key bullet one
+- Key bullet two
 
 ## Findings
 
@@ -72,6 +78,10 @@ Each dimension conclusion is backed by [S01] and [S02].
 |----|-------------|-------------|------|---------|-------------|------------------|
 | S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
 | S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+
+```contract
+{"primary_route": "technical-deep-dive", "secondary_routes": [], "disciplines": [], "audits": [{"id": "technical-analysis-audit", "status": "passed", "evidence": "§4"}, {"id": "source-traceability", "status": "passed", "evidence": "§3"}, {"id": "final-audit", "status": "passed", "evidence": "§2"}], "artifact_id": "fixture-tdd-valid", "contract_version": "1.0.0", "created_at": "2026-08-13"}
+```
 """
 
 
@@ -624,10 +634,15 @@ _MO_BODY_PREFIX = """\
 | source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
 | quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
 | final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+| market-outlook-audit | ✅ Passed | §3 监控信号完整 |
+| forward-looking-claims | ✅ Passed | §4 前瞻数字均带标签 |
 
 ## 执行摘要
 
-Power constraints are tightening across global data center markets [S01].
+**核心判断**：power constraints will keep tightening in 2026 [S01].
+
+- Key bullet one
+- Key bullet two
 
 ## 市场现状
 
@@ -654,6 +669,10 @@ _MO_SOURCE_REGISTER = """
 |----|-------------|-------------|------|---------|-------------|------------------|
 | S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
 | S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
+
+```contract
+{"primary_route": "market-outlook", "secondary_routes": [], "disciplines": [], "audits": [{"id": "market-outlook-audit", "status": "passed", "evidence": "§3"}, {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"}, {"id": "source-traceability", "status": "passed", "evidence": "§5"}, {"id": "final-audit", "status": "passed", "evidence": "§2"}], "artifact_id": "fixture-mo-monitoring", "contract_version": "1.0.0", "created_at": "2026-08-13"}
+```
 """
 
 
@@ -1143,6 +1162,86 @@ Body text with citation [S01].
 # ── Test helpers ────────────────────────────────────────────────────────────
 
 
+def _valid_pack(primary_route: str, artifact_id: str) -> str:
+    """A structurally valid Research Pack for a given route/artifact id.
+
+    Strict mode (issue #378) requires a research pack whose primary route
+    and artifact id match the report contract, so strict-mode tests pair
+    their report with a pack built from this template.
+    """
+    display = {
+        "technical-deep-dive": "Technical Deep-dive",
+        "market-outlook": "Market Outlook",
+    }[primary_route]
+    return f"""\
+## Objective
+
+Determine X, grounded on [S01].
+
+## Decision context
+
+Context with boundary judgment: rejected because scope mismatch; would
+become relevant if market conditions change.
+
+## Primary route
+
+{display}
+
+{display} selected as primary route. The closest alternative,
+shared-workflow, was rejected because this task needs scenario structure.
+Boundary: if monitoring signals are not required, shared-workflow would apply.
+
+## Secondary disciplines
+
+- none
+
+## Core subquestions
+
+- Q1
+
+## Stop condition
+
+Stop when evidence saturated.
+
+## Source register
+
+| ID | Source Name | Source Type | Date | DOI/URL | Reliability | Claims Supported |
+|----|-------------|-------------|------|---------|-------------|------------------|
+| S01 | Example A | secondary | 2026-01-01 | https://example.com/a | medium | §3 |
+
+## Claim register
+
+| Claim | Source ID |
+|-------|-----------|
+| C1 | S01 |
+
+## Uncertainty register
+
+| Uncertainty | Source ID |
+|-------------|-----------|
+| U01 | S01 |
+
+## Artifact id
+
+{artifact_id}
+
+## Artifact contract
+
+| Field | Value |
+|-------|-------|
+| artifact_id | {artifact_id} |
+
+## Required audits
+
+- audit-one — passed: executed by author
+- audit-two — passed: verified
+
+## Final audit status
+
+Pass
+"""
+
+
 def _run_audit(content: str, extra_args: list[str] | None = None) -> subprocess.CompletedProcess:
     """Run audit_report.py on inline fixture content and return result."""
     with tempfile.NamedTemporaryFile(
@@ -1525,8 +1624,23 @@ class TestProperties:
 
     # Property 5: Valid report with --strict still passes
     def test_strict_mode_on_valid_report(self) -> None:
-        """--strict flag should not break valid reports."""
-        result = _run_audit(_valid_report(), extra_args=["--strict"])
+        """--strict flag should not break valid reports.
+
+        Strict mode (issue #378) implies --require-contract and requires a
+        research pack, so the report is paired with a matching pack.
+        """
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8",
+        ) as f:
+            f.write(_valid_pack("technical-deep-dive", "fixture-tdd-valid"))
+            pack_path = f.name
+        try:
+            result = _run_audit(
+                _valid_report(),
+                extra_args=["--strict", "--research-pack", pack_path],
+            )
+        finally:
+            Path(pack_path).unlink(missing_ok=True)
         assert result.returncode == 0, (
             f"Expected exit 0 with --strict, got {result.returncode}\n"
             f"stdout:\n{result.stdout}"
@@ -1884,11 +1998,23 @@ class TestMarketOutlookMonitoringActionability:
 
         Exit code 1 (=warnings) because partial-signal warnings exist;
         not exit 0 (no warnings) and not exit 2 (blocking errors).
+        Strict mode also requires a research pack matching the contract.
         """
-        result = _run_audit(
-            _market_outlook_strict_with_partial(),
-            extra_args=["--route", "market-outlook", "--strict"],
-        )
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8",
+        ) as f:
+            f.write(_valid_pack("market-outlook", "fixture-mo-monitoring"))
+            pack_path = f.name
+        try:
+            result = _run_audit(
+                _market_outlook_strict_with_partial(),
+                extra_args=[
+                    "--route", "market-outlook", "--strict",
+                    "--research-pack", pack_path,
+                ],
+            )
+        finally:
+            Path(pack_path).unlink(missing_ok=True)
         # Warnings exist → exit 1 (not blocking, not fully pass)
         assert result.returncode == 1, (
             f"Expected exit 1 (warnings) for partial signals, "

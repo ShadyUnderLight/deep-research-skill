@@ -102,43 +102,15 @@ _EVIDENCE_RE = re.compile('|'.join(EVIDENCE_KEYWORDS), re.IGNORECASE)
 
 
 def _strip_fenced_code_blocks(text: str) -> str:
-    """Replace content inside fenced code blocks with empty lines.
+    """Reduce *text* to rendered Markdown content (shared sanitizer).
 
-    Preserves original line count so that line-number references
-    map back to the original file.
+    Delegates to validate_contract.sanitize_visible_markdown so this
+    validator applies the same HTML-comment / raw-HTML-block / fence
+    stripping as the contract, pack and report declaration parsers
+    (issue #378).
     """
-    lines = text.splitlines()
-    result = list(lines)
-    in_fence = False
-    fence_char = ""
-    fence_len = 0
-
-    for i, line in enumerate(lines):
-        stripped = line.rstrip()
-        if not in_fence:
-            m = re.match(r"^[ ]{0,3}(`{3,}|~{3,})", stripped)
-            if m:
-                fence_char = m.group(1)[0]
-                fence_len = len(m.group(1))
-                in_fence = True
-                result[i] = ""
-                continue
-        else:
-            closing = re.compile(
-                r"^[ ]{0,3}"
-                + re.escape(fence_char)
-                + "{"
-                + str(fence_len)
-                + r",}\s*$"
-            )
-            if closing.match(stripped):
-                in_fence = False
-                result[i] = ""
-                continue
-            result[i] = ""
-
-    return "\n".join(result)
-
+    from validate_contract import sanitize_visible_markdown
+    return sanitize_visible_markdown(text)
 
 def _has_trigger(text: str) -> bool:
     """Return True if any trigger keyword appears outside code blocks."""

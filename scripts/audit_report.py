@@ -21,6 +21,8 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import re
 import sys
 from dataclasses import dataclass, field
@@ -50,7 +52,6 @@ from validate_report_quality import (
     check_academic_register_columns,
     check_strict_warnings,
     get_route_name,
-    strip_fenced_code_blocks,
 )
 
 from validate_declared_execution import validate_file as vde_validate_file
@@ -59,20 +60,52 @@ from validate_source_label_consistency import validate_file as vsl_validate_file
 from validate_listed_company_delivery import validate_file as vlc_validate_file
 from validate_scoring_replicability import validate_file as vsr_validate_file
 from validate_contract import (
+    extract_contract_blocks,
     extract_contract_from_markdown,
     extract_report_primary_route,
     has_contract_block,
     validate_contract,
 )
+from validate_contract import (
+    _extract_pack_artifact_id as vc_extract_pack_artifact_id,
+    _resolve_pack_primary_route as vc_resolve_pack_primary_route,
+    _strip_fences as vc_strip_fences,
+    count_report_route_blocks as vc_count_report_route_blocks,
+    extract_report_route_declaration as vc_extract_report_route_declaration,
+    validate_pack_sections as vc_validate_pack_sections,
+)
+
+# Validators executed only through required-audit bindings (issue #378).
+from validate_markdown_delivery import validate_markdown_delivery as vmd_validate
+from validate_forward_looking_labels import validate_file as vfl_validate_file
+from validate_research_pack import (
+    find_missing_headings as vrp_find_missing_headings,
+    run_strict_checks as vrp_run_strict_checks,
+    strip_fenced_code_blocks as vrp_strip_fenced_code_blocks,
+)
 
 # ── Runtime control-plane registry (issue #374) ─────────────────────────────
 # Route identity, aliases and validator dispatch bindings come from
 # schemas/route-manifest.json via registry_loader.  Unknown routes and
-# unknown bindings fail closed at runtime.
+# unknown bindings fail closed at runtime.  Audit identity and required-audit
+# bindings come from schemas/audit-registry.json (issue #378).
 import registry_loader
 from registry_loader import RegistryError, UnknownRouteError
 
 _ROUTE_REGISTRY = registry_loader.load_route_registry()
+_AUDIT_REGISTRY = registry_loader.load_audit_registry()
+
+# Audits executed for every route in addition to route.required_audits.
+# These are delivery-pipeline validators rather than checklist audits, so
+# they live in code (not in audit-registry.json which requires a checklist
+# file per audit): audit id → validator binding id.  research-pack is
+# skipped outside strict mode when no --research-pack is given (and a
+# not_run + blocking error under --strict); markdown-delivery always runs
+# against the report itself.
+GLOBAL_AUDITS: dict[str, str] = {
+    "markdown-delivery": "markdown-delivery",
+    "research-pack": "research-pack",
+}
 
 
 # ── Exit codes ──────────────────────────────────────────────────────────────
@@ -152,7 +185,7 @@ def _run_report_quality(path: Path, **kwargs: bool) -> CheckResult:
             errors=[f"{path}: cannot read file — {exc}"],
         )
 
-    cleaned = strip_fenced_code_blocks(text)
+    cleaned = vc_strip_fences(text)
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -279,6 +312,11 @@ def _run_market_outlook_monitoring_actionability(
             name="market-outlook-monitoring",
             errors=[f"{path}: cannot read file — {exc}"],
         )
+
+    # Shared declaration sanitizer: sections inside ```fences or <!-- -->
+    # are not rendered content and must not count as monitoring signals
+    # (issue #378).
+    text = vc_strip_fences(text)
 
     # ── Split into sections by heading level (## or ###) ──────────────────
     lines = text.split("\n")
@@ -435,7 +473,7 @@ def _run_secondary_route_check(path: Path, **kwargs: bool) -> CheckResult:
             name="secondary-route-check",
             errors=[f"{path}: cannot read file — {exc}"],
         )
-    cleaned = strip_fenced_code_blocks(text)
+    cleaned = vc_strip_fences(text)
 
     # Locate the Route and audit status block — use same patterns as
     # validate_report_quality.ROUTE_AUDIT_HEADING for consistency.
@@ -524,7 +562,35 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             errors=[f"{path}: cannot read file — {exc}"],
         )
 
-    contract = extract_contract_from_markdown(text)
+    # Cardinality checks on user-writable declarations (issue #378): more
+    # than one contract block / route status block is structural
+    # malformation — a second declaration could carry a conflicting route
+    # or a broken payload, so fail closed instead of accepting the first.
+    contract_blocks, contract_errors = extract_contract_blocks(text)
+    if contract_errors:
+        return CheckResult(name="contract-check", errors=contract_errors)
+    route_block_count = vc_count_report_route_blocks(text)
+    if route_block_count > 1:
+        return CheckResult(
+            name="contract-check",
+            errors=[
+                f"multiple 'Route and audit status' blocks found "
+                f"({route_block_count}) — exactly one is required "
+                "(issue #378)"
+            ],
+        )
+
+    research_pack = kwargs.get("research_pack")
+    if research_pack is not None:
+        pack_section_errors = vc_validate_pack_sections(str(research_pack))
+        if pack_section_errors:
+            return CheckResult(name="contract-check", errors=pack_section_errors)
+
+    report_route, route_malformed = vc_extract_report_route_declaration(text)
+    if route_malformed:
+        return CheckResult(name="contract-check", errors=route_malformed)
+
+    contract = contract_blocks[0] if contract_blocks else None
     if contract is None:
         if has_contract_block(text):
             # A ```contract fenced block exists but the JSON is malformed
@@ -551,7 +617,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
 
     result = validate_contract(
         contract,
-        report_primary_route=extract_report_primary_route(text),
+        report_primary_route=report_route,
         strict=strict,
     )
     if result.errors:
@@ -563,6 +629,49 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             ],
             warnings=[w for w in result.warnings],
         )
+    # Cross-check the Research Pack against the contract (issue #378 scope 4:
+    # report/pack/contract route and artifact identity must agree).  The
+    # pack checks run inside the contract validator so the same evidence
+    # chain (contract → pack) is verified in one command.
+    research_pack = kwargs.get("research_pack")
+    if research_pack is not None and (result.is_valid or strict):
+        pack_primary = vc_resolve_pack_primary_route(str(research_pack))
+        pack_artifact = vc_extract_pack_artifact_id(str(research_pack))
+        if pack_primary is None:
+            # Matches the standalone validator's fail-closed behavior: a
+            # pack whose '## Primary route' cannot be resolved is an error,
+            # not a silent skip (issue #378 scope 4).
+            return CheckResult(
+                name="contract-check",
+                errors=[
+                    f"Research Pack {research_pack} '## Primary route' "
+                    "cannot be resolved to a canonical route — fix the "
+                    "pack declaration or drop --research-pack"
+                ],
+            )
+        cross = validate_contract(
+            contract,
+            pack_primary_route=pack_primary,
+            pack_artifact_id=pack_artifact,
+            research_pack_provided=True,
+            strict=strict,
+        )
+        if cross.errors:
+            return CheckResult(
+                name="contract-check",
+                errors=[
+                    "Research Pack / contract cross-check failed "
+                    f"({len(cross.errors)} error(s))",
+                    *(f"  {e}" for e in cross.errors[:5]),
+                ],
+                warnings=[w for w in cross.warnings],
+            )
+        if cross.warnings:
+            return CheckResult(
+                name="contract-check",
+                errors=[],
+                warnings=[w for w in cross.warnings],
+            )
     if result.warnings:
         return CheckResult(
             name="contract-check",
@@ -570,6 +679,69 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             warnings=[w for w in result.warnings],
         )
     return CheckResult(name="contract-check", errors=[], warnings=[])
+
+
+# ── Required-audit validators (issue #378) ───────────────────────────────────
+# These wrappers execute audits bound via schemas/audit-registry.json
+# validator_binding, not via route validator_bindings.
+
+
+def _run_markdown_delivery(path: Path, **kwargs: bool) -> CheckResult:
+    """Run validate_markdown_delivery structural checks on the report."""
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        return CheckResult(
+            name="markdown-delivery",
+            errors=[f"{path}: cannot read file — {exc}"],
+        )
+    result = vmd_validate(text)
+    return CheckResult(
+        name="markdown-delivery", errors=list(result.errors), warnings=list(result.warnings)
+    )
+
+
+def _run_forward_looking(path: Path, **kwargs: bool) -> CheckResult:
+    """Run validate_forward_looking_labels on the report.
+
+    The validator flags numeric claims that carry a confirmed label; each
+    hit is a blocking error (mislabeled forward-looking claim).
+    """
+    try:
+        hits = vfl_validate_file(path)
+    except Exception as exc:
+        return CheckResult(
+            name="forward-looking-claims",
+            errors=[f"forward-looking-claims validator crashed: {exc}"],
+        )
+    return CheckResult(name="forward-looking-claims", errors=list(hits), warnings=[])
+
+
+def _run_research_pack(pack_path: Path | None, **kwargs: bool) -> CheckResult:
+    """Validate a Research Pack file (issue #378).
+
+    Structural headings always run; semantic strict checks run too because
+    a pack provided to a strict audit must be deliverable.  Returns a
+    CheckResult whose name is the audit id 'research-pack'.
+    """
+    if pack_path is None:
+        return CheckResult(name="research-pack", errors=[], warnings=[])
+    try:
+        text = pack_path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        return CheckResult(
+            name="research-pack",
+            errors=[f"{pack_path}: cannot read pack file — {exc}"],
+        )
+    cleaned = vrp_strip_fenced_code_blocks(text)
+    errors: list[str] = []
+    missing = vrp_find_missing_headings(cleaned)
+    errors.extend(f"pack missing required heading: {h}" for h in missing)
+    try:
+        errors.extend(vrp_run_strict_checks(cleaned))
+    except Exception as exc:
+        errors.append(f"research-pack strict checks crashed: {exc}")
+    return CheckResult(name="research-pack", errors=errors, warnings=[])
 
 
 # ── Validator registry and dispatch ─────────────────────────────────────────
@@ -600,6 +772,27 @@ if _missing_functions or _unregistered_ids:
         f"out of sync (registry ids without functions: "
         f"{sorted(_missing_functions)}; functions without registry ids: "
         f"{sorted(_unregistered_ids)})"
+    )
+
+# ── Audit-level validator registry (issue #378) ─────────────────────────────
+# Executes automated audits bound via audit-registry.json validator_binding.
+# An audit may also bind to a route validator id (e.g. source-traceability
+# → source-label-consistency), which is resolved through _VALIDATOR_REGISTRY.
+
+_AUDIT_VALIDATOR_REGISTRY: dict[str, ValidatorFn] = {
+    "markdown-delivery": _run_markdown_delivery,
+    "research-pack": _run_research_pack,
+    "forward-looking-claims": _run_forward_looking,
+}
+
+_missing_audit_fns = registry_loader.AUDIT_VALIDATOR_IDS - set(_AUDIT_VALIDATOR_REGISTRY)
+_unregistered_audit_ids = set(_AUDIT_VALIDATOR_REGISTRY) - registry_loader.AUDIT_VALIDATOR_IDS
+if _missing_audit_fns or _unregistered_audit_ids:
+    raise RegistryError(
+        "_AUDIT_VALIDATOR_REGISTRY and registry_loader.AUDIT_VALIDATOR_IDS "
+        f"are out of sync (audit validator ids without functions: "
+        f"{sorted(_missing_audit_fns)}; functions without audit ids: "
+        f"{sorted(_unregistered_audit_ids)})"
     )
 
 
@@ -636,7 +829,7 @@ def _auto_detect_route(path: Path) -> str | None:
         text = path.read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError):
         return None
-    cleaned = strip_fenced_code_blocks(text)
+    cleaned = vc_strip_fences(text)
     raw = get_route_name(cleaned)
     if raw is None or not raw.strip():
         return None
@@ -644,6 +837,25 @@ def _auto_detect_route(path: Path) -> str | None:
 
 
 # ── Verdict computation ────────────────────────────────────────────────────
+
+
+@dataclass
+class AuditResult:
+    """Structured result for a single required audit (issue #378).
+
+    status is one of: pass | conditional-pass | fail | not_run | skipped |
+    partial.  ``not_run``/``skipped`` mean the audit did not execute and
+    must never aggregate to a Pass verdict.
+    """
+
+    audit_id: str
+    execution_type: str  # automated | manual | process
+    status: str
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    evidence: list[str] = field(default_factory=list)
+    validator_binding: str | None = None
+    reason: str | None = None
 
 
 @dataclass
@@ -655,6 +867,9 @@ class AuditVerdict:
     blocking: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     recommended_audit_status: dict[str, str] = field(default_factory=dict)
+    audit_results: list[AuditResult] = field(default_factory=list)
+    input_sha256: str | None = None
+    validator_version: str | None = None
 
     @property
     def exit_code(self) -> int:
@@ -665,9 +880,343 @@ class AuditVerdict:
         return EXIT_PASS
 
 
+# ── Required-audit execution (issue #378) ────────────────────────────────────
+
+
+def _sha256(path: Path) -> str | None:
+    """Return the sha256 of a file's bytes, or None on read failure."""
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def _parse_audit_block_statuses(path: Path) -> tuple[dict[str, dict[str, str]], list[str]]:
+    """Parse the report's Route and audit status tables.
+
+    Returns ``(statuses, malformed)`` where statuses maps {audit_id:
+    {"status": ..., "evidence": ...}} and malformed lists structural
+    errors.  audit_id is the first table column and status is derived from
+    the Status column.  Used to record explicit status for manual/process
+    audits that cannot be executed by a validator.
+
+    Fail-closed rules (issue #378): more than one Route and audit status
+    block is malformed — a second block could hide a '❌ Not run' after a
+    '✅ Passed' first block, so callers must treat it as blocking instead
+    of parsing only the first occurrence.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError):
+        return {}, []
+    # Shared declaration sanitizer: strips fences (state machine) and HTML
+    # comments so forged blocks inside ```fences or <!-- --> never count
+    # as real declarations (issue #378).
+    cleaned = vc_strip_fences(text)
+    lines = cleaned.split("\n")
+
+    block_heading_re = re.compile(
+        r"^#{2,3}\s+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)",
+        re.IGNORECASE,
+    )
+    block_starts = [i for i, line in enumerate(lines) if block_heading_re.match(line)]
+    if not block_starts:
+        # Zero blocks is also cardinality != 1: the audit status is not
+        # declared at all, so the structural reason is reported explicitly
+        # instead of relying on other validators (issue #378).
+        return {}, [
+            "missing 'Route and audit status' block — exactly one is "
+            "required (issue #378)"
+        ]
+    if len(block_starts) > 1:
+        return {}, [
+            f"multiple 'Route and audit status' blocks found "
+            f"({len(block_starts)}) — exactly one is required; a second "
+            "block could hide a not_run declaration (issue #378)"
+        ]
+    block_start = block_starts[0]
+
+    table_lines: list[str] = []
+    for line in lines[block_start + 1:]:
+        if re.match(r"^#{2,3}\s", line):
+            break
+        if line.strip().startswith("|") and "---" not in line:
+            table_lines.append(line.strip())
+    if len(table_lines) < 2:
+        return {}, []
+
+    statuses: dict[str, dict[str, str]] = {}
+    for row in table_lines[1:]:  # skip header row
+        cells = [c.strip() for c in row.strip("|").split("|")]
+        if len(cells) < 2 or not cells[0]:
+            continue
+        audit_id = cells[0].lower()
+        status_cell = cells[1].lower()
+        evidence = cells[2] if len(cells) > 2 else ""
+        if audit_id in statuses:
+            # Duplicate declaration is malformed: fail closed instead of
+            # last-write-wins, so a trailing '✅ Passed' cannot override an
+            # earlier '❌ Not run' (issue #378).
+            statuses[audit_id] = {
+                "status": "not_run",
+                "evidence": "",
+                "duplicate": "1",
+            }
+            continue
+        statuses[audit_id] = {
+            "status": _parse_status_cell(status_cell),
+            "evidence": evidence,
+        }
+    return statuses, []
+
+
+def _parse_status_cell(status_cell: str) -> str:
+    """Map a report status cell to a canonical manual-audit status.
+
+    Fail-closed rules (issue #378):
+    - negative markers (not passed / did not pass / not_passed / unpassed /
+      not passing / 未通过 / ❌ / ✗ / fail / pending / blocked) take
+      precedence over any positive wording, so '❌ Not passed' can never
+      parse as pass;
+    - the positive branches are whole-cell matches: the cell must BE a
+      canonical token (``Pass``/``Passed``/``✅|✓|✔ Passed``/``已通过``,
+      ``skipped``/``已跳过``, ``partial``/``部分``), optionally with an
+      emoji marker and surrounding whitespace.  A bare 'pass'/'passed'
+      substring inside unknown or caveated wording (``passed-ish``,
+      ``conditional-pass``, ``Status: Pass``, ``pass (manual)``) is never
+      accepted;
+    - anything unrecognized defaults to ``not_run``.
+    """
+    cell = status_cell.lower()
+    if re.search(
+        r"not\s*[-_ ]?pass(?:ed|ing)?|unpassed|未通过|✗|✖|❌|"
+        r"fail(?:ed)?|pending|in progress|blocked",
+        cell,
+    ):
+        return "not_run"
+    if re.fullmatch(r"(?:⚠\ufe0f?)?\s*(?:skipped|已跳过)\s*", cell):
+        return "skipped"
+    if re.fullmatch(r"(?:partial|部分(?:通过)?)\s*", cell):
+        return "partial"
+    if re.fullmatch(r"(?:✅|✓|✔)?\s*(?:pass(?:ed)?|已通过)\s*", cell):
+        return "pass"
+    return "not_run"
+
+
+def _audit_validator_fn(binding: str) -> ValidatorFn | None:
+    """Resolve an audit validator_binding id to a function."""
+    fn = _AUDIT_VALIDATOR_REGISTRY.get(binding)
+    if fn is None:
+        fn = _VALIDATOR_REGISTRY.get(binding)
+    return fn
+
+
+def _execute_required_audits(
+    path: Path,
+    route_id: str,
+    strict: bool,
+    research_pack: Path | None,
+) -> tuple[list[AuditResult], list[str], list[str]]:
+    """Execute all required audits for a route plus global audits.
+
+    Returns (audit_results, blocking_errors, warnings).  Fail-closed rules:
+    - required audit id missing from audit registry → blocking;
+    - automated audit without a validator binding → blocking;
+    - manual/process audit with no declaration in the report → ``not_run``,
+      which is blocking in strict mode and a warning otherwise;
+    - research-pack without --research-pack → explicit ``skipped`` outside
+      strict mode, ``not_run`` + blocking under ``--strict``.
+    """
+    audit_ids = _ROUTE_REGISTRY.required_audits_for(route_id) + list(GLOBAL_AUDITS)
+    block_statuses, block_malformed = _parse_audit_block_statuses(path)
+    results: list[AuditResult] = []
+    blocking: list[str] = []
+    warnings: list[str] = []
+
+    # Multiple Route and audit status blocks are structural malformation
+    # (a second block could hide a not_run declaration): blocking in every
+    # mode, not only strict (issue #378).
+    blocking.extend(f"[audit-block] {e}" for e in block_malformed)
+
+    for audit_id in audit_ids:
+        audit = _AUDIT_REGISTRY.get_audit(audit_id)
+        global_binding = GLOBAL_AUDITS.get(audit_id)
+        if audit is None and global_binding is None:
+            blocking.append(
+                f"Required audit '{audit_id}' has no entry in "
+                f"schemas/audit-registry.json — add it or remove it from "
+                f"the route's required_audits"
+            )
+            continue
+
+        if audit is not None and audit.execution_type != "automated":
+            # manual / process audit: record explicit status from the report.
+            declared = block_statuses.get(audit_id.lower())
+            if declared is None:
+                status = "not_run"
+                reason = "not declared in Route and audit status block"
+            elif declared.get("duplicate"):
+                status = "not_run"
+                reason = (
+                    f"audit '{audit_id}' declared multiple times in the "
+                    "Route and audit status block — duplicate declarations "
+                    "are malformed"
+                )
+            else:
+                status = declared["status"]
+                reason = None
+            evidence = [declared["evidence"]] if declared and declared["evidence"] else []
+            if status == "pass" and not evidence:
+                status = "partial"
+                reason = "declared Passed but evidence column is empty"
+            result = AuditResult(
+                audit_id=audit_id,
+                execution_type=audit.execution_type,
+                status=status,
+                evidence=evidence,
+                reason=reason,
+            )
+            results.append(result)
+            if status == "pass":
+                continue
+            message = (
+                f"[{audit_id}] {status} — "
+                f"{reason or 'not executed by a validator'}"
+            )
+            if strict:
+                blocking.append(message)
+            # Non-strict is the legacy compatibility mode: the status is
+            # still recorded explicitly (never aggregated as a Pass) but
+            # does not change the exit code.
+            continue
+
+        # automated audit (either registry-bound or global delivery audit)
+        binding = audit.validator_binding if audit is not None else global_binding
+        if binding is None:
+            blocking.append(
+                f"Required audit '{audit_id}' is automated but has no "
+                f"validator_binding in schemas/audit-registry.json"
+            )
+            continue
+        fn = _audit_validator_fn(binding)
+        if fn is None:
+            blocking.append(
+                f"Required audit '{audit_id}' binds unknown validator "
+                f"'{binding}' — registry and audit_report.py are out "
+                f"of sync"
+            )
+            continue
+        if audit_id == "research-pack" and research_pack is None:
+            # Issue #378 acceptance: a strict task without a pack fails
+            # closed; non-strict records an explicit skip (legacy mode).
+            status = "skipped"
+            reason = "no --research-pack path provided"
+            if strict:
+                status = "not_run"
+                reason = "no --research-pack path provided (strict mode requires it)"
+                blocking.append(f"[research-pack] not_run — {reason}")
+            results.append(AuditResult(
+                audit_id=audit_id,
+                execution_type="automated",
+                status=status,
+                validator_binding=binding,
+                reason=reason,
+            ))
+            continue
+        try:
+            target = research_pack if audit_id == "research-pack" else path
+            check = fn(target, strict=strict)
+        except Exception as exc:
+            check = CheckResult(
+                name=audit_id,
+                errors=[f"{audit_id} validator crashed: {exc}"],
+            )
+        status = (
+            "fail" if check.errors
+            else "conditional-pass" if check.warnings
+            else "pass"
+        )
+        # Legacy compatibility: outside strict mode, failures of the global
+        # delivery audits (markdown-delivery / research-pack) are recorded in
+        # the audit result but do not change the exit code, so pre-contract
+        # reports keep their previous behavior.  In strict mode they block.
+        advisory = audit is None and not strict and check.errors
+        if check.errors:
+            evidence = [str(e)[:200] for e in check.errors[:5]]
+        else:
+            # Success carries an evidence location (issue #378 acceptance 8).
+            evidence = [f"{target}: no violations found by {binding}"]
+        results.append(AuditResult(
+            audit_id=audit_id,
+            execution_type="automated",
+            status=status,
+            errors=list(check.errors),
+            warnings=list(check.warnings),
+            validator_binding=binding,
+            evidence=evidence,
+            reason="advisory outside strict mode" if advisory else None,
+        ))
+        if not advisory:
+            blocking.extend(f"[{audit_id}] {e}" for e in check.errors)
+            warnings.extend(f"[{audit_id}] {w} (audit)" for w in check.warnings)
+
+    # Secondary-route hard-fail verification must have its own audit result
+    # (issue #378 acceptance 6) — primary-route coverage is not enough.  The
+    # contract declares secondary routes; each needs an explicit
+    # `<secondary>-secondary-hard-fail` entry in the contract audits.
+    contract_data: dict | None = None
+    try:
+        contract_data = extract_contract_from_markdown(
+            path.read_text(encoding="utf-8", errors="replace")
+        )
+    except (OSError, UnicodeError):
+        pass
+    contract_audits: list[dict] = []
+    if isinstance(contract_data, dict):
+        contract_audits = contract_data.get("audits", []) or []
+    secondary_ids = (
+        [str(s) for s in (contract_data.get("secondary_routes", []) or [])]
+        if isinstance(contract_data, dict)
+        else []
+    )
+    for sr in secondary_ids:
+        derived_id = f"{sr}-secondary-hard-fail"
+        entry = next((a for a in contract_audits if a.get("id") == derived_id), None)
+        if entry is None:
+            status, reason = "not_run", (
+                f"secondary route '{sr}' declared but no "
+                f"'{derived_id}' entry in the contract audits"
+            )
+        elif str(entry.get("status", "")).lower() in ("passed", "pass", "已通过"):
+            status, reason = "pass", None
+        else:
+            status, reason = str(entry.get("status", "not_run")).lower(), None
+        evidence = [str(entry.get("evidence", "")).strip()] if entry and entry.get("evidence") else []
+        if status == "pass" and not evidence:
+            status, reason = "partial", "hard-fail entry declared Passed but evidence empty"
+        result = AuditResult(
+            audit_id=derived_id,
+            execution_type="manual",
+            status=status,
+            evidence=evidence,
+            reason=reason,
+        )
+        results.append(result)
+        if status != "pass":
+            message = f"[{derived_id}] {status} — {reason or 'not verified'}"
+            if strict:
+                blocking.append(message)
+            # non-strict: recorded only (legacy compatibility)
+
+    return results, blocking, warnings
+
+
 def _compute_verdict(
     route: str | None,
     results: list[CheckResult],
+    audit_results: list[AuditResult] | None = None,
+    blocking_extra: list[str] | None = None,
+    warnings_extra: list[str] | None = None,
 ) -> AuditVerdict:
     """Aggregate check results into a single consolidated verdict."""
     blocking: list[str] = []
@@ -687,6 +1236,11 @@ def _compute_verdict(
         else:
             status[result.name] = "pass"
 
+    blocking.extend(blocking_extra or [])
+    warnings.extend(warnings_extra or [])
+    for audit in audit_results or []:
+        status[f"audit:{audit.audit_id}"] = audit.status
+
     if blocking:
         overall = "fail"
     elif warnings:
@@ -700,6 +1254,7 @@ def _compute_verdict(
         blocking=blocking,
         warnings=warnings,
         recommended_audit_status=status,
+        audit_results=list(audit_results or []),
     )
 
 
@@ -727,6 +1282,17 @@ def format_verdict(verdict: AuditVerdict) -> str:
             lines.append(f"  ⚠ {warn}")
         lines.append("")
 
+    if verdict.audit_results:
+        lines.append("Required audit results:")
+        for audit in verdict.audit_results:
+            line = f"- {audit.audit_id}: {audit.status}"
+            if audit.reason:
+                line += f" ({audit.reason})"
+            if audit.validator_binding:
+                line += f" [binding: {audit.validator_binding}]"
+            lines.append(line)
+        lines.append("")
+
     if verdict.recommended_audit_status:
         lines.append("Recommended audit status:")
         for audit_name, status in sorted(verdict.recommended_audit_status.items()):
@@ -736,15 +1302,47 @@ def format_verdict(verdict: AuditVerdict) -> str:
     return "\n".join(lines)
 
 
+def _verdict_to_json(verdict: AuditVerdict) -> str:
+    """Serialize an AuditVerdict to machine-readable JSON (issue #378).
+
+    The human-readable summary is derived from this structure; consumers
+    (CI, forward tests) should read this JSON rather than parse text.
+    """
+    payload: dict = {
+        "route": verdict.route,
+        "overall": verdict.overall,
+        "exit_code": verdict.exit_code,
+        "blocking": verdict.blocking,
+        "warnings": verdict.warnings,
+        "input_sha256": verdict.input_sha256,
+        "validator_version": verdict.validator_version,
+        "audits": [
+            {
+                "audit_id": a.audit_id,
+                "execution_type": a.execution_type,
+                "status": a.status,
+                "errors": a.errors,
+                "warnings": a.warnings,
+                "evidence": a.evidence,
+                "validator_binding": a.validator_binding,
+                "reason": a.reason,
+            }
+            for a in verdict.audit_results
+        ],
+    }
+    return json.dumps(payload, ensure_ascii=False, indent=2)
+
+
 # ── Main ────────────────────────────────────────────────────────────────────
 
 
-def audit_report(
+def _audit_report_impl(
     path: Path,
     route: str | None = None,
     strict: bool = False,
     allow_route_fallback: bool = False,
     require_contract: bool = False,
+    research_pack: Path | None = None,
 ) -> AuditVerdict:
     """Run route-aware audit on a report and return the consolidated verdict.
 
@@ -758,13 +1356,24 @@ def audit_report(
         declared at all).  Unknown routes (declared but unsupported) are a
         blocking error (exit 2), not silently fallen back.
     strict : bool
-        Enable strict mode warnings (additional route-specific checks).
+        Fail-closed mode (issue #378): a missing route declaration and a
+        missing contract are blocking, and manual/process audits that were
+        not run cannot aggregate to Pass.
+    allow_route_fallback : bool
+        Legacy opt-in: unknown routes fall back to the default route.
+    require_contract : bool
+        Require a valid route activation contract. Implied by strict.
+    research_pack : Path | None
+        Research Pack file to validate as the research-pack required audit.
+        None records the audit as ``skipped`` (non-strict) or ``not_run``
+        + blocking (strict, issue #378).
 
     Returns
     -------
     AuditVerdict
         Consolidated verdict with blocking errors, warnings, and recommended
-        audit status.
+        audit status.  Provenance (input sha256 / validator version) is
+        filled by the public audit_report() wrapper on every path.
     """
     if not path.is_file():
         return AuditVerdict(
@@ -775,11 +1384,23 @@ def audit_report(
 
     resolved_route: str | None = route
 
-    # Auto-detect route if not specified
+    # Auto-detect route if not specified.  In strict mode a missing route
+    # declaration is a blocking error (issue #378) — no silent fallback to
+    # technical-deep-dive.  Non-strict keeps the legacy fallback.
     if resolved_route is None:
         detected = _auto_detect_route(path)
         if detected is not None:
             resolved_route = detected
+        elif strict:
+            return AuditVerdict(
+                route=None,
+                overall="fail",
+                blocking=[
+                    "No route declaration found in report and --route was "
+                    "not given — strict mode requires an explicit route "
+                    "(issue #378)"
+                ],
+            )
         else:
             resolved_route = _DEFAULT_ROUTE
 
@@ -818,13 +1439,75 @@ def audit_report(
             blocking=[str(exc)],
         )
 
+    # Strict mode implies --require-contract (issue #378): a strict task
+    # without a contract fails by definition instead of silently skipping.
+    effective_require_contract = require_contract or strict
+
     # Run each validator with shared flags as keyword arguments
     results: list[CheckResult] = []
     for validator in validators:
-        result = validator(path, strict=strict, require_contract=require_contract)
+        result = validator(
+            path,
+            strict=strict,
+            require_contract=effective_require_contract,
+            research_pack=research_pack,
+        )
         results.append(result)
 
-    return _compute_verdict(resolved_route, results)
+    # Execute required audits from the audit registry (issue #378)
+    audit_results, audit_blocking, audit_warnings = _execute_required_audits(
+        path, resolved_route, strict=strict, research_pack=research_pack
+    )
+
+    verdict = _compute_verdict(
+        resolved_route,
+        results,
+        audit_results=audit_results,
+        blocking_extra=audit_blocking,
+        warnings_extra=audit_warnings,
+    )
+    return verdict
+
+
+def _finalize_verdict(verdict: AuditVerdict, path: Path) -> AuditVerdict:
+    """Fill provenance (input sha256, validator version) on any verdict.
+
+    Runs on every return path of audit_report() — including early failures
+    (missing route declaration, unknown route, registry drift) so JSON
+    consumers always get the artifact hash and validator version
+    (issue #378 acceptance 8).
+    """
+    if verdict.input_sha256 is None:
+        verdict.input_sha256 = _sha256(path)
+    if verdict.validator_version is None:
+        verdict.validator_version = (
+            f"audit-registry-v{_AUDIT_REGISTRY.version} "
+            f"(route-manifest-v{_ROUTE_REGISTRY.version})"
+        )
+    return verdict
+
+
+def audit_report(
+    path: Path,
+    route: str | None = None,
+    strict: bool = False,
+    allow_route_fallback: bool = False,
+    require_contract: bool = False,
+    research_pack: Path | None = None,
+) -> AuditVerdict:
+    """Public entry point: run the audit and attach provenance to the verdict.
+
+    See _audit_report_impl for the parameters and the fail-closed rules.
+    """
+    verdict = _audit_report_impl(
+        path,
+        route=route,
+        strict=strict,
+        allow_route_fallback=allow_route_fallback,
+        require_contract=require_contract,
+        research_pack=research_pack,
+    )
+    return _finalize_verdict(verdict, path)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -844,7 +1527,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--strict",
         action="store_true",
-        help="Enable strict mode warnings",
+        help=(
+            "Fail-closed mode (issue #378): missing route/contract are "
+            "blocking, manual audits not run cannot pass."
+        ),
     )
     parser.add_argument(
         "--allow-route-fallback",
@@ -863,18 +1549,46 @@ def main(argv: list[str] | None = None) -> int:
         help=(
             "Require a valid route activation contract in the report. "
             "When set, missing or malformed contract blocks are blocking errors. "
-            "Use in CI to enforce contract adoption."
+            "Use in CI to enforce contract adoption. Implied by --strict."
+        ),
+    )
+    parser.add_argument(
+        "--research-pack",
+        type=str,
+        default=None,
+        help=(
+            "Path to the Research Pack .md file. When given, the research-pack "
+            "required audit validates it; without it the audit is skipped "
+            "(or blocking under --strict, issue #378)."
+        ),
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        default=False,
+        help=(
+            "Emit a machine-readable JSON verdict on stdout (route, audit id, "
+            "status, evidence, input sha256). The human-readable summary is "
+            "suppressed on stdout."
         ),
     )
     args = parser.parse_args(argv)
 
     path = Path(args.path)
-    verdict = audit_report(path, route=args.route, strict=args.strict,
-                           allow_route_fallback=args.allow_route_fallback,
-                           require_contract=args.require_contract)
+    verdict = audit_report(
+        path,
+        route=args.route,
+        strict=args.strict,
+        allow_route_fallback=args.allow_route_fallback,
+        require_contract=args.require_contract,
+        research_pack=Path(args.research_pack) if args.research_pack else None,
+    )
 
-    output = format_verdict(verdict)
-    print(output)
+    if args.json:
+        print(_verdict_to_json(verdict))
+    else:
+        output = format_verdict(verdict)
+        print(output)
 
     return verdict.exit_code
 
