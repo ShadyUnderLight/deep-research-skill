@@ -119,7 +119,7 @@ class EvalRegistryError(ValueError):
 
 def gap_class_for_failure_family(failure_family: str | None) -> str | None:
     """Map a concrete case failure family to the four diagnostic classes."""
-    if failure_family is None:
+    if not isinstance(failure_family, str):
         return None
     mapped = FAILURE_FAMILY_TO_GAP_CLASS.get(failure_family)
     return mapped if mapped in GAP_CLASSES else None
@@ -194,18 +194,21 @@ def _validate_case(
     if not isinstance(case_id, str) or not CASE_ID_RE.fullmatch(case_id):
         errors.append(f"{prefix}.id must be kebab-case, got {case_id!r}")
 
-    if case["type"] not in ALLOWED_CASE_TYPES:
+    case_type = case["type"]
+    case_status = case["status"]
+    if not isinstance(case_type, str) or case_type not in ALLOWED_CASE_TYPES:
         errors.append(f"{prefix}.type must be one of {sorted(ALLOWED_CASE_TYPES)}")
-    if case["status"] not in ALLOWED_CASE_STATUSES:
+    if not isinstance(case_status, str) or case_status not in ALLOWED_CASE_STATUSES:
         errors.append(f"{prefix}.status must be one of {sorted(ALLOWED_CASE_STATUSES)}")
-    if case["type"] == "negative" and not _is_non_empty_string(case["failure_family"]):
+    failure_family = case["failure_family"]
+    if case_type == "negative" and not _is_non_empty_string(failure_family):
         errors.append(f"{prefix}.failure_family is required for negative cases")
-    if case["type"] == "positive" and case["failure_family"] is not None:
+    if case_type == "positive" and failure_family is not None:
         errors.append(f"{prefix}.failure_family must be null for positive cases")
-    if case["type"] == "negative" and gap_class_for_failure_family(case["failure_family"]) is None:
+    if case_type == "negative" and gap_class_for_failure_family(failure_family) is None:
         errors.append(
             f"{prefix}.failure_family is not mapped to a diagnostic gap class: "
-            f"{case['failure_family']!r}"
+            f"{failure_family!r}"
         )
 
     input_data = case["input"]
@@ -219,7 +222,8 @@ def _validate_case(
             )
         if not _is_non_empty_string(input_data.get("user_prompt")):
             errors.append(f"{prefix}.input.user_prompt must be non-empty")
-        if input_data.get("parallelization_decision") not in ALLOWED_PARALLELIZATION:
+        parallelization = input_data.get("parallelization_decision")
+        if not isinstance(parallelization, str) or parallelization not in ALLOWED_PARALLELIZATION:
             errors.append(
                 f"{prefix}.input.parallelization_decision must be one of "
                 f"{sorted(ALLOWED_PARALLELIZATION)}"
@@ -243,13 +247,13 @@ def _validate_case(
             )
 
     primary = expected.get("primary_route")
-    if primary not in route_ids:
+    if not isinstance(primary, str) or primary not in route_ids:
         errors.append(f"{prefix}.expected.primary_route is unknown: {primary!r}")
     closest = expected.get("closest_alternative")
     if closest is not None:
-        if closest not in route_ids:
+        if not isinstance(closest, str) or closest not in route_ids:
             errors.append(f"{prefix}.expected.closest_alternative is unknown: {closest!r}")
-        elif primary in route_ids:
+        elif isinstance(primary, str) and primary in route_ids:
             route_info = next(r for r in load_route_registry().routes if r.id == primary)
             if closest not in route_info.often_confused_with:
                 errors.append(
@@ -283,7 +287,7 @@ def _validate_case(
     for audit_id in expected_audits:
         if audit_id not in audit_ids and audit_id not in derived_audits:
             errors.append(f"{prefix}.expected.required_audits has unknown audit: {audit_id}")
-    if primary in required_audits:
+    if isinstance(primary, str) and primary in required_audits:
         missing_required = set(required_audits[primary]) - set(expected_audits)
         if missing_required:
             errors.append(
@@ -312,19 +316,19 @@ def _validate_case(
             f"{sorted(ALLOWED_STATUS_KEYS)}"
         )
         statuses = {}
-    if statuses.get("research_status") not in ALLOWED_RESEARCH_STATUSES:
+    if not isinstance(statuses.get("research_status"), str) or statuses.get("research_status") not in ALLOWED_RESEARCH_STATUSES:
         errors.append(f"{prefix}.expected.statuses.research_status is invalid")
-    if statuses.get("audit_status") not in ALLOWED_AUDIT_STATUSES:
+    if not isinstance(statuses.get("audit_status"), str) or statuses.get("audit_status") not in ALLOWED_AUDIT_STATUSES:
         errors.append(f"{prefix}.expected.statuses.audit_status is invalid")
-    if statuses.get("delivery_status") not in ALLOWED_DELIVERY_STATUSES:
+    if not isinstance(statuses.get("delivery_status"), str) or statuses.get("delivery_status") not in ALLOWED_DELIVERY_STATUSES:
         errors.append(f"{prefix}.expected.statuses.delivery_status is invalid")
 
     verdict = expected.get("verdict")
-    if verdict not in ALLOWED_CASE_VERDICTS:
+    if not isinstance(verdict, str) or verdict not in ALLOWED_CASE_VERDICTS:
         errors.append(f"{prefix}.expected.verdict must be one of {sorted(ALLOWED_CASE_VERDICTS)}")
-    if case["type"] == "positive" and verdict != "pass":
+    if case_type == "positive" and verdict != "pass":
         errors.append(f"{prefix} positive cases must expect verdict=pass")
-    if case["type"] == "negative" and verdict != "fail":
+    if case_type == "negative" and verdict != "fail":
         errors.append(f"{prefix} negative cases must expect verdict=fail")
 
     fixtures = case["fixtures"]
@@ -406,7 +410,7 @@ def validate_registry(data: Any, *, root: Path = ROOT) -> list[str]:
     referenced: set[str] = set()
     for index, case in enumerate(data["cases"]):
         case_id = case.get("id") if isinstance(case, dict) else None
-        if case_id in seen_ids:
+        if isinstance(case_id, str) and case_id in seen_ids:
             errors.append(f"cases[{index}].id is duplicated: {case_id}")
         if isinstance(case_id, str):
             seen_ids.add(case_id)

@@ -164,7 +164,7 @@
       "type": "positive",
       "status": "active",
       "input": {
-        "user_prompt": "交付 Markdown 研究报告，并明确记录 PDF 渲染失败。",
+        "user_prompt": "请给出这个市场未来 12 个月如何演化的展望，并交付 Markdown；若 PDF 渲染失败也要明确记录。",
         "parallelization_decision": "single-track"
       },
       "expected": {
@@ -216,7 +216,7 @@
       "type": "negative",
       "status": "active",
       "input": {
-        "user_prompt": "分析市场展望，同时把一个定义好的选项比较作为次级路由附上。",
+        "user_prompt": "分析市场未来 12 个月的展望，并在次级路由中记录选项边界，不做选项排序。",
         "parallelization_decision": "parallel"
       },
       "expected": {

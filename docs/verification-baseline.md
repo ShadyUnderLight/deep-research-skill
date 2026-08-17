@@ -43,8 +43,9 @@ Configured in `pyproject.toml` (`[tool.pytest.ini_options]`):
 - Markdown/docs/eval-case files are not Python; they are covered by
   `scripts/validate-docs-structure.sh` and the eval contract tests.
 - The executable forward-eval subset is stored in `evals/registry.json` and
-  replays local report/Research Pack snapshots without paid models or external
-  search channels.
+  runs prompts through the deterministic offline route adapter before replaying
+  local report/Research Pack snapshots; it does not require paid models or
+  external search channels.
 
 ## CI layout (`.github/workflows/ci.yml`)
 

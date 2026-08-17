@@ -30,6 +30,7 @@ from validate_research_pack import (
     find_missing_headings,
     strip_fenced_code_blocks,
 )
+from route_activation import RouteActivationError, activate_prompt
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -84,14 +85,25 @@ def _run_audit(report: Path, research_pack: Path) -> tuple[dict[str, Any] | None
 def _detect_failure_family(case: dict[str, Any], actual: dict[str, Any]) -> str | None:
     expected_family = case.get("failure_family")
     if expected_family == "route-misclassification":
-        if actual["route"] != actual["expected_route"]:
+        if (
+            actual["activation_route"] != actual["expected_route"]
+            or actual["activation_route"] != actual["report_route"]
+        ):
             return expected_family
     if expected_family == "secondary-route-not-verified":
+        expected_secondary = set(case["expected"].get("secondary_routes", []))
+        if set(actual["secondary_routes"]) != expected_secondary:
+            return None
+        expected_targets = {f"{route}-secondary-hard-fail" for route in expected_secondary}
         secondary_audits = [
             item
             for item in actual.get("audits", [])
-            if str(item.get("audit_id", "")).endswith("-secondary-hard-fail")
+            if str(item.get("audit_id", "")) in expected_targets
         ]
+        if expected_targets and {
+            str(item.get("audit_id")) for item in secondary_audits
+        } != expected_targets:
+            return expected_family
         if any(item.get("status") != "pass" for item in secondary_audits):
             return expected_family
         if any("secondary route" in str(message).lower() for message in actual.get("blocking", [])):
@@ -108,13 +120,79 @@ def _detect_failure_family(case: dict[str, Any], actual: dict[str, Any]) -> str 
     return None
 
 
+def _audit_statuses(actual: dict[str, Any]) -> dict[str, str]:
+    return {
+        str(item.get("audit_id")): str(item.get("status"))
+        for item in actual.get("audits", [])
+        if item.get("audit_id")
+    }
+
+
+def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], checks: dict[str, bool]) -> bool:
+    """Require the intended defect shape, not merely any failing audit."""
+    family = case.get("failure_family")
+    if family == "route-misclassification":
+        # The activation snapshot must be correct while the report artifact
+        # deliberately carries the wrong primary route.
+        return all(
+            [
+                checks["activation_route_match"],
+                not checks["report_route_match"],
+                checks["activation_secondary_routes_match"],
+                checks["report_secondary_routes_match"],
+                checks["parallelization_match"],
+            ]
+        )
+
+    common = [
+        checks["activation_route_match"],
+        checks["report_route_match"],
+        checks["activation_report_consistent"],
+        checks["activation_secondary_routes_match"],
+        checks["report_secondary_routes_match"],
+        checks["disciplines_match"],
+        checks["pack_fields_present"],
+        checks["parallelization_match"],
+    ]
+    statuses = _audit_statuses(actual)
+    expected_audits = set(case["expected"].get("required_audits", []))
+    if family == "secondary-route-not-verified":
+        secondary_targets = {
+            f"{route}-secondary-hard-fail"
+            for route in case["expected"].get("secondary_routes", [])
+        }
+        target_present_and_failed = any(
+            audit_id in secondary_targets and statuses.get(audit_id) != "pass"
+            for audit_id in secondary_targets
+        )
+        primary_ids = expected_audits - secondary_targets
+        return all(common) and all(audit_id in statuses for audit_id in primary_ids) and target_present_and_failed
+    if family == "declared-not-executed":
+        target_present_and_unrun = any(
+            audit_id in expected_audits and statuses.get(audit_id) in {"not_run", "partial", "skipped"}
+            for audit_id in expected_audits
+        )
+        return all(common) and target_present_and_unrun
+    return all(common)
+
+
 def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
     expected = case["expected"]
+    input_data = case["input"]
     fixtures = case["fixtures"]
     report = ROOT / fixtures["report"]
     research_pack = ROOT / fixtures["research_pack"]
     pack = _pack_observation(research_pack)
     audit_data, runner_error, returncode = _run_audit(report, research_pack)
+
+    activation_error: str | None = None
+    try:
+        activation = activate_prompt(
+            input_data["user_prompt"], input_data["parallelization_decision"]
+        )
+    except RouteActivationError as exc:
+        activation = None
+        activation_error = str(exc)
 
     contract: dict[str, Any] = {}
     if report.is_file():
@@ -122,14 +200,21 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
             report.read_text(encoding="utf-8", errors="replace")
         ) or {}
 
-    actual_route = audit_data.get("route") if audit_data else None
+    report_route = audit_data.get("route") if audit_data else None
     actual_statuses = {
         "research_status": pack["statuses"].get("research_status"),
         "audit_status": audit_data.get("overall") if audit_data else None,
         "delivery_status": pack["statuses"].get("delivery_status"),
     }
     actual = {
-        "route": actual_route,
+        "route": report_route,
+        "report_route": report_route,
+        "activation_route": activation.primary_route if activation else None,
+        "activation_secondary_routes": sorted(activation.secondary_routes) if activation else [],
+        "activation_action_category": activation.action_category if activation else None,
+        "activation_weight_bearing_object": activation.weight_bearing_object if activation else None,
+        "activation_parallelization_decision": activation.parallelization_decision if activation else None,
+        "activation_error": activation_error,
         "closest_alternative": contract.get("closest_alternative"),
         "secondary_routes": sorted(contract.get("secondary_routes", []) or []),
         "disciplines": sorted(contract.get("disciplines", []) or []),
@@ -152,13 +237,23 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
     expected_pack_fields = set(expected["research_pack_fields"])
     expected_audits = set(expected["required_audits"])
     actual_audits = set(actual["audit_ids"])
-    route_match = actual["route"] == expected["primary_route"]
+    activation_route_match = actual["activation_route"] == expected["primary_route"]
+    report_route_match = actual["report_route"] == expected["primary_route"]
+    activation_report_consistent = actual["activation_route"] == actual["report_route"]
     alternative_match = actual["closest_alternative"] == expected["closest_alternative"]
-    secondary_match = actual["secondary_routes"] == sorted(expected["secondary_routes"])
+    activation_secondary_match = (
+        actual["activation_secondary_routes"] == sorted(expected["secondary_routes"])
+    )
+    report_secondary_match = actual["secondary_routes"] == sorted(expected["secondary_routes"])
+    secondary_match = activation_secondary_match and report_secondary_match
     discipline_match = actual["disciplines"] == sorted(expected["disciplines"])
     audit_ids_match = expected_audits.issubset(actual_audits)
     pack_fields_match = expected_pack_fields.issubset(set(actual["pack_fields"]))
     status_match = actual["statuses"] == expected["statuses"]
+    parallelization_match = (
+        actual["activation_parallelization_decision"]
+        == input_data["parallelization_decision"]
+    )
     expected_returncode = {
         "pass": 0,
         "conditional-pass": 1,
@@ -168,13 +263,16 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
     if expected["verdict"] == "pass":
         case_passed = all(
             [
-                route_match,
+                activation_route_match,
+                report_route_match,
+                activation_report_consistent,
                 alternative_match,
                 secondary_match,
                 discipline_match,
                 audit_ids_match,
                 pack_fields_match,
                 status_match,
+                parallelization_match,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 returncode == expected_returncode,
             ]
@@ -185,9 +283,20 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
             if case.get("failure_family") == "route-misclassification"
             else returncode == 2
         )
+        checks_for_negative = {
+            "activation_route_match": activation_route_match,
+            "report_route_match": report_route_match,
+            "activation_report_consistent": activation_report_consistent,
+            "activation_secondary_routes_match": activation_secondary_match,
+            "report_secondary_routes_match": report_secondary_match,
+            "disciplines_match": discipline_match,
+            "pack_fields_present": pack_fields_match,
+            "parallelization_match": parallelization_match,
+        }
         case_passed = all(
             [
                 actual["failure_family"] == case["failure_family"],
+                _negative_structure_matches(case, actual, checks_for_negative),
                 actual["overall"] == expected["statuses"]["audit_status"],
                 negative_returncode_ok,
             ]
@@ -207,10 +316,18 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
         },
         "actual": {
             "route": actual["route"],
+            "report_route": actual["report_route"],
+            "activation_route": actual["activation_route"],
+            "activation_secondary_routes": actual["activation_secondary_routes"],
+            "activation_action_category": actual["activation_action_category"],
+            "activation_weight_bearing_object": actual["activation_weight_bearing_object"],
+            "activation_parallelization_decision": actual["activation_parallelization_decision"],
+            "activation_error": actual["activation_error"],
             "closest_alternative": actual["closest_alternative"],
             "secondary_routes": actual["secondary_routes"],
             "disciplines": actual["disciplines"],
             "audit_ids": actual["audit_ids"],
+            "audits": actual["audits"],
             "statuses": actual["statuses"],
             "overall": actual["overall"],
             "failure_family": actual["failure_family"],
@@ -220,13 +337,18 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
             "runner_error": runner_error,
         },
         "checks": {
-            "route_match": route_match,
+            "activation_route_match": activation_route_match,
+            "report_route_match": report_route_match,
+            "activation_report_consistent": activation_report_consistent,
             "alternative_match": alternative_match,
+            "activation_secondary_routes_match": activation_secondary_match,
+            "report_secondary_routes_match": report_secondary_match,
             "secondary_routes_match": secondary_match,
             "disciplines_match": discipline_match,
             "required_audits_present": audit_ids_match,
             "pack_fields_present": pack_fields_match,
             "statuses_match": status_match,
+            "parallelization_match": parallelization_match,
         },
     }
 
@@ -244,7 +366,10 @@ def _metrics(cases: list[dict[str, Any]], results: list[dict[str, Any]]) -> dict
         by_id[case["id"]]["checks"]["alternative_match"] for case in boundary_cases
     )
     route_correct = sum(
-        by_id[case["id"]]["checks"]["route_match"] for case in positives
+        by_id[case["id"]]["checks"]["activation_route_match"] for case in positives
+    )
+    report_route_consistent = sum(
+        by_id[case["id"]]["checks"]["activation_report_consistent"] for case in positives
     )
     secondary_cases = [
         case for case in negatives if case.get("failure_family") == "secondary-route-not-verified"
@@ -259,6 +384,17 @@ def _metrics(cases: list[dict[str, Any]], results: list[dict[str, Any]]) -> dict
     declared_recalled = sum(
         by_id[case["id"]]["actual"]["failure_family"] == "declared-not-executed"
         for case in declared_cases
+    )
+    pack_complete = sum(
+        result["checks"]["pack_fields_present"] for result in results
+    )
+    declared_not_executed_observed = sum(
+        any(
+            item.get("execution_type") in {"manual", "process"}
+            and item.get("status") in {"not_run", "partial", "skipped"}
+            for item in result["actual"].get("audits", [])
+        )
+        for result in results
     )
     raw_audit_false_passed = sum(
         by_id[case["id"]]["actual"]["overall"] == "pass" for case in negatives
@@ -281,9 +417,16 @@ def _metrics(cases: list[dict[str, Any]], results: list[dict[str, Any]]) -> dict
         "negative_case_count": len(negatives),
         "case_pass_count": sum(result["passed"] for result in results),
         "route_activation_accuracy": _ratio(route_correct, len(positives)),
+        "activation_report_consistency": _ratio(report_route_consistent, len(positives)),
+        "parallelization_decision_consistency": _ratio(
+            sum(result["checks"]["parallelization_match"] for result in results),
+            len(results),
+        ),
         "boundary_resolution_rate": _ratio(boundary_resolved, len(boundary_cases)),
+        "pack_completeness": _ratio(pack_complete, len(results)),
         "secondary_hard_fail_recall": _ratio(secondary_recalled, len(secondary_cases)),
         "declared_not_executed_recall": _ratio(declared_recalled, len(declared_cases)),
+        "declared_not_executed_rate": _ratio(declared_not_executed_observed, len(results)),
         "false_passed_rate": _ratio(false_passed, len(negatives)),
         "raw_audit_false_passed_rate": _ratio(raw_audit_false_passed, len(negatives)),
         "negative_detection_rate": _ratio(
