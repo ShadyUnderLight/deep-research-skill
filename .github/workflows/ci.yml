@@ -237,6 +237,17 @@ jobs:
           rm -rf "$temp"
       - run: python3 scripts/test_remote_block.py
       - run: python3 scripts/test_cjk_pdf_pipeline.py
+      - name: PDF structure and visual smoke regression
+        run: |
+          artifact_dir="$RUNNER_TEMP/deep-research-pdf-regression"
+          python3 scripts/check_pdf_regression.py --artifact-dir "$artifact_dir"
+      - name: Upload PDF regression artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: deep-research-pdf-regression
+          path: ${{ runner.temp }}/deep-research-pdf-regression
+          if-no-files-found: warn
       - run: |
           temp=$(mktemp -d)
           printf '# Test\n\nHello.\n' > "$temp/in.md"
