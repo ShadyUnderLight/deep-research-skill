@@ -76,6 +76,49 @@ Status values:
 
 When adding a tracked `evals/cases/*.md` file, add exactly one row to `evals/INDEX.md`. Keep temporary reports, scratch outputs, and unnormalized local material out of the active index until they have a clear eval purpose.
 
+## Executable forward registry
+
+`evals/registry.json` is the canonical machine-readable registry for the small
+offline forward-eval subset. It is intentionally separate from the historical
+Markdown case index:
+
+- `evals/INDEX.md` catalogs all tracked `evals/cases/*.md` files for human
+  coverage scans.
+- `evals/registry.json` describes executable user-prompt, activation, process-
+  artifact, audit, and delivery-status fixtures.
+- `comparative-distillation/candidate-rule-registry.md` tracks candidate rule
+  actions and coverage; it is not an execution registry.
+
+Validate and run the forward subset with:
+
+```bash
+python3 scripts/validate_eval_registry.py
+python3 scripts/run_forward_evals.py --offline --check-baseline
+```
+
+The runner binds each prompt to canonical `action_burden`,
+`weight_bearing_object`, secondary-route and prompt-hash fields, resolves that
+structured activation through the route-selection decision tree, then replays
+local report and Research Pack snapshots. It does not call a paid model or an
+external search provider, and it consumes the structured JSON verdict emitted
+by `scripts/audit_report.py` rather than parsing human-readable audit output.
+The adapter is a fail-closed test surface, not a claim that production agent
+reasoning is a keyword classifier.
+
+Forward cases retain a concrete `failure_family` and map it to one of four
+diagnostic classes: `missing-rule`, `missing-trigger`, `execution-drift`, or
+`fixture-reference-drift`. Registry and fixture failures are reported as
+`fixture-reference-drift` before any model or audit result is considered.
+
+Metric denominators are explicit: `route_activation_accuracy` is correct
+prompt activation over positive cases; `pack_completeness` is complete expected
+pack fields over all active cases; `declared_not_executed_rate` is observed
+manual/process `not_run`/`partial`/`skipped` cases over all active cases; and
+`declared_not_executed_recall` is detection over its negative-case denominator.
+`false_passed_rate` counts negative fixtures whose raw audit verdict is Pass;
+`negative_case_failure_rate` counts negative fixtures the evaluator failed to
+recognize, so the two metrics are intentionally different.
+
 ## What not to put here
 
 Do not use `evals/` for:

@@ -14,6 +14,8 @@ mean the same thing.
   pipeline checks (needs Chromium; runs in the CI `smoke` job).
 - `bash scripts/validate-docs-structure.sh`
 - `python3 scripts/validate_route_manifest.py`
+- `python3 scripts/validate_eval_registry.py`
+- `python3 scripts/run_forward_evals.py --offline --check-baseline`
 - `actionlint .github/workflows/ci.yml` (CI `workflow-lint` job)
 
 ## Collection scope
@@ -40,6 +42,10 @@ Configured in `pyproject.toml` (`[tool.pytest.ini_options]`):
   explicit steps in `.github/workflows/ci.yml`.
 - Markdown/docs/eval-case files are not Python; they are covered by
   `scripts/validate-docs-structure.sh` and the eval contract tests.
+- The executable forward-eval subset is stored in `evals/registry.json` and
+  runs prompts through the deterministic offline route adapter before replaying
+  local report/Research Pack snapshots; it does not require paid models or
+  external search channels.
 
 ## CI layout (`.github/workflows/ci.yml`)
 
