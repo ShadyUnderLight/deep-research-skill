@@ -14,12 +14,13 @@ SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from delivery.models import DeliveryResult, DeliveryStatus  # noqa: E402
+from delivery.models import DeliveryResult, DeliveryStatus, sha256_file  # noqa: E402
 from delivery.normalization import normalize_text_for_pdf  # noqa: E402
 from delivery.pipeline import run_delivery  # noqa: E402
 from delivery.status import write_delivery_status  # noqa: E402
 from delivery.tables import maybe_wrap_wide_tables_in_html  # noqa: E402
 from audit_report import _verdict_to_json, audit_report  # noqa: E402
+from check_pdf_regression import _safe_artifact_stem  # noqa: E402
 from markdown_to_html import process_markdown  # noqa: E402
 
 
@@ -47,6 +48,12 @@ def test_table_layout_keeps_remote_url_text_safe() -> None:
     assert "javascript:" not in rendered
 
 
+def test_special_fixture_artifact_alias_is_upload_safe() -> None:
+    safe = _safe_artifact_stem("input#frag?query 中文")
+    assert safe == "input-frag-query"
+    assert not any(character in safe for character in '"\':<>|*?\r\n')
+
+
 def test_pdf_failure_keeps_markdown_ready_and_cleans_intermediate_html(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -63,6 +70,22 @@ def test_pdf_failure_keeps_markdown_ready_and_cleans_intermediate_html(
     assert result.delivery_status is DeliveryStatus.PDF_FAILED
     assert any("simulated Chromium failure" in error for error in result.errors)
     assert not (tmp_path / "report.html").exists()
+
+
+def test_missing_pdf_artifact_cannot_claim_ready(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    input_path = tmp_path / "report.md"
+    input_path.write_text("# Report\n\nBody.\n", encoding="utf-8")
+    monkeypatch.setattr("delivery.pipeline._render_pdf", lambda *args, **kwargs: None)
+
+    result = run_delivery(input_path, tmp_path / "out.pdf")
+
+    assert result.ok is False
+    assert result.delivery_status is DeliveryStatus.PDF_FAILED
+    assert result.pdf_sha256 is None
+    assert result.pdf_size_bytes is None
+    assert any("without creating" in error for error in result.errors)
 
 
 def test_keep_html_is_explicit_and_status_writeback_is_explicit(
@@ -120,6 +143,8 @@ def test_audit_runner_consumes_delivery_result_without_merging_status_layers(
     delivery_result.write_text(
         json.dumps(
             {
+                "input_path": str(report.resolve()),
+                "input_sha256": sha256_file(report),
                 "delivery_status": "pdf_failed",
                 "markdown_status": "md_ready",
                 "pdf_path": str(tmp_path / "missing.pdf"),
@@ -136,11 +161,66 @@ def test_audit_runner_consumes_delivery_result_without_merging_status_layers(
     assert verdict.delivery == payload["delivery"]
 
 
+def test_audit_accepts_provenance_bound_pdf_ready_result(tmp_path: Path) -> None:
+    report = ROOT / "tests" / "fixtures" / "audit" / "market-outlook-pos.md"
+    pdf_path = tmp_path / "report.pdf"
+    pdf_path.write_bytes(b"%PDF-1.7\nvalid test artifact\n")
+    delivery_result = tmp_path / "delivery.json"
+    delivery_result.write_text(
+        json.dumps(
+            {
+                "input_path": str(report.resolve()),
+                "input_sha256": sha256_file(report),
+                "delivery_status": "pdf_ready",
+                "markdown_status": "md_ready",
+                "pdf_path": str(pdf_path.resolve()),
+                "pdf_sha256": sha256_file(pdf_path),
+                "pdf_size_bytes": pdf_path.stat().st_size,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    verdict = audit_report(report, route="market-outlook", delivery_result=delivery_result)
+    assert verdict.exit_code in (0, 1)
+    assert verdict.delivery["delivery_status"] == "pdf_ready"
+
+
+def test_audit_rejects_forged_delivery_provenance(tmp_path: Path) -> None:
+    report = ROOT / "tests" / "fixtures" / "audit" / "market-outlook-pos.md"
+    delivery_result = tmp_path / "forged.json"
+    delivery_result.write_text(
+        json.dumps(
+            {
+                "input_path": str((tmp_path / "wrong.md").resolve()),
+                "input_sha256": "forged",
+                "delivery_status": "pdf_ready",
+                "markdown_status": "md_ready",
+                "pdf_path": str((tmp_path / "missing.pdf").resolve()),
+                "pdf_sha256": "forged",
+                "pdf_size_bytes": 1,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    verdict = audit_report(report, route="market-outlook", delivery_result=delivery_result)
+    assert verdict.exit_code == 2
+    assert verdict.overall == "fail"
+    assert any("input_path" in error for error in verdict.blocking)
+
+
 def test_audit_cli_accepts_delivery_result_json(tmp_path: Path) -> None:
     report = ROOT / "tests" / "fixtures" / "audit" / "market-outlook-pos.md"
     delivery_result = tmp_path / "delivery.json"
     delivery_result.write_text(
-        '{"delivery_status":"pdf_failed","markdown_status":"md_ready","errors":["boom"]}',
+        json.dumps({
+            "input_path": str(report.resolve()),
+            "input_sha256": sha256_file(report),
+            "delivery_status": "pdf_failed",
+            "markdown_status": "md_ready",
+            "errors": ["boom"],
+        }),
         encoding="utf-8",
     )
     completed = subprocess.run(

@@ -35,6 +35,7 @@ class DeliveryResult:
     """Machine-readable outcome shared by CLI, tests, and audit consumers."""
 
     input_path: Path
+    input_sha256: str | None = None
     delivery_status: DeliveryStatus = DeliveryStatus.NOT_RUN
     markdown_status: DeliveryStatus = DeliveryStatus.NOT_RUN
     html_path: Path | None = None
@@ -58,6 +59,7 @@ class DeliveryResult:
 
         return {
             "input_path": str(self.input_path),
+            "input_sha256": self.input_sha256,
             "delivery_status": self.delivery_status.value,
             "markdown_status": self.markdown_status.value,
             "html_path": str(self.html_path) if self.html_path else None,

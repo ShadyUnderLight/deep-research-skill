@@ -251,16 +251,18 @@ jobs:
       - run: |
           temp=$(mktemp -d)
           printf '# Test\n\nHello.\n' > "$temp/in.md"
+          printf '# Status target\n' > "$temp/status.md"
           set +e
           PLAYWRIGHT_BROWSERS_PATH="$temp/no-browsers" \
             python3 scripts/md_to_pdf.py "$temp/in.md" "$temp/out.pdf" \
-            --title "Preflight" > "$temp/out" 2> "$temp/err"
+            --title "Preflight" --json --write-status "$temp/status.md" > "$temp/out" 2> "$temp/err"
           rc=$?
           set -e
           cat "$temp/err"
           if [ $rc -ne 1 ]; then echo "FAIL: expected exit 1, got $rc"; exit 1; fi
-          grep -qi 'chromium' "$temp/err" || { echo 'FAIL: chromium not in stderr'; exit 1; }
-          echo 'Chromium preflight check OK'
+          python3 -c "import json,pathlib; d=json.loads(pathlib.Path('$temp/out').read_text()); assert d['markdown_status']=='md_ready'; assert d['delivery_status']=='pdf_failed'; assert any('Chromium' in e for e in d['errors'])"
+          grep -q '^pdf_failed$' "$temp/status.md" || { echo 'FAIL: status writeback missing pdf_failed'; exit 1; }
+          echo 'Chromium failure status check OK'
           rm -rf "$temp"
       - run: |
           input_dir="/tmp/smoke test path"

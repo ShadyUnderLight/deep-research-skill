@@ -892,8 +892,16 @@ def _sha256(path: Path) -> str | None:
         return None
 
 
-def _load_delivery_result(path: Path | None) -> tuple[dict[str, object] | None, list[str]]:
-    """Load and validate an optional result emitted by ``md_to_pdf --json``."""
+def _load_delivery_result(
+    path: Path | None,
+    audited_path: Path,
+) -> tuple[dict[str, object] | None, list[str]]:
+    """Load and verify an optional result emitted by ``md_to_pdf --json``.
+
+    Status strings alone are not provenance. The result must bind to the
+    exact audited Markdown input, and ``pdf_ready`` must point to a real,
+    non-empty PDF whose size and hash match the declared metadata.
+    """
 
     if path is None:
         return None, []
@@ -904,16 +912,73 @@ def _load_delivery_result(path: Path | None) -> tuple[dict[str, object] | None, 
     if not isinstance(payload, dict):
         return None, ["delivery result must be a JSON object"]
 
+    errors: list[str] = []
+    expected_input = audited_path.resolve()
+    input_value = payload.get("input_path")
+    if not isinstance(input_value, str) or not input_value:
+        errors.append("delivery result input_path must be a non-empty string")
+    elif not Path(input_value).is_absolute() or Path(input_value).resolve() != expected_input:
+        errors.append(
+            f"delivery result input_path does not match audited report: {input_value!r}"
+        )
+
+    input_hash = payload.get("input_sha256")
+    actual_input_hash = _sha256(expected_input)
+    if not isinstance(input_hash, str) or not input_hash:
+        errors.append("delivery result input_sha256 is required")
+    elif actual_input_hash is None or input_hash != actual_input_hash:
+        errors.append("delivery result input_sha256 does not match audited report")
+
     delivery_status = payload.get("delivery_status")
     markdown_status = payload.get("markdown_status")
     valid_delivery = {"md_ready", "pdf_ready", "pdf_failed", "not_run"}
     if delivery_status not in valid_delivery:
-        return None, [f"invalid delivery_status in delivery result: {delivery_status!r}"]
-    if markdown_status not in valid_delivery:
-        return None, [f"invalid markdown_status in delivery result: {markdown_status!r}"]
+        errors.append(f"invalid delivery_status in delivery result: {delivery_status!r}")
+    if markdown_status not in {"md_ready", "not_run"}:
+        errors.append(f"invalid markdown_status in delivery result: {markdown_status!r}")
     if delivery_status in {"md_ready", "pdf_ready", "pdf_failed"} and markdown_status != "md_ready":
-        return None, [f"{delivery_status} requires markdown_status=md_ready"]
-    return payload, []
+        errors.append(f"{delivery_status} requires markdown_status=md_ready")
+
+    pdf_value = payload.get("pdf_path")
+    pdf_path: Path | None = None
+    if pdf_value is not None:
+        if not isinstance(pdf_value, str) or not pdf_value:
+            errors.append("delivery result pdf_path must be a non-empty string when present")
+        elif not Path(pdf_value).is_absolute():
+            errors.append("delivery result pdf_path must be absolute")
+        else:
+            pdf_path = Path(pdf_value).resolve()
+
+    if delivery_status == "pdf_ready":
+        if pdf_path is None or not pdf_path.is_file():
+            errors.append("pdf_ready requires an existing PDF artifact")
+        else:
+            try:
+                actual_size = pdf_path.stat().st_size
+                with pdf_path.open("rb") as stream:
+                    header = stream.read(4)
+            except OSError as exc:
+                errors.append(f"cannot inspect pdf_ready artifact: {exc}")
+            else:
+                declared_size = payload.get("pdf_size_bytes")
+                if not isinstance(declared_size, int) or isinstance(declared_size, bool):
+                    errors.append("pdf_ready requires integer pdf_size_bytes")
+                elif declared_size != actual_size or actual_size <= 0:
+                    errors.append("pdf_size_bytes does not match the PDF artifact")
+                if header != b"%PDF":
+                    errors.append("pdf_ready artifact does not have a PDF header")
+                declared_hash = payload.get("pdf_sha256")
+                actual_hash = _sha256(pdf_path)
+                if not isinstance(declared_hash, str) or not declared_hash:
+                    errors.append("pdf_ready requires pdf_sha256")
+                elif actual_hash is None or declared_hash != actual_hash:
+                    errors.append("pdf_sha256 does not match the PDF artifact")
+    elif pdf_path is not None and pdf_path.is_file():
+        declared_hash = payload.get("pdf_sha256")
+        if declared_hash is not None and declared_hash != _sha256(pdf_path):
+            errors.append("pdf_sha256 does not match the optional PDF artifact")
+
+    return (payload, []) if not errors else (None, errors)
 
 
 def _parse_audit_block_statuses(path: Path) -> tuple[dict[str, dict[str, str]], list[str]]:
@@ -1409,7 +1474,7 @@ def _audit_report_impl(
         audit status.  Provenance (input sha256 / validator version) is
         filled by the public audit_report() wrapper on every path.
     """
-    delivery, delivery_errors = _load_delivery_result(delivery_result)
+    delivery, delivery_errors = _load_delivery_result(delivery_result, path)
     if not path.is_file():
         return AuditVerdict(
             route=route,

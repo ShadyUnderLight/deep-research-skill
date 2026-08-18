@@ -16,24 +16,16 @@ from pathlib import Path
 _REQUIREMENTS_FILE = str(Path(__file__).resolve().parent.parent / "requirements.txt")
 
 
-def _check_playwright_chromium() -> bool:
-    try:
-        from playwright.sync_api import sync_playwright
-
-        with sync_playwright() as playwright:
-            browser = playwright.chromium.launch()
-            browser.close()
-        return True
-    except Exception as exc:
-        if "Executable doesn't exist" in str(exc):
-            return False
-        print(f"Error: Playwright Chromium found but failed to launch: {exc}", file=sys.stderr)
-        raise SystemExit(1)
-
-
 def _check_runtime_deps() -> None:
+    """Check Markdown-stage packages before producing a delivery result.
+
+    Chromium is intentionally checked by the PDF stage. That lets the
+    pipeline preserve ``md_ready`` and report ``pdf_failed`` as JSON when the
+    browser executable is unavailable.
+    """
+
     missing: list[str] = []
-    for module in ("markdown", "nh3", "playwright"):
+    for module in ("markdown", "nh3"):
         try:
             __import__(module)
         except ImportError:
@@ -42,11 +34,6 @@ def _check_runtime_deps() -> None:
     if missing:
         print("Error: missing required Python packages: " + ", ".join(missing), file=sys.stderr)
         print(f"Run: {sys.executable} -m pip install -r {_REQUIREMENTS_FILE}", file=sys.stderr)
-        raise SystemExit(1)
-
-    if not _check_playwright_chromium():
-        print("Error: Playwright Chromium browser is not installed", file=sys.stderr)
-        print(f"Run: {sys.executable} -m playwright install chromium", file=sys.stderr)
         raise SystemExit(1)
 
 

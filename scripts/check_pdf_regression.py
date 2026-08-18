@@ -25,6 +25,13 @@ if str(SCRIPTS) not in sys.path:
 from delivery.pipeline import run_delivery  # noqa: E402
 
 
+def _safe_artifact_stem(value: str) -> str:
+    """Map arbitrary fixture names to upload-artifact-safe filenames."""
+
+    safe = re.sub(r"[^A-Za-z0-9._-]+", "-", value).strip("-.")
+    return safe or "delivery-artifact"
+
+
 class StructureParser(HTMLParser):
     def __init__(self) -> None:
         super().__init__()
@@ -61,8 +68,11 @@ def _check_case(
     marker: str,
     min_pages: int = 1,
     expected_tags: dict[str, int] | None = None,
+    artifact_stem: str | None = None,
 ) -> list[str]:
-    output_pdf = artifact_dir / f"{markdown_path.stem}.pdf"
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+    safe_stem = _safe_artifact_stem(artifact_stem or markdown_path.stem)
+    output_pdf = artifact_dir / f"{safe_stem}.pdf"
     result = run_delivery(markdown_path, output_pdf, keep_html=True)
     errors: list[str] = []
     if not result.ok:
@@ -93,7 +103,7 @@ def _check_case(
     if _compact_extracted_text(marker) not in _compact_extracted_text("\n".join(page_texts)):
         errors.append(f"{markdown_path.name}: missing extracted marker {marker!r}")
 
-    screenshot_path = artifact_dir / f"{markdown_path.stem}.png"
+    screenshot_path = artifact_dir / f"{safe_stem}.png"
     asyncio.run(_screenshot(result.html_path, screenshot_path))
     if not screenshot_path.is_file() or screenshot_path.stat().st_size == 0:
         errors.append(f"{markdown_path.name}: visual smoke screenshot is empty")
@@ -137,18 +147,23 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
 
-    special_dir = artifact_dir / "hash path #frag/query ?q/中文 路径"
-    special_dir.mkdir(parents=True, exist_ok=True)
-    special_input = special_dir / "input#frag?query 中文.md"
-    shutil.copyfile(cases_dir / "mixed-language.md", special_input)
-    failures.extend(
-        _check_case(
-            special_input,
-            special_dir,
-            marker="mixed-language-marker-2026",
-            expected_tags={"h1": 1},
+    # Keep the special-character input outside the upload directory. The
+    # fixture still exercises URL/path handling, while uploaded artifacts use
+    # a safe alias accepted by actions/upload-artifact on all platforms.
+    with tempfile.TemporaryDirectory(prefix="pdf-regression-special-input-") as special_root:
+        special_input_dir = Path(special_root) / "hash path #frag/query ?q/中文 路径"
+        special_input_dir.mkdir(parents=True, exist_ok=True)
+        special_input = special_input_dir / "input#frag?query 中文.md"
+        shutil.copyfile(cases_dir / "mixed-language.md", special_input)
+        failures.extend(
+            _check_case(
+                special_input,
+                artifact_dir / "special-path",
+                marker="mixed-language-marker-2026",
+                expected_tags={"h1": 1},
+                artifact_stem="special-path",
+            )
         )
-    )
 
     if failures:
         print("PDF regression failures:")
