@@ -352,6 +352,18 @@ class TestDecisionTreeRegistry:
         with pytest.raises(RegistryError, match="unknown primary route"):
             load_decision_tree_registry(path)
 
+    def test_missing_required_conflict_pair_is_rejected(self, tmp_path: Path) -> None:
+        data = json.loads(
+            (ROOT / "schemas" / "route-decision-tree.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        data["conflicts"].pop()
+        path = tmp_path / "route-decision-tree.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        with pytest.raises(RegistryError, match="conflict coverage mismatch"):
+            load_decision_tree_registry(path)
+
 
 def _minimal_route(overrides: dict) -> dict:
     """A structurally complete route entry for type-validation tests."""

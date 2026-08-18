@@ -29,6 +29,15 @@
     {"id": "entry-decision-sequencing-gates", "label": "Entry decision / sequencing / gates", "candidate_routes": ["market-entry"]},
     {"id": "shared-workflow", "label": "shared-workflow", "candidate_routes": ["shared-workflow"]}
   ],
+  "required_conflict_pairs": [
+    ["select-rank-predict", "market-category-trajectory"],
+    ["enter-phase-sequence", "defined-options-teams-ranking"],
+    ["judge-listed-company-value", "architecture-mechanism-patent"],
+    ["judge-academic-evidence-research", "architecture-mechanism-patent"],
+    ["judge-regulation-policy-impact", "market-category-trajectory"],
+    ["judge-technical-mechanism-feasibility", "listed-public-company"],
+    ["judge-technical-mechanism-feasibility", "academic-literature-research-evidence"]
+  ],
   "conflicts": [
     {
       "action": "select-rank-predict",

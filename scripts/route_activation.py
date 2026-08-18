@@ -195,6 +195,10 @@ def activate_prompt(
             "structured secondary routes do not match the route decision-tree conflict pair: "
             f"expected {sorted(derived_secondary)}, got {sorted(secondary)}"
         )
+    if primary in secondary:
+        raise RouteActivationError(
+            f"primary route '{primary}' cannot also be a secondary route"
+        )
     manual_secondary = _validate_secondary_contracts(
         secondary, derived_secondary, secondary_route_contracts
     )

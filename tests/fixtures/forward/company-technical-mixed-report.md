@@ -50,6 +50,7 @@ separate evidence layer [S02].
 {
   "artifact_id": "forward-company-technical-mixed",
   "contract_version": "1",
+  "decision_tree_version": 1,
   "created_at": "2026-08-17",
   "primary_route": "technical-deep-dive",
   "closest_alternative": "market-outlook",
@@ -59,6 +60,12 @@ separate evidence layer [S02].
     "switch_conditions": "Switch to market-outlook if the technical mechanism is no longer load-bearing."
   },
   "secondary_routes": ["listed-company"],
+  "secondary_route_contracts": {
+    "listed-company": {
+      "boundary": "The task explicitly includes company-level risk for a listed company alongside the technical mechanism question.",
+      "hard_fail_verification": "listed-company-secondary-hard-fail"
+    }
+  },
   "disciplines": ["current-state", "source-traceability", "forward-looking", "quantitative-role"],
   "audits": [
     {"id": "technical-analysis-audit", "status": "passed", "evidence": "report-section:Technical judgment"},

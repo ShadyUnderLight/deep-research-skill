@@ -581,6 +581,7 @@ def load_decision_tree_registry(
         "last_reviewed",
         "actions",
         "objects",
+        "required_conflict_pairs",
         "conflicts",
     }
     missing = expected_top - set(data)
@@ -602,7 +603,7 @@ def load_decision_tree_registry(
                 f"Route decision-tree registry '{key}' must be an integer, "
                 f"got {type(value).__name__}"
             )
-    for key in ("actions", "objects", "conflicts"):
+    for key in ("actions", "objects", "required_conflict_pairs", "conflicts"):
         if not isinstance(data[key], list):
             raise RegistryError(
                 f"Route decision-tree registry '{key}' must be a list, "
@@ -671,6 +672,29 @@ def load_decision_tree_registry(
             DecisionObject(id=object_id, label=label, candidate_routes=candidates)
         )
 
+    required_conflict_keys: set[tuple[str, str]] = set()
+    for i, pair in enumerate(data["required_conflict_pairs"]):
+        if (
+            not isinstance(pair, list)
+            or len(pair) != 2
+            or not all(isinstance(value, str) and value.strip() for value in pair)
+        ):
+            raise RegistryError(
+                "Decision-tree required_conflict_pairs[{}] must be a "
+                "two-item list of non-empty action/object ids".format(i)
+            )
+        key = (pair[0], pair[1])
+        if key in required_conflict_keys:
+            raise RegistryError(
+                f"Duplicate decision-tree required conflict pair: '{pair[0]}/{pair[1]}'"
+            )
+        if pair[0] not in action_ids or pair[1] not in object_ids:
+            raise RegistryError(
+                f"Decision-tree required conflict pair references unknown "
+                f"action/object: '{pair[0]}/{pair[1]}'"
+            )
+        required_conflict_keys.add(key)
+
     conflicts: list[DecisionConflict] = []
     conflict_keys: set[tuple[str, str]] = set()
     for i, entry in enumerate(data["conflicts"]):
@@ -732,6 +756,15 @@ def load_decision_tree_registry(
                 primary_route=primary_route,
                 derived_secondary_routes=secondary,
             )
+        )
+
+    actual_conflict_keys = set(conflict_keys)
+    if actual_conflict_keys != required_conflict_keys:
+        missing = sorted(required_conflict_keys - actual_conflict_keys)
+        extra = sorted(actual_conflict_keys - required_conflict_keys)
+        raise RegistryError(
+            "Decision-tree conflict coverage mismatch "
+            f"(missing={missing}, extra={extra})"
         )
 
     return DecisionTreeRegistry(

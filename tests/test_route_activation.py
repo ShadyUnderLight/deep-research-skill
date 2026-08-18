@@ -88,6 +88,21 @@ def test_manual_secondary_contract_is_preserved() -> None:
     assert result.manual_secondary_routes == ("technical-deep-dive",)
 
 
+def test_primary_route_cannot_be_secondary() -> None:
+    with pytest.raises(RouteActivationError, match="cannot also be a secondary"):
+        _activate(
+            action_category="Judge direction / scenario",
+            weight_bearing_object="Market / category trajectory",
+            secondary_routes=["market-outlook"],
+            secondary_route_contracts={
+                "market-outlook": {
+                    "boundary": "Invalid duplicate route fixture.",
+                    "hard_fail_verification": "market-outlook-secondary-hard-fail",
+                }
+            },
+        )
+
+
 def test_duplicate_secondary_route_fails_closed() -> None:
     with pytest.raises(RouteActivationError, match="must not contain duplicates"):
         _activate(
