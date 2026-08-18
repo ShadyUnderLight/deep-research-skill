@@ -6,6 +6,7 @@ This is the last gate before the report goes to the user. If any item fails, rev
 
 ## Core question answered
 
+<!-- audit-item: FA-001 -->
 - [ ] the report answers the user's actual question, not just the general topic
 - [ ] the most important 2-3 variables are clearly stated and supported
 - [ ] the bottom line is clear and actionable

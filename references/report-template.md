@@ -247,6 +247,7 @@ This symmetry matters because asymmetric structure signals to the reader that on
 - **一致性要求**：区块中每个声称已通过的审计（✅ Passed 或等效表达/emoji）必须在正文或交付物结构中有对应的执行证据（如 source-traceability ✅ 需要正文存在 `[SN]` 引用，workflow-spine-audit ✅ 需要交付物有清晰的工作流结构）；无对应执行证据的 ✅ Passed 视为自评不准确，由 final-audit 门控标记为未通过
 - **证据列要求**：每项审计的「证据」列必须填写具体的正文引用，不得为空或仅写"是"、"通过"等无明确引用内容：
   - ✅ **已通过 (Passed)** — 使用 typed reference：`report-section:<heading>`、`report-table:<heading>`、`checklist-item:<path>#<id>` 或 `audit-record:<path>#<id>@<ISO-8601>`
+    Checklist item IDs are declared by stable markers such as `<!-- audit-item: FA-001 -->` in the referenced checklist.
   - ⚠️ **已跳过 (Skipped)** — 引用正文中说明跳过理由的章节位置，或说明"§X 已在正文覆盖，未独立运行"
   - ❌ **未运行 (Not run)** — 引用正文中说明未运行原因的章节位置
   「证据」列与 Status 列的自评状态共同构成可审计记录——评审者无需全文扫描即可定位每项审计的执行证据或决定理由。裸 `§3`、`§999` 和任意自由文本不属于可验证 evidence。

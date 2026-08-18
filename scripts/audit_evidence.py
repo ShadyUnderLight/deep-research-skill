@@ -21,8 +21,10 @@ explicitly labelled ``legacy_self_attested`` by callers.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Collection
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 from pathlib import Path
 
@@ -318,8 +320,74 @@ def _validate_audit_record(
         return EvidenceValidation(
             errors=(f"audit record file does not exist: {path_value}",)
         )
+
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        return EvidenceValidation(
+            errors=(
+                f"audit record file must contain JSON records: {path_value} "
+                f"({exc})",
+            )
+        )
+
+    if isinstance(payload, list):
+        records = payload
+    elif isinstance(payload, dict) and isinstance(payload.get("records"), list):
+        records = payload["records"]
+    elif isinstance(payload, dict):
+        records = [payload]
+    else:
+        return EvidenceValidation(
+            errors=(
+                f"audit record file must contain a JSON object, array, or "
+                f"records array: {path_value}",
+            )
+        )
+
+    def _parse_timestamp(value: object) -> datetime | None:
+        if not isinstance(value, str):
+            return None
+        try:
+            parsed = datetime.fromisoformat(value.strip().replace("Z", "+00:00"))
+        except ValueError:
+            return None
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed.astimezone(timezone.utc)
+
+    expected_time = _parse_timestamp(timestamp)
+    matching_record = None
+    for record in records:
+        if not isinstance(record, dict):
+            continue
+        candidate_id = record.get("record_id", record.get("id"))
+        candidate_time = record.get(
+            "recorded_at",
+            record.get("timestamp", record.get("executed_at")),
+        )
+        if candidate_id != record_id or _parse_timestamp(candidate_time) != expected_time:
+            continue
+        matching_record = record
+        break
+    if matching_record is None:
+        return EvidenceValidation(
+            errors=(
+                f"audit record {record_id!r} with timestamp {timestamp!r} "
+                f"was not found in {path_value}",
+            )
+        )
     provenance["verified"] = True
     return EvidenceValidation(provenance=provenance)
+
+
+def _default_validator_bindings() -> frozenset[str]:
+    """Load the canonical validator binding set without importing audit_report."""
+    try:
+        from registry_loader import AUDIT_BINDING_IDS
+    except (ImportError, AttributeError):
+        return frozenset()
+    return frozenset(AUDIT_BINDING_IDS)
 
 
 def validate_evidence_reference(
@@ -329,6 +397,7 @@ def validate_evidence_reference(
     base_dir: Path | None = None,
     strict: bool = False,
     artifact_label: str = "report",
+    known_validator_bindings: Collection[str] | None = None,
 ) -> EvidenceValidation:
     """Validate one typed evidence reference.
 
@@ -404,6 +473,23 @@ def validate_evidence_reference(
     if kind == "audit_record":
         return _validate_audit_record(locator, base_dir)
     if kind == "automated_validator":
+        known_bindings = frozenset(
+            known_validator_bindings
+            if known_validator_bindings is not None
+            else _default_validator_bindings()
+        )
+        if locator not in known_bindings:
+            return EvidenceValidation(
+                provenance={
+                    "kind": "automated_validator",
+                    "locator": locator,
+                    "validator_binding": locator,
+                    "verified": False,
+                },
+                errors=(
+                    f"validator binding {locator!r} is not registered",
+                ),
+            )
         return EvidenceValidation(
             provenance={
                 "kind": "automated_validator",

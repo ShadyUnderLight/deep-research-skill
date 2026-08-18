@@ -31,6 +31,7 @@ import argparse
 import json
 import re
 import sys
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -252,6 +253,7 @@ def validate_contract(
     strict: bool = False,
     report_text: str | None = None,
     evidence_base_dir: Path | None = None,
+    known_validator_bindings: Collection[str] | None = None,
 ) -> ContractValidationResult:
     """Validate a route activation contract against the manifest and registry.
 
@@ -295,6 +297,8 @@ def validate_contract(
         report_text: visible report text used to resolve report-section/table
             evidence. When omitted, typed references are syntax-checked only.
         evidence_base_dir: root for checklist-item and audit-record paths.
+        known_validator_bindings: actual validator binding ids available to
+            the caller. Defaults to the canonical registry binding set.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -595,6 +599,7 @@ def validate_contract(
                 base_dir=evidence_base_dir,
                 strict=strict,
                 artifact_label="report",
+                known_validator_bindings=known_validator_bindings,
             )
             errors.extend(
                 f"Audit '{audit_id}' evidence: {error}"

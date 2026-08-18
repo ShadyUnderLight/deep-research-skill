@@ -97,6 +97,40 @@ def test_strict_contract_evidence_tampering_cannot_pass(tmp_path: Path) -> None:
     assert any("evidence" in error.lower() for error in data["blocking"])
 
 
+def test_unknown_validator_binding_cannot_pass(tmp_path: Path) -> None:
+    content = POSITIVE.read_text(encoding="utf-8")
+    content = content.replace(
+        "report-section:Monitoring signals",
+        "validator:not-a-real-binding",
+        1,
+    )
+    report = tmp_path / "unknown-validator.md"
+    report.write_text(content, encoding="utf-8")
+
+    result = _run_report(report, "--strict", "--require-contract", "--json")
+    assert result.returncode == 2, result.stdout
+    data = json.loads(result.stdout)
+    assert data["overall"] == "fail"
+    assert any("not registered" in error for error in data["blocking"])
+
+
+def test_audit_record_without_matching_content_cannot_pass(tmp_path: Path) -> None:
+    content = POSITIVE.read_text(encoding="utf-8")
+    content = content.replace(
+        "report-section:Monitoring signals",
+        "audit-record:README.md#not-a-real-record@2030-01-01T00:00:00Z",
+        1,
+    )
+    report = tmp_path / "unknown-record.md"
+    report.write_text(content, encoding="utf-8")
+
+    result = _run_report(report, "--strict", "--require-contract", "--json")
+    assert result.returncode == 2, result.stdout
+    data = json.loads(result.stdout)
+    assert data["overall"] == "fail"
+    assert any("audit record file" in error for error in data["blocking"])
+
+
 def test_legacy_evidence_is_explicit_in_compatibility_json(tmp_path: Path) -> None:
     content = POSITIVE.read_text(encoding="utf-8")
     content = content.replace(
@@ -139,3 +173,49 @@ def test_forged_checklist_item_is_rejected() -> None:
     )
     assert not result.is_valid
     assert any("not found" in error for error in result.errors)
+
+
+def test_real_checklist_item_is_verified() -> None:
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+
+    result = validate_evidence_reference(
+        "checklist-item:checklists/final-audit.md#FA-001",
+        base_dir=ROOT,
+        strict=True,
+    )
+    assert result.is_valid, result.errors
+    assert result.provenance and result.provenance["verified"] is True
+
+
+def test_audit_record_requires_matching_record_content(tmp_path: Path) -> None:
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+
+    record_file = tmp_path / "audit-record.json"
+    record_file.write_text(
+        json.dumps({
+            "records": [
+                {
+                    "record_id": "manual-001",
+                    "recorded_at": "2026-08-18T10:00:00Z",
+                }
+            ]
+        }),
+        encoding="utf-8",
+    )
+    valid = validate_evidence_reference(
+        "audit-record:audit-record.json#manual-001@2026-08-18T10:00:00Z",
+        base_dir=tmp_path,
+        strict=True,
+    )
+    assert valid.is_valid, valid.errors
+    assert valid.provenance and valid.provenance["verified"] is True
+
+    forged = validate_evidence_reference(
+        "audit-record:audit-record.json#not-real@2030-01-01T00:00:00Z",
+        base_dir=tmp_path,
+        strict=True,
+    )
+    assert not forged.is_valid
+    assert any("was not found" in error for error in forged.errors)

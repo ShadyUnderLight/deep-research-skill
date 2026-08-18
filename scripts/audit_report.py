@@ -623,6 +623,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
         strict=strict,
         report_text=visible_text,
         evidence_base_dir=Path(__file__).resolve().parent.parent,
+        known_validator_bindings=_registered_validator_bindings(),
     )
     if result.errors:
         return CheckResult(
@@ -661,6 +662,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             strict=strict,
             report_text=visible_text,
             evidence_base_dir=Path(__file__).resolve().parent.parent,
+            known_validator_bindings=_registered_validator_bindings(),
         )
         if cross.errors:
             return CheckResult(
@@ -756,6 +758,7 @@ def _run_research_pack(pack_path: Path | None, **kwargs: bool) -> CheckResult:
                 artifact_text=cleaned,
                 evidence_base_dir=Path(__file__).resolve().parent.parent,
                 report_text=report_text,
+                known_validator_bindings=_registered_validator_bindings(),
             )
         )
     except Exception as exc:
@@ -1135,6 +1138,11 @@ def _execution_source(execution_type: str, *, legacy: bool = False) -> str:
     return "manual_checklist_attestation"
 
 
+def _registered_validator_bindings() -> set[str]:
+    """Return validator ids with runtime functions in this module."""
+    return set(_VALIDATOR_REGISTRY) | set(_AUDIT_VALIDATOR_REGISTRY)
+
+
 def _execute_required_audits(
     path: Path,
     route_id: str,
@@ -1218,6 +1226,7 @@ def _execute_required_audits(
                     base_dir=Path(__file__).resolve().parent.parent,
                     strict=strict,
                     artifact_label="report",
+                    known_validator_bindings=_registered_validator_bindings(),
                 )
                 if evidence_result.legacy:
                     execution_source = _execution_source(
@@ -1394,6 +1403,7 @@ def _execute_required_audits(
                 base_dir=Path(__file__).resolve().parent.parent,
                 strict=strict,
                 artifact_label="report",
+                known_validator_bindings=_registered_validator_bindings(),
             )
             if evidence_result.legacy:
                 execution_source = _execution_source("manual", legacy=True)

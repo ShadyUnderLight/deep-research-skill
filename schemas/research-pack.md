@@ -121,7 +121,8 @@ reason), or partial (with reason for incomplete execution). A passed audit
 must carry a typed evidence reference, for example
 `pack-section:Artifact contract` or
 `checklist-item:checklists/final-audit.md#FA-001`; free-form text is legacy
-self-attestation and cannot pass strict validation.
+self-attestation and cannot pass strict validation. Checklist IDs are stable
+markers such as `<!-- audit-item: FA-001 -->` immediately before the item.
 
 The compact Markdown form is:
 

@@ -3,6 +3,7 @@
 import argparse
 import json
 import re
+from collections.abc import Collection
 from pathlib import Path
 
 from audit_evidence import validate_evidence_reference, is_typed_reference
@@ -357,6 +358,7 @@ def run_strict_checks(
     artifact_text: str | None = None,
     evidence_base_dir: Path | None = None,
     report_text: str | None = None,
+    known_validator_bindings: Collection[str] | None = None,
 ) -> list[str]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -455,6 +457,7 @@ def run_strict_checks(
         artifact_text=artifact_text if artifact_text is not None else cleaned,
         evidence_base_dir=evidence_base_dir,
         report_text=report_text,
+        known_validator_bindings=known_validator_bindings,
     )
     errors.extend(evidence_errors)
     warnings.extend(evidence_warnings)
@@ -515,6 +518,7 @@ def _check_audit_evidence(
     artifact_text: str,
     evidence_base_dir: Path | None,
     report_text: str | None,
+    known_validator_bindings: Collection[str] | None,
 ) -> tuple[list[str], list[str]]:
     """Require typed, resolvable evidence for every passed pack audit."""
     errors: list[str] = []
@@ -548,6 +552,7 @@ def _check_audit_evidence(
                 base_dir=evidence_base_dir,
                 strict=True,
                 artifact_label=target_label,
+                known_validator_bindings=known_validator_bindings,
             )
             errors.extend(
                 f"Required audit evidence: {error}"
