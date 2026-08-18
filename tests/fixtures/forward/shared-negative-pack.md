@@ -63,8 +63,8 @@ md_ready
 
 ## Required audits
 
-- workflow-spine-audit — passed: workflow evidence visible
-- final-audit — passed: expected process gate
+- workflow-spine-audit — passed — pack-section:Artifact contract
+- final-audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 

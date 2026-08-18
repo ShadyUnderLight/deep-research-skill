@@ -77,9 +77,9 @@ md_ready
 
 ## Required audits
 
-- academic-analysis-audit — passed: evidence hierarchy and search scope checked
-- source-traceability — passed: claims map to the source register
-- final-audit — passed: conclusion is bounded by the evidence window
+- academic-analysis-audit — passed — pack-section:Artifact contract
+- source-traceability — passed — pack-section:Artifact contract
+- final-audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 

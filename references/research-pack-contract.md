@@ -126,8 +126,14 @@ What the final report must visibly contain.
 ### Required audits
 Which audits should run before delivery. For each audit, record its run
 status — one of: passed, skipped (with reason), not-run (with reason), or
-partial (with reason for incomplete execution). The run status documents
-whether the audit was actually executed, not just listed.
+partial (with reason for incomplete execution). A `passed` line must include
+a typed evidence reference such as `pack-section:Artifact contract` or
+`checklist-item:checklists/final-audit.md#FA-001`; arbitrary prose is
+`legacy_self_attested` and is not accepted by strict validation. The run
+status documents whether the audit was actually executed, not just listed.
+
+Use the compact form `audit-id — passed — pack-section:Artifact contract`.
+For `skipped`, `not-run`, and `partial`, put the reason after the status.
 
 ### Final audit status
 Whether the report passed, partially passed, or failed audit readiness.
@@ -136,6 +142,10 @@ Required audits: Pass requires all audits to be passed or skipped (with
 reason); Partial is for not-run/partial with reason, or validator warnings
 without errors; Fail is required when any audit is not-run without reason,
 or when strict validation fails.
+
+The report status block and audit JSON use the same provenance labels:
+`automated_validator`, `manual_checklist_attestation`,
+`process_node_evidence`, and compatibility-only `legacy_self_attested`.
 
 ## Scope
 

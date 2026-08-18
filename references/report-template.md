@@ -213,11 +213,11 @@ This symmetry matters because asymmetric structure signals to the reader that on
 
 | Audit | Status | 证据 |
 |-------|--------|------|
-| route-activation-audit | ✅ Passed | §3-§5 路由选择正确，无 Do-not-use 违规 |
-| option-selection-final-audit | ✅ Passed | §4 短名单、反转条件、次优选项均已执行 |
-| source-traceability | ✅ Passed | 正文使用 [S01]-[S12] 引用，附录为 7 列 Source Register |
-| final-audit | ✅ Passed | 各核心关卡在正文可追溯（§2-§6, §8） |
-| regulatory secondary hard-fail | ✅ Passed | §6 逐项验证 4 项 hard-fail 条件：3 项不适用（非监管主题），1 项已验证（§6.2 合规影响分析） |
+| route-activation-audit | ✅ Passed | report-section:Route selection visibility |
+| option-selection-final-audit | ✅ Passed | report-section:Comparison |
+| source-traceability | ✅ Passed | report-section:Sources |
+| final-audit | ✅ Passed | report-section:Bottom line |
+| regulatory secondary hard-fail | ✅ Passed | report-section:Regulatory impact |
 ```
 
 **格式模板（shared-workflow 路径）：**
@@ -229,8 +229,8 @@ This symmetry matters because asymmetric structure signals to the reader that on
 
 | Audit | Status | 证据 |
 |-------|--------|------|
-| workflow-spine-audit | ✅ Passed | 各工作流关卡在正文可追溯（§2-§6） |
-| final-audit | ✅ Passed | 各核心关卡在正文有对应检查标记 |
+| workflow-spine-audit | ✅ Passed | report-section:Findings |
+| final-audit | ✅ Passed | report-section:Bottom line |
 ```
 
 **规则：**
@@ -246,12 +246,15 @@ This symmetry matters because asymmetric structure signals to the reader that on
 - 该区块不追求详尽审计记录，只追求评审者可见——证明审计已运行
 - **一致性要求**：区块中每个声称已通过的审计（✅ Passed 或等效表达/emoji）必须在正文或交付物结构中有对应的执行证据（如 source-traceability ✅ 需要正文存在 `[SN]` 引用，workflow-spine-audit ✅ 需要交付物有清晰的工作流结构）；无对应执行证据的 ✅ Passed 视为自评不准确，由 final-audit 门控标记为未通过
 - **证据列要求**：每项审计的「证据」列必须填写具体的正文引用，不得为空或仅写"是"、"通过"等无明确引用内容：
-  - ✅ **已通过 (Passed)** — 引用执行证据的具体位置（章节号、检查项编号、或 Source Register 条目）
+  - ✅ **已通过 (Passed)** — 使用 typed reference：`report-section:<heading>`、`report-table:<heading>`、`checklist-item:<path>#<id>` 或 `audit-record:<path>#<id>@<ISO-8601>`
+    Checklist item IDs are declared by stable markers such as `<!-- audit-item: FA-001 -->` in the referenced checklist.
   - ⚠️ **已跳过 (Skipped)** — 引用正文中说明跳过理由的章节位置，或说明"§X 已在正文覆盖，未独立运行"
   - ❌ **未运行 (Not run)** — 引用正文中说明未运行原因的章节位置
-  「证据」列与 Status 列的自评状态共同构成可审计记录——评审者无需全文扫描即可定位每项审计的执行证据或决定理由
+  「证据」列与 Status 列的自评状态共同构成可审计记录——评审者无需全文扫描即可定位每项审计的执行证据或决定理由。裸 `§3`、`§999` 和任意自由文本不属于可验证 evidence。
 - 如果路由未选择（shared-workflow 路径），列出 `workflow-spine-audit.md` 和 `final-audit.md` 的运行状态
 - **审计状态应由 validator 输出驱动**：技术类报告交付前，应使用 `scripts/audit_report.py`（route-aware 审计编排器）对报告运行一次 consolidated audit。该工具的 verdict 输出应作为最终 Route and Audit Status 区块的客观依据。如果未运行 audit wrapper，不得将任意状态默认为 ✅ Passed；必须标注为 ⚠️ Manual 或 ❌ Not Run，并附理由。
+
+  JSON 中的 `execution_source` 必须区分 `automated_validator`、`manual_checklist_attestation`、`process_node_evidence` 和兼容模式的 `legacy_self_attested`。
 
 #### 类型化实体说明
 
@@ -288,10 +291,10 @@ Status block 中涉及四类实体，使用统一的 canonical id：
       "secondary_routes": ["regulatory-analysis"],
       "disciplines": ["current-state", "source-traceability", "forward-looking"],
       "audits": [
-        {"id": "option-selection-final-audit", "status": "passed", "evidence": "§4 短名单、反转条件、次优选项均已执行"},
-        {"id": "source-traceability", "status": "passed", "evidence": "[S01]-[S15]"},
-        {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "§6 verified 4 hard-fail conditions; 2 inapplicable"},
-        {"id": "final-audit", "status": "passed", "evidence": "§2-§8"}
+        {"id": "option-selection-final-audit", "status": "passed", "evidence": "report-section:Comparison"},
+        {"id": "source-traceability", "status": "passed", "evidence": "report-section:Sources"},
+        {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "report-section:Regulatory impact"},
+        {"id": "final-audit", "status": "passed", "evidence": "report-section:Bottom line"}
       ]
     }
    ```

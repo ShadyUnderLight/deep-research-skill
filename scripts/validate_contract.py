@@ -31,6 +31,7 @@ import argparse
 import json
 import re
 import sys
+from collections.abc import Collection
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -40,6 +41,7 @@ from registry_loader import (
     load_discipline_registry,
     load_route_registry,
 )
+from audit_evidence import validate_evidence_reference
 
 # ── Paths relative to project root ──────────────────────────────────────────
 
@@ -48,7 +50,7 @@ ROUTE_MANIFEST_PATH = PROJECT_ROOT / "schemas" / "route-manifest.json"
 DISCIPLINE_REGISTRY_PATH = PROJECT_ROOT / "schemas" / "discipline-registry.json"
 AUDIT_REGISTRY_PATH = PROJECT_ROOT / "schemas" / "audit-registry.json"
 
-VALID_AUDIT_STATUSES = {"passed", "skipped", "not_run"}
+VALID_AUDIT_STATUSES = {"passed", "skipped", "not_run", "partial"}
 
 # Recommended stable artifact identity fields (issue #376 范围 1).
 ARTIFACT_META_FIELDS = ("artifact_id", "contract_version", "created_at")
@@ -249,6 +251,9 @@ def validate_contract(
     pack_artifact_id: str | None = None,
     research_pack_provided: bool = False,
     strict: bool = False,
+    report_text: str | None = None,
+    evidence_base_dir: Path | None = None,
+    known_validator_bindings: Collection[str] | None = None,
 ) -> ContractValidationResult:
     """Validate a route activation contract against the manifest and registry.
 
@@ -259,7 +264,7 @@ def validate_contract(
     4. primary_route is not also in secondary_routes
     5. disciplines are valid discipline ids (not route ids)
     6. audits have valid status values
-    7. passed audits have non-empty evidence
+    7. passed audits have non-empty, typed evidence
     8. shared-workflow has minimum required audits
     9. audit ids belong to audit-registry.json (or are derived
        `<secondary>-secondary-hard-fail` entries)
@@ -289,6 +294,11 @@ def validate_contract(
             (without --research-pack there is no pack to trace to).
         strict: when True, missing artifact identity fields are errors
             instead of warnings.
+        report_text: visible report text used to resolve report-section/table
+            evidence. When omitted, typed references are syntax-checked only.
+        evidence_base_dir: root for checklist-item and audit-record paths.
+        known_validator_bindings: actual validator binding ids available to
+            the caller. Defaults to the canonical registry binding set.
     """
     errors: list[str] = []
     warnings: list[str] = []
@@ -506,7 +516,9 @@ def validate_contract(
             continue
 
         # 6a0. Unknown audit fields fail closed (issue #376 范围 3).
-        known_audit_fields = {"id", "status", "evidence"}
+        known_audit_fields = {
+            "id", "status", "evidence", "reason", "execution_source",
+        }
         for afield in audit:
             if afield not in known_audit_fields:
                 errors.append(
@@ -530,18 +542,44 @@ def validate_contract(
                 f"(schemas/audit-registry.json). Valid audit ids: "
                 f"{sorted(audit_ids)}"
             )
+        audit_info = audit_registry.get_audit(audit_id)
+        audit_execution_type = (
+            audit_info.execution_type
+            if audit_info is not None
+            else "manual" if is_derived_hard_fail else None
+        )
 
         status = audit.get("status", "")
         if not isinstance(status, str):
             status = ""
 
         evidence = audit.get("evidence", "")
-        if not isinstance(evidence, str):
+        if not isinstance(evidence, (str, dict)):
             errors.append(
-                f"Audit '{audit_id}' evidence must be a string, "
-                f"got {type(evidence).__name__}"
+                f"Audit '{audit_id}' evidence must be a typed reference "
+                f"string or object, got {type(evidence).__name__}"
             )
             evidence = ""
+
+        reason = audit.get("reason", "")
+        if reason is not None and not isinstance(reason, str):
+            errors.append(
+                f"Audit '{audit_id}' reason must be a string, "
+                f"got {type(reason).__name__}"
+            )
+            reason = ""
+
+        execution_source = audit.get("execution_source")
+        if execution_source is not None and execution_source not in {
+            "automated_validator",
+            "manual_checklist_attestation",
+            "process_node_evidence",
+            "legacy_self_attested",
+        }:
+            errors.append(
+                f"Audit '{audit_id}' has invalid execution_source "
+                f"'{execution_source}'"
+            )
 
         if status not in VALID_AUDIT_STATUSES:
             errors.append(
@@ -549,12 +587,48 @@ def validate_contract(
                 f"Must be one of: {sorted(VALID_AUDIT_STATUSES)}"
             )
 
-        # Passed audits must have non-empty evidence
-        if status == "passed" and (not evidence or not evidence.strip()):
+        # Passed audits must have a typed, locatable evidence reference. A
+        # free-form legacy string remains readable in compatibility mode, but
+        # strict contract validation must not turn it into a trusted Pass.
+        if status == "passed" and (
+            not evidence
+            or (isinstance(evidence, str) and not evidence.strip())
+        ):
             errors.append(
                 f"Audit '{audit_id}' is marked 'passed' but has empty evidence. "
                 f"Evidence must reference a concrete location in the artifact."
             )
+        elif status == "passed":
+            evidence_result = validate_evidence_reference(
+                evidence,
+                artifact_text=report_text if strict else None,
+                base_dir=evidence_base_dir,
+                strict=strict,
+                artifact_label="report",
+                known_validator_bindings=known_validator_bindings,
+                execution_type=audit_execution_type,
+            )
+            errors.extend(
+                f"Audit '{audit_id}' evidence: {error}"
+                for error in evidence_result.errors
+            )
+            if not evidence_result.legacy:
+                warnings.extend(
+                    f"Audit '{audit_id}' evidence: {warning}"
+                    for warning in evidence_result.warnings
+                )
+
+        if status in {"skipped", "not_run", "partial"} and (
+            not isinstance(reason, str) or not reason.strip()
+        ):
+            if strict:
+                errors.append(
+                    f"Audit '{audit_id}' status='{status}' requires a non-empty reason"
+                )
+            else:
+                warnings.append(
+                    f"Audit '{audit_id}' status='{status}' has no explicit reason"
+                )
 
     # 6b. Duplicate audit ID detection — duplicate ids are an error
     # (issue #376 验收标准 4).
@@ -822,6 +896,8 @@ def main(argv: list[str] | None = None) -> int:
         pack_artifact_id=pack_artifact_id,
         research_pack_provided=args.research_pack is not None,
         strict=args.strict,
+        report_text=_strip_fences(text) if args.strict else None,
+        evidence_base_dir=PROJECT_ROOT,
     )
     print(result.format())
 

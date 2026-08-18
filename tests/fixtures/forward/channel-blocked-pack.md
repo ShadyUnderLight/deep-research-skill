@@ -88,10 +88,10 @@ md_ready
 
 ## Required audits
 
-- market-outlook-audit — passed: scenario structure recorded
-- forward-looking-claims — passed: forecast labels preserved
-- source-traceability — passed: available claims map to the register
-- final-audit — passed: channel limitation is visible
+- market-outlook-audit — passed — pack-section:Artifact contract
+- forward-looking-claims — passed — pack-section:Artifact contract
+- source-traceability — passed — pack-section:Artifact contract
+- final-audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 

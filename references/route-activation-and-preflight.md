@@ -100,7 +100,7 @@ In the execution contract (Step 4), add the following requirement: the final del
 This block makes the route selection and audit run status visible to anyone reading the final report, without requiring access to the process log.
 
 - list all required audits for the declared route(s) from `ROUTING-MATRIX.md` `### Audit` sections, along with `route-activation-audit` status and (if a secondary route is declared) the secondary route's hard-fail verification status
-- for each audit, record its status (**已通过** / **已跳过（附理由）** / **未运行（附理由）**) and a concrete evidence citation in the standardized 「证据」column (chapter reference, checklist item number, or Source Register entry — see `references/report-template.md` §证据列要求)
+- for each audit, record its status (**已通过** / **已跳过（附理由）** / **未运行（附理由）**) and a typed evidence reference in the standardized 「证据」column (`report-section:<heading>`, `report-table:<heading>`, `checklist-item:<path>#<id>`, or `audit-record:<path>#<id>@<ISO-8601>` — see `references/report-template.md` §证据列要求)
 - if no specialized route applies (shared-workflow path), list at least `workflow-spine-audit.md` and `final-audit.md` with their run statuses
 
 Do not treat this block as optional or as a process-log-only concern. If the reader cannot see which audits ran, the audit framework has not been delivered.

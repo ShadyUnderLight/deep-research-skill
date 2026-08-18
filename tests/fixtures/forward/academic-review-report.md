@@ -6,9 +6,9 @@
 
 | Audit | Status | 证据 | 数字角色 |
 |---|---|---|---|
-| academic-analysis-audit | ✅ Passed | §Search strategy | process |
-| source-traceability | ✅ Passed | §Source Register | process |
-| final-audit | ✅ Passed | §Executive summary | process |
+| academic-analysis-audit | ✅ Passed | report-section:Search strategy | process |
+| source-traceability | ✅ Passed | report-section:Source Register | process |
+| final-audit | ✅ Passed | report-section:Executive summary | process |
 
 ## Executive summary
 
@@ -59,9 +59,9 @@ recent but lower-confidence signal because its peer-review status is different
   "secondary_routes": [],
   "disciplines": ["source-traceability", "current-state", "forward-looking", "scope-completeness"],
   "audits": [
-    {"id": "academic-analysis-audit", "status": "passed", "evidence": "§Search strategy"},
-    {"id": "source-traceability", "status": "passed", "evidence": "§Source Register"},
-    {"id": "final-audit", "status": "passed", "evidence": "§Executive summary"}
+    {"id": "academic-analysis-audit", "status": "passed", "evidence": "report-section:Search strategy"},
+    {"id": "source-traceability", "status": "passed", "evidence": "report-section:Source Register"},
+    {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"}
   ]
 }
 ```

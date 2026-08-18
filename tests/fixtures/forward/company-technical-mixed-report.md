@@ -8,10 +8,10 @@
 
 | Audit | Status | 证据 | 数字角色 |
 |---|---|---|---|
-| technical-analysis-audit | ✅ Passed | §Technical judgment | process |
-| source-traceability | ✅ Passed | §Source Register | process |
-| final-audit | ✅ Passed | §Executive summary | process |
-| listed-company-secondary-hard-fail | ✅ Passed | §Company boundary | process |
+| technical-analysis-audit | ✅ Passed | report-section:Technical judgment | process |
+| source-traceability | ✅ Passed | report-section:Source Register | process |
+| final-audit | ✅ Passed | report-section:Executive summary | process |
+| listed-company-secondary-hard-fail | ✅ Passed | report-section:Company boundary | process |
 
 ## Executive summary
 
@@ -61,10 +61,10 @@ separate evidence layer [S02].
   "secondary_routes": ["listed-company"],
   "disciplines": ["current-state", "source-traceability", "forward-looking", "quantitative-role"],
   "audits": [
-    {"id": "technical-analysis-audit", "status": "passed", "evidence": "§Technical judgment"},
-    {"id": "source-traceability", "status": "passed", "evidence": "§Source Register"},
-    {"id": "final-audit", "status": "passed", "evidence": "§Executive summary"},
-    {"id": "listed-company-secondary-hard-fail", "status": "passed", "evidence": "§Company boundary"}
+    {"id": "technical-analysis-audit", "status": "passed", "evidence": "report-section:Technical judgment"},
+    {"id": "source-traceability", "status": "passed", "evidence": "report-section:Source Register"},
+    {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"},
+    {"id": "listed-company-secondary-hard-fail", "status": "passed", "evidence": "report-section:Company boundary"}
   ]
 }
 ```

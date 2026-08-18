@@ -77,9 +77,9 @@ md_ready
 
 ## Required audits
 
-- option-selection-final-audit — passed: decision scope and reversal condition checked
-- source-traceability — passed: claims map to the source register
-- final-audit — passed: conclusion and limitations visible
+- option-selection-final-audit — passed — pack-section:Artifact contract
+- source-traceability — passed — pack-section:Artifact contract
+- final-audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 

@@ -44,7 +44,7 @@ def _required_audit_entries(
     )
     extra_ids = {e.get("id") for e in (extra or [])}
     entries = [
-        {"id": aid, "status": "passed", "evidence": "§2"}
+        {"id": aid, "status": "passed", "evidence": "report-section:Executive summary"}
         for aid in required
         if aid not in extra_ids
     ]
@@ -66,10 +66,10 @@ SAMPLE_CONTRACT_MD = """# Test Report
   "secondary_routes": ["regulatory-analysis"],
   "disciplines": ["current-state", "source-traceability"],
   "audits": [
-    {"id": "listed-company-report", "status": "passed", "evidence": "§3"},
-    {"id": "source-traceability", "status": "passed", "evidence": "[S01]-[S12]"},
-    {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "§6 verified"},
-    {"id": "final-audit", "status": "passed", "evidence": "§2-§8"}
+    {"id": "listed-company-report", "status": "passed", "evidence": "report-section:Research anchor"},
+    {"id": "source-traceability", "status": "passed", "evidence": "report-section:Sources"},
+    {"id": "regulatory-analysis-secondary-hard-fail", "status": "passed", "evidence": "report-section:Regulatory impact"},
+    {"id": "final-audit", "status": "passed", "evidence": "report-section:Bottom line"}
   ]
 }
 ```

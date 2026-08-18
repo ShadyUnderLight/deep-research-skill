@@ -57,8 +57,8 @@ fixture-shared-workflow-pos
 
 ## Required audits
 
-- workflow-spine-audit — passed: executed by author
-- final-audit — passed: all gates verified
+- workflow-spine-audit — passed — pack-section:Artifact contract
+- final-audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 

@@ -117,7 +117,19 @@ State what the final report must visibly contain.
 ### Required audits
 List the audits that should run before delivery. For each audit, record
 its run status — one of: passed, skipped (with reason), not-run (with
-reason), or partial (with reason for incomplete execution).
+reason), or partial (with reason for incomplete execution). A passed audit
+must carry a typed evidence reference, for example
+`pack-section:Artifact contract` or
+`checklist-item:checklists/final-audit.md#FA-001`; free-form text is legacy
+self-attestation and cannot pass strict validation. Checklist IDs are stable
+markers such as `<!-- audit-item: FA-001 -->` immediately before the item.
+
+The compact Markdown form is:
+
+```md
+- final-audit — passed — pack-section:Artifact contract
+- route-activation-audit — not-run: no route activation record was created
+```
 
 ### Final audit status
 Mark Pass, Partial, or Fail with a short reason. The status must be
@@ -127,6 +139,13 @@ documented reason); Partial is appropriate when some audits are not-run
 or partial with reason, or when validator has warnings but no errors;
 Fail is required when any audit is not-run without reason or when strict
 validation fails.
+
+The same evidence/provenance semantics are used by the report status block
+and the JSON verdict. Automated results are labelled
+`automated_validator`; manual checklist results are labelled
+`manual_checklist_attestation`; process-node results are labelled
+`process_node_evidence`; old free-form entries are labelled
+`legacy_self_attested` in compatibility mode.
 
 ### Research status
 

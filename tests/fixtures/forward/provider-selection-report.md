@@ -6,9 +6,9 @@
 
 | Audit | Status | 证据 | 数字角色 |
 |---|---|---|---|
-| option-selection-final-audit | ✅ Passed | §Decision scope | process |
-| source-traceability | ✅ Passed | §Source Register | process |
-| final-audit | ✅ Passed | §Executive summary | process |
+| option-selection-final-audit | ✅ Passed | report-section:Decision scope | process |
+| source-traceability | ✅ Passed | report-section:Source Register | process |
+| final-audit | ✅ Passed | report-section:Executive summary | process |
 
 ## Executive summary
 
@@ -60,9 +60,9 @@ not independent confirmation [S01] [S02].
   "secondary_routes": [],
   "disciplines": ["current-state", "source-traceability", "decision-utility", "quantitative-role", "data-conflict"],
   "audits": [
-    {"id": "option-selection-final-audit", "status": "passed", "evidence": "§Decision scope"},
-    {"id": "source-traceability", "status": "passed", "evidence": "§Source Register"},
-    {"id": "final-audit", "status": "passed", "evidence": "§Executive summary"}
+    {"id": "option-selection-final-audit", "status": "passed", "evidence": "report-section:Decision scope"},
+    {"id": "source-traceability", "status": "passed", "evidence": "report-section:Source Register"},
+    {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"}
   ]
 }
 ```

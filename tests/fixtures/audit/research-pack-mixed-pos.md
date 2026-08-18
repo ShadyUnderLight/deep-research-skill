@@ -57,10 +57,10 @@ fixture-market-outlook-mixed-pos
 
 ## Required audits
 
-- market-outlook-audit — passed: executed by author
-- forward-looking-claims — passed: no mislabeled claims
-- source-traceability — passed: register complete
-- final-audit — passed: all gates verified
+- market-outlook-audit — passed — pack-section:Artifact contract
+- forward-looking-claims — passed — pack-section:Artifact contract
+- source-traceability — passed — pack-section:Artifact contract
+- final-audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 

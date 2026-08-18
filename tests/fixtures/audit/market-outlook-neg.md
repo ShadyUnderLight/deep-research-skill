@@ -58,5 +58,5 @@ Each dimension conclusion is backed by [S01] and [S02].
 | S03 | Example C | secondary | 2026-03-01 | https://example.com/c | high | §4 |
 
 ```contract
-{"primary_route": "market-outlook", "secondary_routes": [], "disciplines": [], "audits": [{"id": "market-outlook-audit", "status": "passed", "evidence": "§3"}, {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"}, {"id": "source-traceability", "status": "passed", "evidence": "§5"}, {"id": "final-audit", "status": "passed", "evidence": "§2"}], "artifact_id": "fixture-market-outlook-neg", "contract_version": "1.0.0", "created_at": "2026-08-13"}
+{"primary_route": "market-outlook", "secondary_routes": [], "disciplines": [], "audits": [{"id": "market-outlook-audit", "status": "passed", "evidence": "report-section:Monitoring signals"}, {"id": "forward-looking-claims", "status": "passed", "evidence": "report-section:Monitoring signals"}, {"id": "source-traceability", "status": "passed", "evidence": "report-section:Findings"}, {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"}], "artifact_id": "fixture-market-outlook-neg", "contract_version": "1.0.0", "created_at": "2026-08-13"}
 ```

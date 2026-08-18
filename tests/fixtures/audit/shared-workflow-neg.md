@@ -43,5 +43,5 @@ Each dimension conclusion is backed by [S01] and [S02].
 | S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
 
 ```contract
-{"primary_route": "shared-workflow", "secondary_routes": [], "disciplines": [], "audits": [{"id": "workflow-spine-audit", "status": "passed", "evidence": "§3"}, {"id": "final-audit", "status": "passed", "evidence": "§2"}], "artifact_id": "fixture-shared-workflow-neg", "contract_version": "1.0.0", "created_at": "2026-08-13"}
+{"primary_route": "shared-workflow", "secondary_routes": [], "disciplines": [], "audits": [{"id": "workflow-spine-audit", "status": "passed", "evidence": "report-section:Findings"}, {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"}], "artifact_id": "fixture-shared-workflow-neg", "contract_version": "1.0.0", "created_at": "2026-08-13"}
 ```
