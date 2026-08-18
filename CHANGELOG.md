@@ -11,6 +11,13 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `scripts/delivery/`, `scripts/check_pdf_regression.py`, and delivery fixtures (#377): split the Markdown/PDF delivery stages behind the existing CLI facade, keep intermediate HTML temporary by default, return structured `md_ready`/`pdf_ready`/`pdf_failed` results, and add PDF structure/Playwright visual smoke artifacts for CJK, mixed-language, long-table, code-heavy, multi-page, and special-path cases.
+- `scripts/md_to_pdf.py` (#377): add explicit `--keep-html`, `--write-status`, and `--json` options while preserving remote-resource blocking by default.
+
+### Changed
+- `scripts/audit_report.py` (#377): optionally consume `md_to_pdf.py --json` through `--delivery-result` without merging PDF delivery failure into content-audit status.
+
+### Added
 - `scripts/generate_route_cards.py` (#380): generated route cards — one short card per canonical route at `references/routes/<id>.md` (trigger, do-not-use, often-confused, primary reads, required disciplines, required audits, artifact contract, failure signs), rendered from `schemas/route-manifest.json`; `--check` fails (exit 2) when committed cards drift from the manifest; deterministic output regardless of generation order.
 - `references/routes/` (#380): 12 generated route cards (11 specialized + shared-workflow), each linking to its full route contract (`ROUTING-MATRIX.md` for specialized routes, `SKILL.md` for shared-workflow), sibling cards, primary reads and checklist files.
 - `tests/test_route_cards.py` (#380): 19 contract tests — generator determinism/idempotence, one card per manifest route with no orphans, generated-view declarations, route-specific template reads, card sections mirroring manifest fields (trigger / do-not-use / artifact contract / audits / disciplines / failure signs / hard-fail source), sibling-card links, file and fragment link validity, route-index row-to-card mapping, and drift detection (missing / stale / mis-mapped cards block `validate_route_manifest.py` with exit 2).

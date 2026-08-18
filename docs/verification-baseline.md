@@ -12,6 +12,9 @@ mean the same thing.
   validator regression set (also collected by pytest; both styles coexist).
 - `python3 scripts/test_cjk_pdf_pipeline.py` — CLI runner for the CJK PDF
   pipeline checks (needs Chromium; runs in the CI `smoke` job).
+- `python3 scripts/check_pdf_regression.py` — fixture-based PDF page/text/table
+  and Playwright visual smoke checks (needs Chromium; emits explainable
+  artifacts rather than pixel-equality snapshots).
 - `bash scripts/validate-docs-structure.sh`
 - `python3 scripts/validate_route_manifest.py`
 - `python3 scripts/validate_eval_registry.py`

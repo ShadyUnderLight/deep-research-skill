@@ -8,9 +8,16 @@ It is meant for operators and maintainers who need to understand why a correctly
 
 The current delivery pipeline has three stages:
 
-1. **Markdown-to-HTML** — `scripts/markdown_to_html.py` converts the research markdown into styled HTML, with safety sanitization (`nh3`), table repair, CJK spacing normalization, and metadata escaping.
+1. **Markdown-to-HTML** — `scripts/markdown_to_html.py` is the compatibility CLI facade over independently testable `scripts/delivery/` modules for normalization, table repair/layout, metadata, sanitization, and HTML rendering.
 2. **HTML-to-PDF** — `scripts/render_pdf.py` uses Playwright (Chromium) to render the HTML into a PDF with print-oriented CSS. Remote resources are blocked by default.
-3. **One-shot pipeline** — `scripts/md_to_pdf.py` chains both stages: markdown → HTML → PDF, forwarding print controls through both stages.
+3. **One-shot pipeline** — `scripts/md_to_pdf.py` calls the structured delivery pipeline: Markdown → temporary HTML → PDF. Intermediate HTML is removed by default; use `--keep-html` to retain it next to the PDF.
+
+The pipeline returns a machine-readable result with `markdown_status`,
+`delivery_status`, artifact paths, hashes, size, and errors. The canonical
+delivery values are `md_ready`, `pdf_ready`, `pdf_failed`, and `not_run`.
+Use `--json` to emit this result. Use `--write-status PATH` only when an
+explicit Research Pack/report writeback is intended; the input Markdown is
+never mutated implicitly.
 
 ## Pre-delivery checks
 
@@ -48,9 +55,10 @@ Mitigation: run the final-audit delivery-cleanliness section before the pipeline
 
 Without running the full pipeline:
 
-1. Render HTML only: `python3 scripts/markdown_to_html.py input.md > output.html`
+1. Render HTML only: `python3 scripts/markdown_to_html.py input.md output.html`
 2. Check the HTML for structural issues: open it in a browser, verify headings, tables, and spacing
-3. If PDF quality is critical, render a PDF smoke test: `python3 scripts/md_to_pdf.py input.md test.pdf` and review the output
+3. If PDF quality is critical, render a PDF smoke test: `python3 scripts/md_to_pdf.py input.md test.pdf --json`
+4. Run the deterministic structure/visual smoke set: `python3 scripts/check_pdf_regression.py --artifact-dir /tmp/deep-research-pdf-regression`
 
 The pipeline should not be treated as a black box. If the markdown is clean but the PDF is broken, the bug is likely in the rendering layer and should be fixed there rather than by restructuring the research content.
 
@@ -60,6 +68,8 @@ The pipeline should not be treated as a black box. If the markdown is clean but 
 - `scripts/markdown_to_html.py` — the conversion entry point; supports `--title` for the document title; cover metadata is inferred from frontmatter-like `title` / `subtitle` / `date` / `type` fields in the markdown input
 - `scripts/render_pdf.py` — the PDF renderer; supports `--landscape`, `--media`, `--margin-top`, `--margin-right`, `--margin-bottom`, `--margin-left`, and `--title` for print control
 - `scripts/md_to_pdf.py` — the one-shot pipeline; forwards all print controls
+- `scripts/delivery/` — modular delivery stages and the `DeliveryResult`/status contract
+- `scripts/check_pdf_regression.py` — offline fixture-based PDF structure and Playwright visual smoke checks; artifacts are explainable HTML/PDF/screenshots, not pixel-equality baselines
 - `references/failure-taxonomy.md` — documents recurring delivery failure families
 - `references/markdown-delivery-contract.md` — defines the reader-facing
   Markdown shape and its lightweight presentation lint

@@ -870,6 +870,7 @@ class AuditVerdict:
     audit_results: list[AuditResult] = field(default_factory=list)
     input_sha256: str | None = None
     validator_version: str | None = None
+    delivery: dict[str, object] | None = None
 
     @property
     def exit_code(self) -> int:
@@ -889,6 +890,95 @@ def _sha256(path: Path) -> str | None:
         return hashlib.sha256(path.read_bytes()).hexdigest()
     except OSError:
         return None
+
+
+def _load_delivery_result(
+    path: Path | None,
+    audited_path: Path,
+) -> tuple[dict[str, object] | None, list[str]]:
+    """Load and verify an optional result emitted by ``md_to_pdf --json``.
+
+    Status strings alone are not provenance. The result must bind to the
+    exact audited Markdown input, and ``pdf_ready`` must point to a real,
+    non-empty PDF whose size and hash match the declared metadata.
+    """
+
+    if path is None:
+        return None, []
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        return None, [f"delivery result cannot be read as JSON: {exc}"]
+    if not isinstance(payload, dict):
+        return None, ["delivery result must be a JSON object"]
+
+    errors: list[str] = []
+    expected_input = audited_path.resolve()
+    input_value = payload.get("input_path")
+    if not isinstance(input_value, str) or not input_value:
+        errors.append("delivery result input_path must be a non-empty string")
+    elif not Path(input_value).is_absolute() or Path(input_value).resolve() != expected_input:
+        errors.append(
+            f"delivery result input_path does not match audited report: {input_value!r}"
+        )
+
+    input_hash = payload.get("input_sha256")
+    actual_input_hash = _sha256(expected_input)
+    if not isinstance(input_hash, str) or not input_hash:
+        errors.append("delivery result input_sha256 is required")
+    elif actual_input_hash is None or input_hash != actual_input_hash:
+        errors.append("delivery result input_sha256 does not match audited report")
+
+    delivery_status = payload.get("delivery_status")
+    markdown_status = payload.get("markdown_status")
+    valid_delivery = {"md_ready", "pdf_ready", "pdf_failed", "not_run"}
+    if delivery_status not in valid_delivery:
+        errors.append(f"invalid delivery_status in delivery result: {delivery_status!r}")
+    if markdown_status not in {"md_ready", "not_run"}:
+        errors.append(f"invalid markdown_status in delivery result: {markdown_status!r}")
+    if delivery_status in {"md_ready", "pdf_ready", "pdf_failed"} and markdown_status != "md_ready":
+        errors.append(f"{delivery_status} requires markdown_status=md_ready")
+
+    pdf_value = payload.get("pdf_path")
+    pdf_path: Path | None = None
+    if pdf_value is not None:
+        if not isinstance(pdf_value, str) or not pdf_value:
+            errors.append("delivery result pdf_path must be a non-empty string when present")
+        elif not Path(pdf_value).is_absolute():
+            errors.append("delivery result pdf_path must be absolute")
+        else:
+            pdf_path = Path(pdf_value).resolve()
+
+    if delivery_status == "pdf_ready":
+        if pdf_path is None or not pdf_path.is_file():
+            errors.append("pdf_ready requires an existing PDF artifact")
+        else:
+            try:
+                actual_size = pdf_path.stat().st_size
+                with pdf_path.open("rb") as stream:
+                    header = stream.read(4)
+            except OSError as exc:
+                errors.append(f"cannot inspect pdf_ready artifact: {exc}")
+            else:
+                declared_size = payload.get("pdf_size_bytes")
+                if not isinstance(declared_size, int) or isinstance(declared_size, bool):
+                    errors.append("pdf_ready requires integer pdf_size_bytes")
+                elif declared_size != actual_size or actual_size <= 0:
+                    errors.append("pdf_size_bytes does not match the PDF artifact")
+                if header != b"%PDF":
+                    errors.append("pdf_ready artifact does not have a PDF header")
+                declared_hash = payload.get("pdf_sha256")
+                actual_hash = _sha256(pdf_path)
+                if not isinstance(declared_hash, str) or not declared_hash:
+                    errors.append("pdf_ready requires pdf_sha256")
+                elif actual_hash is None or declared_hash != actual_hash:
+                    errors.append("pdf_sha256 does not match the PDF artifact")
+    elif pdf_path is not None and pdf_path.is_file():
+        declared_hash = payload.get("pdf_sha256")
+        if declared_hash is not None and declared_hash != _sha256(pdf_path):
+            errors.append("pdf_sha256 does not match the optional PDF artifact")
+
+    return (payload, []) if not errors else (None, errors)
 
 
 def _parse_audit_block_statuses(path: Path) -> tuple[dict[str, dict[str, str]], list[str]]:
@@ -1217,6 +1307,7 @@ def _compute_verdict(
     audit_results: list[AuditResult] | None = None,
     blocking_extra: list[str] | None = None,
     warnings_extra: list[str] | None = None,
+    delivery: dict[str, object] | None = None,
 ) -> AuditVerdict:
     """Aggregate check results into a single consolidated verdict."""
     blocking: list[str] = []
@@ -1255,6 +1346,7 @@ def _compute_verdict(
         warnings=warnings,
         recommended_audit_status=status,
         audit_results=list(audit_results or []),
+        delivery=delivery,
     )
 
 
@@ -1268,6 +1360,11 @@ def format_verdict(verdict: AuditVerdict) -> str:
     route_str = verdict.route or "(not detected)"
     lines.append(f"Route: {route_str}")
     lines.append(f"Overall: {verdict.overall}")
+    if verdict.delivery:
+        lines.append(
+            f"Delivery: {verdict.delivery.get('delivery_status')} "
+            f"(markdown={verdict.delivery.get('markdown_status')})"
+        )
     lines.append("")
 
     if verdict.blocking:
@@ -1316,6 +1413,7 @@ def _verdict_to_json(verdict: AuditVerdict) -> str:
         "warnings": verdict.warnings,
         "input_sha256": verdict.input_sha256,
         "validator_version": verdict.validator_version,
+        "delivery": verdict.delivery,
         "audits": [
             {
                 "audit_id": a.audit_id,
@@ -1343,6 +1441,7 @@ def _audit_report_impl(
     allow_route_fallback: bool = False,
     require_contract: bool = False,
     research_pack: Path | None = None,
+    delivery_result: Path | None = None,
 ) -> AuditVerdict:
     """Run route-aware audit on a report and return the consolidated verdict.
 
@@ -1375,11 +1474,13 @@ def _audit_report_impl(
         audit status.  Provenance (input sha256 / validator version) is
         filled by the public audit_report() wrapper on every path.
     """
+    delivery, delivery_errors = _load_delivery_result(delivery_result, path)
     if not path.is_file():
         return AuditVerdict(
             route=route,
             overall="fail",
-            blocking=[f"{path}: not a regular file"],
+            blocking=[f"{path}: not a regular file", *delivery_errors],
+            delivery=delivery,
         )
 
     resolved_route: str | None = route
@@ -1395,11 +1496,12 @@ def _audit_report_impl(
             return AuditVerdict(
                 route=None,
                 overall="fail",
-                blocking=[
+                blocking=[*delivery_errors,
                     "No route declaration found in report and --route was "
                     "not given — strict mode requires an explicit route "
                     "(issue #378)"
                 ],
+                delivery=delivery,
             )
         else:
             resolved_route = _DEFAULT_ROUTE
@@ -1423,10 +1525,11 @@ def _audit_report_impl(
             return AuditVerdict(
                 route=resolved_route,
                 overall="fail",
-                blocking=[
+                blocking=[*delivery_errors,
                     f"Unknown route '{resolved_route}'. "
                     f"Supported routes: {supported} — {exc}"
                 ],
+                delivery=delivery,
             )
 
     # Look up validators for the resolved route (fail closed on drift)
@@ -1436,7 +1539,8 @@ def _audit_report_impl(
         return AuditVerdict(
             route=resolved_route,
             overall="fail",
-            blocking=[str(exc)],
+            blocking=[*delivery_errors, str(exc)],
+            delivery=delivery,
         )
 
     # Strict mode implies --require-contract (issue #378): a strict task
@@ -1463,8 +1567,9 @@ def _audit_report_impl(
         resolved_route,
         results,
         audit_results=audit_results,
-        blocking_extra=audit_blocking,
+        blocking_extra=[*delivery_errors, *audit_blocking],
         warnings_extra=audit_warnings,
+        delivery=delivery,
     )
     return verdict
 
@@ -1494,6 +1599,7 @@ def audit_report(
     allow_route_fallback: bool = False,
     require_contract: bool = False,
     research_pack: Path | None = None,
+    delivery_result: Path | None = None,
 ) -> AuditVerdict:
     """Public entry point: run the audit and attach provenance to the verdict.
 
@@ -1506,6 +1612,7 @@ def audit_report(
         allow_route_fallback=allow_route_fallback,
         require_contract=require_contract,
         research_pack=research_pack,
+        delivery_result=delivery_result,
     )
     return _finalize_verdict(verdict, path)
 
@@ -1563,6 +1670,15 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--delivery-result",
+        type=str,
+        default=None,
+        help=(
+            "Optional JSON result emitted by md_to_pdf.py --json. "
+            "The delivery layer remains separate from content-audit status."
+        ),
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         default=False,
@@ -1582,6 +1698,7 @@ def main(argv: list[str] | None = None) -> int:
         allow_route_fallback=args.allow_route_fallback,
         require_contract=args.require_contract,
         research_pack=Path(args.research_pack) if args.research_pack else None,
+        delivery_result=Path(args.delivery_result) if args.delivery_result else None,
     )
 
     if args.json:
