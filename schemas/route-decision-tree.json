@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "route_manifest_version": 2,
+  "description": "Canonical structured route-activation decision tree. Action/object labels are the stable input vocabulary; object candidates and conflict pairs are consumed by scripts/route_activation.py.",
+  "last_reviewed": "2026-08-18",
+  "actions": [
+    {"id": "select-rank-predict", "label": "Select / rank / predict"},
+    {"id": "enter-phase-sequence", "label": "Enter / phase / sequence"},
+    {"id": "judge-direction-scenario", "label": "Judge direction / scenario"},
+    {"id": "judge-regulation-policy-impact", "label": "Judge regulation / policy impact"},
+    {"id": "judge-listed-company-value", "label": "Judge listed-company value"},
+    {"id": "judge-private-company-quality", "label": "Judge private-company quality"},
+    {"id": "judge-technical-mechanism-feasibility", "label": "Judge technical mechanism / feasibility"},
+    {"id": "judge-academic-evidence-research", "label": "Judge academic evidence / research"},
+    {"id": "judge-positioning-tier", "label": "Judge positioning / tier"},
+    {"id": "shared-workflow", "label": "shared-workflow"}
+  ],
+  "objects": [
+    {"id": "defined-options-teams-ranking", "label": "Defined options / teams / ranking", "candidate_routes": ["constrained-choice"]},
+    {"id": "providers-vendors-apis-models", "label": "Providers / vendors / APIs / models", "candidate_routes": ["provider-selection"]},
+    {"id": "devices-hardware-build", "label": "Devices / hardware / build", "candidate_routes": ["equipment-selection"]},
+    {"id": "market-category-trajectory", "label": "Market / category trajectory", "candidate_routes": ["market-outlook"]},
+    {"id": "regulation-rules-policy", "label": "Regulation / rules / policy", "candidate_routes": ["regulatory-analysis"]},
+    {"id": "listed-public-company", "label": "Listed / public company", "candidate_routes": ["listed-company"]},
+    {"id": "private-startup-company", "label": "Private / startup company", "candidate_routes": ["startup-evaluation"]},
+    {"id": "architecture-mechanism-patent", "label": "Architecture / mechanism / patent", "candidate_routes": ["technical-deep-dive"]},
+    {"id": "academic-literature-research-evidence", "label": "Academic literature / research evidence", "candidate_routes": ["academic-review"]},
+    {"id": "positioning-tier-label", "label": "Positioning / tier label", "candidate_routes": ["competitive-positioning"]},
+    {"id": "entry-decision-sequencing-gates", "label": "Entry decision / sequencing / gates", "candidate_routes": ["market-entry"]},
+    {"id": "shared-workflow", "label": "shared-workflow", "candidate_routes": ["shared-workflow"]}
+  ],
+  "required_conflict_pairs": [
+    ["select-rank-predict", "market-category-trajectory"],
+    ["enter-phase-sequence", "defined-options-teams-ranking"],
+    ["judge-listed-company-value", "architecture-mechanism-patent"],
+    ["judge-academic-evidence-research", "architecture-mechanism-patent"],
+    ["judge-regulation-policy-impact", "market-category-trajectory"],
+    ["judge-technical-mechanism-feasibility", "listed-public-company"],
+    ["judge-technical-mechanism-feasibility", "academic-literature-research-evidence"]
+  ],
+  "conflicts": [
+    {
+      "action": "select-rank-predict",
+      "object": "market-category-trajectory",
+      "primary_route": "constrained-choice",
+      "derived_secondary_routes": []
+    },
+    {
+      "action": "enter-phase-sequence",
+      "object": "defined-options-teams-ranking",
+      "primary_route": "market-entry",
+      "derived_secondary_routes": []
+    },
+    {
+      "action": "judge-listed-company-value",
+      "object": "architecture-mechanism-patent",
+      "primary_route": "listed-company",
+      "derived_secondary_routes": ["technical-deep-dive"]
+    },
+    {
+      "action": "judge-academic-evidence-research",
+      "object": "architecture-mechanism-patent",
+      "primary_route": "academic-review",
+      "derived_secondary_routes": []
+    },
+    {
+      "action": "judge-regulation-policy-impact",
+      "object": "market-category-trajectory",
+      "primary_route": "regulatory-analysis",
+      "derived_secondary_routes": ["market-outlook"]
+    },
+    {
+      "action": "judge-technical-mechanism-feasibility",
+      "object": "listed-public-company",
+      "primary_route": "technical-deep-dive",
+      "derived_secondary_routes": []
+    },
+    {
+      "action": "judge-technical-mechanism-feasibility",
+      "object": "academic-literature-research-evidence",
+      "primary_route": "technical-deep-dive",
+      "derived_secondary_routes": []
+    }
+  ]
+}

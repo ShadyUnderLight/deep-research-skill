@@ -60,6 +60,13 @@ def test_contract_schema_has_version():
     assert "version" in data
 
 
+def test_contract_schema_defines_decision_tree_version():
+    data = load_contract_schema()
+    prop = data.get("properties", {}).get("decision_tree_version", {})
+    assert prop.get("type") == "integer"
+    assert prop.get("minimum") == 1
+
+
 def test_contract_schema_has_type_object():
     data = load_contract_schema()
     assert "type" in data
@@ -76,6 +83,18 @@ def test_contract_schema_defines_secondary_routes():
     data = load_contract_schema()
     props = data.get("properties", {})
     assert "secondary_routes" in props, "secondary_routes property must be defined"
+
+
+def test_contract_schema_defines_manual_secondary_route_contracts():
+    data = load_contract_schema()
+    props = data.get("properties", {})
+    contract_prop = props.get("secondary_route_contracts", {})
+    assert contract_prop.get("type") == "object"
+    item_prop = contract_prop.get("additionalProperties", {})
+    assert set(item_prop.get("required", [])) == {
+        "boundary",
+        "hard_fail_verification",
+    }
 
 
 def test_contract_schema_defines_disciplines():

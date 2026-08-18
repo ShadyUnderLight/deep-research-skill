@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
 
 import argparse
-import json
 import re
 from collections.abc import Collection
 from pathlib import Path
 
 from audit_evidence import validate_evidence_reference, is_typed_reference
-from registry_loader import load_audit_registry, load_route_registry
+from registry_loader import (
+    RegistryError,
+    load_audit_registry,
+    load_decision_tree_registry,
+    load_route_registry,
+)
 
 REQUIRED_HEADINGS = [
     "## Objective",
@@ -31,6 +35,7 @@ DECISION_TREE_HEADINGS = [
     "## Action burden",
     "## Weight-bearing object",
     "## Decision tree path",
+    "## Decision tree version",
     "## Tie-break rationale",
 ]
 
@@ -79,6 +84,35 @@ def _heading_matches(found: set[str], heading: str) -> bool:
     return any(h.startswith(prefix) for h in found)
 
 
+def _specialized_route_declared(cleaned: str) -> bool:
+    """Return whether the primary route is a canonical specialized route."""
+    primary_section = _section_body(cleaned, "Primary route")
+    if not primary_section:
+        return False
+
+    route_registry = load_route_registry()
+    search_ids: set[str] = set()
+    for route in route_registry.routes:
+        if route.category != "specialized":
+            continue
+        search_ids.add(route.id.lower())
+        search_ids.update(alias.lower() for alias in route.aliases)
+
+    def _strip_md(line: str) -> str:
+        s = line.strip()
+        s = re.sub(r"^[-*>]+\s+", "", s)
+        s = re.sub(r"^\d+[.)]\s+", "", s)
+        return re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", s)
+
+    primary_lines = [
+        _strip_md(line)
+        for line in primary_section.split("\n")
+        if _strip_md(line) and not _strip_md(line).lower().startswith("closest")
+    ]
+    primary_declared = "\n".join(primary_lines[:3]).lower()
+    return any(route_id in primary_declared for route_id in search_ids)
+
+
 def _check_decision_tree_headings(cleaned: str) -> list[str]:
     """Check for decision tree fields if a specialized route was selected.
 
@@ -94,48 +128,14 @@ def _check_decision_tree_headings(cleaned: str) -> list[str]:
         if full == "## Tie-break rationale" or full == "## Tie-break rationale (if applicable)":
             found.add("## Tie-break rationale")
 
-    # Only warn if a specialized route was declared
-    primary_section = _section_body(cleaned, "Primary route")
-    if not primary_section:
-        return []  # Primary route is already checked as required
-
-    # Check if a specialized route was selected (not shared-workflow).
-    # Canonicalize via route-manifest.json aliases so display-name forms
-    # like "Constrained Choice / Shortlist" are recognized.
-    # Parse only the primary route line — exclude closest-alternative prose.
-    manifest_path = Path(__file__).resolve().parent.parent / "schemas" / "route-manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    search_ids: set[str] = set()
-    for route in manifest["routes"]:
-        if route["category"] != "specialized":
-            continue
-        search_ids.add(route["id"].lower())
-        for alias in route.get("aliases", []):
-            search_ids.add(alias.lower())
-
-    # Extract the primary route declaration from the first content lines
-    # (before any prose about closest alternative). Strip Markdown formatting
-    # so bold/italic/list markers don't hide "Closest alternative" prose.
-    def _strip_md(line: str) -> str:
-        s = line.strip()
-        # Remove ordered/unordered list markers: "- ", "* ", "> ", "1. ", "1) "
-        s = re.sub(r"^[-*>]+\s+", "", s)
-        s = re.sub(r"^\d+[.)]\s+", "", s)
-        # Remove bold/italic markers: **text**, *text*
-        s = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", s)
-        return s
-
-    primary_lines = [
-        _strip_md(l) for l in primary_section.split("\n")
-        if _strip_md(l) and not _strip_md(l).lower().startswith("closest")
-    ]
-    primary_declared = "\n".join(primary_lines[:3]).lower()  # first 3 content lines
-    has_specialized = any(rid in primary_declared for rid in search_ids)
-    if not has_specialized:
+    if not _specialized_route_declared(cleaned):
         return []  # Shared-workflow or unknown — decision tree fields not needed
 
-    # Core 3 fields: always recommended for specialized routes
-    core_fields = [h for h in DECISION_TREE_HEADINGS if h != "## Tie-break rationale"]
+    # Core fields are warned here; version correctness is checked separately.
+    core_fields = [
+        h for h in DECISION_TREE_HEADINGS
+        if h not in {"## Tie-break rationale", "## Decision tree version"}
+    ]
     missing = [h for h in core_fields if h not in found]
 
     # Tie-break rationale: only warn if Decision tree path explicitly says
@@ -150,6 +150,43 @@ def _check_decision_tree_headings(cleaned: str) -> list[str]:
         missing.append("## Tie-break rationale")
 
     return missing
+
+
+def _check_decision_tree_version(cleaned: str) -> list[str]:
+    """Check the specialized pack's decision-tree version against the registry."""
+    if not _specialized_route_declared(cleaned):
+        return []
+    found = {
+        f"## {match.group(1).rstrip()}"
+        for match in H2_RE.finditer(cleaned)
+    }
+    decision_tree_used = any(
+        heading in found
+        for heading in (
+            "## Action burden",
+            "## Weight-bearing object",
+            "## Decision tree path",
+        )
+    )
+    if not decision_tree_used:
+        return []
+    body = _section_body(cleaned, "Decision tree version")
+    if not body or not body.strip():
+        return ["Decision tree version is required for specialized routes"]
+    match = re.fullmatch(r"\s*([0-9]+)\s*", body)
+    if not match:
+        return ["Decision tree version must be a single positive integer"]
+    try:
+        canonical_version = load_decision_tree_registry().version
+    except RegistryError as exc:
+        return [f"Cannot load canonical decision-tree registry: {exc}"]
+    version = int(match.group(1))
+    if version != canonical_version:
+        return [
+            f"Decision tree version {version} does not match canonical version "
+            f"{canonical_version}"
+        ]
+    return []
 
 
 def find_missing_headings(cleaned: str) -> list[str]:
@@ -363,6 +400,7 @@ def run_strict_checks(
 ) -> list[str]:
     errors: list[str] = []
     warnings: list[str] = []
+    errors.extend(_check_decision_tree_version(cleaned))
 
     source_ids, sid_issues = _collect_register_ids(cleaned, "Source register")
     uncertainty_ids, uid_issues = _collect_register_ids(cleaned, "Uncertainty register")
@@ -965,6 +1003,12 @@ def main() -> int:
         for heading in dt_missing:
             print(f"- {heading}")
         # Warning only — does not fail validation
+
+    dt_version_issues = _check_decision_tree_version(cleaned)
+    if dt_version_issues:
+        print("Warning: Decision tree version check:")
+        for issue in dt_version_issues:
+            print(f"- {issue}")
 
     empty = find_empty_sections(cleaned)
     if empty:

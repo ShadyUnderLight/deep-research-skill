@@ -11,9 +11,8 @@ edit the manifest and regenerate.
 
 Canonical / generated relationship (issue #380):
     schemas/route-manifest.json   → canonical (single source of truth)
-    references/route-index.md     → hand-maintained compact trigger table
-                                    (drift-checked against the manifest by
-                                    validate_route_manifest.py)
+    references/route-index.md     → generated compact trigger table plus
+                                    hand-maintained boundary guidance
     references/routes/<id>.md     → GENERATED route cards (this script)
     ROUTING-MATRIX.md / SKILL.md  → human-readable full contract overview
                                     (shared-workflow uses SKILL.md because it
@@ -41,6 +40,9 @@ MANIFEST_PATH = ROOT / "schemas" / "route-manifest.json"
 CARDS_DIR = ROOT / "references" / "routes"
 ROUTE_INDEX_PATH = ROOT / "references" / "route-index.md"
 ROUTING_MATRIX_PATH = ROOT / "ROUTING-MATRIX.md"
+
+ROUTE_INDEX_BEGIN = "<!-- BEGIN GENERATED ROUTE INDEX -->"
+ROUTE_INDEX_END = "<!-- END GENERATED ROUTE INDEX -->"
 
 GENERATED_HEADER = (
     "> **Generated view** — do not edit by hand. "
@@ -235,6 +237,52 @@ def render_card(route: dict, known_route_ids: set[str]) -> str:
     return "\n".join(lines) + "\n"
 
 
+def render_route_index_block(manifest: dict) -> str:
+    """Render the canonical trigger/read/audit view from the route manifest."""
+    lines = [
+        ROUTE_INDEX_BEGIN,
+        f"<!-- Source: schemas/route-manifest.json; version: {manifest['version']} -->",
+        "| Route ID | Trigger keywords | Reads | Audits | Card |",
+        "|----------|-----------------|-------|--------|------|",
+    ]
+    for route in manifest["routes"]:
+        rid = route["id"]
+        reads = ", ".join(f"`{ref}`" for ref in route["primary_reads"])
+        audits = ", ".join(f"`{audit}`" for audit in route["required_audits"])
+        lines.append(
+            f"| `{rid}` | {route['trigger']} | {reads} | {audits} | "
+            f"[`{rid}`](routes/{rid}.md) |"
+        )
+    lines.append(ROUTE_INDEX_END)
+    return "\n".join(lines) + "\n"
+
+
+def _replace_route_index_block(text: str, block: str) -> str:
+    """Replace the generated table while preserving manual route guidance."""
+    if ROUTE_INDEX_BEGIN in text and ROUTE_INDEX_END in text:
+        if text.count(ROUTE_INDEX_BEGIN) != 1 or text.count(ROUTE_INDEX_END) != 1:
+            raise ValueError("route-index.md must contain exactly one generated block")
+        start = text.index(ROUTE_INDEX_BEGIN)
+        end = text.index(ROUTE_INDEX_END, start) + len(ROUTE_INDEX_END)
+        return text[:start] + block.rstrip("\n") + text[end:]
+
+    header = "| Route ID | Trigger keywords | Reads | Audits | Card |"
+    start = text.index(header)
+    end = text.index("## Route boundary reference", start)
+    return text[:start] + block + "\n" + text[end:]
+
+
+def route_index_is_current(text: str, manifest: dict) -> bool:
+    """Return whether route-index contains exactly one current generated block."""
+    if text.count(ROUTE_INDEX_BEGIN) != 1 or text.count(ROUTE_INDEX_END) != 1:
+        return False
+    start = text.index(ROUTE_INDEX_BEGIN)
+    end = text.index(ROUTE_INDEX_END, start) + len(ROUTE_INDEX_END)
+    actual = text[start:end].rstrip("\n")
+    expected = render_route_index_block(manifest).rstrip("\n")
+    return actual == expected
+
+
 def generate_cards() -> list[Path]:
     """Generate all route cards. Returns the list of written paths."""
     manifest = _load_manifest()
@@ -247,6 +295,11 @@ def generate_cards() -> list[Path]:
         content = render_card(route, known_route_ids)
         target.write_text(content, encoding="utf-8")
         written.append(target)
+    route_index = ROUTE_INDEX_PATH.read_text(encoding="utf-8")
+    ROUTE_INDEX_PATH.write_text(
+        _replace_route_index_block(route_index, render_route_index_block(manifest)),
+        encoding="utf-8",
+    )
     return written
 
 
@@ -271,6 +324,12 @@ def check_drift() -> int:
             print(f"  ✗ Missing cards: {', '.join(missing)}")
         if stale:
             print(f"  ✗ Stale cards: {', '.join(stale)}")
+        print("  Run `python3 scripts/generate_route_cards.py` and commit the result.")
+        return EXIT_DRIFT
+    route_index = ROUTE_INDEX_PATH.read_text(encoding="utf-8") if ROUTE_INDEX_PATH.is_file() else ""
+    if not route_index_is_current(route_index, manifest):
+        print("ROUTE INDEX DRIFT DETECTED:")
+        print("  ✗ references/route-index.md generated block is stale or missing")
         print("  Run `python3 scripts/generate_route_cards.py` and commit the result.")
         return EXIT_DRIFT
     print("OK — route cards are in sync with schemas/route-manifest.json")

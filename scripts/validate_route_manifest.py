@@ -34,6 +34,7 @@ import sys
 from pathlib import Path
 
 import registry_loader
+import generate_route_cards
 from registry_loader import RegistryError
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -198,16 +199,33 @@ def _check_route_index(
     text: str,
     manifest_ids: set[str],
     route_audits: dict[str, set[str]],
+    manifest_routes: dict[str, dict] | None = None,
+    manifest_version: int | None = None,
 ) -> list[str]:
     """Validate references/route-index.md trigger table against the manifest.
 
     Trigger table rows: | Route ID | Trigger keywords | Reads | Audits | Card |.
-    Checks: route id set matches the manifest bidirectionally, trigger
-    keywords are non-empty, each listed audit is part of that route's
-    required_audits in the manifest, and the Card link points to that route's
-    generated card. Returns blocking errors.
+    Checks: route id set matches the manifest bidirectionally, the generated
+    trigger/read/audit block matches the manifest when route entries are
+    supplied, trigger keywords are non-empty, each listed audit is part of
+    that route's required_audits in the manifest, and the Card link points to
+    that route's generated card. Returns blocking errors.
     """
     errors: list[str] = []
+    if manifest_routes is not None:
+        if manifest_version is None:
+            errors.append(
+                "route-index.md drift check requires the manifest version"
+            )
+        manifest_view = {
+            "version": manifest_version,
+            "routes": [manifest_routes[rid] for rid in manifest_routes],
+        }
+        if not generate_route_cards.route_index_is_current(text, manifest_view):
+            errors.append(
+                "route-index.md generated trigger/read/audit block is stale or "
+                "missing; run `python3 scripts/generate_route_cards.py`"
+            )
     index_ids: set[str] = set()
     in_trigger_table = False
     for line in text.splitlines():
@@ -590,7 +608,15 @@ def validate(path: Path | None = None) -> int:
             rid: set(route.get("required_audits", []))
             for rid, route in manifest_routes.items()
         }
-        errors.extend(_check_route_index(index_text, manifest_ids, route_audits))
+        errors.extend(
+            _check_route_index(
+                index_text,
+                manifest_ids,
+                route_audits,
+                manifest_routes,
+                manifest["version"],
+            )
+        )
     else:
         errors.append(
             f"references/route-index.md not found at {ROUTE_INDEX} — "

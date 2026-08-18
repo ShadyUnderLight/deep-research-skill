@@ -85,7 +85,9 @@ Markdown case index:
 - `evals/INDEX.md` catalogs all tracked `evals/cases/*.md` files for human
   coverage scans.
 - `evals/registry.json` describes executable user-prompt, activation, process-
-  artifact, audit, and delivery-status fixtures.
+  artifact, audit, and delivery-status fixtures. Its `decision_tree_version`
+  pins specialized Research Pack fields and activation snapshots to the same
+  canonical decision-tree registry.
 - `comparative-distillation/candidate-rule-registry.md` tracks candidate rule
   actions and coverage; it is not an execution registry.
 

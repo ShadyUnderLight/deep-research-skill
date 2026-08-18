@@ -27,6 +27,10 @@ Market / category trajectory
 
 Steps 1-2 resolved to `market-outlook`; Step 3 verified; Step 4 not reached.
 
+## Decision tree version
+
+1
+
 ## Secondary disciplines
 
 current-state, forward-looking, source-traceability, scope-completeness, quantitative-role, sensitivity-analysis

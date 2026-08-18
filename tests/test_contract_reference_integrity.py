@@ -118,6 +118,40 @@ def test_secondary_hard_fail_derived_audit_id_accepted():
     assert result.is_valid, f"Errors: {result.errors}"
 
 
+def test_issue391_contract_fields_are_accepted():
+    contract = build_contract(
+        primary="listed-company",
+        secondary_routes=["regulatory-analysis"],
+        decision_tree_version=1,
+        artifact_id="issue391-contract-fields",
+        contract_version="1",
+        created_at="2026-08-18",
+        secondary_route_contracts={
+            "regulatory-analysis": {
+                "boundary": "Regulatory impact is explicitly attached as a secondary route.",
+                "hard_fail_verification": "regulatory-analysis-secondary-hard-fail",
+            }
+        },
+        audits=[
+            *build_contract(primary="listed-company")["audits"],
+            {
+                "id": "regulatory-analysis-secondary-hard-fail",
+                "status": "passed",
+                "evidence": "report-section:Regulatory impact",
+            },
+        ],
+    )
+    result = validate_contract(contract, strict=True)
+    assert result.is_valid, f"Errors: {result.errors}"
+
+
+def test_stale_issue391_decision_tree_version_fails():
+    contract = build_contract(decision_tree_version=999)
+    result = validate_contract(contract)
+    assert not result.is_valid
+    assert any("decision_tree_version" in error for error in result.errors)
+
+
 def test_derived_hard_fail_id_without_matching_secondary_fails():
     """A `-secondary-hard-fail` id whose prefix is not a declared secondary route fails."""
     contract = build_contract(

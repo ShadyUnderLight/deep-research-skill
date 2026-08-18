@@ -28,6 +28,10 @@ Architecture / mechanism / patent
 
 Steps 1-2 resolved to `technical-deep-dive`; Step 3 verified; Step 4 not reached.
 
+## Decision tree version
+
+1
+
 ## Secondary disciplines
 
 current-state, source-traceability, forward-looking, quantitative-role

@@ -1,5 +1,6 @@
 {
   "version": 1,
+  "decision_tree_version": 1,
   "description": "Executable offline forward-eval registry for route activation, process artifacts, audit execution and delivery status.",
   "last_reviewed": "2026-08-17",
   "cases": [
@@ -21,7 +22,7 @@
         "secondary_routes": [],
         "disciplines": ["current-state", "source-traceability", "decision-utility", "quantitative-role", "data-conflict"],
         "required_audits": ["option-selection-final-audit", "source-traceability", "final-audit"],
-        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Decision tree version", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
         "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "md_ready"},
         "verdict": "pass",
         "parallelization_decision": "single-track"
@@ -52,7 +53,7 @@
         "secondary_routes": [],
         "disciplines": ["decision-utility", "quantitative-role"],
         "required_audits": ["option-selection-final-audit", "final-audit"],
-        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Decision tree version", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
         "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "md_ready"},
         "verdict": "pass",
         "parallelization_decision": "single-track"
@@ -83,7 +84,7 @@
         "secondary_routes": [],
         "disciplines": ["source-traceability", "current-state", "forward-looking", "scope-completeness"],
         "required_audits": ["academic-analysis-audit", "source-traceability", "final-audit"],
-        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Decision tree version", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
         "statuses": {"research_status": "complete", "audit_status": "conditional-pass", "delivery_status": "md_ready"},
         "verdict": "pass",
         "parallelization_decision": "single-track"
@@ -106,6 +107,12 @@
         "action_burden": "Judge technical mechanism / feasibility",
         "weight_bearing_object": "Architecture / mechanism / patent",
         "secondary_routes": ["listed-company"],
+        "secondary_route_contracts": {
+          "listed-company": {
+            "boundary": "The task explicitly includes company-level risk for a listed company alongside the technical mechanism question.",
+            "hard_fail_verification": "listed-company-secondary-hard-fail"
+          }
+        },
         "parallelization_decision": "single-track"
       },
       "expected": {
@@ -114,7 +121,7 @@
         "secondary_routes": ["listed-company"],
         "disciplines": ["current-state", "source-traceability", "forward-looking", "quantitative-role"],
         "required_audits": ["technical-analysis-audit", "source-traceability", "final-audit", "listed-company-secondary-hard-fail"],
-        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Decision tree version", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
         "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "md_ready"},
         "verdict": "pass",
         "parallelization_decision": "single-track"
@@ -176,7 +183,7 @@
         "secondary_routes": [],
         "disciplines": [],
         "required_audits": ["market-outlook-audit", "forward-looking-claims", "source-traceability", "final-audit"],
-        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Channel availability snapshot", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Decision tree version", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Channel availability snapshot", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
         "statuses": {"research_status": "blocked", "audit_status": "pass", "delivery_status": "md_ready"},
         "verdict": "pass",
         "parallelization_decision": "parallel"
@@ -207,7 +214,7 @@
         "secondary_routes": [],
         "disciplines": [],
         "required_audits": ["market-outlook-audit", "forward-looking-claims", "source-traceability", "final-audit"],
-        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Decision tree version", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
         "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "pdf_failed"},
         "verdict": "pass",
         "parallelization_decision": "single-track"
@@ -238,7 +245,7 @@
         "secondary_routes": [],
         "disciplines": [],
         "required_audits": ["market-outlook-audit", "forward-looking-claims", "source-traceability", "final-audit"],
-        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Decision tree version", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
         "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "md_ready"},
         "verdict": "pass",
         "parallelization_decision": "parallel"
@@ -261,6 +268,12 @@
         "action_burden": "Judge direction / scenario",
         "weight_bearing_object": "Market / category trajectory",
         "secondary_routes": ["constrained-choice"],
+        "secondary_route_contracts": {
+          "constrained-choice": {
+            "boundary": "A defined-option ranking burden is intentionally attached as a secondary route for this negative verification case.",
+            "hard_fail_verification": "constrained-choice-secondary-hard-fail"
+          }
+        },
         "parallelization_decision": "parallel"
       },
       "expected": {
@@ -269,7 +282,7 @@
         "secondary_routes": ["constrained-choice"],
         "disciplines": [],
         "required_audits": ["market-outlook-audit", "forward-looking-claims", "source-traceability", "final-audit", "constrained-choice-secondary-hard-fail"],
-        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Decision tree version", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
         "statuses": {"research_status": "complete", "audit_status": "fail", "delivery_status": "md_ready"},
         "verdict": "fail",
         "parallelization_decision": "parallel"
@@ -300,7 +313,7 @@
         "secondary_routes": [],
         "disciplines": ["decision-utility", "quantitative-role"],
         "required_audits": ["option-selection-final-audit", "final-audit"],
-        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
+        "research_pack_fields": ["Objective", "Decision context", "Primary route", "Action burden", "Weight-bearing object", "Decision tree path", "Decision tree version", "Secondary disciplines", "Core subquestions", "Stop condition", "Source register", "Claim register", "Uncertainty register", "Artifact id", "Artifact contract", "Research status", "Delivery status", "Required audits", "Final audit status"],
         "statuses": {"research_status": "complete", "audit_status": "pass", "delivery_status": "md_ready"},
         "verdict": "fail",
         "parallelization_decision": "single-track"

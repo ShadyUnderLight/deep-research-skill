@@ -31,6 +31,10 @@ defined city options.
 Steps 1-2 resolved to `constrained-choice`; Step 3 verified "Do not use"
 clause does not exclude ranking tasks; Step 4 not reached.
 
+## Decision tree version
+
+1
+
 ## Secondary disciplines
 - source traceability
 - quantitative role labeling

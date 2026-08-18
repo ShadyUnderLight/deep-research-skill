@@ -36,8 +36,10 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from registry_loader import (
+    RegistryError,
     UnknownRouteError,
     load_audit_registry,
+    load_decision_tree_registry,
     load_discipline_registry,
     load_route_registry,
 )
@@ -320,6 +322,7 @@ def validate_contract(
         "primary_route", "secondary_routes", "disciplines", "audits",
         "closest_alternative", "boundary_judgment",
         "artifact_id", "contract_version", "created_at",
+        "decision_tree_version", "secondary_route_contracts",
     }
     for field in contract:
         if field not in known_fields:
@@ -395,6 +398,54 @@ def validate_contract(
             f"Primary route '{primary}' is also listed as a secondary route. "
             f"A route cannot be both primary and secondary in the same contract."
         )
+
+    # 3b. Issue #391 activation metadata must be structurally valid when present.
+    if "decision_tree_version" in contract:
+        decision_tree_version = contract["decision_tree_version"]
+        if not isinstance(decision_tree_version, int) or isinstance(
+            decision_tree_version, bool
+        ):
+            errors.append("decision_tree_version must be an integer")
+        else:
+            try:
+                canonical_tree = load_decision_tree_registry()
+            except RegistryError as exc:
+                errors.append(f"Cannot load canonical decision-tree registry: {exc}")
+            else:
+                if decision_tree_version != canonical_tree.version:
+                    errors.append(
+                        f"decision_tree_version {decision_tree_version} does not match "
+                        f"canonical version {canonical_tree.version}"
+                    )
+
+    if "secondary_route_contracts" in contract:
+        secondary_contracts = contract["secondary_route_contracts"]
+        if not isinstance(secondary_contracts, dict):
+            errors.append("secondary_route_contracts must be an object keyed by route id")
+        else:
+            undeclared = set(secondary_contracts) - set(secondary)
+            if undeclared:
+                errors.append(
+                    "secondary_route_contracts contains route(s) not declared in "
+                    f"secondary_routes: {sorted(undeclared)}"
+                )
+            for route_id, route_contract in secondary_contracts.items():
+                if route_id not in route_ids:
+                    errors.append(
+                        f"secondary_route_contracts contains unknown route '{route_id}'"
+                    )
+                if (
+                    not isinstance(route_contract, dict)
+                    or set(route_contract) != {"boundary", "hard_fail_verification"}
+                    or not isinstance(route_contract.get("boundary"), str)
+                    or not route_contract.get("boundary", "").strip()
+                    or not isinstance(route_contract.get("hard_fail_verification"), str)
+                    or not route_contract.get("hard_fail_verification", "").strip()
+                ):
+                    errors.append(
+                        f"secondary_route_contracts['{route_id}'] must contain only "
+                        "non-empty boundary and hard_fail_verification"
+                    )
 
     # 4b. Closest alternative route validation
     closest = contract.get("closest_alternative")

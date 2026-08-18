@@ -57,10 +57,16 @@ def _pack_observation(path: Path) -> dict[str, Any]:
         if line.startswith("## ")
     }
     statuses = extract_declared_statuses(text)
+    version_match = re.search(
+        r"^## Decision tree version\s*\n+[ \t]*([0-9]+)[ \t]*$",
+        cleaned,
+        re.MULTILINE,
+    )
     return {
         "fields": sorted(headings),
         "missing_required_fields": find_missing_headings(cleaned),
         "statuses": statuses,
+        "decision_tree_version": int(version_match.group(1)) if version_match else None,
     }
 
 
@@ -166,6 +172,7 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
         checks["pack_fields_present"],
         checks["parallelization_match"],
         checks["prompt_identity_match"],
+        checks["decision_tree_version_match"],
         checks["statuses_match"],
     ]
     statuses = _audit_statuses(actual)
@@ -208,7 +215,9 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
     return all(common)
 
 
-def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
+def _evaluate_case(
+    case: dict[str, Any], expected_decision_tree_version: int | None = None
+) -> dict[str, Any]:
     expected = case["expected"]
     input_data = case["input"]
     fixtures = case["fixtures"]
@@ -225,6 +234,7 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
             action_category=input_data["action_burden"],
             weight_bearing_object=input_data["weight_bearing_object"],
             secondary_routes=input_data["secondary_routes"],
+            secondary_route_contracts=input_data.get("secondary_route_contracts", {}),
             expected_prompt_sha256=input_data["prompt_sha256"],
         )
     except RouteActivationError as exc:
@@ -243,6 +253,16 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
         "audit_status": audit_data.get("overall") if audit_data else None,
         "delivery_status": pack["statuses"].get("delivery_status"),
     }
+    requires_decision_tree = "Decision tree path" in expected["research_pack_fields"]
+    decision_tree_version_match = (
+        not requires_decision_tree
+        or (
+            expected_decision_tree_version is not None
+            and activation is not None
+            and activation.decision_tree_version == expected_decision_tree_version
+            and pack["decision_tree_version"] == expected_decision_tree_version
+        )
+    )
     actual = {
         "route": report_route,
         "report_route": report_route,
@@ -252,6 +272,10 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
         "activation_weight_bearing_object": activation.weight_bearing_object if activation else None,
         "activation_parallelization_decision": activation.parallelization_decision if activation else None,
         "activation_prompt_sha256": activation.prompt_sha256 if activation else None,
+        "activation_decision_tree_version": (
+            activation.decision_tree_version if activation else None
+        ),
+        "pack_decision_tree_version": pack["decision_tree_version"],
         "activation_error": activation_error,
         "closest_alternative": contract.get("closest_alternative"),
         "secondary_routes": sorted(contract.get("secondary_routes", []) or []),
@@ -313,6 +337,7 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
                 status_match,
                 parallelization_match,
                 prompt_identity_match,
+                decision_tree_version_match,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 returncode == expected_returncode,
             ]
@@ -333,6 +358,7 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
             "pack_fields_present": pack_fields_match,
             "parallelization_match": parallelization_match,
             "prompt_identity_match": prompt_identity_match,
+            "decision_tree_version_match": decision_tree_version_match,
             "statuses_match": status_match,
         }
         case_passed = all(
@@ -365,6 +391,8 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
             "activation_weight_bearing_object": actual["activation_weight_bearing_object"],
             "activation_parallelization_decision": actual["activation_parallelization_decision"],
             "activation_prompt_sha256": actual["activation_prompt_sha256"],
+            "activation_decision_tree_version": actual["activation_decision_tree_version"],
+            "pack_decision_tree_version": actual["pack_decision_tree_version"],
             "activation_error": actual["activation_error"],
             "closest_alternative": actual["closest_alternative"],
             "secondary_routes": actual["secondary_routes"],
@@ -393,6 +421,7 @@ def _evaluate_case(case: dict[str, Any]) -> dict[str, Any]:
             "statuses_match": status_match,
             "parallelization_match": parallelization_match,
             "prompt_identity_match": prompt_identity_match,
+            "decision_tree_version_match": decision_tree_version_match,
         },
     }
 
@@ -503,7 +532,10 @@ def _check_baseline(metrics: dict[str, Any], baseline_path: Path) -> list[str]:
 def run(registry_path: Path = DEFAULT_REGISTRY_PATH, *, check_baseline: bool = False) -> dict[str, Any]:
     registry = load_registry(registry_path)
     cases = active_cases(registry)
-    results = [_evaluate_case(case) for case in cases]
+    results = [
+        _evaluate_case(case, registry["decision_tree_version"])
+        for case in cases
+    ]
     metrics = _metrics(cases, results)
     baseline_errors = (
         _check_baseline(metrics, DEFAULT_BASELINE_PATH) if check_baseline else []
@@ -511,6 +543,7 @@ def run(registry_path: Path = DEFAULT_REGISTRY_PATH, *, check_baseline: bool = F
     failed_cases = [result for result in results if not result["passed"]]
     return {
         "registry_version": registry["version"],
+        "decision_tree_version": registry["decision_tree_version"],
         "offline": True,
         "metrics": metrics,
         "baseline_errors": baseline_errors,

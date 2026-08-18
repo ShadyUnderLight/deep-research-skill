@@ -2,10 +2,10 @@
 """
 Runtime control-plane registry loader (issue #374).
 
-Loads and validates the three canonical registries — route manifest,
-discipline registry and audit registry — as the single executable
-fact source for route identity, discipline identity, audit identity
-and dispatch bindings.
+Loads and validates the canonical registries — route manifest, discipline
+registry, audit registry and structured route-decision tree — as executable
+fact sources for route identity, discipline identity, audit identity,
+dispatch bindings and route activation semantics.
 
 Previously this knowledge was duplicated across audit_report.py
 (_ROUTE_ALIASES / ROUTE_VALIDATORS), validate_route_manifest.py
@@ -15,10 +15,12 @@ registries and fails closed on structural errors.
 
 Usage:
     from registry_loader import load_route_registry, load_discipline_registry,
-                                load_audit_registry
+                                load_audit_registry, load_decision_tree_registry
     registry = load_route_registry()
     route_id = registry.resolve_route("listed company")     # -> "listed-company"
     bindings = registry.validators_for(route_id)            # -> ["report-quality", ...]
+    tree = load_decision_tree_registry()
+    primary, secondary = tree.resolve(action_label, object_label)
 """
 
 from __future__ import annotations
@@ -32,6 +34,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ROUTE_MANIFEST = ROOT / "schemas" / "route-manifest.json"
 DEFAULT_DISCIPLINE_REGISTRY = ROOT / "schemas" / "discipline-registry.json"
 DEFAULT_AUDIT_REGISTRY = ROOT / "schemas" / "audit-registry.json"
+DEFAULT_DECISION_TREE = ROOT / "schemas" / "route-decision-tree.json"
 
 VALID_EXECUTION_TYPES = {"automated", "manual", "process"}
 
@@ -235,6 +238,85 @@ class AuditInfo:
     description: str
     automation_reference: str | None
     validator_binding: str | None
+
+
+@dataclass(frozen=True)
+class DecisionAction:
+    """Canonical action-burden category from route-decision-tree.json."""
+
+    id: str
+    label: str
+
+
+@dataclass(frozen=True)
+class DecisionObject:
+    """Canonical weight-bearing object and its route candidates."""
+
+    id: str
+    label: str
+    candidate_routes: list[str]
+
+
+@dataclass(frozen=True)
+class DecisionConflict:
+    """Explicit action/object override and derived secondary routes."""
+
+    action: str
+    object: str
+    primary_route: str
+    derived_secondary_routes: list[str]
+
+
+@dataclass
+class DecisionTreeRegistry:
+    """Structured route-selection semantics loaded from JSON."""
+
+    version: int
+    route_manifest_version: int
+    actions: list[DecisionAction]
+    objects: list[DecisionObject]
+    conflicts: list[DecisionConflict]
+    _actions_by_label: dict[str, DecisionAction] = field(default_factory=dict, repr=False)
+    _objects_by_label: dict[str, DecisionObject] = field(default_factory=dict, repr=False)
+    _conflicts: dict[tuple[str, str], DecisionConflict] = field(default_factory=dict, repr=False)
+
+    def __post_init__(self) -> None:
+        self._actions_by_label = {action.label: action for action in self.actions}
+        self._objects_by_label = {obj.label: obj for obj in self.objects}
+        self._conflicts = {
+            (conflict.action, conflict.object): conflict
+            for conflict in self.conflicts
+        }
+
+    def action_labels(self) -> set[str]:
+        return set(self._actions_by_label)
+
+    def object_labels(self) -> set[str]:
+        return set(self._objects_by_label)
+
+    def resolve(
+        self, action_label: str, object_label: str
+    ) -> tuple[str, tuple[str, ...]]:
+        """Resolve exact canonical labels without consulting Markdown."""
+        action = self._actions_by_label.get(action_label)
+        if action is None:
+            raise RegistryError(f"Unknown decision-tree action category: {action_label!r}")
+        obj = self._objects_by_label.get(object_label)
+        if obj is None:
+            raise RegistryError(f"Unknown decision-tree object category: {object_label!r}")
+        if (action.id == "shared-workflow") != (obj.id == "shared-workflow"):
+            raise RegistryError(
+                "shared-workflow activation requires both action and object "
+                "categories to be shared-workflow"
+            )
+        conflict = self._conflicts.get((action.id, obj.id))
+        if conflict is not None:
+            return conflict.primary_route, tuple(conflict.derived_secondary_routes)
+        if not obj.candidate_routes:
+            raise RegistryError(
+                f"Decision-tree object '{object_label}' has no route candidate"
+            )
+        return obj.candidate_routes[0], ()
 
 
 @dataclass
@@ -476,3 +558,219 @@ def load_audit_registry(path: Path | None = None) -> AuditRegistry:
         ))
 
     return AuditRegistry(version=data["version"], audits=audits)
+
+
+def load_decision_tree_registry(
+    path: Path | None = None,
+    *,
+    route_registry: RouteRegistry | None = None,
+) -> DecisionTreeRegistry:
+    """Load and validate structured route-activation semantics.
+
+    The decision tree is a separate canonical registry because action/object
+    categories are not route metadata.  Its route references and declared
+    manifest version are checked against the route registry before callers can
+    use it.
+    """
+    registry_path = path or DEFAULT_DECISION_TREE
+    data = _load_json(registry_path, "Route decision-tree registry")
+    expected_top = {
+        "version",
+        "route_manifest_version",
+        "description",
+        "last_reviewed",
+        "actions",
+        "objects",
+        "required_conflict_pairs",
+        "conflicts",
+    }
+    missing = expected_top - set(data)
+    unexpected = set(data) - expected_top
+    if missing:
+        raise RegistryError(
+            "Route decision-tree registry missing top-level field(s): "
+            f"{', '.join(sorted(missing))}"
+        )
+    if unexpected:
+        raise RegistryError(
+            "Route decision-tree registry has unexpected top-level field(s): "
+            f"{', '.join(sorted(unexpected))}"
+        )
+    for key in ("version", "route_manifest_version"):
+        value = data[key]
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise RegistryError(
+                f"Route decision-tree registry '{key}' must be an integer, "
+                f"got {type(value).__name__}"
+            )
+    for key in ("actions", "objects", "required_conflict_pairs", "conflicts"):
+        if not isinstance(data[key], list):
+            raise RegistryError(
+                f"Route decision-tree registry '{key}' must be a list, "
+                f"got {type(data[key]).__name__}"
+            )
+
+    routes = route_registry or load_route_registry()
+    if data["route_manifest_version"] != routes.version:
+        raise RegistryError(
+            "Route decision-tree registry targets route manifest version "
+            f"{data['route_manifest_version']}, but loaded manifest is version "
+            f"{routes.version}"
+        )
+    known_routes = routes.route_ids()
+
+    actions: list[DecisionAction] = []
+    action_ids: set[str] = set()
+    action_labels: set[str] = set()
+    for i, entry in enumerate(data["actions"]):
+        if not isinstance(entry, dict):
+            raise RegistryError(f"Decision-tree actions[{i}] is not an object")
+        _require(entry, {"id", "label"}, f"Decision-tree actions[{i}]")
+        action_id = _require_str(entry, "id", f"Decision-tree actions[{i}]")
+        label = _require_str(entry, "label", f"Decision-tree actions[{i}]")
+        if action_id in action_ids:
+            raise RegistryError(f"Duplicate decision-tree action id: '{action_id}'")
+        if label in action_labels:
+            raise RegistryError(f"Duplicate decision-tree action label: '{label}'")
+        action_ids.add(action_id)
+        action_labels.add(label)
+        actions.append(DecisionAction(id=action_id, label=label))
+
+    objects: list[DecisionObject] = []
+    object_ids: set[str] = set()
+    object_labels: set[str] = set()
+    for i, entry in enumerate(data["objects"]):
+        if not isinstance(entry, dict):
+            raise RegistryError(f"Decision-tree objects[{i}] is not an object")
+        _require(
+            entry,
+            {"id", "label", "candidate_routes"},
+            f"Decision-tree objects[{i}]",
+        )
+        object_id = _require_str(entry, "id", f"Decision-tree objects[{i}]")
+        label = _require_str(entry, "label", f"Decision-tree objects[{i}]")
+        candidates = _require_str_list(
+            entry, "candidate_routes", f"Decision-tree objects[{i}]"
+        )
+        if object_id in object_ids:
+            raise RegistryError(f"Duplicate decision-tree object id: '{object_id}'")
+        if label in object_labels:
+            raise RegistryError(f"Duplicate decision-tree object label: '{label}'")
+        unknown = set(candidates) - known_routes
+        if unknown:
+            raise RegistryError(
+                f"Decision-tree object '{object_id}' has unknown route candidate(s): "
+                f"{', '.join(sorted(unknown))}"
+            )
+        if len(candidates) != len(set(candidates)):
+            raise RegistryError(
+                f"Decision-tree object '{object_id}' has duplicate route candidates"
+            )
+        object_ids.add(object_id)
+        object_labels.add(label)
+        objects.append(
+            DecisionObject(id=object_id, label=label, candidate_routes=candidates)
+        )
+
+    required_conflict_keys: set[tuple[str, str]] = set()
+    for i, pair in enumerate(data["required_conflict_pairs"]):
+        if (
+            not isinstance(pair, list)
+            or len(pair) != 2
+            or not all(isinstance(value, str) and value.strip() for value in pair)
+        ):
+            raise RegistryError(
+                "Decision-tree required_conflict_pairs[{}] must be a "
+                "two-item list of non-empty action/object ids".format(i)
+            )
+        key = (pair[0], pair[1])
+        if key in required_conflict_keys:
+            raise RegistryError(
+                f"Duplicate decision-tree required conflict pair: '{pair[0]}/{pair[1]}'"
+            )
+        if pair[0] not in action_ids or pair[1] not in object_ids:
+            raise RegistryError(
+                f"Decision-tree required conflict pair references unknown "
+                f"action/object: '{pair[0]}/{pair[1]}'"
+            )
+        required_conflict_keys.add(key)
+
+    conflicts: list[DecisionConflict] = []
+    conflict_keys: set[tuple[str, str]] = set()
+    for i, entry in enumerate(data["conflicts"]):
+        if not isinstance(entry, dict):
+            raise RegistryError(f"Decision-tree conflicts[{i}] is not an object")
+        _require(
+            entry,
+            {"action", "object", "primary_route", "derived_secondary_routes"},
+            f"Decision-tree conflicts[{i}]",
+        )
+        action_id = _require_str(entry, "action", f"Decision-tree conflicts[{i}]")
+        object_id = _require_str(entry, "object", f"Decision-tree conflicts[{i}]")
+        primary_route = _require_str(
+            entry, "primary_route", f"Decision-tree conflicts[{i}]"
+        )
+        secondary = _require_str_list(
+            entry,
+            "derived_secondary_routes",
+            f"Decision-tree conflicts[{i}]",
+        )
+        if action_id not in action_ids:
+            raise RegistryError(
+                f"Decision-tree conflict references unknown action '{action_id}'"
+            )
+        if object_id not in object_ids:
+            raise RegistryError(
+                f"Decision-tree conflict references unknown object '{object_id}'"
+            )
+        if primary_route not in known_routes:
+            raise RegistryError(
+                f"Decision-tree conflict references unknown primary route '{primary_route}'"
+            )
+        unknown_secondary = set(secondary) - known_routes
+        if unknown_secondary:
+            raise RegistryError(
+                f"Decision-tree conflict '{action_id}/{object_id}' references "
+                f"unknown secondary route(s): {', '.join(sorted(unknown_secondary))}"
+            )
+        if primary_route in secondary:
+            raise RegistryError(
+                f"Decision-tree conflict '{action_id}/{object_id}' repeats its "
+                "primary route as a secondary route"
+            )
+        if len(secondary) != len(set(secondary)):
+            raise RegistryError(
+                f"Decision-tree conflict '{action_id}/{object_id}' has duplicate "
+                "derived secondary routes"
+            )
+        key = (action_id, object_id)
+        if key in conflict_keys:
+            raise RegistryError(
+                f"Duplicate decision-tree conflict pair: '{action_id}/{object_id}'"
+            )
+        conflict_keys.add(key)
+        conflicts.append(
+            DecisionConflict(
+                action=action_id,
+                object=object_id,
+                primary_route=primary_route,
+                derived_secondary_routes=secondary,
+            )
+        )
+
+    actual_conflict_keys = set(conflict_keys)
+    if actual_conflict_keys != required_conflict_keys:
+        missing = sorted(required_conflict_keys - actual_conflict_keys)
+        extra = sorted(actual_conflict_keys - required_conflict_keys)
+        raise RegistryError(
+            "Decision-tree conflict coverage mismatch "
+            f"(missing={missing}, extra={extra})"
+        )
+
+    return DecisionTreeRegistry(
+        version=data["version"],
+        route_manifest_version=data["route_manifest_version"],
+        actions=actions,
+        objects=objects,
+        conflicts=conflicts,
+    )

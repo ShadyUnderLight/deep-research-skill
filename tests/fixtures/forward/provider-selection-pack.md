@@ -28,6 +28,10 @@ Providers / vendors / APIs / models
 
 Steps 1-2 resolved to `provider-selection`; Step 3 verified; Step 4 not reached.
 
+## Decision tree version
+
+1
+
 ## Secondary disciplines
 
 current-state, source-traceability, decision-utility, quantitative-role, data-conflict
