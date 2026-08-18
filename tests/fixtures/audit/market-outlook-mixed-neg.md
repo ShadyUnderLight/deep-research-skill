@@ -13,11 +13,11 @@ verification cannot be inferred from primary-route coverage.
 
 | Audit | Status | 证据 |
 |-------|--------|------|
-| market-outlook-audit | ✅ Passed | §3 监控信号完整 |
-| forward-looking-claims | ✅ Passed | §4 前瞻数字均带标签 |
-| source-traceability | ✅ Passed | §3-§5 正文使用 [S01]-[S03] 引用 |
-| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
-| quantitative-role-audit | ✅ Passed | §5 Comparison 表格含数字角色列 |
+| market-outlook-audit | ✅ Passed | report-section:Monitoring signals |
+| forward-looking-claims | ✅ Passed | report-section:Monitoring signals |
+| source-traceability | ✅ Passed | report-section:Findings |
+| final-audit | ✅ Passed | report-section:Executive summary |
+| quantitative-role-audit | ✅ Passed | report-table:Comparison Table |
 
 ## Executive summary
 
@@ -58,5 +58,5 @@ Each dimension conclusion is backed by [S01] and [S02].
 | S03 | Example C | secondary | 2026-03-01 | https://example.com/c | high | §4 |
 
 ```contract
-{"primary_route": "market-outlook", "secondary_routes": ["constrained-choice"], "disciplines": [], "audits": [{"id": "market-outlook-audit", "status": "passed", "evidence": "§3"}, {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"}, {"id": "source-traceability", "status": "passed", "evidence": "§5"}, {"id": "final-audit", "status": "passed", "evidence": "§2"}], "artifact_id": "fixture-market-outlook-mixed-neg", "contract_version": "1.0.0", "created_at": "2026-08-13"}
+{"primary_route": "market-outlook", "secondary_routes": ["constrained-choice"], "disciplines": [], "audits": [{"id": "market-outlook-audit", "status": "passed", "evidence": "report-section:Monitoring signals"}, {"id": "forward-looking-claims", "status": "passed", "evidence": "report-section:Monitoring signals"}, {"id": "source-traceability", "status": "passed", "evidence": "report-section:Findings"}, {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"}], "artifact_id": "fixture-market-outlook-mixed-neg", "contract_version": "1.0.0", "created_at": "2026-08-13"}
 ```

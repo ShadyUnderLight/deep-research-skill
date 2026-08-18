@@ -188,8 +188,8 @@ ok
 ok
 
 ## Required audits
-- final audit — passed
-- quantitative role audit — passed
+- final audit — passed — pack-section:Artifact contract
+- quantitative role audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 Pass
@@ -510,12 +510,17 @@ ok
 ok
 
 ## Required audits
-- final audit — passed
-- quantitative role audit — passed
+- final audit — passed — pack-section:Artifact contract
+- quantitative role audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 Pass
 """
+
+V4_PASS_AUDITS_RE = (
+    r"- final audit — passed — pack-section:Artifact contract\n"
+    r"- quantitative role audit — passed — pack-section:Artifact contract"
+)
 
 V4_NO_ALTERNATIVE = re.sub(
     r"Constrained choice / shortlist\nClosest alternative.*?\n\n",
@@ -525,43 +530,49 @@ V4_NO_ALTERNATIVE = re.sub(
 )
 
 V4_PASS_BUT_NOT_RUN = re.sub(
-    r"- final audit — passed\n- quantitative role audit — passed",
-    "- final audit — not-run\n- quantitative role audit — passed",
+    V4_PASS_AUDITS_RE,
+    "- final audit — not-run\n"
+    "- quantitative role audit — passed — pack-section:Artifact contract",
     V4_BASELINE,
 )
 
 V4_PASS_BUT_PARTIAL = re.sub(
-    r"- final audit — passed\n- quantitative role audit — passed",
-    "- final audit — partial: incomplete execution\n- quantitative role audit — passed",
+    V4_PASS_AUDITS_RE,
+    "- final audit — partial: incomplete execution\n"
+    "- quantitative role audit — passed — pack-section:Artifact contract",
     V4_BASELINE,
 )
 
 V4_PARTIAL_NOT_RUN_NO_REASON = re.sub(
-    r"## Required audits\n- final audit — passed\n- quantitative role audit — passed\n\n## Final audit status\nPass",
-    "## Required audits\n- final audit — not-run\n- quantitative role audit — passed\n\n## Final audit status\nPartial",
+    rf"## Required audits\n{V4_PASS_AUDITS_RE}\n\n## Final audit status\nPass",
+    "## Required audits\n- final audit — not-run\n"
+    "- quantitative role audit — passed — pack-section:Artifact contract\n\n"
+    "## Final audit status\nPartial",
     V4_BASELINE,
 )
 
 V4_PARTIAL_VALID = re.sub(
-    r"## Final audit status\nPass",
-    "## Final audit status\nPartial",
+        r"## Final audit status\nPass",
+        "## Final audit status\nPartial",
     re.sub(
-        r"- final audit — passed\n- quantitative role audit — passed",
+        V4_PASS_AUDITS_RE,
         "- final audit — not-run: task completed before audit available\n"
-        "- quantitative role audit — passed",
+        "- quantitative role audit — passed — pack-section:Artifact contract",
         V4_BASELINE,
     ),
 )
 
 V4_PASS_SKIPPED_NO_REASON = re.sub(
-    r"- final audit — passed\n- quantitative role audit — passed",
-    "- final audit — skipped\n- quantitative role audit — passed",
+    V4_PASS_AUDITS_RE,
+    "- final audit — skipped\n"
+    "- quantitative role audit — passed — pack-section:Artifact contract",
     V4_BASELINE,
 )
 
 V4_PASS_PARTIAL_NO_REASON = re.sub(
-    r"- final audit — passed\n- quantitative role audit — passed",
-    "- final audit — partial\n- quantitative role audit — passed",
+    V4_PASS_AUDITS_RE,
+    "- final audit — partial\n"
+    "- quantitative role audit — passed — pack-section:Artifact contract",
     V4_BASELINE,
 )
 
@@ -572,8 +583,9 @@ V4_PARTIAL_SKIPPED_NO_REASON = re.sub(
 )
 
 V4_FAKE_STATUS_NAME = re.sub(
-    r"- final audit — passed\n- quantitative role audit — passed",
-    "- passed-source audit\n- quantitative role audit — passed",
+    V4_PASS_AUDITS_RE,
+    "- passed-source audit\n"
+    "- quantitative role audit — passed — pack-section:Artifact contract",
     V4_BASELINE,
 )
 
@@ -587,33 +599,33 @@ V4_ALT_NO_IDENTITY = re.sub(
 
 # Reason text contains status keyword — must NOT be confused with a second status
 V4_REASON_CONTAINS_STATUS = re.sub(
-    r"- final audit — passed\n- quantitative role audit — passed",
+    V4_PASS_AUDITS_RE,
     "- final audit — skipped: partial provider outage prevented execution\n"
-    "- quantitative role audit — passed",
+    "- quantitative role audit — passed — pack-section:Artifact contract",
     V4_BASELINE,
 )
 
 # Not-run with reason containing "not-run" in explanation
 V4_NOT_RUN_REASON_MENTIONS_STATUS = re.sub(
-    r"- final audit — passed\n- quantitative role audit — passed",
+    V4_PASS_AUDITS_RE,
     "- final audit — not-run: audit was not-run because task completed early\n"
-    "- quantitative role audit — passed",
+    "- quantitative role audit — passed — pack-section:Artifact contract",
     V4_BASELINE,
 )
 
 # Distant colon must not fake a reason (anchored match)
 V4_DISTANT_COLON_FAKE_REASON = re.sub(
-    r"- final audit — passed\n- quantitative role audit — passed",
+    V4_PASS_AUDITS_RE,
     "- final audit — skipped — no reason; note: none\n"
-    "- quantitative role audit — passed",
+    "- quantitative role audit — passed — pack-section:Artifact contract",
     V4_BASELINE,
 )
 
 # Punctuation-only reason must not count as documented reason
 V4_PUNCT_ONLY_REASON = re.sub(
-    r"- final audit — passed\n- quantitative role audit — passed",
+    V4_PASS_AUDITS_RE,
     "- final audit — skipped: ; note: none\n"
-    "- quantitative role audit — passed",
+    "- quantitative role audit — passed — pack-section:Artifact contract",
     V4_BASELINE,
 )
 

@@ -45,10 +45,10 @@ def _valid_report() -> str:
 
 | Audit | Status | 证据 |
 |-------|--------|------|
-| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
-| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
-| quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
-| technical-analysis-audit | ✅ Passed | §4 判断与维度结论可追溯 |
+| source-traceability | ✅ Passed | report-section:Findings |
+| final-audit | ✅ Passed | report-section:执行摘要 |
+| quantitative-role-labeling | ✅ Passed | report-table:Comparison Table |
+| technical-analysis-audit | ✅ Passed | report-section:维度结论 |
 
 ## 执行摘要
 
@@ -80,7 +80,7 @@ Each dimension conclusion is backed by [S01] and [S02].
 | S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
 
 ```contract
-{"primary_route": "technical-deep-dive", "secondary_routes": [], "disciplines": [], "audits": [{"id": "technical-analysis-audit", "status": "passed", "evidence": "§4"}, {"id": "source-traceability", "status": "passed", "evidence": "§3"}, {"id": "final-audit", "status": "passed", "evidence": "§2"}], "artifact_id": "fixture-tdd-valid", "contract_version": "1.0.0", "created_at": "2026-08-13"}
+{"primary_route": "technical-deep-dive", "secondary_routes": [], "disciplines": [], "audits": [{"id": "technical-analysis-audit", "status": "passed", "evidence": "report-section:维度结论"}, {"id": "source-traceability", "status": "passed", "evidence": "report-section:Findings"}, {"id": "final-audit", "status": "passed", "evidence": "report-section:执行摘要"}], "artifact_id": "fixture-tdd-valid", "contract_version": "1.0.0", "created_at": "2026-08-13"}
 ```
 """
 
@@ -482,9 +482,9 @@ def _valid_market_outlook_report() -> str:
 
 | Audit | Status | 证据 |
 |-------|--------|------|
-| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
-| quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
-| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
+| source-traceability | ✅ Passed | report-section:市场现状 |
+| quantitative-role-labeling | ✅ Passed | report-table:Comparison Table |
+| final-audit | ✅ Passed | report-section:执行摘要 |
 
 ## 执行摘要
 
@@ -631,11 +631,11 @@ _MO_BODY_PREFIX = """\
 
 | Audit | Status | 证据 |
 |-------|--------|------|
-| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
-| quantitative-role-labeling | ✅ Passed | §5 Comparison 表格含数字角色列 |
-| final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
-| market-outlook-audit | ✅ Passed | §3 监控信号完整 |
-| forward-looking-claims | ✅ Passed | §4 前瞻数字均带标签 |
+| source-traceability | ✅ Passed | report-section:市场现状 |
+| quantitative-role-labeling | ✅ Passed | report-table:Comparison Table |
+| final-audit | ✅ Passed | report-section:执行摘要 |
+| market-outlook-audit | ✅ Passed | report-section:Monitoring Signals |
+| forward-looking-claims | ✅ Passed | report-section:Monitoring Signals |
 
 ## 执行摘要
 
@@ -671,7 +671,7 @@ _MO_SOURCE_REGISTER = """
 | S02 | Example B | secondary | 2026-02-01 | https://example.com/b | high | §5 |
 
 ```contract
-{"primary_route": "market-outlook", "secondary_routes": [], "disciplines": [], "audits": [{"id": "market-outlook-audit", "status": "passed", "evidence": "§3"}, {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"}, {"id": "source-traceability", "status": "passed", "evidence": "§5"}, {"id": "final-audit", "status": "passed", "evidence": "§2"}], "artifact_id": "fixture-mo-monitoring", "contract_version": "1.0.0", "created_at": "2026-08-13"}
+{"primary_route": "market-outlook", "secondary_routes": [], "disciplines": [], "audits": [{"id": "market-outlook-audit", "status": "passed", "evidence": "report-section:Monitoring Signals"}, {"id": "forward-looking-claims", "status": "passed", "evidence": "report-section:Monitoring Signals"}, {"id": "source-traceability", "status": "passed", "evidence": "report-section:市场现状"}, {"id": "final-audit", "status": "passed", "evidence": "report-section:执行摘要"}], "artifact_id": "fixture-mo-monitoring", "contract_version": "1.0.0", "created_at": "2026-08-13"}
 ```
 """
 
@@ -1233,8 +1233,8 @@ Stop when evidence saturated.
 
 ## Required audits
 
-- audit-one — passed: executed by author
-- audit-two — passed: verified
+- audit-one — passed — pack-section:Artifact contract
+- audit-two — passed — pack-section:Artifact contract
 
 ## Final audit status
 

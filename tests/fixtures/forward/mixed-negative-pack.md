@@ -74,10 +74,10 @@ md_ready
 
 ## Required audits
 
-- market-outlook-audit — passed: primary route structure inspected
-- forward-looking-claims — passed: labels inspected
-- source-traceability — passed: claims map to the register
-- final-audit — passed: process artifact reviewed
+- market-outlook-audit — passed — pack-section:Artifact contract
+- forward-looking-claims — passed — pack-section:Artifact contract
+- source-traceability — passed — pack-section:Artifact contract
+- final-audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 

@@ -37,7 +37,7 @@ OFTEN_CONFUSED = {r["id"]: r["often_confused_with"] for r in MANIFEST["routes"]}
 def build_contract(primary="listed-company", audits=None, **overrides):
     """Build a contract that satisfies all pre-existing rules by default."""
     audits = audits if audits is not None else [
-        {"id": aid, "status": "passed", "evidence": "§2"}
+        {"id": aid, "status": "passed", "evidence": "report-section:Executive summary"}
         for aid in REQUIRED_AUDITS[primary]
     ]
     contract = {

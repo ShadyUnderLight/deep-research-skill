@@ -5,6 +5,8 @@ import json
 import re
 from pathlib import Path
 
+from audit_evidence import validate_evidence_reference, is_typed_reference
+
 REQUIRED_HEADINGS = [
     "## Objective",
     "## Decision context",
@@ -349,7 +351,13 @@ def _check_malformed_refs(cleaned: str) -> list[str]:
     return issues
 
 
-def run_strict_checks(cleaned: str) -> list[str]:
+def run_strict_checks(
+    cleaned: str,
+    *,
+    artifact_text: str | None = None,
+    evidence_base_dir: Path | None = None,
+    report_text: str | None = None,
+) -> list[str]:
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -442,6 +450,15 @@ def run_strict_checks(cleaned: str) -> list[str]:
     errors.extend(run_errs)
     warnings.extend(run_warns)
 
+    evidence_errors, evidence_warnings = _check_audit_evidence(
+        _parse_audit_statuses(cleaned),
+        artifact_text=artifact_text if artifact_text is not None else cleaned,
+        evidence_base_dir=evidence_base_dir,
+        report_text=report_text,
+    )
+    errors.extend(evidence_errors)
+    warnings.extend(evidence_warnings)
+
     # Audit consistency (Pass vs not-run/partial, Partial vs not-run-no-reason, Fail vs all-ok)
     cons_issues = _check_audit_consistency(cleaned)
     for issue in cons_issues:
@@ -489,6 +506,68 @@ def _check_audit_status(text: str) -> list[str]:
     return []
 
 
+# ─── Strict mode: evidence and status consistency ─────────────────────────────
+
+
+def _check_audit_evidence(
+    records: list[dict],
+    *,
+    artifact_text: str,
+    evidence_base_dir: Path | None,
+    report_text: str | None,
+) -> tuple[list[str], list[str]]:
+    """Require typed, resolvable evidence for every passed pack audit."""
+    errors: list[str] = []
+    warnings: list[str] = []
+    for record in records:
+        status = record.get("status")
+        if status is None:
+            continue
+        audit_line = str(record.get("line", ""))[:100]
+        if status in {"passed", "已通过"}:
+            evidence = record.get("evidence")
+            if not evidence:
+                errors.append(
+                    f"Required audit marked passed without typed evidence: "
+                    f"{audit_line}"
+                )
+                continue
+
+            target_text = artifact_text
+            target_label = "Research Pack"
+            if (
+                isinstance(evidence, str)
+                and evidence.startswith(("report-section:", "report-table:"))
+                and report_text is not None
+            ):
+                target_text = report_text
+                target_label = "report"
+            result = validate_evidence_reference(
+                evidence,
+                artifact_text=target_text,
+                base_dir=evidence_base_dir,
+                strict=True,
+                artifact_label=target_label,
+            )
+            errors.extend(
+                f"Required audit evidence: {error}"
+                for error in result.errors
+            )
+            warnings.extend(
+                f"Required audit evidence: {warning}"
+                for warning in result.warnings
+            )
+        elif status in {
+            "skipped", "not-run", "partial", "已跳过", "未运行", "部分通过",
+        }:
+            if not record.get("has_reason"):
+                errors.append(
+                    f"Required audit status={status} requires a reason: "
+                    f"{audit_line}"
+                )
+    return errors, warnings
+
+
 # ─── Structured audit status parsing ────────────────────────────────────────────
 
 # Extract status after em dash separator (standard format: "audit-name — STATUS")
@@ -503,7 +582,9 @@ _STATUS_EXTRACT_RE = re.compile(
 def _parse_audit_statuses(cleaned: str) -> list[dict]:
     """Parse Required audits into structured status records.
 
-    Each record: {"line": str, "status": str|None, "has_reason": bool}
+    Each record: {"line": str, "status": str|None, "has_reason": bool,
+    "detail": str, "evidence": str|None}.  A typed evidence reference is
+    separated from the free-form reason after the status token.
     Status is extracted from the first em-dash-separated token.
     has_reason is True when the status is followed by colon with content.
     """
@@ -517,17 +598,36 @@ def _parse_audit_statuses(cleaned: str) -> list[dict]:
             continue
         m = _STATUS_EXTRACT_RE.search(line)
         if not m:
-            records.append({"line": line, "status": None, "has_reason": False})
+            records.append({
+                "line": line,
+                "status": None,
+                "has_reason": False,
+                "detail": "",
+                "evidence": None,
+            })
             continue
         status = m.group(1).lower()
-        after = line[m.end():]
-        # Reason must immediately follow the status with non-trivial content.
-        # Anchored match prevents distant colons (e.g. "skipped — no; note: x").
-        # \w + CJK range requires at least one letter/ideograph, not just punctuation.
+        raw_after = line[m.end():]
+        # Preserve the existing reason grammar: a reason must be introduced
+        # immediately by a colon. An em dash is reserved for the typed
+        # evidence separator and must not make distant/punctuation-only text
+        # look like a documented skip reason.
         has_reason = bool(re.match(
-            r"\s*[:：]\s*[a-zA-Z0-9_\u4e00-\u9fff]", after
+            r"\s*[:：]\s*[a-zA-Z0-9_\u4e00-\u9fff]", raw_after
         ))
-        records.append({"line": line, "status": status, "has_reason": has_reason})
+        after = raw_after.strip()
+        if after.startswith(("—", "–")):
+            after = after[1:].strip()
+        if after.startswith((":", "：")):
+            after = after[1:].strip()
+        evidence = after if is_typed_reference(after) else None
+        records.append({
+            "line": line,
+            "status": status,
+            "has_reason": has_reason,
+            "detail": after,
+            "evidence": evidence,
+        })
     return records
 
 
@@ -848,7 +948,11 @@ def main() -> int:
         return EXIT_ARTIFACT
 
     if args.strict:
-        strict_issues = run_strict_checks(cleaned)
+        strict_issues = run_strict_checks(
+            cleaned,
+            artifact_text=cleaned,
+            evidence_base_dir=Path(__file__).resolve().parent.parent,
+        )
         if strict_issues:
             print("Strict mode issues:")
             for issue in strict_issues:

@@ -41,10 +41,10 @@ CONTRACT_TEMPLATE = {
     "secondary_routes": [],
     "disciplines": [],
     "audits": [
-        {"id": "market-outlook-audit", "status": "passed", "evidence": "§3"},
-        {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"},
-        {"id": "source-traceability", "status": "passed", "evidence": "§5"},
-        {"id": "final-audit", "status": "passed", "evidence": "§2"},
+        {"id": "market-outlook-audit", "status": "passed", "evidence": "report-section:Monitoring signals"},
+        {"id": "forward-looking-claims", "status": "passed", "evidence": "report-section:Monitoring signals"},
+        {"id": "source-traceability", "status": "passed", "evidence": "report-section:Findings"},
+        {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"},
     ],
     "artifact_id": "fixture-market-outlook-pos",
     "contract_version": "1.0.0",
@@ -68,24 +68,24 @@ def _route_block(primary: str) -> str:
     """Route and audit status block declaring the primary route and audits."""
     audits = {
         "market-outlook": [
-            ("market-outlook-audit", "§3"),
-            ("forward-looking-claims", "§4"),
-            ("source-traceability", "§5"),
-            ("final-audit", "§2"),
+            ("market-outlook-audit", "report-section:Monitoring signals"),
+            ("forward-looking-claims", "report-section:Monitoring signals"),
+            ("source-traceability", "report-section:Findings"),
+            ("final-audit", "report-section:Executive summary"),
             # quantitative-role-audit keeps the table role-annotated
             # (table-role-labels: 3+ row tables need a role keyword).
-            ("quantitative-role-audit", "§6"),
+            ("quantitative-role-audit", "report-table:Comparison Table"),
         ],
         "technical-deep-dive": [
-            ("technical-analysis-audit", "§4"),
-            ("source-traceability", "§5"),
-            ("final-audit", "§2"),
-            ("quantitative-role-audit", "§6"),
+            ("technical-analysis-audit", "report-section:Findings"),
+            ("source-traceability", "report-section:Findings"),
+            ("final-audit", "report-section:Executive summary"),
+            ("quantitative-role-audit", "report-table:Comparison Table"),
         ],
         "shared-workflow": [
-            ("workflow-spine-audit", "§3"),
-            ("final-audit", "§2"),
-            ("quantitative-role-audit", "§6"),
+            ("workflow-spine-audit", "report-section:Findings"),
+            ("final-audit", "report-section:Executive summary"),
+            ("quantitative-role-audit", "report-table:Comparison Table"),
         ],
     }
     rows = audits.get(primary, audits["market-outlook"])
@@ -218,7 +218,7 @@ class TestManualAuditStatus:
             "**Primary route**: Market Outlook\n\n"
             "| Audit | Status | 证据 |\n"
             "|-------|--------|------|\n"
-            "| final-audit | ✅ Passed | §2 |\n"
+            "| final-audit | ✅ Passed | report-section:Executive summary |\n"
         )
         return _write(_report(route_block=block, contract=_contract()))
 
@@ -228,11 +228,11 @@ class TestManualAuditStatus:
             "**Primary route**: Market Outlook\n\n"
             "| Audit | Status | 证据 |\n"
             "|-------|--------|------|\n"
-            f"| market-outlook-audit | {status_cell} | §3 |\n"
-            "| forward-looking-claims | ✅ Passed | §4 |\n"
-            "| source-traceability | ✅ Passed | §5 |\n"
-            "| final-audit | ✅ Passed | §2 |\n"
-            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+            f"| market-outlook-audit | {status_cell} | report-section:Monitoring signals |\n"
+            "| forward-looking-claims | ✅ Passed | report-section:Monitoring signals |\n"
+            "| source-traceability | ✅ Passed | report-section:Findings |\n"
+            "| final-audit | ✅ Passed | report-section:Executive summary |\n"
+            "| quantitative-role-audit | ✅ Passed | report-table:Comparison Table |\n"
         )
         return _write(_report(route_block=block, contract=_contract()))
 
@@ -329,12 +329,12 @@ class TestManualAuditStatus:
             "**Primary route**: Market Outlook\n\n"
             "| Audit | Status | 证据 |\n"
             "|-------|--------|------|\n"
-            f"| market-outlook-audit | {first} | §3 |\n"
-            f"| market-outlook-audit | {second} | §3 |\n"
-            "| forward-looking-claims | ✅ Passed | §4 |\n"
-            "| source-traceability | ✅ Passed | §5 |\n"
-            "| final-audit | ✅ Passed | §2 |\n"
-            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+            f"| market-outlook-audit | {first} | report-section:Monitoring signals |\n"
+            f"| market-outlook-audit | {second} | report-section:Monitoring signals |\n"
+            "| forward-looking-claims | ✅ Passed | report-section:Monitoring signals |\n"
+            "| source-traceability | ✅ Passed | report-section:Findings |\n"
+            "| final-audit | ✅ Passed | report-section:Executive summary |\n"
+            "| quantitative-role-audit | ✅ Passed | report-table:Comparison Table |\n"
         )
         return _write(_report(route_block=block, contract=_contract()))
 
@@ -366,16 +366,16 @@ class TestManualAuditStatus:
         block1 = (
             "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
             "| Audit | Status | 证据 |\n|-------|--------|------|\n"
-            f"| market-outlook-audit | {first} | §3 |\n"
-            "| forward-looking-claims | ✅ Passed | §4 |\n"
-            "| source-traceability | ✅ Passed | §5 |\n"
-            "| final-audit | ✅ Passed | §2 |\n"
-            "| quantitative-role-audit | ✅ Passed | §6 |\n"
+            f"| market-outlook-audit | {first} | report-section:Monitoring signals |\n"
+            "| forward-looking-claims | ✅ Passed | report-section:Monitoring signals |\n"
+            "| source-traceability | ✅ Passed | report-section:Findings |\n"
+            "| final-audit | ✅ Passed | report-section:Executive summary |\n"
+            "| quantitative-role-audit | ✅ Passed | report-table:Comparison Table |\n"
         )
         block2 = (
             "## Route and audit status\n\n**Primary route**: Market Outlook\n\n"
             "| Audit | Status | 证据 |\n|-------|--------|------|\n"
-            f"| market-outlook-audit | {second} | §3 |\n"
+            f"| market-outlook-audit | {second} | report-section:Monitoring signals |\n"
         )
         return _write(_report(route_block=block1, contract=_contract()) + "\n" + block2)
 
@@ -1926,12 +1926,12 @@ class TestSecondaryHardFail:
         contract = _contract(
             secondary_routes=["constrained-choice"],
             audits=[
-                {"id": "market-outlook-audit", "status": "passed", "evidence": "§3"},
-                {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"},
-                {"id": "source-traceability", "status": "passed", "evidence": "§5"},
-                {"id": "final-audit", "status": "passed", "evidence": "§2"},
+                {"id": "market-outlook-audit", "status": "passed", "evidence": "report-section:Monitoring signals"},
+                {"id": "forward-looking-claims", "status": "passed", "evidence": "report-section:Monitoring signals"},
+                {"id": "source-traceability", "status": "passed", "evidence": "report-section:Findings"},
+                {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"},
                 {"id": "constrained-choice-secondary-hard-fail", "status": "passed",
-                 "evidence": "§6 verified hard-fail conditions"},
+                 "evidence": "report-section:Dimension conclusions"},
             ],
         )
         path = self._secondary_report(contract)
@@ -1946,10 +1946,10 @@ class TestSecondaryHardFail:
         contract = _contract(
             secondary_routes=["constrained-choice"],
             audits=[
-                {"id": "market-outlook-audit", "status": "passed", "evidence": "§3"},
-                {"id": "forward-looking-claims", "status": "passed", "evidence": "§4"},
-                {"id": "source-traceability", "status": "passed", "evidence": "§5"},
-                {"id": "final-audit", "status": "passed", "evidence": "§2"},
+                {"id": "market-outlook-audit", "status": "passed", "evidence": "report-section:Monitoring signals"},
+                {"id": "forward-looking-claims", "status": "passed", "evidence": "report-section:Monitoring signals"},
+                {"id": "source-traceability", "status": "passed", "evidence": "report-section:Findings"},
+                {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"},
             ],
         )
         path = self._secondary_report(contract)
@@ -2020,10 +2020,10 @@ fixture-market-outlook-pos
 
 ## Required audits
 
-- market-outlook-audit — passed: executed by author
-- forward-looking-claims — passed: no mislabeled claims
-- source-traceability — passed: register complete
-- final-audit — passed: all gates verified
+- market-outlook-audit — passed — pack-section:Artifact contract
+- forward-looking-claims — passed — pack-section:Artifact contract
+- source-traceability — passed — pack-section:Artifact contract
+- final-audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 

@@ -6,8 +6,8 @@
 
 | Audit | Status | 证据 | 数字角色 |
 |---|---|---|---|
-| option-selection-final-audit | ✅ Passed | §Decision scope | process |
-| final-audit | ✅ Passed | §Executive summary | process |
+| option-selection-final-audit | ✅ Passed | report-section:Decision scope | process |
+| final-audit | ✅ Passed | report-section:Executive summary | process |
 
 ## Executive summary
 
@@ -56,8 +56,8 @@ is conditional on the stated deployment boundary [S01].
   "secondary_routes": [],
   "disciplines": ["decision-utility", "quantitative-role"],
   "audits": [
-    {"id": "option-selection-final-audit", "status": "passed", "evidence": "§Decision scope"},
-    {"id": "final-audit", "status": "passed", "evidence": "§Executive summary"}
+    {"id": "option-selection-final-audit", "status": "passed", "evidence": "report-section:Decision scope"},
+    {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"}
   ]
 }
 ```

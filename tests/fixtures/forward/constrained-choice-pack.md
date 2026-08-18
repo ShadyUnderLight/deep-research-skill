@@ -77,8 +77,8 @@ md_ready
 
 ## Required audits
 
-- option-selection-final-audit — passed: option universe and comparison unit checked
-- final-audit — passed: conclusion and reversal condition visible
+- option-selection-final-audit — passed — pack-section:Artifact contract
+- final-audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 

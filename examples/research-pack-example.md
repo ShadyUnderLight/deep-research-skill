@@ -86,8 +86,8 @@ Stop when the top choice, runner-up logic, and ranking-change conditions are sup
 The final memo should visibly show the comparison unit, top choice, runner-up logic, ranking-change conditions, and uncertainty that can move the decision.
 
 ## Required audits
-- final audit — passed
-- quantitative role audit — passed
+- final audit — passed — pack-section:Artifact contract
+- quantitative role audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 Pass

@@ -77,10 +77,10 @@ md_ready
 
 ## Required audits
 
-- technical-analysis-audit — passed: mechanism judgment and viability evidence checked
-- source-traceability — passed: claims map to the source register
-- final-audit — passed: conclusion and limitations visible
-- listed-company-secondary-hard-fail — passed: secondary route checked independently
+- technical-analysis-audit — passed — pack-section:Artifact contract
+- source-traceability — passed — pack-section:Artifact contract
+- final-audit — passed — pack-section:Artifact contract
+- listed-company-secondary-hard-fail — passed — pack-section:Artifact contract
 
 ## Final audit status
 

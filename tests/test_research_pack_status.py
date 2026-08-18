@@ -62,7 +62,7 @@ When tests pass.
 The report must validate correctly.
 
 ## Required audits
-- final audit — passed
+- final audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 Pass

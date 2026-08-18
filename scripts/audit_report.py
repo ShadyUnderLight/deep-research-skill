@@ -83,6 +83,7 @@ from validate_research_pack import (
     run_strict_checks as vrp_run_strict_checks,
     strip_fenced_code_blocks as vrp_strip_fenced_code_blocks,
 )
+from audit_evidence import validate_evidence_reference
 
 # ── Runtime control-plane registry (issue #374) ─────────────────────────────
 # Route identity, aliases and validator dispatch bindings come from
@@ -561,6 +562,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             name="contract-check",
             errors=[f"{path}: cannot read file — {exc}"],
         )
+    visible_text = vc_strip_fences(text)
 
     # Cardinality checks on user-writable declarations (issue #378): more
     # than one contract block / route status block is structural
@@ -619,6 +621,8 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
         contract,
         report_primary_route=report_route,
         strict=strict,
+        report_text=visible_text,
+        evidence_base_dir=Path(__file__).resolve().parent.parent,
     )
     if result.errors:
         return CheckResult(
@@ -655,6 +659,8 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             pack_artifact_id=pack_artifact,
             research_pack_provided=True,
             strict=strict,
+            report_text=visible_text,
+            evidence_base_dir=Path(__file__).resolve().parent.parent,
         )
         if cross.errors:
             return CheckResult(
@@ -738,7 +744,20 @@ def _run_research_pack(pack_path: Path | None, **kwargs: bool) -> CheckResult:
     missing = vrp_find_missing_headings(cleaned)
     errors.extend(f"pack missing required heading: {h}" for h in missing)
     try:
-        errors.extend(vrp_run_strict_checks(cleaned))
+        report_path = kwargs.get("report_path")
+        report_text: str | None = None
+        if isinstance(report_path, Path) and report_path.is_file():
+            report_text = vc_strip_fences(
+                report_path.read_text(encoding="utf-8", errors="replace")
+            )
+        errors.extend(
+            vrp_run_strict_checks(
+                cleaned,
+                artifact_text=cleaned,
+                evidence_base_dir=Path(__file__).resolve().parent.parent,
+                report_text=report_text,
+            )
+        )
     except Exception as exc:
         errors.append(f"research-pack strict checks crashed: {exc}")
     return CheckResult(name="research-pack", errors=errors, warnings=[])
@@ -845,15 +864,19 @@ class AuditResult:
 
     status is one of: pass | conditional-pass | fail | not_run | skipped |
     partial.  ``not_run``/``skipped`` mean the audit did not execute and
-    must never aggregate to a Pass verdict.
+    must never aggregate to a Pass verdict. execution_source distinguishes
+    automated validator output, manual checklist attestation, process-node
+    evidence, and legacy self-attestation (issue #390).
     """
 
     audit_id: str
     execution_type: str  # automated | manual | process
     status: str
+    execution_source: str | None = None
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
     evidence: list[str] = field(default_factory=list)
+    evidence_provenance: list[dict[str, object]] = field(default_factory=list)
     validator_binding: str | None = None
     reason: str | None = None
 
@@ -1101,6 +1124,17 @@ def _audit_validator_fn(binding: str) -> ValidatorFn | None:
     return fn
 
 
+def _execution_source(execution_type: str, *, legacy: bool = False) -> str:
+    """Map registry execution type to the public provenance vocabulary."""
+    if legacy:
+        return "legacy_self_attested"
+    if execution_type == "automated":
+        return "automated_validator"
+    if execution_type == "process":
+        return "process_node_evidence"
+    return "manual_checklist_attestation"
+
+
 def _execute_required_audits(
     path: Path,
     route_id: str,
@@ -1119,6 +1153,12 @@ def _execute_required_audits(
     """
     audit_ids = _ROUTE_REGISTRY.required_audits_for(route_id) + list(GLOBAL_AUDITS)
     block_statuses, block_malformed = _parse_audit_block_statuses(path)
+    try:
+        visible_text = vc_strip_fences(
+            path.read_text(encoding="utf-8", errors="replace")
+        )
+    except (OSError, UnicodeError):
+        visible_text = None
     results: list[AuditResult] = []
     blocking: list[str] = []
     warnings: list[str] = []
@@ -1156,14 +1196,50 @@ def _execute_required_audits(
                 status = declared["status"]
                 reason = None
             evidence = [declared["evidence"]] if declared and declared["evidence"] else []
+            execution_source = _execution_source(audit.execution_type)
+            evidence_provenance: list[dict[str, object]] = []
             if status == "pass" and not evidence:
                 status = "partial"
                 reason = "declared Passed but evidence column is empty"
+            elif (
+                declared is not None
+                and not declared.get("duplicate")
+                and status in {"skipped", "not_run", "partial"}
+                and not evidence
+            ):
+                reason = (
+                    f"declared status '{status}' requires a reason or evidence "
+                    "reference"
+                )
+            elif status == "pass":
+                evidence_result = validate_evidence_reference(
+                    evidence[0],
+                    artifact_text=visible_text,
+                    base_dir=Path(__file__).resolve().parent.parent,
+                    strict=strict,
+                    artifact_label="report",
+                )
+                if evidence_result.legacy:
+                    execution_source = _execution_source(
+                        audit.execution_type, legacy=True
+                    )
+                if evidence_result.provenance:
+                    evidence_provenance.append(
+                        {
+                            **evidence_result.provenance,
+                            "execution_source": execution_source,
+                        }
+                    )
+                if evidence_result.errors:
+                    status = "partial"
+                    reason = "; ".join(evidence_result.errors)
             result = AuditResult(
                 audit_id=audit_id,
                 execution_type=audit.execution_type,
                 status=status,
+                execution_source=execution_source,
                 evidence=evidence,
+                evidence_provenance=evidence_provenance,
                 reason=reason,
             )
             results.append(result)
@@ -1209,13 +1285,23 @@ def _execute_required_audits(
                 audit_id=audit_id,
                 execution_type="automated",
                 status=status,
+                execution_source="automated_validator",
                 validator_binding=binding,
+                evidence_provenance=[{
+                    "kind": "automated_validator",
+                    "locator": binding,
+                    "validator_binding": binding,
+                    "verified": False,
+                }],
                 reason=reason,
             ))
             continue
         try:
             target = research_pack if audit_id == "research-pack" else path
-            check = fn(target, strict=strict)
+            audit_kwargs: dict[str, object] = {"strict": strict}
+            if audit_id == "research-pack":
+                audit_kwargs["report_path"] = path
+            check = fn(target, **audit_kwargs)
         except Exception as exc:
             check = CheckResult(
                 name=audit_id,
@@ -1236,14 +1322,23 @@ def _execute_required_audits(
         else:
             # Success carries an evidence location (issue #378 acceptance 8).
             evidence = [f"{target}: no violations found by {binding}"]
+        evidence_provenance = [{
+            "kind": "automated_validator",
+            "locator": binding,
+            "validator_binding": binding,
+            "target": str(target),
+            "verified": True,
+        }]
         results.append(AuditResult(
             audit_id=audit_id,
             execution_type="automated",
             status=status,
+            execution_source="automated_validator",
             errors=list(check.errors),
             warnings=list(check.warnings),
             validator_binding=binding,
             evidence=evidence,
+            evidence_provenance=evidence_provenance,
             reason="advisory outside strict mode" if advisory else None,
         ))
         if not advisory:
@@ -1281,14 +1376,44 @@ def _execute_required_audits(
             status, reason = "pass", None
         else:
             status, reason = str(entry.get("status", "not_run")).lower(), None
-        evidence = [str(entry.get("evidence", "")).strip()] if entry and entry.get("evidence") else []
+        raw_evidence = entry.get("evidence") if entry else None
+        if isinstance(raw_evidence, str) and raw_evidence.strip():
+            evidence = [raw_evidence.strip()]
+        elif isinstance(raw_evidence, dict):
+            evidence = [json.dumps(raw_evidence, ensure_ascii=False, sort_keys=True)]
+        else:
+            evidence = []
+        execution_source = _execution_source("manual")
+        evidence_provenance: list[dict[str, object]] = []
         if status == "pass" and not evidence:
             status, reason = "partial", "hard-fail entry declared Passed but evidence empty"
+        elif status == "pass":
+            evidence_result = validate_evidence_reference(
+                raw_evidence,
+                artifact_text=visible_text,
+                base_dir=Path(__file__).resolve().parent.parent,
+                strict=strict,
+                artifact_label="report",
+            )
+            if evidence_result.legacy:
+                execution_source = _execution_source("manual", legacy=True)
+            if evidence_result.provenance:
+                evidence_provenance.append(
+                    {
+                        **evidence_result.provenance,
+                        "execution_source": execution_source,
+                    }
+                )
+            if evidence_result.errors:
+                status = "partial"
+                reason = "; ".join(evidence_result.errors)
         result = AuditResult(
             audit_id=derived_id,
             execution_type="manual",
             status=status,
+            execution_source=execution_source,
             evidence=evidence,
+            evidence_provenance=evidence_provenance,
             reason=reason,
         )
         results.append(result)
@@ -1418,10 +1543,12 @@ def _verdict_to_json(verdict: AuditVerdict) -> str:
             {
                 "audit_id": a.audit_id,
                 "execution_type": a.execution_type,
+                "execution_source": a.execution_source,
                 "status": a.status,
                 "errors": a.errors,
                 "warnings": a.warnings,
                 "evidence": a.evidence,
+                "evidence_provenance": a.evidence_provenance,
                 "validator_binding": a.validator_binding,
                 "reason": a.reason,
             }
