@@ -31,6 +31,7 @@ from registry_loader import (  # noqa: E402
     RegistryError,
     UnknownRouteError,
     load_audit_registry,
+    load_decision_tree_registry,
     load_discipline_registry,
     load_route_registry,
 )
@@ -299,6 +300,57 @@ class TestRouteResolution:
     def test_validators_for_unknown_route_raises(self) -> None:
         with pytest.raises(UnknownRouteError):
             self._registry().validators_for("no-such-route")
+
+
+class TestDecisionTreeRegistry:
+    def test_loads_real_registry_and_matches_manifest_version(self) -> None:
+        route_registry = load_route_registry()
+        decision_tree = load_decision_tree_registry(route_registry=route_registry)
+        assert decision_tree.route_manifest_version == route_registry.version
+        assert len(decision_tree.actions) == 10
+        assert len(decision_tree.objects) == 12
+        assert "Select / rank / predict" in decision_tree.action_labels()
+        assert "Market / category trajectory" in decision_tree.object_labels()
+
+    def test_resolves_conflict_from_registry(self) -> None:
+        decision_tree = load_decision_tree_registry()
+        primary, secondary = decision_tree.resolve(
+            "Judge regulation / policy impact",
+            "Market / category trajectory",
+        )
+        assert primary == "regulatory-analysis"
+        assert secondary == ("market-outlook",)
+
+    def test_unknown_action_is_rejected(self) -> None:
+        with pytest.raises(RegistryError, match="Unknown decision-tree action"):
+            load_decision_tree_registry().resolve(
+                "not-a-canonical-action",
+                "Market / category trajectory",
+            )
+
+    def test_manifest_version_mismatch_is_rejected(self, tmp_path: Path) -> None:
+        data = json.loads(
+            (ROOT / "schemas" / "route-decision-tree.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        data["route_manifest_version"] = 999
+        path = tmp_path / "route-decision-tree.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        with pytest.raises(RegistryError, match="targets route manifest version"):
+            load_decision_tree_registry(path)
+
+    def test_unknown_conflict_route_is_rejected(self, tmp_path: Path) -> None:
+        data = json.loads(
+            (ROOT / "schemas" / "route-decision-tree.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        data["conflicts"][0]["primary_route"] = "unknown-route"
+        path = tmp_path / "route-decision-tree.json"
+        path.write_text(json.dumps(data), encoding="utf-8")
+        with pytest.raises(RegistryError, match="unknown primary route"):
+            load_decision_tree_registry(path)
 
 
 def _minimal_route(overrides: dict) -> dict:

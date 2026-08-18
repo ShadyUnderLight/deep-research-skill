@@ -549,9 +549,45 @@ class TestRouteIndexConsistency:
         manifest = self._manifest()
         manifest_ids = {r["id"] for r in manifest["routes"]}
         route_audits = {r["id"]: set(r["required_audits"]) for r in manifest["routes"]}
+        manifest_routes = {r["id"]: r for r in manifest["routes"]}
         text = (ROOT / "references" / "route-index.md").read_text(encoding="utf-8")
-        errors = v._check_route_index(text, manifest_ids, route_audits)
+        errors = v._check_route_index(
+            text, manifest_ids, route_audits, manifest_routes, manifest["version"]
+        )
         assert errors == [], f"route-index.md drift: {errors}"
+
+    def test_stale_trigger_is_detected(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        manifest = self._manifest()
+        manifest_ids = {r["id"] for r in manifest["routes"]}
+        route_audits = {r["id"]: set(r["required_audits"]) for r in manifest["routes"]}
+        manifest_routes = {r["id"]: r for r in manifest["routes"]}
+        text = (ROOT / "references" / "route-index.md").read_text(encoding="utf-8")
+        mutated = text.replace(
+            "Explain how a market will evolve over the next 6-24 months: direction, adoption trajectory, scenario memo.",
+            "completely unrelated trigger text",
+            1,
+        )
+        errors = v._check_route_index(
+            mutated, manifest_ids, route_audits, manifest_routes, manifest["version"]
+        )
+        assert any("generated" in error for error in errors)
+
+    def test_stale_reads_are_detected(self) -> None:
+        sys.path.insert(0, str(ROOT / "scripts"))
+        import validate_route_manifest as v
+        manifest = self._manifest()
+        manifest_ids = {r["id"] for r in manifest["routes"]}
+        route_audits = {r["id"]: set(r["required_audits"]) for r in manifest["routes"]}
+        manifest_routes = {r["id"]: r for r in manifest["routes"]}
+        text = (ROOT / "references" / "route-index.md").read_text(encoding="utf-8")
+        old = "`references/finance-date-discipline.md`, `references/valuation-methodology.md`"
+        mutated = text.replace(old, "`references/not-a-real-read.md`", 1)
+        errors = v._check_route_index(
+            mutated, manifest_ids, route_audits, manifest_routes, manifest["version"]
+        )
+        assert any("generated" in error for error in errors)
 
     def test_missing_route_in_index_is_detected(self) -> None:
         sys.path.insert(0, str(ROOT / "scripts"))

@@ -9,12 +9,13 @@ This file exists to reduce two failure modes:
 
 ## Canonical / generated relationship (issue #380)
 
-Route identity and route metadata have a single canonical source — everything else is a view of it:
+Route metadata and activation semantics each have an explicit canonical registry; Markdown documents are views or human-authored boundary guidance:
 
 - `schemas/route-manifest.json` — **canonical** route registry (ids, aliases, triggers, boundaries, primary reads, required disciplines, required audits, artifact contract, hard-fail keywords). Loaded at runtime by `scripts/registry_loader.py`.
 - `references/routes/<id>.md` — **generated** route cards (one short card per route). Regenerate with `python3 scripts/generate_route_cards.py`; do not edit by hand.
-- `references/route-index.md` — **hand-maintained** compact trigger table that links to the cards; drift-checked against the manifest by `scripts/validate_route_manifest.py`.
+- `references/route-index.md` — **generated** compact trigger/read/audit table that links to the cards, followed by hand-maintained boundary guidance; generated with `python3 scripts/generate_route_cards.py` and checked against the manifest.
 - `ROUTING-MATRIX.md` (this file) — **human-readable** full contract overview for specialized routes; `shared-workflow` uses `SKILL.md#routing-rule` and the shared final-discipline rules; drift-checked against the manifest by `scripts/validate_route_manifest.py`.
+- `schemas/route-decision-tree.json` — **canonical** structured action/object/candidate/conflict semantics consumed by `scripts/route_activation.py`; the decision-tree tables and examples below are documentation views of this registry.
 
 Reading order: `references/route-index.md` → the route's card in `references/routes/` → this file only when the card is not enough.
 
@@ -1064,6 +1065,8 @@ Fail if:
 - the report answers "what exists" better than "what matters most"
 
 ---
+
+> **Decision-tree view** — canonical source: `schemas/route-decision-tree.json` (version `1`, route manifest version `2`). The registry-backed activation adapter and `scripts/test_route_decision_tree.py` must resolve the same action/object/conflict rules shown below.
 
 ## Route selection decision tree
 

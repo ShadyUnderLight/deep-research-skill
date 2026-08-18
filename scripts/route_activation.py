@@ -2,9 +2,9 @@
 """Fail-closed offline adapter for the route-selection decision tree.
 
 Forward evals provide canonical action/object classifications explicitly.  This
-module resolves those structured values against ``ROUTING-MATRIX.md`` and keeps
-the original user prompt as an identity-checked input.  It intentionally does
-not guess from arbitrary prose or fall back to ``shared-workflow``.
+module resolves those structured values against the route-decision registry and
+keeps the original user prompt as an identity-checked input.  It intentionally
+does not guess from arbitrary prose or fall back to ``shared-workflow``.
 """
 
 from __future__ import annotations
@@ -12,43 +12,22 @@ from __future__ import annotations
 import hashlib
 import re
 from dataclasses import dataclass
-from pathlib import Path
 
 try:
-    from registry_loader import load_route_registry
+    from registry_loader import (
+        RegistryError,
+        load_decision_tree_registry,
+        load_route_registry,
+    )
 except ImportError:  # pragma: no cover - package import fallback
-    from .registry_loader import load_route_registry  # type: ignore[no-redef]
+    from .registry_loader import (  # type: ignore[no-redef]
+        RegistryError,
+        load_decision_tree_registry,
+        load_route_registry,
+    )
 
 
-ROOT = Path(__file__).resolve().parents[1]
-ROUTING_MATRIX = ROOT / "ROUTING-MATRIX.md"
 ALLOWED_PARALLELIZATION = {"single-track", "parallel", "not-needed"}
-ACTION_CATEGORIES = {
-    "Select / rank / predict",
-    "Enter / phase / sequence",
-    "Judge direction / scenario",
-    "Judge regulation / policy impact",
-    "Judge listed-company value",
-    "Judge private-company quality",
-    "Judge technical mechanism / feasibility",
-    "Judge academic evidence / research",
-    "Judge positioning / tier",
-    "shared-workflow",
-}
-OBJECT_CATEGORIES = {
-    "Defined options / teams / ranking",
-    "Providers / vendors / APIs / models",
-    "Devices / hardware / build",
-    "Market / category trajectory",
-    "Regulation / rules / policy",
-    "Listed / public company",
-    "Private / startup company",
-    "Architecture / mechanism / patent",
-    "Academic literature / research evidence",
-    "Positioning / tier label",
-    "Entry decision / sequencing / gates",
-    "shared-workflow",
-}
 
 
 class RouteActivationError(ValueError):
@@ -63,82 +42,79 @@ class ActivationResult:
     weight_bearing_object: str
     parallelization_decision: str
     prompt_sha256: str
+    decision_tree_version: int
+    derived_secondary_routes: tuple[str, ...] = ()
+    manual_secondary_routes: tuple[str, ...] = ()
     mode: str = "offline-decision-tree-structured"
 
 
-def _section_after_heading(content: str, heading: str) -> str:
-    start = content.find(heading)
-    if start == -1:
-        return ""
-    section = content[start:]
-    rest = section[section.index("\n") + 1:]
-    next_heading = re.search(r"\n## ", rest)
-    if next_heading:
-        rest = rest[:next_heading.start() + 1]
-    return rest
-
-
-def _step2_object_routes() -> dict[str, list[str]]:
+def _load_decision_tree():
+    """Load the canonical decision tree and translate loader failures."""
     try:
-        content = ROUTING_MATRIX.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise RouteActivationError(f"cannot read {ROUTING_MATRIX}: {exc}") from exc
-    decision_tree = _section_after_heading(content, "## Route selection decision tree")
-    start = decision_tree.find("### Step 2")
-    if start == -1:
-        raise RouteActivationError("ROUTING-MATRIX.md is missing Step 2")
-    section = decision_tree[start:]
-    next_h3 = re.search(r"\n### Step 3\b", section)
-    if next_h3:
-        section = section[:next_h3.start() + 1]
-
-    mapping: dict[str, list[str]] = {}
-    in_table = False
-    for line in section.splitlines():
-        stripped = line.strip()
-        if stripped.startswith("| Weight-bearing object"):
-            in_table = True
-            continue
-        if not in_table or stripped.startswith("|---"):
-            continue
-        if stripped.startswith("|") and "`" in stripped:
-            columns = [cell.strip() for cell in stripped.strip("|").split("|")]
-            if len(columns) >= 2:
-                route_ids = re.findall(r"`([a-z]+(?:-[a-z]+)*)`", columns[1])
-                if route_ids and columns[0]:
-                    mapping[columns[0]] = route_ids
-        elif stripped.startswith("When an object matches"):
-            break
-    return mapping
-
-
-def _normalize_label(value: str) -> str:
-    return re.sub(r"\s*/\s*", "/", value.lower())
-
-
-_CONFLICT_PAIRS: dict[tuple[str, str], tuple[str, tuple[str, ...]]] = {
-    ("select/rank", "market"): ("constrained-choice", ()),
-    ("enter/phase", "defined options"): ("market-entry", ()),
-    ("listed-company", "architecture"): ("listed-company", ("technical-deep-dive",)),
-    ("academic evidence", "architecture"): ("academic-review", ()),
-    ("regulation", "market"): ("regulatory-analysis", ("market-outlook",)),
-    ("technical", "listed"): ("technical-deep-dive", ()),
-    ("technical", "academic"): ("technical-deep-dive", ()),
-}
+        return load_decision_tree_registry()
+    except RegistryError as exc:
+        raise RouteActivationError(f"invalid route decision-tree registry: {exc}") from exc
 
 
 def _resolve_route(action_category: str, weight_bearing_object: str) -> tuple[str, tuple[str, ...]]:
-    action = _normalize_label(action_category)
-    obj = _normalize_label(weight_bearing_object)
-    for (action_fragment, object_fragment), result in _CONFLICT_PAIRS.items():
-        if action_fragment in action and object_fragment in obj:
-            return result
-    candidates = _step2_object_routes().get(weight_bearing_object, [])
-    if not candidates:
+    decision_tree = _load_decision_tree()
+    try:
+        return decision_tree.resolve(action_category, weight_bearing_object)
+    except RegistryError as exc:
+        raise RouteActivationError(str(exc)) from exc
+
+
+def _validate_secondary_contracts(
+    secondary_routes: tuple[str, ...],
+    derived_secondary_routes: tuple[str, ...],
+    contracts: object,
+) -> tuple[str, ...]:
+    """Require a boundary/hard-fail contract for manual secondary routes."""
+    if contracts is None:
+        contracts = {}
+    if not isinstance(contracts, dict):
         raise RouteActivationError(
-            f"no route candidate for structured object '{weight_bearing_object}'"
+            "input.secondary_route_contracts must be an object keyed by route id"
         )
-    return candidates[0], ()
+    manual = set(secondary_routes) - set(derived_secondary_routes)
+    contract_routes = set(contracts)
+    if contract_routes - set(secondary_routes):
+        raise RouteActivationError(
+            "input.secondary_route_contracts contains a route that is not "
+            "declared in input.secondary_routes"
+        )
+    if contract_routes & set(derived_secondary_routes):
+        raise RouteActivationError(
+            "derived secondary routes must not be represented as manual contracts"
+        )
+    if contract_routes != manual:
+        missing = sorted(manual - contract_routes)
+        extra = sorted(contract_routes - manual)
+        raise RouteActivationError(
+            "every manually attached secondary route requires a boundary and "
+            f"hard-fail contract (missing={missing}, extra={extra})"
+        )
+    for route_id, contract in contracts.items():
+        if not isinstance(route_id, str) or not route_id.strip():
+            raise RouteActivationError(
+                "input.secondary_route_contracts keys must be non-empty route ids"
+            )
+        if not isinstance(contract, dict):
+            raise RouteActivationError(
+                f"manual secondary route '{route_id}' contract must be an object"
+            )
+        if set(contract) != {"boundary", "hard_fail_verification"}:
+            raise RouteActivationError(
+                f"manual secondary route '{route_id}' contract must contain only "
+                "boundary and hard_fail_verification"
+            )
+        for field in ("boundary", "hard_fail_verification"):
+            if not isinstance(contract[field], str) or not contract[field].strip():
+                raise RouteActivationError(
+                    f"manual secondary route '{route_id}' contract field "
+                    f"'{field}' must be non-empty"
+                )
+    return tuple(sorted(manual))
 
 
 def activate_prompt(
@@ -148,6 +124,7 @@ def activate_prompt(
     action_category: str | None = None,
     weight_bearing_object: str | None = None,
     secondary_routes: list[str] | tuple[str, ...] | None = None,
+    secondary_route_contracts: dict[str, dict[str, str]] | None = None,
     expected_prompt_sha256: str | None = None,
 ) -> ActivationResult:
     """Resolve structured activation input and verify prompt identity.
@@ -164,9 +141,16 @@ def activate_prompt(
             "input.parallelization_decision must be one of "
             f"{sorted(ALLOWED_PARALLELIZATION)}"
         )
-    if not isinstance(action_category, str) or action_category not in ACTION_CATEGORIES:
+    decision_tree = _load_decision_tree()
+    if (
+        not isinstance(action_category, str)
+        or action_category not in decision_tree.action_labels()
+    ):
         raise RouteActivationError(f"unknown structured action_burden: {action_category!r}")
-    if not isinstance(weight_bearing_object, str) or weight_bearing_object not in OBJECT_CATEGORIES:
+    if (
+        not isinstance(weight_bearing_object, str)
+        or weight_bearing_object not in decision_tree.object_labels()
+    ):
         raise RouteActivationError(
             f"unknown structured weight_bearing_object: {weight_bearing_object!r}"
         )
@@ -181,6 +165,8 @@ def activate_prompt(
         isinstance(route, str) and route.strip() for route in secondary_routes
     ):
         raise RouteActivationError("input.secondary_routes must be a string list")
+    if len(secondary_routes) != len(set(secondary_routes)):
+        raise RouteActivationError("input.secondary_routes must not contain duplicates")
     route_ids = load_route_registry().route_ids()
     secondary = tuple(sorted(set(secondary_routes)))
     unknown_secondary = set(secondary) - route_ids
@@ -198,12 +184,20 @@ def activate_prompt(
         primary = "shared-workflow"
         derived_secondary: tuple[str, ...] = ()
     else:
-        primary, derived_secondary = _resolve_route(action_category, weight_bearing_object)
-    if set(secondary) != set(derived_secondary) and derived_secondary:
+        try:
+            primary, derived_secondary = decision_tree.resolve(
+                action_category, weight_bearing_object
+            )
+        except RegistryError as exc:
+            raise RouteActivationError(str(exc)) from exc
+    if not set(derived_secondary).issubset(set(secondary)):
         raise RouteActivationError(
             "structured secondary routes do not match the route decision-tree conflict pair: "
             f"expected {sorted(derived_secondary)}, got {sorted(secondary)}"
         )
+    manual_secondary = _validate_secondary_contracts(
+        secondary, derived_secondary, secondary_route_contracts
+    )
     return ActivationResult(
         primary_route=primary,
         secondary_routes=secondary,
@@ -211,4 +205,7 @@ def activate_prompt(
         weight_bearing_object=weight_bearing_object,
         parallelization_decision=parallelization_decision,
         prompt_sha256=prompt_sha256,
+        decision_tree_version=decision_tree.version,
+        derived_secondary_routes=tuple(sorted(derived_secondary)),
+        manual_secondary_routes=manual_secondary,
     )

@@ -17,6 +17,7 @@ try:  # Support both ``python scripts/foo.py`` and package-style imports.
     from registry_loader import (
         RegistryError,
         load_audit_registry,
+        load_decision_tree_registry,
         load_discipline_registry,
         load_route_registry,
     )
@@ -24,17 +25,14 @@ except ImportError:  # pragma: no cover - exercised only by package imports
     from .registry_loader import (  # type: ignore[no-redef]
         RegistryError,
         load_audit_registry,
+        load_decision_tree_registry,
         load_discipline_registry,
         load_route_registry,
     )
 try:
-    from route_activation import ACTION_CATEGORIES, ALLOWED_PARALLELIZATION, OBJECT_CATEGORIES
+    from route_activation import ALLOWED_PARALLELIZATION
 except ImportError:  # pragma: no cover - package import fallback
-    from .route_activation import (  # type: ignore[no-redef]
-        ACTION_CATEGORIES,
-        ALLOWED_PARALLELIZATION,
-        OBJECT_CATEGORIES,
-    )
+    from .route_activation import ALLOWED_PARALLELIZATION  # type: ignore[no-redef]
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -111,6 +109,7 @@ PACK_FIELD_NAMES = {
     "Action burden",
     "Weight-bearing object",
     "Decision tree path",
+    "Decision tree version",
     "Tie-break rationale",
     "Secondary disciplines",
     "Core subquestions",
@@ -163,12 +162,15 @@ def _repo_relative_path(value: str, root: Path) -> Path | None:
     return resolved
 
 
-def _load_control_plane_ids() -> tuple[set[str], set[str], set[str], dict[str, list[str]]]:
-    """Return canonical route, discipline, audit and route-audit IDs."""
+def _load_control_plane_ids() -> tuple[
+    set[str], set[str], set[str], dict[str, list[str]], Any
+]:
+    """Return canonical ids plus the structured decision-tree registry."""
     try:
         routes = load_route_registry()
         disciplines = load_discipline_registry()
         audits = load_audit_registry()
+        decision_tree = load_decision_tree_registry(route_registry=routes)
     except RegistryError as exc:
         raise EvalRegistryError(f"cannot load canonical control-plane registries: {exc}") from exc
 
@@ -176,7 +178,7 @@ def _load_control_plane_ids() -> tuple[set[str], set[str], set[str], dict[str, l
     discipline_ids = disciplines.discipline_ids()
     audit_ids = audits.audit_ids()
     required_audits = {route.id: route.required_audits for route in routes.routes}
-    return route_ids, discipline_ids, audit_ids, required_audits
+    return route_ids, discipline_ids, audit_ids, required_audits, decision_tree
 
 
 def _validate_case(
@@ -188,6 +190,7 @@ def _validate_case(
     discipline_ids: set[str],
     audit_ids: set[str],
     required_audits: dict[str, list[str]],
+    decision_tree: Any,
 ) -> tuple[list[str], set[str]]:
     errors: list[str] = []
     referenced: set[str] = set()
@@ -241,14 +244,84 @@ def _validate_case(
         if not isinstance(prompt_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", prompt_sha256):
             errors.append(f"{prefix}.input.prompt_sha256 must be a lowercase SHA-256")
         action_burden = input_data.get("action_burden")
-        if not isinstance(action_burden, str) or action_burden not in ACTION_CATEGORIES:
+        if (
+            not isinstance(action_burden, str)
+            or action_burden not in decision_tree.action_labels()
+        ):
             errors.append(f"{prefix}.input.action_burden is not canonical")
         weight_bearing_object = input_data.get("weight_bearing_object")
-        if not isinstance(weight_bearing_object, str) or weight_bearing_object not in OBJECT_CATEGORIES:
+        if (
+            not isinstance(weight_bearing_object, str)
+            or weight_bearing_object not in decision_tree.object_labels()
+        ):
             errors.append(f"{prefix}.input.weight_bearing_object is not canonical")
         input_secondary = input_data.get("secondary_routes")
         if not _as_string_list(input_secondary):
             errors.append(f"{prefix}.input.secondary_routes must be a string list")
+        elif len(input_secondary) != len(set(input_secondary)):
+            errors.append(f"{prefix}.input.secondary_routes must not contain duplicates")
+
+        secondary_contracts = input_data.get("secondary_route_contracts", {})
+        if secondary_contracts is None:
+            secondary_contracts = {}
+        if not isinstance(secondary_contracts, dict):
+            errors.append(
+                f"{prefix}.input.secondary_route_contracts must be an object"
+            )
+        else:
+            secondary_set = (
+                set(input_secondary) if _as_string_list(input_secondary) else set()
+            )
+            contract_routes = set(secondary_contracts)
+            if contract_routes - secondary_set:
+                errors.append(
+                    f"{prefix}.input.secondary_route_contracts contains an "
+                    "undeclared secondary route"
+                )
+            for route_id, contract in secondary_contracts.items():
+                if not isinstance(route_id, str) or route_id not in route_ids:
+                    errors.append(
+                        f"{prefix}.input.secondary_route_contracts has unknown route: "
+                        f"{route_id!r}"
+                    )
+                if (
+                    not isinstance(contract, dict)
+                    or set(contract) != {"boundary", "hard_fail_verification"}
+                    or not _is_non_empty_string(contract.get("boundary"))
+                    or not _is_non_empty_string(contract.get("hard_fail_verification"))
+                ):
+                    errors.append(
+                        f"{prefix}.input.secondary_route_contracts[{route_id!r}] "
+                        "must contain non-empty boundary and hard_fail_verification"
+                    )
+
+            if (
+                isinstance(action_burden, str)
+                and action_burden in decision_tree.action_labels()
+                and isinstance(weight_bearing_object, str)
+                and weight_bearing_object in decision_tree.object_labels()
+                and _as_string_list(input_secondary)
+            ):
+                try:
+                    _, derived_secondary = decision_tree.resolve(
+                        action_burden, weight_bearing_object
+                    )
+                except RegistryError as exc:
+                    errors.append(f"{prefix}.input decision-tree resolution failed: {exc}")
+                else:
+                    derived_set = set(derived_secondary)
+                    missing_derived = derived_set - secondary_set
+                    if missing_derived:
+                        errors.append(
+                            f"{prefix}.input.secondary_routes omits derived route(s): "
+                            f"{', '.join(sorted(missing_derived))}"
+                        )
+                    manual_set = secondary_set - derived_set
+                    if contract_routes != manual_set:
+                        errors.append(
+                            f"{prefix}.input.secondary_route_contracts must cover "
+                            "exactly the manually attached secondary routes"
+                        )
         parallelization = input_data.get("parallelization_decision")
         if not isinstance(parallelization, str) or parallelization not in ALLOWED_PARALLELIZATION:
             errors.append(
@@ -300,6 +373,32 @@ def _validate_case(
             errors.append(
                 f"{prefix}.input.secondary_routes must match expected.secondary_routes"
             )
+
+    if (
+        isinstance(input_data, dict)
+        and isinstance(input_data.get("action_burden"), str)
+        and isinstance(input_data.get("weight_bearing_object"), str)
+        and input_data["action_burden"] in decision_tree.action_labels()
+        and input_data["weight_bearing_object"] in decision_tree.object_labels()
+    ):
+        try:
+            resolved_primary, resolved_secondary = decision_tree.resolve(
+                input_data["action_burden"], input_data["weight_bearing_object"]
+            )
+        except RegistryError as exc:
+            errors.append(f"{prefix}.input decision-tree resolution failed: {exc}")
+        else:
+            if primary != resolved_primary:
+                errors.append(
+                    f"{prefix}.expected.primary_route '{primary}' does not match "
+                    f"decision-tree route '{resolved_primary}'"
+                )
+            missing_derived = set(resolved_secondary) - set(secondary)
+            if missing_derived:
+                errors.append(
+                    f"{prefix}.expected.secondary_routes omits derived route(s): "
+                    f"{', '.join(sorted(missing_derived))}"
+                )
 
     disciplines = expected.get("disciplines")
     if not _as_string_list(disciplines):
@@ -417,7 +516,13 @@ def validate_registry(data: Any, *, root: Path = ROOT) -> list[str]:
     if not isinstance(data, dict):
         return ["registry must be a JSON object"]
 
-    required_top = {"version", "description", "last_reviewed", "cases"}
+    required_top = {
+        "version",
+        "decision_tree_version",
+        "description",
+        "last_reviewed",
+        "cases",
+    }
     missing_top = required_top - set(data)
     unexpected_top = set(data) - required_top
     if missing_top:
@@ -428,6 +533,10 @@ def validate_registry(data: Any, *, root: Path = ROOT) -> list[str]:
         )
     if not isinstance(data.get("version"), int) or isinstance(data.get("version"), bool):
         errors.append("registry.version must be an integer")
+    if not isinstance(data.get("decision_tree_version"), int) or isinstance(
+        data.get("decision_tree_version"), bool
+    ):
+        errors.append("registry.decision_tree_version must be an integer")
     if not _is_non_empty_string(data.get("description")):
         errors.append("registry.description must be non-empty")
     if not _is_non_empty_string(data.get("last_reviewed")):
@@ -437,9 +546,20 @@ def validate_registry(data: Any, *, root: Path = ROOT) -> list[str]:
         return errors
 
     try:
-        route_ids, discipline_ids, audit_ids, required_audits = _load_control_plane_ids()
+        (
+            route_ids,
+            discipline_ids,
+            audit_ids,
+            required_audits,
+            decision_tree,
+        ) = _load_control_plane_ids()
     except EvalRegistryError as exc:
         return errors + [str(exc)]
+    if data.get("decision_tree_version") != decision_tree.version:
+        errors.append(
+            "registry.decision_tree_version does not match the canonical decision-tree "
+            f"version {decision_tree.version}"
+        )
 
     seen_ids: set[str] = set()
     referenced: set[str] = set()
@@ -457,6 +577,7 @@ def validate_registry(data: Any, *, root: Path = ROOT) -> list[str]:
             discipline_ids=discipline_ids,
             audit_ids=audit_ids,
             required_audits=required_audits,
+            decision_tree=decision_tree,
         )
         errors.extend(case_errors)
         referenced.update(case_refs)

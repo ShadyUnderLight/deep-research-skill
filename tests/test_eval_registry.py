@@ -81,6 +81,38 @@ def test_registry_rejects_unknown_route() -> None:
     assert any("unknown" in error and "primary_route" in error for error in errors)
 
 
+def test_registry_rejects_decision_tree_route_mismatch() -> None:
+    registry = load_registry()
+    tampered = copy.deepcopy(registry)
+    case = next(
+        item for item in tampered["cases"] if item["id"] == "forward-provider-selection"
+    )
+    case["expected"]["primary_route"] = "market-outlook"
+    errors = validate_registry(tampered)
+    assert any("decision-tree route" in error for error in errors)
+
+
+def test_registry_rejects_decision_tree_version_mismatch() -> None:
+    registry = load_registry()
+    tampered = copy.deepcopy(registry)
+    tampered["decision_tree_version"] = 999
+    errors = validate_registry(tampered)
+    assert any("decision_tree_version" in error for error in errors)
+
+
+def test_registry_requires_contract_for_manual_secondary_route() -> None:
+    registry = load_registry()
+    tampered = copy.deepcopy(registry)
+    case = next(
+        item
+        for item in tampered["cases"]
+        if item["id"] == "forward-company-technical-mixed"
+    )
+    case["input"].pop("secondary_route_contracts")
+    errors = validate_registry(tampered)
+    assert any("secondary_route_contracts" in error for error in errors)
+
+
 def test_registry_rejects_missing_fixture() -> None:
     registry = load_registry()
     tampered = copy.deepcopy(registry)
@@ -143,6 +175,7 @@ def test_offline_forward_runner_passes_and_reports_metrics() -> None:
     assert report["passed"] is True
     assert report["failed_cases"] == []
     assert report["offline"] is True
+    assert report["decision_tree_version"] == 1
     metrics = report["metrics"]
     assert metrics["case_count"] >= 8
     assert metrics["negative_detection_rate"] == 1.0

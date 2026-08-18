@@ -11,6 +11,10 @@ import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(REPO_ROOT / "scripts"))
+
+from registry_loader import load_decision_tree_registry  # noqa: E402
+from route_activation import _resolve_route as _resolve_runtime_route  # noqa: E402
 
 
 def read_file(path: Path) -> str:
@@ -224,20 +228,71 @@ def _step2_object_routes() -> dict[str, list[str]]:
 def test_step1_covers_all_action_categories():
     """Step 1 must define exactly the action categories that map to routes."""
     section = _step1_section()
-    # Must list all 9 major action categories
-    required = [
-        "Select",
-        "Enter",
-        "Judge direction",
-        "Judge regulation",
-        "Judge listed-company",
-        "Judge private-company",
-        "Judge technical",
-        "Judge academic",
-        "Judge positioning",
-    ]
-    for keyword in required:
-        assert keyword in section, f"Step 1 missing action category: {keyword}"
+    registry = load_decision_tree_registry()
+    for action in registry.actions:
+        if action.id == "shared-workflow":
+            continue
+        assert action.label in section, f"Step 1 missing action category: {action.label}"
+
+
+def test_decision_tree_registry_is_reflected_in_routing_matrix():
+    """The human-readable decision tree must expose every registry rule."""
+    registry = load_decision_tree_registry()
+    content = read_file(REPO_ROOT / "ROUTING-MATRIX.md")
+    section = _decision_tree_section()
+    assert f"version `{registry.version}`" in content
+    assert f"route manifest version `{registry.route_manifest_version}`" in content
+    object_mapping = _step2_object_routes()
+    for action in registry.actions:
+        if action.id == "shared-workflow":
+            continue
+        assert action.label in section, f"Missing action label: {action.label}"
+    for obj in registry.objects:
+        if obj.id == "shared-workflow":
+            continue
+        assert obj.label in section, f"Missing object label: {obj.label}"
+        assert object_mapping.get(obj.label) == obj.candidate_routes, (
+            f"Object '{obj.label}' mapping drift: docs={object_mapping.get(obj.label)}, "
+            f"registry={obj.candidate_routes}"
+        )
+    conflict_section = section[section.find("Conflict examples"):]
+    action_fragments = {
+        "select-rank-predict": "select/rank",
+        "enter-phase-sequence": "enter/phase",
+        "judge-listed-company-value": "judge listed-company",
+        "judge-academic-evidence-research": "judge academic evidence",
+        "judge-regulation-policy-impact": "judge regulation/policy",
+        "judge-technical-mechanism-feasibility": "judge technical mechanism",
+    }
+    object_fragments = {
+        "market-category-trajectory": "market trajectory",
+        "defined-options-teams-ranking": "defined options",
+        "architecture-mechanism-patent": "architecture / mechanism",
+        "listed-public-company": "listed / public company",
+        "academic-literature-research-evidence": "academic literature / research evidence",
+    }
+    for conflict in registry.conflicts:
+        action = next(item for item in registry.actions if item.id == conflict.action)
+        obj = next(item for item in registry.objects if item.id == conflict.object)
+        assert action.label in section and obj.label in section
+        action_fragment = re.sub(r"\s*/\s*", "/", action_fragments[conflict.action].lower())
+        object_fragment = re.sub(r"\s*/\s*", "/", object_fragments[conflict.object].lower())
+        normalized_lines = [
+            re.sub(r"\s*/\s*", "/", line.lower())
+            for line in conflict_section.splitlines()
+        ]
+        matching_lines = [
+            line
+            for line in normalized_lines
+            if action_fragment in line and object_fragment in line
+        ]
+        assert matching_lines, (
+            f"Conflict '{action.label}/{obj.label}' is missing from the "
+            "ROUTING-MATRIX conflict examples"
+        )
+        assert any(f"`{conflict.primary_route}`" in line for line in matching_lines)
+        for route_id in conflict.derived_secondary_routes:
+            assert any(f"`{route_id}`" in line for line in matching_lines)
 
 
 def test_step2_maps_to_known_route_ids():
@@ -604,47 +659,10 @@ def _classify_object(description: str, mapping: dict[str, str]) -> str | None:
     return matches[0][0]
 
 
-# ── Action+object → route conflict resolver ─────────────────────────────
-
-# Conflict pairs extracted from Step 2 conflict examples:
-# (action_name_substring, object_name_substring) → (primary_route, [secondary_routes])
-# Substrings are slash-normalized (spaces around / removed) to match classifier output.
-_CONFLICT_PAIRS: dict[tuple[str, str], tuple[str, list[str]]] = {
-    ("select/rank", "market"): ("constrained-choice", []),
-    ("enter/phase", "defined options"): ("market-entry", []),
-    ("listed-company", "architecture"): ("listed-company", ["technical-deep-dive"]),
-    ("academic evidence", "architecture"): ("academic-review", []),
-    ("regulation", "market"): ("regulatory-analysis", ["market-outlook"]),
-    # Reverse: action=technical + object=listed → technical primary
-    ("technical", "listed"): ("technical-deep-dive", []),
-    # Reverse: action=technical + object=academic → technical primary
-    ("technical", "academic"): ("technical-deep-dive", []),
-}
-
-
-def _normalize_label(s: str) -> str:
-    """Collapse spaces around slashes: 'Select / rank / predict' → 'select/rank/predict'."""
-    return re.sub(r"\s*/\s*", "/", s.lower())
-
-
 def _resolve_route(action_name: str, object_name: str) -> tuple[str, list[str]]:
-    """Resolve primary route and secondary routes from action + object,
-    applying conflict pair overrides when Step 1 action and Step 2 object
-    point to different routes."""
-    action_norm = _normalize_label(action_name)
-    object_norm = _normalize_label(object_name)
-
-    # Check if a conflict pair overrides the Step 2 mapping
-    for (act_sub, obj_sub), (primary, secondary) in _CONFLICT_PAIRS.items():
-        if act_sub in action_norm and obj_sub in object_norm:
-            return (primary, secondary)
-
-    # No conflict — use Step 2 object mapping directly
-    step2 = _parse_step2_keywords()
-    candidates_str = step2.get(object_name, "")
-    candidates = candidates_str.split(",") if "," in candidates_str else [candidates_str]
-    primary = candidates[0] if candidates else ""
-    return (primary, [])
+    """Resolve through the production registry-backed activation adapter."""
+    primary, secondary = _resolve_runtime_route(action_name, object_name)
+    return primary, list(secondary)
 
 
 # Each fixture: (task_description, expected_action_name_substring,
@@ -847,7 +865,9 @@ def test_market_outlook_fixtures_single_candidate():
             continue
         obj_name = _classify_object(desc, step2_keywords)
         assert obj_name is not None, f"Fixture '{desc}': could not classify object"
-        resolved_primary, resolved_secondary = _resolve_route("Judge direction", obj_name)
+        resolved_primary, resolved_secondary = _resolve_route(
+            "Judge direction / scenario", obj_name
+        )
         assert resolved_primary == "market-outlook", (
             f"Fixture '{desc}': expected market-outlook, got '{resolved_primary}'"
         )
@@ -857,33 +877,13 @@ def test_market_outlook_fixtures_single_candidate():
 
 
 def test_conflict_pairs_resolve_correctly():
-    """Direct resolver tests for all documented conflict pairs.
-    Does not depend on the classifier — verifies _resolve_route
-    with explicit action and object inputs."""
-    import json
-    manifest_path = REPO_ROOT / "schemas" / "route-manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    valid_ids = {r["id"] for r in manifest["routes"]}
-
-    pairs = [
-        # (action_name, object_name, expected_primary, expected_secondary)
-        ("Select / rank / predict", "Market / category trajectory",
-         "constrained-choice", []),
-        ("Enter / phase / sequence", "Defined options / teams / ranking",
-         "market-entry", []),
-        ("Judge listed-company value", "Architecture / mechanism / patent",
-         "listed-company", ["technical-deep-dive"]),
-        ("Judge academic evidence / research", "Architecture / mechanism / patent",
-         "academic-review", []),
-        ("Judge regulation / policy impact", "Market / category trajectory",
-         "regulatory-analysis", ["market-outlook"]),
-        ("Judge technical mechanism / feasibility", "Listed / public company",
-         "technical-deep-dive", []),
-        ("Judge technical mechanism / feasibility", "Academic literature / research evidence",
-         "technical-deep-dive", []),
-    ]
-
-    for action, obj, exp_primary, exp_secondary in pairs:
+    """The production resolver must honor every registry conflict pair."""
+    registry = load_decision_tree_registry()
+    for conflict in registry.conflicts:
+        action = next(item.label for item in registry.actions if item.id == conflict.action)
+        obj = next(item.label for item in registry.objects if item.id == conflict.object)
+        exp_primary = conflict.primary_route
+        exp_secondary = conflict.derived_secondary_routes
         primary, secondary = _resolve_route(action, obj)
         assert primary == exp_primary, (
             f"action='{action}', obj='{obj}' → primary='{primary}', "
@@ -893,9 +893,6 @@ def test_conflict_pairs_resolve_correctly():
             f"action='{action}', obj='{obj}' → secondary={secondary}, "
             f"expected={exp_secondary}"
         )
-        # All returned routes must be valid
-        for sec in secondary:
-            assert sec in valid_ids, f"Invalid secondary route: {sec}"
 
 
 # ── Validator regression: decision tree heading checks ───────────────────
@@ -1015,6 +1012,7 @@ if __name__ == "__main__":
         ("route_activation_references_decision_tree", test_route_activation_references_decision_tree),
         # Behavioral tests — action/object coverage
         ("step1_covers_all_action_categories", test_step1_covers_all_action_categories),
+        ("decision_tree_registry_is_reflected_in_routing_matrix", test_decision_tree_registry_is_reflected_in_routing_matrix),
         ("step2_maps_to_known_route_ids", test_step2_maps_to_known_route_ids),
         ("step2_each_object_has_unique_candidate", test_step2_each_object_has_unique_candidate),
         ("step2_disambiguation_rule_exists", test_step2_disambiguation_rule_exists),

@@ -28,6 +28,10 @@ Academic literature / research evidence
 
 Steps 1-2 resolved to `academic-review`; Step 3 verified; Step 4 not reached.
 
+## Decision tree version
+
+1
+
 ## Secondary disciplines
 
 source-traceability, current-state, forward-looking, scope-completeness
