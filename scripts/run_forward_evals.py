@@ -3,10 +3,10 @@
 
 The runner deliberately consumes the existing command-line audit surface and
 its JSON output. It does not call a paid model, browse the network, or invent a
-production prompt classifier. Each case supplies canonical action/object
-activation inputs and a prompt hash; the adapter resolves the structured route
-decision and the report/Research Pack fixtures replay the remaining output
-chain offline.
+production prompt classifier. Structured replay cases supply canonical
+action/object activation inputs and a prompt hash. Integration cases also pass
+a versioned activation snapshot into the production audit command so route
+mismatch is a real blocking assertion rather than a runner-only oracle.
 """
 
 from __future__ import annotations
@@ -24,6 +24,7 @@ from eval_registry import (
     EvalRegistryError,
     active_cases,
     gap_class_for_failure_family,
+    failure_stage_for_failure_family,
     load_registry,
 )
 from validate_contract import extract_contract_from_markdown
@@ -33,6 +34,13 @@ from validate_research_pack import (
     strip_fenced_code_blocks,
 )
 from route_activation import RouteActivationError, activate_prompt
+from activation_snapshot import (
+    ActivationSnapshotError,
+    activation_reference,
+    build_activation_snapshot,
+    extract_activation_snapshot_reference,
+    load_activation_snapshot,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -62,15 +70,24 @@ def _pack_observation(path: Path) -> dict[str, Any]:
         cleaned,
         re.MULTILINE,
     )
+    activation_snapshot, activation_snapshot_errors = (
+        extract_activation_snapshot_reference(cleaned, label="Research Pack")
+    )
     return {
         "fields": sorted(headings),
         "missing_required_fields": find_missing_headings(cleaned),
         "statuses": statuses,
         "decision_tree_version": int(version_match.group(1)) if version_match else None,
+        "activation_snapshot": activation_snapshot,
+        "activation_snapshot_errors": activation_snapshot_errors,
     }
 
 
-def _run_audit(report: Path, research_pack: Path) -> tuple[dict[str, Any] | None, str | None, int]:
+def _run_audit(
+    report: Path,
+    research_pack: Path,
+    activation_snapshot: Path | None = None,
+) -> tuple[dict[str, Any] | None, str | None, int]:
     command = [
         sys.executable,
         str(AUDIT_SCRIPT),
@@ -81,6 +98,8 @@ def _run_audit(report: Path, research_pack: Path) -> tuple[dict[str, Any] | None
         "--require-contract",
         "--json",
     ]
+    if activation_snapshot is not None:
+        command.extend(["--activation-snapshot", str(activation_snapshot)])
     completed = subprocess.run(command, capture_output=True, text=True, cwd=ROOT)
     try:
         data = json.loads(completed.stdout)
@@ -158,6 +177,7 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
                 checks["report_secondary_routes_match"],
                 checks["parallelization_match"],
                 checks["prompt_identity_match"],
+                checks["activation_snapshot_match"],
                 checks["statuses_match"],
             ]
         )
@@ -221,12 +241,15 @@ def _evaluate_case(
     expected = case["expected"]
     input_data = case["input"]
     fixtures = case["fixtures"]
+    evaluation_mode = case.get("evaluation_mode", "structured-decision-replay")
     report = ROOT / fixtures["report"]
     research_pack = ROOT / fixtures["research_pack"]
     pack = _pack_observation(research_pack)
-    audit_data, runner_error, returncode = _run_audit(report, research_pack)
 
     activation_error: str | None = None
+    activation_snapshot_error: str | None = None
+    activation_snapshot_data: dict[str, Any] | None = None
+    activation_snapshot_path: Path | None = None
     try:
         activation = activate_prompt(
             input_data["user_prompt"],
@@ -240,6 +263,33 @@ def _evaluate_case(
     except RouteActivationError as exc:
         activation = None
         activation_error = str(exc)
+
+    if evaluation_mode == "activation-record-integration":
+        activation_snapshot_path = ROOT / fixtures["activation_snapshot"]
+        try:
+            activation_snapshot_data = load_activation_snapshot(
+                activation_snapshot_path
+            )
+            if activation is None:
+                raise ActivationSnapshotError(
+                    "structured activation did not produce a snapshot"
+                )
+            expected_snapshot = build_activation_snapshot(
+                case["id"], activation, evaluation_mode=evaluation_mode
+            )
+            if activation_snapshot_data != expected_snapshot:
+                raise ActivationSnapshotError(
+                    "fixture activation snapshot does not match the structured "
+                    "activation result"
+                )
+        except (ActivationSnapshotError, OSError, KeyError) as exc:
+            activation_snapshot_error = str(exc)
+
+    audit_data, runner_error, returncode = _run_audit(
+        report,
+        research_pack,
+        activation_snapshot=activation_snapshot_path,
+    )
 
     contract: dict[str, Any] = {}
     if report.is_file():
@@ -277,6 +327,15 @@ def _evaluate_case(
         ),
         "pack_decision_tree_version": pack["decision_tree_version"],
         "activation_error": activation_error,
+        "evaluation_mode": evaluation_mode,
+        "activation_snapshot_error": activation_snapshot_error,
+        "activation_snapshot": (
+            activation_reference(activation_snapshot_data)
+            if activation_snapshot_data is not None
+            else None
+        ),
+        "contract_activation_snapshot": contract.get("activation_snapshot"),
+        "pack_activation_snapshot": pack.get("activation_snapshot"),
         "closest_alternative": contract.get("closest_alternative"),
         "secondary_routes": sorted(contract.get("secondary_routes", []) or []),
         "disciplines": sorted(contract.get("disciplines", []) or []),
@@ -295,6 +354,9 @@ def _evaluate_case(
     }
     actual["failure_family"] = _detect_failure_family(case, actual)
     actual["gap_class"] = gap_class_for_failure_family(actual["failure_family"])
+    actual["failure_stage"] = failure_stage_for_failure_family(
+        actual["failure_family"]
+    )
 
     expected_pack_fields = set(expected["research_pack_fields"])
     expected_audits = set(expected["required_audits"])
@@ -317,6 +379,15 @@ def _evaluate_case(
         == expected["parallelization_decision"]
     )
     prompt_identity_match = actual["activation_prompt_sha256"] == input_data["prompt_sha256"]
+    activation_snapshot_match = (
+        evaluation_mode != "activation-record-integration"
+        or (
+            actual["activation_snapshot_error"] is None
+            and actual["activation_snapshot"] is not None
+            and actual["contract_activation_snapshot"] == actual["activation_snapshot"]
+            and actual["pack_activation_snapshot"] == actual["activation_snapshot"]
+        )
+    )
     expected_returncode = {
         "pass": 0,
         "conditional-pass": 1,
@@ -338,13 +409,16 @@ def _evaluate_case(
                 parallelization_match,
                 prompt_identity_match,
                 decision_tree_version_match,
+                activation_snapshot_match,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 returncode == expected_returncode,
             ]
         )
     else:
         negative_returncode_ok = (
-            returncode in {0, 1}
+            returncode == 2
+            if evaluation_mode == "activation-record-integration"
+            else returncode in {0, 1}
             if case.get("failure_family") == "route-misclassification"
             else returncode == 2
         )
@@ -359,6 +433,7 @@ def _evaluate_case(
             "parallelization_match": parallelization_match,
             "prompt_identity_match": prompt_identity_match,
             "decision_tree_version_match": decision_tree_version_match,
+            "activation_snapshot_match": activation_snapshot_match,
             "statuses_match": status_match,
         }
         case_passed = all(
@@ -381,6 +456,8 @@ def _evaluate_case(
             "verdict": expected["verdict"],
             "failure_family": case["failure_family"],
             "gap_class": gap_class_for_failure_family(case["failure_family"]),
+            "evaluation_mode": evaluation_mode,
+            "failure_stage": expected.get("failure_stage"),
         },
         "actual": {
             "route": actual["route"],
@@ -403,6 +480,12 @@ def _evaluate_case(
             "overall": actual["overall"],
             "failure_family": actual["failure_family"],
             "gap_class": actual["gap_class"],
+            "failure_stage": actual["failure_stage"],
+            "evaluation_mode": actual["evaluation_mode"],
+            "activation_snapshot_error": actual["activation_snapshot_error"],
+            "activation_snapshot": actual["activation_snapshot"],
+            "contract_activation_snapshot": actual["contract_activation_snapshot"],
+            "pack_activation_snapshot": actual["pack_activation_snapshot"],
             "pack_missing_required_fields": actual["pack_missing_required_fields"],
             "returncode": returncode,
             "runner_error": runner_error,
@@ -422,6 +505,7 @@ def _evaluate_case(
             "parallelization_match": parallelization_match,
             "prompt_identity_match": prompt_identity_match,
             "decision_tree_version_match": decision_tree_version_match,
+            "activation_snapshot_match": activation_snapshot_match,
         },
     }
 
@@ -430,6 +514,27 @@ def _metrics(cases: list[dict[str, Any]], results: list[dict[str, Any]]) -> dict
     by_id = {result["case_id"]: result for result in results}
     positives = [case for case in cases if case["type"] == "positive"]
     negatives = [case for case in cases if case["type"] == "negative"]
+    structured_positive_cases = [
+        case
+        for case in positives
+        if case.get("evaluation_mode", "structured-decision-replay")
+        == "structured-decision-replay"
+    ]
+    integration_positive_cases = [
+        case
+        for case in positives
+        if case.get("evaluation_mode") == "activation-record-integration"
+    ]
+    integration_negative_cases = [
+        case
+        for case in negatives
+        if case.get("evaluation_mode") == "activation-record-integration"
+    ]
+    oracle_mismatch_cases = [
+        case
+        for case in negatives
+        if case.get("failure_family") == "route-misclassification"
+    ]
     boundary_cases = [
         case
         for case in positives
@@ -438,11 +543,13 @@ def _metrics(cases: list[dict[str, Any]], results: list[dict[str, Any]]) -> dict
     boundary_resolved = sum(
         by_id[case["id"]]["checks"]["alternative_match"] for case in boundary_cases
     )
-    route_correct = sum(
-        by_id[case["id"]]["checks"]["activation_route_match"] for case in positives
+    structured_route_correct = sum(
+        by_id[case["id"]]["checks"]["activation_route_match"]
+        for case in structured_positive_cases
     )
     report_route_consistent = sum(
-        by_id[case["id"]]["checks"]["activation_report_consistent"] for case in positives
+        by_id[case["id"]]["checks"]["activation_report_consistent"]
+        for case in integration_positive_cases
     )
     secondary_cases = [
         case for case in negatives if case.get("failure_family") == "secondary-route-not-verified"
@@ -469,11 +576,14 @@ def _metrics(cases: list[dict[str, Any]], results: list[dict[str, Any]]) -> dict
         )
         for result in results
     )
-    false_passed = sum(
-        by_id[case["id"]]["actual"]["overall"] == "pass" for case in negatives
+    integration_false_passed = sum(
+        by_id[case["id"]]["actual"]["overall"] == "pass"
+        for case in integration_negative_cases
     )
-    negative_case_failure = sum(
-        not by_id[case["id"]]["passed"] for case in negatives
+    oracle_mismatch_detected = sum(
+        by_id[case["id"]]["actual"]["failure_family"]
+        == "route-misclassification"
+        for case in oracle_mismatch_cases
     )
     status_cases = [
         case
@@ -489,8 +599,12 @@ def _metrics(cases: list[dict[str, Any]], results: list[dict[str, Any]]) -> dict
         "positive_case_count": len(positives),
         "negative_case_count": len(negatives),
         "case_pass_count": sum(result["passed"] for result in results),
-        "route_activation_accuracy": _ratio(route_correct, len(positives)),
-        "activation_report_consistency": _ratio(report_route_consistent, len(positives)),
+        "structured_route_resolution_rate": _ratio(
+            structured_route_correct, len(structured_positive_cases)
+        ),
+        "activation_report_consistency": _ratio(
+            report_route_consistent, len(integration_positive_cases)
+        ),
         "parallelization_decision_consistency": _ratio(
             sum(result["checks"]["parallelization_match"] for result in results),
             len(results),
@@ -500,9 +614,13 @@ def _metrics(cases: list[dict[str, Any]], results: list[dict[str, Any]]) -> dict
         "secondary_hard_fail_recall": _ratio(secondary_recalled, len(secondary_cases)),
         "declared_not_executed_recall": _ratio(declared_recalled, len(declared_cases)),
         "declared_not_executed_rate": _ratio(declared_not_executed_observed, len(results)),
-        "false_passed_rate": _ratio(false_passed, len(negatives)),
-        "negative_case_failure_rate": _ratio(negative_case_failure, len(negatives)),
-        "negative_detection_rate": _ratio(
+        "audit_false_pass_rate": _ratio(
+            integration_false_passed, len(integration_negative_cases)
+        ),
+        "oracle_mismatch_detection_rate": _ratio(
+            oracle_mismatch_detected, len(oracle_mismatch_cases)
+        ),
+        "negative_case_contract_pass_rate": _ratio(
             sum(by_id[case["id"]]["passed"] for case in negatives),
             len(negatives),
         ),
@@ -545,6 +663,19 @@ def run(registry_path: Path = DEFAULT_REGISTRY_PATH, *, check_baseline: bool = F
         "registry_version": registry["version"],
         "decision_tree_version": registry["decision_tree_version"],
         "offline": True,
+        "evaluation_mode": "offline",
+        "case_evaluation_modes": {
+            mode: sum(
+                case.get("evaluation_mode", "structured-decision-replay") == mode
+                for case in cases
+            )
+            for mode in sorted(
+                {
+                    case.get("evaluation_mode", "structured-decision-replay")
+                    for case in cases
+                }
+            )
+        },
         "metrics": metrics,
         "baseline_errors": baseline_errors,
         "passed": not failed_cases and not baseline_errors,

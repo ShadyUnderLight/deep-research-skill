@@ -6,6 +6,7 @@ from collections.abc import Collection
 from pathlib import Path
 
 from audit_evidence import validate_evidence_reference, is_typed_reference
+from activation_snapshot import extract_activation_snapshot_reference
 from registry_loader import (
     RegistryError,
     load_audit_registry,
@@ -401,6 +402,10 @@ def run_strict_checks(
     errors: list[str] = []
     warnings: list[str] = []
     errors.extend(_check_decision_tree_version(cleaned))
+    _, activation_snapshot_errors = extract_activation_snapshot_reference(
+        cleaned, label="Research Pack"
+    )
+    errors.extend(activation_snapshot_errors)
 
     source_ids, sid_issues = _collect_register_ids(cleaned, "Source register")
     uncertainty_ids, uid_issues = _collect_register_ids(cleaned, "Uncertainty register")

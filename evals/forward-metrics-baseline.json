@@ -1,11 +1,11 @@
 {
-  "version": 1,
+  "version": 2,
   "metrics": {
     "case_count": 11,
     "positive_case_count": 8,
     "negative_case_count": 3,
     "case_pass_count": 11,
-    "route_activation_accuracy": 1.0,
+    "structured_route_resolution_rate": 1.0,
     "activation_report_consistency": 1.0,
     "parallelization_decision_consistency": 1.0,
     "boundary_resolution_rate": 1.0,
@@ -13,9 +13,9 @@
     "secondary_hard_fail_recall": 1.0,
     "declared_not_executed_recall": 1.0,
     "declared_not_executed_rate": 0.1818,
-    "false_passed_rate": 0.3333,
-    "negative_case_failure_rate": 0.0,
-    "negative_detection_rate": 1.0,
+    "audit_false_pass_rate": 0.0,
+    "oracle_mismatch_detection_rate": 1.0,
+    "negative_case_contract_pass_rate": 1.0,
     "blocked_partial_and_pdf_failed_status_correctness": 1.0
   }
 }

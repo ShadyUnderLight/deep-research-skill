@@ -175,13 +175,37 @@ def test_offline_forward_runner_passes_and_reports_metrics() -> None:
     assert report["passed"] is True
     assert report["failed_cases"] == []
     assert report["offline"] is True
+    assert report["evaluation_mode"] == "offline"
+    assert report["case_evaluation_modes"] == {
+        "activation-record-integration": 2,
+        "structured-decision-replay": 9,
+    }
     assert report["decision_tree_version"] == 1
     metrics = report["metrics"]
     assert metrics["case_count"] >= 8
-    assert metrics["negative_detection_rate"] == 1.0
-    assert metrics["false_passed_rate"] == 0.3333
-    assert metrics["negative_case_failure_rate"] == 0.0
+    assert metrics["structured_route_resolution_rate"] == 1.0
+    assert metrics["activation_report_consistency"] == 1.0
+    assert metrics["audit_false_pass_rate"] == 0.0
+    assert metrics["oracle_mismatch_detection_rate"] == 1.0
+    assert metrics["negative_case_contract_pass_rate"] == 1.0
     assert metrics["blocked_partial_and_pdf_failed_status_correctness"] == 1.0
+
+
+def test_route_misclassification_is_blocked_by_production_integration_gate() -> None:
+    case = next(
+        item
+        for item in load_registry()["cases"]
+        if item["id"] == "forward-route-misclassification"
+    )
+    result = _evaluate_case(case, 1)
+    assert result["passed"] is True
+    assert result["actual"]["evaluation_mode"] == "activation-record-integration"
+    assert result["actual"]["activation_route"] == "constrained-choice"
+    assert result["actual"]["report_route"] == "market-outlook"
+    assert result["actual"]["overall"] == "fail"
+    assert result["actual"]["returncode"] == 2
+    assert result["actual"]["failure_stage"] == "contract"
+    assert result["checks"]["activation_snapshot_match"] is True
 
 
 def test_cli_output_is_machine_readable() -> None:
