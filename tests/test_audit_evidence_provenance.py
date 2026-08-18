@@ -15,14 +15,18 @@ POSITIVE = ROOT / "tests" / "fixtures" / "audit" / "market-outlook-pos.md"
 PACK = ROOT / "tests" / "fixtures" / "audit" / "research-pack-pos.md"
 
 
-def _run_report(path: Path, *extra: str) -> subprocess.CompletedProcess:
+def _run_report(
+    path: Path,
+    *extra: str,
+    pack: Path = PACK,
+) -> subprocess.CompletedProcess:
     return subprocess.run(
         [
             sys.executable,
             str(SCRIPT),
             str(path),
             "--research-pack",
-            str(PACK),
+            str(pack),
             *extra,
         ],
         capture_output=True,
@@ -175,6 +179,40 @@ def test_research_pack_manual_validator_reference_is_rejected(tmp_path: Path) ->
     )
     assert result.returncode == 4, result.stdout
     assert "manual audits cannot use validator evidence" in result.stdout
+
+
+def test_unknown_research_pack_audit_id_fails_both_entrypoints(tmp_path: Path) -> None:
+    content = PACK.read_text(encoding="utf-8").replace(
+        "market-outlook-audit",
+        "made-up-audit",
+        1,
+    )
+    pack = tmp_path / "unknown-audit-pack.md"
+    pack.write_text(content, encoding="utf-8")
+
+    standalone = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "validate_research_pack.py"),
+            str(pack),
+            "--strict",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert standalone.returncode == 4, standalone.stdout
+    assert "is not registered" in standalone.stdout
+
+    report = _run_report(
+        POSITIVE,
+        "--strict",
+        "--require-contract",
+        "--json",
+        pack=pack,
+    )
+    assert report.returncode == 2, report.stdout
+    data = json.loads(report.stdout)
+    assert any("is not registered" in error for error in data["blocking"])
 
 
 def test_audit_record_without_matching_content_cannot_pass(tmp_path: Path) -> None:

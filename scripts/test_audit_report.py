@@ -1233,8 +1233,8 @@ Stop when evidence saturated.
 
 ## Required audits
 
-- audit-one — passed — pack-section:Artifact contract
-- audit-two — passed — pack-section:Artifact contract
+- market-outlook-audit — passed — pack-section:Artifact contract
+- final-audit — passed — pack-section:Artifact contract
 
 ## Final audit status
 

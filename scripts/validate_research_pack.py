@@ -7,7 +7,7 @@ from collections.abc import Collection
 from pathlib import Path
 
 from audit_evidence import validate_evidence_reference, is_typed_reference
-from registry_loader import load_audit_registry
+from registry_loader import load_audit_registry, load_route_registry
 
 REQUIRED_HEADINGS = [
     "## Objective",
@@ -525,6 +525,8 @@ def _check_audit_evidence(
     errors: list[str] = []
     warnings: list[str] = []
     audit_registry = load_audit_registry()
+    route_registry = load_route_registry()
+    route_ids = route_registry.route_ids()
     for record in records:
         status = record.get("status")
         if status is None:
@@ -532,11 +534,21 @@ def _check_audit_evidence(
         audit_line = str(record.get("line", ""))[:100]
         audit_id = record.get("audit_id")
         audit_info = audit_registry.get_audit(str(audit_id))
+        derived_secondary_id = (
+            isinstance(audit_id, str)
+            and audit_id.endswith("-secondary-hard-fail")
+            and audit_id[: -len("-secondary-hard-fail")] in route_ids
+        )
+        if audit_info is None and not derived_secondary_id:
+            errors.append(
+                f"Required audit id {audit_id!r} is not registered in "
+                "schemas/audit-registry.json"
+            )
         execution_type = (
             audit_info.execution_type
             if audit_info is not None
             else "manual"
-            if str(audit_id).endswith("-secondary-hard-fail")
+            if derived_secondary_id
             else None
         )
         if status in {"passed", "已通过"}:
