@@ -7,6 +7,7 @@ from collections.abc import Collection
 from pathlib import Path
 
 from audit_evidence import validate_evidence_reference, is_typed_reference
+from registry_loader import load_audit_registry
 
 REQUIRED_HEADINGS = [
     "## Objective",
@@ -523,11 +524,21 @@ def _check_audit_evidence(
     """Require typed, resolvable evidence for every passed pack audit."""
     errors: list[str] = []
     warnings: list[str] = []
+    audit_registry = load_audit_registry()
     for record in records:
         status = record.get("status")
         if status is None:
             continue
         audit_line = str(record.get("line", ""))[:100]
+        audit_id = record.get("audit_id")
+        audit_info = audit_registry.get_audit(str(audit_id))
+        execution_type = (
+            audit_info.execution_type
+            if audit_info is not None
+            else "manual"
+            if str(audit_id).endswith("-secondary-hard-fail")
+            else None
+        )
         if status in {"passed", "已通过"}:
             evidence = record.get("evidence")
             if not evidence:
@@ -553,6 +564,7 @@ def _check_audit_evidence(
                 strict=True,
                 artifact_label=target_label,
                 known_validator_bindings=known_validator_bindings,
+                execution_type=execution_type,
             )
             errors.extend(
                 f"Required audit evidence: {error}"
@@ -602,9 +614,13 @@ def _parse_audit_statuses(cleaned: str) -> list[dict]:
         if not line or line.startswith("#"):
             continue
         m = _STATUS_EXTRACT_RE.search(line)
+        audit_prefix = re.split(r"\s+[–—]\s+", line, maxsplit=1)[0]
+        audit_id = re.sub(r"^[-*]\s*", "", audit_prefix).strip().lower()
+        audit_id = re.sub(r"\s+", "-", audit_id)
         if not m:
             records.append({
                 "line": line,
+                "audit_id": audit_id,
                 "status": None,
                 "has_reason": False,
                 "detail": "",
@@ -628,6 +644,7 @@ def _parse_audit_statuses(cleaned: str) -> list[dict]:
         evidence = after if is_typed_reference(after) else None
         records.append({
             "line": line,
+            "audit_id": audit_id,
             "status": status,
             "has_reason": has_reason,
             "detail": after,

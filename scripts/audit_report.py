@@ -1227,6 +1227,7 @@ def _execute_required_audits(
                     strict=strict,
                     artifact_label="report",
                     known_validator_bindings=_registered_validator_bindings(),
+                    execution_type=audit.execution_type,
                 )
                 if evidence_result.legacy:
                     execution_source = _execution_source(
@@ -1404,6 +1405,7 @@ def _execute_required_audits(
                 strict=strict,
                 artifact_label="report",
                 known_validator_bindings=_registered_validator_bindings(),
+                execution_type="manual",
             )
             if evidence_result.legacy:
                 execution_source = _execution_source("manual", legacy=True)

@@ -542,6 +542,12 @@ def validate_contract(
                 f"(schemas/audit-registry.json). Valid audit ids: "
                 f"{sorted(audit_ids)}"
             )
+        audit_info = audit_registry.get_audit(audit_id)
+        audit_execution_type = (
+            audit_info.execution_type
+            if audit_info is not None
+            else "manual" if is_derived_hard_fail else None
+        )
 
         status = audit.get("status", "")
         if not isinstance(status, str):
@@ -600,6 +606,7 @@ def validate_contract(
                 strict=strict,
                 artifact_label="report",
                 known_validator_bindings=known_validator_bindings,
+                execution_type=audit_execution_type,
             )
             errors.extend(
                 f"Audit '{audit_id}' evidence: {error}"

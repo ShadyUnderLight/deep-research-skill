@@ -111,7 +111,70 @@ def test_unknown_validator_binding_cannot_pass(tmp_path: Path) -> None:
     assert result.returncode == 2, result.stdout
     data = json.loads(result.stdout)
     assert data["overall"] == "fail"
-    assert any("not registered" in error for error in data["blocking"])
+    assert any("validator" in error.lower() for error in data["blocking"])
+
+
+def test_validator_reference_checks_registry_for_automated_context() -> None:
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+
+    unknown = validate_evidence_reference(
+        "validator:not-a-real-binding",
+        strict=True,
+        execution_type="automated",
+    )
+    assert not unknown.is_valid
+    assert any("not registered" in error for error in unknown.errors)
+
+    known = validate_evidence_reference(
+        "validator:listed-company-delivery",
+        strict=True,
+        execution_type="automated",
+    )
+    assert known.is_valid, known.errors
+
+
+def test_registered_but_unexecuted_validator_cannot_back_manual_audit(
+    tmp_path: Path,
+) -> None:
+    content = POSITIVE.read_text(encoding="utf-8")
+    content = content.replace(
+        "report-section:Monitoring signals",
+        "validator:listed-company-delivery",
+        1,
+    )
+    report = tmp_path / "wrong-validator-for-manual.md"
+    report.write_text(content, encoding="utf-8")
+
+    result = _run_report(report, "--strict", "--require-contract", "--json")
+    assert result.returncode == 2, result.stdout
+    data = json.loads(result.stdout)
+    manual = _manual_audit(data)
+    assert manual["status"] != "pass"
+    assert any("manual" in error.lower() for error in data["blocking"])
+
+
+def test_research_pack_manual_validator_reference_is_rejected(tmp_path: Path) -> None:
+    content = PACK.read_text(encoding="utf-8").replace(
+        "pack-section:Artifact contract",
+        "validator:listed-company-delivery",
+        1,
+    )
+    pack = tmp_path / "manual-validator-pack.md"
+    pack.write_text(content, encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "validate_research_pack.py"),
+            str(pack),
+            "--strict",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 4, result.stdout
+    assert "manual audits cannot use validator evidence" in result.stdout
 
 
 def test_audit_record_without_matching_content_cannot_pass(tmp_path: Path) -> None:

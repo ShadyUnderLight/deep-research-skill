@@ -398,6 +398,7 @@ def validate_evidence_reference(
     strict: bool = False,
     artifact_label: str = "report",
     known_validator_bindings: Collection[str] | None = None,
+    execution_type: str | None = None,
 ) -> EvidenceValidation:
     """Validate one typed evidence reference.
 
@@ -473,6 +474,19 @@ def validate_evidence_reference(
     if kind == "audit_record":
         return _validate_audit_record(locator, base_dir)
     if kind == "automated_validator":
+        if execution_type in {"manual", "process"}:
+            return EvidenceValidation(
+                provenance={
+                    "kind": "automated_validator",
+                    "locator": locator,
+                    "validator_binding": locator,
+                    "verified": False,
+                },
+                errors=(
+                    f"{execution_type} audits cannot use validator evidence; "
+                    "use a checklist, artifact, or audit-record reference",
+                ),
+            )
         known_bindings = frozenset(
             known_validator_bindings
             if known_validator_bindings is not None
