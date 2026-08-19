@@ -8,8 +8,11 @@ Checks:
 - Warns about uncaptioned Mermaid blocks, figure numbering gaps,
   unreferenced captions, and generic "如下图所示" references without
   a following figure entity
-- Mermaid fence state is explicit: closed / mismatched / unclosed /
-  invalid info string.  Unclosed or mis-closed (mismatched, shorter
+- Mermaid fence state is explicit for detected Mermaid blocks: closed /
+  mismatched / unclosed.  A fence whose first info-string token is NOT
+  exactly 'mermaid' (e.g. 'mermaid-example', or 'mermaid' followed by
+  NBSP) is NOT a Mermaid block at all — it is a regular code fence and
+  never a figure entity.  Unclosed or mis-closed (mismatched, shorter
   closer, Unicode-whitespace closer) Mermaid fences are BLOCKING and are
   NOT counted as legal figure entities (issue #394).
 

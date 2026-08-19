@@ -636,6 +636,15 @@ No figure is defined, and none is referenced — pass.
     expect_pass("invalid info string not mermaid", text)
 
 
+def test_nbsp_info_string_not_mermaid_fails():
+    """```mermaid + NBSP is NOT a mermaid opener (first info-string token is
+    'mermaid\\u00a0', not 'mermaid' — NBSP is not grammar whitespace, issue
+    #378).  The block is a regular code fence, never a figure entity, so a
+    图1 reference has no corresponding definition."""
+    text = "# Report\n\n图1 shows the diagram.\n\n```mermaid\u00a0\ngraph TD\n    A-->B\n```\n"
+    expect_fail("nbsp info string not mermaid", text)
+
+
 # ── Cross-review regression tests (B1-B4 fixes) ─────────────────────────
 
 
@@ -792,6 +801,7 @@ def main() -> int:
         ("code only caption and image ignored passes", test_code_only_caption_and_image_ignored_passes),
         ("html block pseudo figure ignored passes", test_html_block_pseudo_figure_ignored_passes),
         ("invalid info string not mermaid passes", test_invalid_info_string_not_mermaid_passes),
+        ("nbsp info string not mermaid fails", test_nbsp_info_string_not_mermaid_fails),
     ]
 
     passed = 0
