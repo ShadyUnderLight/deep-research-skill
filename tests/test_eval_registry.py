@@ -208,6 +208,31 @@ def test_route_misclassification_is_blocked_by_production_integration_gate() -> 
     assert result["checks"]["activation_snapshot_match"] is True
 
 
+def test_route_misclassification_does_not_mask_unrelated_report_failure(
+    tmp_path: Path,
+) -> None:
+    case = copy.deepcopy(next(
+        item
+        for item in load_registry()["cases"]
+        if item["id"] == "forward-route-misclassification"
+    ))
+    original = ROOT / case["fixtures"]["report"]
+    tampered = tmp_path / "mixed-route-mismatch.md"
+    tampered.write_text(
+        original.read_text(encoding="utf-8").replace(
+            "Body text with citations [S01], [S02] and [S03].",
+            "Body text with citations [S01], [S99] and [S03].",
+        ),
+        encoding="utf-8",
+    )
+    case["fixtures"]["report"] = str(tampered)
+
+    result = _evaluate_case(case, 1)
+    assert result["passed"] is False
+    assert result["actual"]["failure_family"] == "route-misclassification"
+    assert any(item.startswith("[report-quality]") for item in result["actual"]["blocking"])
+
+
 def test_cli_output_is_machine_readable() -> None:
     completed = subprocess.run(
         [

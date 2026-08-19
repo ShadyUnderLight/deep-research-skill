@@ -163,6 +163,18 @@ def _blocking_ids_are_allowed(actual: dict[str, Any], allowed: set[str]) -> bool
     return True
 
 
+def _blocking_ids_are_exact(actual: dict[str, Any], allowed: set[str]) -> bool:
+    """Require every blocking message to carry one of the allowed sources."""
+    blocking = actual.get("blocking", [])
+    if not blocking:
+        return False
+    return all(
+        (match := re.match(r"\[([^\]]+)\]", str(message))) is not None
+        and match.group(1) in allowed
+        for message in blocking
+    )
+
+
 def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], checks: dict[str, bool]) -> bool:
     """Require the intended defect shape, not merely any failing audit."""
     family = case.get("failure_family")
@@ -179,6 +191,7 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
                 checks["prompt_identity_match"],
                 checks["activation_snapshot_match"],
                 checks["statuses_match"],
+                _blocking_ids_are_exact(actual, {"contract-check"}),
             ]
         )
 
@@ -476,6 +489,7 @@ def _evaluate_case(
             "disciplines": actual["disciplines"],
             "audit_ids": actual["audit_ids"],
             "audits": actual["audits"],
+            "blocking": actual["blocking"],
             "statuses": actual["statuses"],
             "overall": actual["overall"],
             "failure_family": actual["failure_family"],

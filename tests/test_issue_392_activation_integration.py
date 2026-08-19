@@ -9,6 +9,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 AUDIT = ROOT / "scripts" / "audit_report.py"
+VALIDATE_CONTRACT = ROOT / "scripts" / "validate_contract.py"
 POSITIVE_REPORT = ROOT / "tests" / "fixtures" / "audit" / "market-outlook-pos.md"
 POSITIVE_PACK = ROOT / "tests" / "fixtures" / "forward" / "market-outlook-baseline-pack.md"
 POSITIVE_SNAPSHOT = ROOT / "tests" / "fixtures" / "forward" / "forward-market-outlook-baseline-activation.json"
@@ -78,3 +79,42 @@ def test_tampered_pack_snapshot_reference_fails_closed(tmp_path: Path) -> None:
     assert result.returncode == 2
     assert payload["overall"] == "fail"
     assert any("activation_snapshot" in item for item in payload["blocking"])
+
+
+def test_activation_snapshot_implies_contract_requirement(tmp_path: Path) -> None:
+    report = tmp_path / "without-contract.md"
+    report.write_text("# Report without a contract\n", encoding="utf-8")
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(VALIDATE_CONTRACT),
+            str(report),
+            "--activation-snapshot",
+            str(POSITIVE_SNAPSHOT),
+        ],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 2
+    assert "requires a contract" in result.stdout
+
+
+def test_duplicate_visible_pack_activation_snapshot_fails_closed(
+    tmp_path: Path,
+) -> None:
+    duplicate = tmp_path / "duplicate-pack.md"
+    duplicate.write_text(
+        POSITIVE_PACK.read_text(encoding="utf-8")
+        + "\n## Activation snapshot\n\n"
+        + "- activation_id: conflicting-activation\n"
+        + "- snapshot_sha256: "
+        + "0" * 64
+        + "\n- snapshot_version: 1\n- decision_tree_version: 1\n",
+        encoding="utf-8",
+    )
+    result, payload = _run(POSITIVE_REPORT, duplicate, POSITIVE_SNAPSHOT)
+    assert result.returncode == 2
+    assert payload["overall"] == "fail"
+    assert any("multiple" in item.lower() for item in payload["blocking"])

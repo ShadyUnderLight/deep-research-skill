@@ -1018,8 +1018,13 @@ def main(argv: list[str] | None = None) -> int:
                 f"or not a valid object. Fix the ```contract fenced block."
             )
             return 2
-        if args.require_contract:
-            print(f"Error: No contract block found in {path} (--require-contract set).")
+        if args.require_contract or args.activation_snapshot:
+            reason = (
+                "--require-contract set"
+                if args.require_contract
+                else "--activation-snapshot requires a contract"
+            )
+            print(f"Error: No contract block found in {path} ({reason}).")
             return 2
         print(f"No contract block found in {path}. Skipping validation.")
         return 0

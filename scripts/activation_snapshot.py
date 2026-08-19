@@ -320,13 +320,19 @@ def extract_activation_snapshot_reference(
     label: str = "Research Pack",
 ) -> tuple[dict[str, Any] | None, list[str]]:
     """Extract a visible ``## Activation snapshot`` reference from Markdown."""
-    match = re.search(
+    matches = list(re.finditer(
         r"^## Activation snapshot\s*$\n(.*?)(?=^##\s|\Z)",
         text,
         re.MULTILINE | re.DOTALL,
-    )
-    if not match:
+    ))
+    if not matches:
         return None, []
+    if len(matches) > 1:
+        return None, [
+            f"{label} contains multiple '## Activation snapshot' sections "
+            f"({len(matches)}) — exactly one is required"
+        ]
+    match = matches[0]
 
     values: dict[str, Any] = {}
     errors: list[str] = []
