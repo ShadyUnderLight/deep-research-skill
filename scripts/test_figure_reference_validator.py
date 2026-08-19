@@ -14,14 +14,13 @@ Expected AFTER implementation:  ALL PASS
 
 from __future__ import annotations
 
-import re
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
 # Hypothesis for property-based testing
-from hypothesis import assume, given, strategies as st
+from hypothesis import given, strategies as st
 
 # ── Paths ──────────────────────────────────────────────────────────────────
 
@@ -480,6 +479,163 @@ graph TD
     print("  PASS  mermaid without body reference (warning only)")
 
 
+# ── Adversarial fence-state cases (issue #394) ─────────────────────────
+
+# Shared fence semantics (issue #378): an opener's info-string first token
+# must be exactly 'mermaid'; a valid closer is the same character with
+# length >= opener, at most 3 leading spaces, and only spaces/tabs trailing
+# (NBSP etc. is NOT whitespace).  Unclosed or mis-closed Mermaid fences must
+# NOT be counted as legal figure entities — they are blocking errors.
+
+
+def test_unclosed_mermaid_fence_fails():
+    """Unclosed ```mermaid fence must not count as a figure entity."""
+    text = """\
+# Report
+
+图1 shows the diagram.
+
+```mermaid
+graph TD
+    A-->B
+
+No closing fence here.
+"""
+    expect_fail("unclosed mermaid fence", text)
+
+
+def test_mermaid_fence_closed_at_eof_fails():
+    """Mermaid fence closed only at EOF (no closer line) must fail."""
+    text = """\
+# Report
+
+图1 shows the diagram.
+
+```mermaid
+graph TD
+    A-->B
+"""
+    expect_fail("mermaid fence closed at eof", text)
+
+
+def test_backtick_opener_tilde_closer_fails():
+    """Backtick mermaid opener with tilde closer → mismatched, not a figure."""
+    text = """\
+# Report
+
+图1 shows the diagram.
+
+```mermaid
+graph TD
+    A-->B
+~~~
+"""
+    expect_fail("backtick opener tilde closer", text)
+
+
+def test_shorter_closer_fails():
+    """Closer shorter than opener (`` after `````) must not close the block."""
+    text = """\
+# Report
+
+图1 shows the diagram.
+
+`````mermaid
+graph TD
+    A-->B
+``
+"""
+    expect_fail("shorter closer", text)
+
+
+def test_unicode_whitespace_closer_fails():
+    """NBSP trailing after ``` is NOT a valid closer (issue #378 whitespace)."""
+    text = "# Report\n\n图1 shows the diagram.\n\n```mermaid\ngraph TD\n    A-->B\n```\u00a0\n"
+    expect_fail("unicode whitespace closer", text)
+
+
+def test_nested_fence_inside_mermaid_passes():
+    """A nested-looking ```python fence inside ```mermaid is content; the
+    outer fence still closes normally — one valid figure entity."""
+    text = """\
+# Report
+
+图1 shows the diagram.
+
+```mermaid
+graph TD
+    A-->B
+    ```python
+    x = 1
+    ```
+```
+
+图1: Outer diagram
+"""
+    expect_pass("nested fence inside mermaid", text)
+
+
+def test_code_only_caption_and_image_ignored_passes():
+    """Captions and image refs inside a code-only block are not figures."""
+    text = """\
+# Report
+
+```python
+图1: fake caption
+![fake](./fake.png)
+result = 1
+```
+
+图1 shows the real diagram.
+
+```mermaid
+graph TD
+    A-->B
+```
+
+图1: Real diagram
+"""
+    expect_pass("code only caption and image ignored", text)
+
+
+def test_html_block_pseudo_figure_ignored_passes():
+    """A pseudo-figure inside a raw HTML block is not a real figure."""
+    text = """\
+# Report
+
+<div>
+图1: fake caption
+![fake](./fake.png)
+</div>
+
+图1 shows the real diagram.
+
+```mermaid
+graph TD
+    A-->B
+```
+
+图1: Real diagram
+"""
+    expect_pass("html block pseudo figure ignored", text)
+
+
+def test_invalid_info_string_not_mermaid_passes():
+    """```mermaid-example is NOT a mermaid figure entity (first info-string
+    token is 'mermaid-example', not 'mermaid') — it is a regular code fence."""
+    text = """\
+# Report
+
+```mermaid-example
+graph TD
+    A-->B
+```
+
+No figure is defined, and none is referenced — pass.
+"""
+    expect_pass("invalid info string not mermaid", text)
+
+
 # ── Cross-review regression tests (B1-B4 fixes) ─────────────────────────
 
 
@@ -626,6 +782,16 @@ def main() -> int:
         ("tilde mermaid fence", test_tilde_mermaid_fence_detected),
         ("tilde mermaid after backtick mermaid", test_tilde_mermaid_does_not_blank_after),
         ("code block mermaid caption ignored", test_code_fence_inside_code_block_mermaid_ignored),
+        # --- Adversarial fence-state cases (issue #394) ---
+        ("unclosed mermaid fence fails", test_unclosed_mermaid_fence_fails),
+        ("mermaid fence closed at eof fails", test_mermaid_fence_closed_at_eof_fails),
+        ("backtick opener tilde closer fails", test_backtick_opener_tilde_closer_fails),
+        ("shorter closer fails", test_shorter_closer_fails),
+        ("unicode whitespace closer fails", test_unicode_whitespace_closer_fails),
+        ("nested fence inside mermaid passes", test_nested_fence_inside_mermaid_passes),
+        ("code only caption and image ignored passes", test_code_only_caption_and_image_ignored_passes),
+        ("html block pseudo figure ignored passes", test_html_block_pseudo_figure_ignored_passes),
+        ("invalid info string not mermaid passes", test_invalid_info_string_not_mermaid_passes),
     ]
 
     passed = 0
