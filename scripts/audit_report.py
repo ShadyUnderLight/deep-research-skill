@@ -103,16 +103,14 @@ _ROUTE_REGISTRY = registry_loader.load_route_registry()
 _AUDIT_REGISTRY = registry_loader.load_audit_registry()
 
 # Audits executed for every route in addition to route.required_audits.
-# These are delivery-pipeline validators rather than checklist audits, so
-# they live in code (not in audit-registry.json which requires a checklist
-# file per audit): audit id → validator binding id.  research-pack is
+# These are delivery-scope pipeline validators (markdown-delivery,
+# research-pack), registered as first-class entries in
+# schemas/audit-registry.json with scope: "delivery" (issue #393).  The
+# global audit set is derived from the registry via global_audit_ids() —
+# there is no second, hardcoded audit identity in code.  research-pack is
 # skipped outside strict mode when no --research-pack is given (and a
 # not_run + blocking error under --strict); markdown-delivery always runs
 # against the report itself.
-GLOBAL_AUDITS: dict[str, str] = {
-    "markdown-delivery": "markdown-delivery",
-    "research-pack": "research-pack",
-}
 
 
 # ── Exit codes ──────────────────────────────────────────────────────────────
@@ -120,6 +118,12 @@ GLOBAL_AUDITS: dict[str, str] = {
 EXIT_PASS = 0
 EXIT_WARNINGS = 1
 EXIT_BLOCKING = 2
+
+# Version of the machine-readable audit JSON contract (issue #393).  The
+# forward runner pins the same value (EXPECTED_AUDIT_JSON_SCHEMA_VERSION) and
+# fails closed when it does not match.  Bump only on breaking JSON field
+# changes; additive fields do not require a bump.
+AUDIT_JSON_SCHEMA_VERSION = 1
 
 
 # ── Types ───────────────────────────────────────────────────────────────────
@@ -928,6 +932,27 @@ class AuditResult:
 
 
 @dataclass
+class ValidatorResult:
+    """Structured result for a single route-level validator (issue #393).
+
+    Route-level validators (report-quality, declared-execution, ...) are the
+    dispatch chain resolved from schemas/route-manifest.json.  Each must
+    appear in the JSON verdict with its own status, evidence and provenance;
+    a dispatched validator with no recorded result is ``incomplete`` and must
+    never aggregate to a Pass (fail-closed).
+    """
+
+    validator_id: str
+    status: str  # pass | conditional-pass | fail | incomplete | not_run
+    errors: list[str] = field(default_factory=list)
+    warnings: list[str] = field(default_factory=list)
+    evidence: list[str] = field(default_factory=list)
+    execution_source: str = "automated_validator"
+    validator_version: str | None = None
+    reason: str | None = None
+
+
+@dataclass
 class AuditVerdict:
     """Consolidated verdict across all validators for a given route."""
 
@@ -937,6 +962,7 @@ class AuditVerdict:
     warnings: list[str] = field(default_factory=list)
     recommended_audit_status: dict[str, str] = field(default_factory=dict)
     audit_results: list[AuditResult] = field(default_factory=list)
+    validator_results: list[ValidatorResult] = field(default_factory=list)
     input_sha256: str | None = None
     validator_version: str | None = None
     delivery: dict[str, object] | None = None
@@ -1202,7 +1228,9 @@ def _execute_required_audits(
     - research-pack without --research-pack → explicit ``skipped`` outside
       strict mode, ``not_run`` + blocking under ``--strict``.
     """
-    audit_ids = _ROUTE_REGISTRY.required_audits_for(route_id) + list(GLOBAL_AUDITS)
+    audit_ids = _ROUTE_REGISTRY.required_audits_for(route_id) + list(
+        _AUDIT_REGISTRY.global_audit_ids()
+    )
     block_statuses, block_malformed = _parse_audit_block_statuses(path)
     try:
         visible_text = vc_strip_fences(
@@ -1221,8 +1249,7 @@ def _execute_required_audits(
 
     for audit_id in audit_ids:
         audit = _AUDIT_REGISTRY.get_audit(audit_id)
-        global_binding = GLOBAL_AUDITS.get(audit_id)
-        if audit is None and global_binding is None:
+        if audit is None:
             blocking.append(
                 f"Required audit '{audit_id}' has no entry in "
                 f"schemas/audit-registry.json — add it or remove it from "
@@ -1309,8 +1336,9 @@ def _execute_required_audits(
             # does not change the exit code.
             continue
 
-        # automated audit (either registry-bound or global delivery audit)
-        binding = audit.validator_binding if audit is not None else global_binding
+        # automated audit (registry-bound; delivery-scope audits are also
+        # registry entries with scope: delivery, issue #393)
+        binding = audit.validator_binding
         if binding is None:
             blocking.append(
                 f"Required audit '{audit_id}' is automated but has no "
@@ -1365,11 +1393,12 @@ def _execute_required_audits(
             else "conditional-pass" if check.warnings
             else "pass"
         )
-        # Legacy compatibility: outside strict mode, failures of the global
-        # delivery audits (markdown-delivery / research-pack) are recorded in
-        # the audit result but do not change the exit code, so pre-contract
-        # reports keep their previous behavior.  In strict mode they block.
-        advisory = audit is None and not strict and check.errors
+        # Legacy compatibility: outside strict mode, failures of the
+        # delivery-scope global audits (markdown-delivery / research-pack)
+        # are recorded in the audit result but do not change the exit code,
+        # so pre-contract reports keep their previous behavior.  In strict
+        # mode they block.
+        advisory = audit.scope == "delivery" and not strict and check.errors
         if check.errors:
             evidence = [str(e)[:200] for e in check.errors[:5]]
         else:
@@ -1488,11 +1517,21 @@ def _compute_verdict(
     blocking_extra: list[str] | None = None,
     warnings_extra: list[str] | None = None,
     delivery: dict[str, object] | None = None,
+    expected_validators: list[str] | None = None,
+    source_path: str | None = None,
 ) -> AuditVerdict:
-    """Aggregate check results into a single consolidated verdict."""
+    """Aggregate check results into a single consolidated verdict.
+
+    Also records one ValidatorResult per route-level validator so the JSON
+    verdict is a complete provenance artifact (issue #393).  Any dispatched
+    validator with no recorded result is flagged ``incomplete`` and adds a
+    blocking error — a missing validator result must never aggregate to a
+    silent Pass.
+    """
     blocking: list[str] = []
     warnings: list[str] = []
     status: dict[str, str] = {}
+    validator_results: list[ValidatorResult] = []
 
     for result in results:
         for err in result.errors:
@@ -1506,6 +1545,40 @@ def _compute_verdict(
             status[result.name] = "conditional-pass"
         else:
             status[result.name] = "pass"
+
+    # Build one ValidatorResult per dispatched validator, keyed by the
+    # canonical manifest binding id (issue #393).  Results are appended in
+    # dispatch order, so expected_validators[i] pairs with results[i].  A
+    # validator whose CheckResult name differs from its binding id (e.g.
+    # market-outlook-monitoring vs market-outlook-monitoring-actionability)
+    # is still recorded under the canonical id.
+    if expected_validators is not None:
+        for i, validator_id in enumerate(expected_validators):
+            if i < len(results):
+                result = results[i]
+                evidence = list(result.errors[:5]) or list(result.warnings[:5]) or [
+                    f"{source_path or '<report>'}: no violations found by "
+                    f"{validator_id}"
+                ]
+                validator_results.append(ValidatorResult(
+                    validator_id=validator_id,
+                    status=status.get(result.name, "pass"),
+                    errors=list(result.errors),
+                    warnings=list(result.warnings),
+                    evidence=evidence,
+                ))
+            else:
+                # Fail-closed: a dispatched validator with no recorded result
+                # must never be interpreted as a silent Pass (issue #393).
+                validator_results.append(ValidatorResult(
+                    validator_id=validator_id,
+                    status="incomplete",
+                    reason="validator result missing — never aggregated as pass",
+                ))
+                blocking.append(
+                    f"[{validator_id}] incomplete — validator result missing "
+                    f"(issue #393: missing results must fail closed, not pass)"
+                )
 
     blocking.extend(blocking_extra or [])
     warnings.extend(warnings_extra or [])
@@ -1526,6 +1599,7 @@ def _compute_verdict(
         warnings=warnings,
         recommended_audit_status=status,
         audit_results=list(audit_results or []),
+        validator_results=validator_results,
         delivery=delivery,
     )
 
@@ -1584,8 +1658,12 @@ def _verdict_to_json(verdict: AuditVerdict) -> str:
 
     The human-readable summary is derived from this structure; consumers
     (CI, forward tests) should read this JSON rather than parse text.
+    ``schema_version`` pins the JSON contract so consumers can fail closed
+    on unknown shapes instead of assuming Pass (issue #393).  Additive-only
+    field evolution keeps old consumers working.
     """
     payload: dict = {
+        "schema_version": AUDIT_JSON_SCHEMA_VERSION,
         "route": verdict.route,
         "overall": verdict.overall,
         "exit_code": verdict.exit_code,
@@ -1594,6 +1672,19 @@ def _verdict_to_json(verdict: AuditVerdict) -> str:
         "input_sha256": verdict.input_sha256,
         "validator_version": verdict.validator_version,
         "delivery": verdict.delivery,
+        "validators": [
+            {
+                "validator_id": v.validator_id,
+                "status": v.status,
+                "errors": v.errors,
+                "warnings": v.warnings,
+                "evidence": v.evidence,
+                "execution_source": v.execution_source,
+                "validator_version": v.validator_version,
+                "reason": v.reason,
+            }
+            for v in verdict.validator_results
+        ],
         "audits": [
             {
                 "audit_id": a.audit_id,
@@ -1758,6 +1849,8 @@ def _audit_report_impl(
         blocking_extra=[*delivery_errors, *audit_blocking],
         warnings_extra=audit_warnings,
         delivery=delivery,
+        expected_validators=_ROUTE_REGISTRY.validators_for(resolved_route),
+        source_path=str(path),
     )
     return verdict
 
@@ -1777,6 +1870,11 @@ def _finalize_verdict(verdict: AuditVerdict, path: Path) -> AuditVerdict:
             f"audit-registry-v{_AUDIT_REGISTRY.version} "
             f"(route-manifest-v{_ROUTE_REGISTRY.version})"
         )
+    # Propagate the shared validator version onto each route-level validator
+    # result so JSON carries per-validator provenance (issue #393).
+    for validator in verdict.validator_results:
+        if validator.validator_version is None:
+            validator.validator_version = verdict.validator_version
     return verdict
 
 

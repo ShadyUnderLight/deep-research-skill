@@ -504,6 +504,28 @@ class TestDisciplineRegistryLoads:
 
 
 class TestAuditRegistryLoads:
+    @staticmethod
+    def _tmp(data: dict) -> Path:
+        f = tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False, encoding="utf-8",
+        )
+        json.dump(data, f)
+        f.close()
+        return Path(f.name)
+
+    @staticmethod
+    def _minimal_audit(**overrides) -> dict:
+        entry = {
+            "id": "example-audit",
+            "checklist": "checklists/example-audit.md",
+            "execution_type": "manual",
+            "description": "Example audit.",
+            "automation_reference": None,
+            "validator_binding": None,
+        }
+        entry.update(overrides)
+        return entry
+
     def test_loads_real_registry(self) -> None:
         registry = load_audit_registry()
         assert len(registry.audits) >= 14
@@ -524,9 +546,91 @@ class TestAuditRegistryLoads:
     def test_checklist_paths_exist(self) -> None:
         registry = load_audit_registry()
         for a in registry.audits:
+            if a.scope == "delivery":
+                assert a.checklist is None, (
+                    f"Delivery-scope audit '{a.id}' must not declare a checklist file"
+                )
+                continue
             assert (ROOT / a.checklist).is_file(), (
                 f"Audit '{a.id}' checklist missing: {a.checklist}"
             )
+
+    def test_delivery_scope_audit_allows_null_checklist(self) -> None:
+        doc = {
+            "version": 1,
+            "audits": [self._minimal_audit(
+                id="markdown-delivery",
+                checklist=None,
+                scope="delivery",
+                execution_type="automated",
+                automation_reference="scripts/delivery/pipeline.py",
+                validator_binding="markdown-delivery",
+            )],
+        }
+        tmp = self._tmp(doc)
+        try:
+            registry = load_audit_registry(tmp)
+            audit = registry.get_audit("markdown-delivery")
+            assert audit is not None
+            assert audit.scope == "delivery"
+            assert audit.checklist is None
+            assert registry.global_audit_ids() == ["markdown-delivery"]
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_checklist_scope_audit_requires_checklist_file(self) -> None:
+        doc = {"version": 1, "audits": [self._minimal_audit(checklist=None)]}
+        tmp = self._tmp(doc)
+        try:
+            with pytest.raises(RegistryError, match="checklist"):
+                load_audit_registry(tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_delivery_scope_audit_rejects_checklist_file(self) -> None:
+        doc = {
+            "version": 1,
+            "audits": [self._minimal_audit(
+                scope="delivery",
+                execution_type="automated",
+                automation_reference="scripts/delivery/pipeline.py",
+                validator_binding="markdown-delivery",
+            )],
+        }
+        tmp = self._tmp(doc)
+        try:
+            with pytest.raises(RegistryError, match="checklist"):
+                load_audit_registry(tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_delivery_scope_requires_automated_execution(self) -> None:
+        """Delivery-scope audits are pipeline validators: manual/process
+        execution would degrade to a global self-attestation audit — must
+        fail closed at registry load (issue #393)."""
+        doc = {
+            "version": 1,
+            "audits": [self._minimal_audit(
+                scope="delivery",
+                checklist=None,
+                execution_type="manual",
+            )],
+        }
+        tmp = self._tmp(doc)
+        try:
+            with pytest.raises(RegistryError, match="automated"):
+                load_audit_registry(tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
+
+    def test_invalid_scope_raises(self) -> None:
+        doc = {"version": 1, "audits": [self._minimal_audit(scope="mystery")]}
+        tmp = self._tmp(doc)
+        try:
+            with pytest.raises(RegistryError, match="scope"):
+                load_audit_registry(tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
 
 
 if __name__ == "__main__":

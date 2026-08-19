@@ -283,3 +283,166 @@ def test_cli_malformed_registry_returns_structured_fixture_drift(tmp_path: Path)
     assert result["valid"] is False
     assert result["gap_class"] == "fixture-reference-drift"
     assert "kebab-case" in result["error"]
+
+
+def test_forward_runner_records_audit_json_provenance() -> None:
+    """The forward runner must consume schema_version and validators[] so CI
+    reads structured fields instead of exit code / stdout only (#393)."""
+    import run_forward_evals
+
+    case = load_registry()["cases"][0]
+    result = _evaluate_case(case, 1)
+    actual = result["actual"]
+    assert actual["schema_version"] == 1, actual
+    assert actual["validators"], "runner must record route validator results"
+    for entry in actual["validators"]:
+        assert entry["validator_id"], entry
+        assert entry["status"], entry
+    assert result["checks"]["validators_ok"] is True, result["checks"]
+
+
+def _validator_entry(status="pass", **overrides) -> dict:
+    """A structurally valid route-validator JSON entry."""
+    entry = {
+        "validator_id": "report-quality",
+        "status": status,
+        "errors": [],
+        "warnings": [],
+        "evidence": ["report: no violations found by report-quality"],
+        "execution_source": "automated_validator",
+        "validator_version": "audit-registry-v2",
+    }
+    entry.update(overrides)
+    return entry
+
+
+def test_validators_ok_requires_complete_binding_set() -> None:
+    """The runner must fail closed on missing / forged / partial validator
+    results, not just on an empty array (issue #393 forged-path negative)."""
+    import run_forward_evals
+
+    ok = {"schema_version": 1, "validators": [_validator_entry()]}
+    assert run_forward_evals._validators_ok(
+        ok, ["report-quality"], audited_path="report"
+    ) is True
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 999, "validators": [_validator_entry()]},
+        ["report-quality"], audited_path="report",
+    ) is False, "unknown schema_version must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"validators": [_validator_entry()]},
+        ["report-quality"], audited_path="report",
+    ) is False, "missing schema_version must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": []},
+        ["report-quality"], audited_path="report",
+    ) is False, "missing validator results must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(status="incomplete")]},
+        ["report-quality"], audited_path="report",
+    ) is False, "incomplete validator must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(validator_id="forged")]},
+        ["report-quality"], audited_path="report",
+    ) is False, "forged validator id must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(validator_id="other")]},
+        ["report-quality", "other"], audited_path="report",
+    ) is False, "missing an expected validator must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(evidence=[])]},
+        ["report-quality"], audited_path="report",
+    ) is False, "missing evidence must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(evidence="not-a-list")]},
+        ["report-quality"], audited_path="report",
+    ) is False, "non-list evidence must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(
+            evidence=["/does/not/exist: no violations found by report-quality"])]},
+        ["report-quality"], audited_path="report",
+    ) is False, "evidence locator must reference the audited report"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(
+            evidence=["report.evil: no violations found by report-quality"])]},
+        ["report-quality"], audited_path="report",
+    ) is False, "prefix-bypass evidence (report.evil) must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(
+            execution_source="")]},
+        ["report-quality"], audited_path="report",
+    ) is False, "empty execution_source must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(
+            validator_version="")]},
+        ["report-quality"], audited_path="report",
+    ) is False, "empty validator_version must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": ["not-a-dict"]},
+        ["report-quality"], audited_path="report",
+    ) is False, "non-object validator entry must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(validator_version=None)]},
+        ["report-quality"], audited_path="report",
+    ) is False, "missing validator_version must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(
+            errors=["boom"], warnings=[])]},
+        ["report-quality"], audited_path="report",
+    ) is False, "status=pass with errors must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(
+            status="conditional-pass", warnings=[], evidence=["report: no violations found by report-quality"])]},
+        ["report-quality"], audited_path="report",
+    ) is False, "conditional-pass without warnings must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(
+            status="fail", errors=[], evidence=["report: no violations found by report-quality"])]},
+        ["report-quality"], audited_path="report",
+    ) is False, "fail without errors must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [
+            _validator_entry(),
+            _validator_entry(),  # duplicate validator_id
+        ]},
+        ["report-quality"], audited_path="report",
+    ) is False, "duplicate validator entry must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry()]},
+        ["report-quality"], audited_path=None,
+    ) is False, "unverifiable pass evidence must fail closed"
+
+
+def test_forward_runner_rejects_forged_validators(monkeypatch) -> None:
+    """Replacing the real validator results with a forged single entry must
+    make the forward runner fail closed, not pass (issue #393)."""
+    import run_forward_evals
+
+    case = load_registry()["cases"][0]
+    fixtures = case["fixtures"]
+    report = ROOT / fixtures["report"]
+    pack = ROOT / fixtures["research_pack"]
+    real_data, _, _ = run_forward_evals._run_audit(report, pack)
+    forged = {
+        **real_data,
+        "validators": [_validator_entry(validator_id="forged")],
+    }
+
+    def fake_run(report, research_pack, activation_snapshot=None):
+        return forged, None, 0
+
+    monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)
+    result = _evaluate_case(case, 1)
+    assert result["checks"]["validators_ok"] is False, result["checks"]
+    assert result["passed"] is False
+
+
+def test_audit_json_schema_version_contract() -> None:
+    """The runner's pinned schema version must match audit_report's constant
+    so a JSON contract bump cannot silently drift past the runner (#393)."""
+    import audit_report
+    import run_forward_evals
+
+    assert audit_report.AUDIT_JSON_SCHEMA_VERSION == (
+        run_forward_evals.EXPECTED_AUDIT_JSON_SCHEMA_VERSION
+    )

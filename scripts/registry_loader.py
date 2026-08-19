@@ -82,6 +82,15 @@ AUDIT_REQUIRED_FIELDS = {
     "validator_binding",
 }
 
+# Optional audit-registry entry fields. ``scope`` distinguishes checklist-backed
+# audits (``checklist``, the default) from delivery-scope / virtual audits that
+# are executed by pipeline validators and carry no human checklist file
+# (issue #393): ``delivery`` audits must declare ``checklist: null``.
+AUDIT_OPTIONAL_FIELDS = {"scope"}
+
+# Valid values for an audit entry's ``scope`` field.
+VALID_AUDIT_SCOPES = {"checklist", "delivery"}
+
 
 class RegistryError(Exception):
     """Raised when a registry file is missing, malformed or structurally invalid."""
@@ -148,14 +157,24 @@ def _validate_top_level(data: dict, what: str, entries_key: str) -> None:
         )
 
 
-def _require(obj: dict, fields: set[str], what: str) -> None:
-    """Ensure all required fields are present on a registry entry."""
+def _require(
+    obj: dict,
+    fields: set[str],
+    what: str,
+    optional: set[str] | None = None,
+) -> None:
+    """Ensure all required fields are present on a registry entry.
+
+    ``optional`` names fields that may appear but are not required; any other
+    unexpected field is rejected (fail-closed registry schema).
+    """
     missing = fields - set(obj.keys())
     if missing:
         raise RegistryError(
             f"{what} missing required field(s): {', '.join(sorted(missing))}"
         )
-    unexpected = set(obj.keys()) - fields
+    allowed = fields | (optional or set())
+    unexpected = set(obj.keys()) - allowed
     if unexpected:
         raise RegistryError(
             f"{what} has unexpected field(s): {', '.join(sorted(unexpected))}"
@@ -230,14 +249,20 @@ class DisciplineInfo:
 
 @dataclass(frozen=True)
 class AuditInfo:
-    """Canonical audit definition loaded from audit-registry.json."""
+    """Canonical audit definition loaded from audit-registry.json.
+
+    scope is ``checklist`` (default) for audits backed by a human checklist
+    file, or ``delivery`` for delivery-scope / virtual pipeline audits that
+    have no checklist file and are executed by a validator (issue #393).
+    """
 
     id: str
-    checklist: str
+    checklist: str | None
     execution_type: str  # automated | manual | process
     description: str
     automation_reference: str | None
     validator_binding: str | None
+    scope: str = "checklist"
 
 
 @dataclass(frozen=True)
@@ -411,6 +436,16 @@ class AuditRegistry:
     def get_audit(self, audit_id: str) -> AuditInfo | None:
         return next((a for a in self.audits if a.id == audit_id), None)
 
+    def global_audit_ids(self) -> list[str]:
+        """Delivery-scope audits that run for every route (issue #393).
+
+        These are the pipeline validators (markdown-delivery, research-pack)
+        previously hardcoded as GLOBAL_AUDITS in audit_report.py.  They are
+        now first-class registry entries; callers must derive the global
+        audit set from the registry, not from code.
+        """
+        return [a.id for a in self.audits if a.scope == "delivery"]
+
 
 def load_route_registry(path: Path | None = None) -> RouteRegistry:
     """Load and validate the route manifest."""
@@ -507,7 +542,12 @@ def load_audit_registry(path: Path | None = None) -> AuditRegistry:
     for i, entry in enumerate(data["audits"]):
         if not isinstance(entry, dict):
             raise RegistryError(f"Audit registry audits[{i}] is not an object")
-        _require(entry, AUDIT_REQUIRED_FIELDS, f"Audit registry audits[{i}]")
+        _require(
+            entry,
+            AUDIT_REQUIRED_FIELDS,
+            f"Audit registry audits[{i}]",
+            optional=AUDIT_OPTIONAL_FIELDS,
+        )
         aid = _require_str(entry, "id", f"Audit registry audits[{i}]")
         if aid in seen_ids:
             raise RegistryError(f"Duplicate audit id: '{aid}'")
@@ -519,11 +559,34 @@ def load_audit_registry(path: Path | None = None) -> AuditRegistry:
                 f"'{execution_type}' (allowed: "
                 f"{', '.join(sorted(VALID_EXECUTION_TYPES))})"
             )
-        checklist = _require_str(entry, "checklist", f"Audit registry audits[{i}]")
-        if not (ROOT / checklist).is_file():
+        # scope: delivery-scope / virtual audits are executed by pipeline
+        # validators and carry no human checklist file (issue #393).
+        scope = entry.get("scope", "checklist")
+        if scope not in VALID_AUDIT_SCOPES:
             raise RegistryError(
-                f"Audit '{aid}' checklist missing: {checklist}"
+                f"Audit '{aid}' has invalid scope '{scope}' (allowed: "
+                f"{', '.join(sorted(VALID_AUDIT_SCOPES))})"
             )
+        checklist_value = entry.get("checklist")
+        if scope == "delivery":
+            if checklist_value is not None:
+                raise RegistryError(
+                    f"Delivery-scope audit '{aid}' must declare "
+                    f"checklist: null (it has no human checklist file)"
+                )
+            if execution_type != "automated":
+                raise RegistryError(
+                    f"Delivery-scope audit '{aid}' must be execution_type "
+                    f"'automated' — it is executed by a pipeline validator, "
+                    f"not a human/process self-attestation (issue #393)"
+                )
+            checklist: str | None = None
+        else:
+            checklist = _require_str(entry, "checklist", f"Audit registry audits[{i}]")
+            if not (ROOT / checklist).is_file():
+                raise RegistryError(
+                    f"Audit '{aid}' checklist missing: {checklist}"
+                )
         validator_binding = _require_optional_str(
             entry, "validator_binding", f"Audit registry audits[{i}]"
         )
@@ -555,6 +618,7 @@ def load_audit_registry(path: Path | None = None) -> AuditRegistry:
                 entry, "automation_reference", f"Audit registry audits[{i}]"
             ),
             validator_binding=validator_binding,
+            scope=scope,
         ))
 
     return AuditRegistry(version=data["version"], audits=audits)

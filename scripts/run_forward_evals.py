@@ -41,11 +41,21 @@ from activation_snapshot import (
     extract_activation_snapshot_reference,
     load_activation_snapshot,
 )
+import registry_loader  # noqa: E402
+
+# Canonical route → validator binding set.  The runner uses it to verify the
+# audit JSON validators[] is a complete, un-forged binding set (issue #393).
+_ROUTE_REGISTRY = registry_loader.load_route_registry()
 
 
 ROOT = Path(__file__).resolve().parents[1]
 AUDIT_SCRIPT = ROOT / "scripts" / "audit_report.py"
 DEFAULT_BASELINE_PATH = ROOT / "evals" / "forward-metrics-baseline.json"
+
+# The audit JSON verdict schema this runner understands.  A schema_version it
+# does not know must fail closed instead of being treated as a Pass
+# (issue #393: unknown JSON shape ⇒ incomplete, never pass).
+EXPECTED_AUDIT_JSON_SCHEMA_VERSION = 1
 
 
 def _read_json(path: Path) -> Any:
@@ -153,6 +163,88 @@ def _audit_statuses(actual: dict[str, Any]) -> dict[str, str]:
         for item in actual.get("audits", [])
         if item.get("audit_id")
     }
+
+
+# Valid statuses a route-level validator result may carry.  ``incomplete`` /
+# ``not_run`` mean the validator did not execute and must never be accepted.
+VALID_VALIDATOR_STATUSES = {"pass", "conditional-pass", "fail"}
+
+
+def _validators_ok(
+    actual: dict[str, Any],
+    expected_validators: list[str],
+    audited_path: str | None = None,
+) -> bool:
+    """Consume the structured audit JSON provenance fields (issue #393).
+
+    A verdict is consumable only when:
+    - the JSON schema_version is the one this runner understands; an unknown
+      shape fails closed (never treated as Pass);
+    - the validators[] ids are exactly the canonical binding set for the
+      resolved route, one-to-one (same length, same order, no duplicates, no
+      forged extra id);
+    - every entry carries its required provenance fields (validator_id,
+      status, errors/warnings, evidence, execution_source, validator_version)
+      and a legal status;
+    - status is consistent with errors/warnings: ``pass`` carries neither,
+      ``conditional-pass`` carries warnings and no errors, ``fail`` carries
+      errors;
+    - pass evidence is a verifiable locator against the audited report — an
+      unverifiable locator blocks instead of being treated as a Pass.
+    """
+    if actual.get("schema_version") != EXPECTED_AUDIT_JSON_SCHEMA_VERSION:
+        return False
+    validators = actual.get("validators") or []
+    if not validators:
+        return False
+    # Strict one-to-one binding-set check: same length, same ids, same order.
+    # Set comparison would hide duplicate entries and forged extras (#393).
+    # Non-object entries are dropped so a malformed list fails the length
+    # match instead of crashing on item.get().
+    recorded_ids = [
+        str(item.get("validator_id"))
+        for item in validators
+        if isinstance(item, dict)
+    ]
+    if recorded_ids != expected_validators:
+        return False
+    for item in validators:
+        if not isinstance(item, dict):
+            return False
+        status = str(item.get("status"))
+        if status not in VALID_VALIDATOR_STATUSES:
+            return False
+        if not item.get("validator_id"):
+            return False
+        errors = item.get("errors")
+        warnings = item.get("warnings")
+        if not isinstance(errors, list) or not isinstance(warnings, list):
+            return False
+        if status == "pass" and (errors or warnings):
+            return False
+        if status == "conditional-pass" and (not warnings or errors):
+            return False
+        if status == "fail" and not errors:
+            return False
+        evidence = item.get("evidence")
+        if not isinstance(evidence, list) or not evidence:
+            return False
+        if not all(isinstance(e, str) and e.strip() for e in evidence):
+            return False
+        # pass evidence is a "no violations found" locator claim against the
+        # audited report.  Prefix matching would accept "<path>.evil: ...", so
+        # require the exact "<audited_path>:" prefix; unverifiable blocks.
+        if status == "pass" and (
+            audited_path is None or not evidence[0].startswith(f"{audited_path}:")
+        ):
+            return False
+        execution_source = item.get("execution_source")
+        if not isinstance(execution_source, str) or not execution_source.strip():
+            return False
+        validator_version = item.get("validator_version")
+        if not isinstance(validator_version, str) or not validator_version.strip():
+            return False
+    return True
 
 
 def _blocking_ids_are_allowed(actual: dict[str, Any], allowed: set[str]) -> bool:
@@ -356,6 +448,8 @@ def _evaluate_case(
             {str(item.get("audit_id")) for item in (audit_data or {}).get("audits", [])}
         ),
         "audits": (audit_data or {}).get("audits", []),
+        "validators": (audit_data or {}).get("validators", []),
+        "schema_version": (audit_data or {}).get("schema_version"),
         "overall": (audit_data or {}).get("overall"),
         "blocking": (audit_data or {}).get("blocking", []),
         "statuses": actual_statuses,
@@ -407,6 +501,17 @@ def _evaluate_case(
         "fail": 2,
     }.get(expected["statuses"]["audit_status"])
 
+    # The audit must have dispatched exactly the resolved route's canonical
+    # validator binding set; the runner fails closed on missing / forged ids.
+    expected_validators: list[str] = []
+    if actual["route"]:
+        try:
+            expected_validators = _ROUTE_REGISTRY.validators_for(actual["route"])
+        except registry_loader.UnknownRouteError:
+            expected_validators = []
+    validators_ok = _validators_ok(
+        actual, expected_validators, audited_path=str(report)
+    )
     if expected["verdict"] == "pass":
         case_passed = all(
             [
@@ -423,6 +528,7 @@ def _evaluate_case(
                 prompt_identity_match,
                 decision_tree_version_match,
                 activation_snapshot_match,
+                validators_ok,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 returncode == expected_returncode,
             ]
@@ -453,6 +559,7 @@ def _evaluate_case(
             [
                 actual["failure_family"] == case["failure_family"],
                 _negative_structure_matches(case, actual, checks_for_negative),
+                validators_ok,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 negative_returncode_ok,
             ]
@@ -489,6 +596,8 @@ def _evaluate_case(
             "disciplines": actual["disciplines"],
             "audit_ids": actual["audit_ids"],
             "audits": actual["audits"],
+            "validators": actual["validators"],
+            "schema_version": actual["schema_version"],
             "blocking": actual["blocking"],
             "statuses": actual["statuses"],
             "overall": actual["overall"],
@@ -520,6 +629,7 @@ def _evaluate_case(
             "prompt_identity_match": prompt_identity_match,
             "decision_tree_version_match": decision_tree_version_match,
             "activation_snapshot_match": activation_snapshot_match,
+            "validators_ok": validators_ok,
         },
     }
 

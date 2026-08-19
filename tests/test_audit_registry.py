@@ -43,9 +43,29 @@ class TestAuditRegistryDataIntegrity:
         registry = load_audit_registry()
         files_on_disk = {p.stem for p in CHECKLISTS_DIR.glob("*.md")}
         for a in registry.audits:
+            if a.scope == "delivery":
+                continue  # delivery-scope audits carry no checklist (issue #393)
             assert a.id in files_on_disk, (
                 f"Audit '{a.id}' has no checklist file in checklists/"
             )
+
+    def test_delivery_scope_audits_are_registered(self) -> None:
+        """markdown-delivery / research-pack must be first-class registry
+        entries with delivery scope, not hardcoded code identities (#393)."""
+        registry = load_audit_registry()
+        for aid in ("markdown-delivery", "research-pack"):
+            audit = registry.get_audit(aid)
+            assert audit is not None, (
+                f"Global audit '{aid}' is not registered in audit-registry.json"
+            )
+            assert audit.scope == "delivery"
+            assert audit.checklist is None
+            assert audit.execution_type == "automated"
+            assert audit.validator_binding == aid
+
+    def test_global_audit_ids_are_the_delivery_scope_audits(self) -> None:
+        registry = load_audit_registry()
+        assert registry.global_audit_ids() == ["markdown-delivery", "research-pack"]
 
     def test_every_route_required_audit_is_registered(self) -> None:
         """All route required_audits must resolve to registry entries."""

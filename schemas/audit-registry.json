@@ -1,7 +1,7 @@
 {
-  "version": 1,
-  "description": "Single source of truth for audit checklist identity, file path and execution type. Loaded at runtime via scripts/registry_loader.py. execution_type: automated = executed by a validator script, manual = human checklist at delivery time, process = research-process node audit. validator_binding: canonical validator id that executes an automated audit (must be null for manual/process); issue #378.",
-  "last_reviewed": "2026-08-13",
+  "version": 2,
+  "description": "Single source of truth for audit identity, file path and execution type. Loaded at runtime via scripts/registry_loader.py. execution_type: automated = executed by a validator script, manual = human checklist at delivery time, process = research-process node audit. validator_binding: canonical validator id that executes an automated audit (must be null for manual/process); issue #378. scope: checklist (default) = audit backed by a human checklist file, delivery = delivery-scope/virtual pipeline audit with checklist: null executed by a validator (issue #393).",
+  "last_reviewed": "2026-08-19",
   "audits": [
     {
       "id": "academic-analysis-audit",
@@ -114,6 +114,24 @@
       "description": "Shared-workflow audit: workflow spine evidence, no specialized-route escape hatch misuse.",
       "automation_reference": null,
       "validator_binding": null
+    },
+    {
+      "id": "markdown-delivery",
+      "checklist": null,
+      "scope": "delivery",
+      "execution_type": "automated",
+      "description": "Markdown-delivery pipeline gate: the report must satisfy structural delivery checks (headings, artifacts) so it can render to Markdown/PDF (issue #377). Delivery-scope audit — no human checklist.",
+      "automation_reference": "scripts/validate_markdown_delivery.py",
+      "validator_binding": "markdown-delivery"
+    },
+    {
+      "id": "research-pack",
+      "checklist": null,
+      "scope": "delivery",
+      "execution_type": "automated",
+      "description": "Research Pack validation gate: pack headings, fields, statuses and cross-references must satisfy the pack contract. Delivery-scope audit — no human checklist.",
+      "automation_reference": "scripts/validate_research_pack.py",
+      "validator_binding": "research-pack"
     }
   ]
 }
