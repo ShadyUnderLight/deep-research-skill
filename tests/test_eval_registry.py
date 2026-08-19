@@ -301,25 +301,88 @@ def test_forward_runner_records_audit_json_provenance() -> None:
     assert result["checks"]["validators_ok"] is True, result["checks"]
 
 
-def test_validators_ok_fails_closed_on_unknown_schema() -> None:
-    """A JSON schema_version the runner does not know must never be treated
-    as a Pass — fail closed on unknown shapes (#393)."""
+def _validator_entry(status="pass", **overrides) -> dict:
+    """A structurally valid route-validator JSON entry."""
+    entry = {
+        "validator_id": "report-quality",
+        "status": status,
+        "errors": [],
+        "warnings": [],
+        "evidence": ["report: no violations found by report-quality"],
+        "execution_source": "automated_validator",
+        "validator_version": "audit-registry-v2",
+    }
+    entry.update(overrides)
+    return entry
+
+
+def test_validators_ok_requires_complete_binding_set() -> None:
+    """The runner must fail closed on missing / forged / partial validator
+    results, not just on an empty array (issue #393 forged-path negative)."""
     import run_forward_evals
 
-    ok = {"schema_version": 1, "validators": [{"status": "pass"}]}
-    assert run_forward_evals._validators_ok(ok) is True
+    ok = {"schema_version": 1, "validators": [_validator_entry()]}
+    assert run_forward_evals._validators_ok(ok, ["report-quality"]) is True
     assert run_forward_evals._validators_ok(
-        {"schema_version": 999, "validators": [{"status": "pass"}]}
+        {"schema_version": 999, "validators": [_validator_entry()]},
+        ["report-quality"],
     ) is False, "unknown schema_version must fail closed"
     assert run_forward_evals._validators_ok(
-        {"validators": [{"status": "pass"}]}
+        {"validators": [_validator_entry()]},
+        ["report-quality"],
     ) is False, "missing schema_version must fail closed"
     assert run_forward_evals._validators_ok(
-        {"schema_version": 1, "validators": []}
+        {"schema_version": 1, "validators": []},
+        ["report-quality"],
     ) is False, "missing validator results must fail closed"
     assert run_forward_evals._validators_ok(
-        {"schema_version": 1, "validators": [{"status": "incomplete"}]}
+        {"schema_version": 1, "validators": [_validator_entry(status="incomplete")]},
+        ["report-quality"],
     ) is False, "incomplete validator must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(validator_id="forged")]},
+        ["report-quality"],
+    ) is False, "forged validator id must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(validator_id="other")]},
+        ["report-quality", "other"],
+    ) is False, "missing an expected validator must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(evidence=[])]},
+        ["report-quality"],
+    ) is False, "missing evidence must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(validator_version=None)]},
+        ["report-quality"],
+    ) is False, "missing validator_version must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(status="mystery")]},
+        ["report-quality"],
+    ) is False, "illegal status must fail closed"
+
+
+def test_forward_runner_rejects_forged_validators(monkeypatch) -> None:
+    """Replacing the real validator results with a forged single entry must
+    make the forward runner fail closed, not pass (issue #393)."""
+    import run_forward_evals
+
+    case = load_registry()["cases"][0]
+    fixtures = case["fixtures"]
+    report = ROOT / fixtures["report"]
+    pack = ROOT / fixtures["research_pack"]
+    real_data, _, _ = run_forward_evals._run_audit(report, pack)
+    forged = {
+        **real_data,
+        "validators": [_validator_entry(validator_id="forged")],
+    }
+
+    def fake_run(report, research_pack, activation_snapshot=None):
+        return forged, None, 0
+
+    monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)
+    result = _evaluate_case(case, 1)
+    assert result["checks"]["validators_ok"] is False, result["checks"]
+    assert result["passed"] is False
 
 
 def test_audit_json_schema_version_contract() -> None:

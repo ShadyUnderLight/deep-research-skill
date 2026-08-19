@@ -574,6 +574,12 @@ def load_audit_registry(path: Path | None = None) -> AuditRegistry:
                     f"Delivery-scope audit '{aid}' must declare "
                     f"checklist: null (it has no human checklist file)"
                 )
+            if execution_type != "automated":
+                raise RegistryError(
+                    f"Delivery-scope audit '{aid}' must be execution_type "
+                    f"'automated' — it is executed by a pipeline validator, "
+                    f"not a human/process self-attestation (issue #393)"
+                )
             checklist: str | None = None
         else:
             checklist = _require_str(entry, "checklist", f"Audit registry audits[{i}]")

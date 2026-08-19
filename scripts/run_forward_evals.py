@@ -41,6 +41,11 @@ from activation_snapshot import (
     extract_activation_snapshot_reference,
     load_activation_snapshot,
 )
+import registry_loader  # noqa: E402
+
+# Canonical route → validator binding set.  The runner uses it to verify the
+# audit JSON validators[] is a complete, un-forged binding set (issue #393).
+_ROUTE_REGISTRY = registry_loader.load_route_registry()
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -160,25 +165,53 @@ def _audit_statuses(actual: dict[str, Any]) -> dict[str, str]:
     }
 
 
-def _validators_ok(actual: dict[str, Any]) -> bool:
+# Valid statuses a route-level validator result may carry.  ``incomplete`` /
+# ``not_run`` mean the validator did not execute and must never be accepted.
+VALID_VALIDATOR_STATUSES = {"pass", "conditional-pass", "fail"}
+
+
+def _validators_ok(
+    actual: dict[str, Any],
+    expected_validators: list[str],
+) -> bool:
     """Consume the structured audit JSON provenance fields (issue #393).
 
     A verdict is consumable only when:
     - the JSON schema_version is the one this runner understands; an unknown
       shape fails closed (never treated as Pass);
-    - route-level validator results are present and none is ``incomplete`` /
-      ``not_run`` — a missing validator result must not be interpreted as
-      a silent Pass.
+    - the validators[] ids are exactly the canonical binding set for the
+      resolved route — no missing validator, no forged extra id;
+    - every entry carries its required provenance fields (validator_id,
+      status, errors/warnings, evidence, execution_source, validator_version)
+      and a legal status; missing results / forged entries must not be
+      interpreted as a silent Pass.
     """
     if actual.get("schema_version") != EXPECTED_AUDIT_JSON_SCHEMA_VERSION:
         return False
     validators = actual.get("validators") or []
     if not validators:
         return False
-    return all(
-        str(item.get("status")) not in {"incomplete", "not_run"}
+    recorded_ids = {
+        str(item.get("validator_id"))
         for item in validators
-    )
+        if item.get("validator_id")
+    }
+    if recorded_ids != set(expected_validators):
+        return False
+    for item in validators:
+        if str(item.get("status")) not in VALID_VALIDATOR_STATUSES:
+            return False
+        if not item.get("validator_id"):
+            return False
+        if "errors" not in item or "warnings" not in item:
+            return False
+        if not item.get("evidence"):
+            return False
+        if not item.get("execution_source"):
+            return False
+        if not item.get("validator_version"):
+            return False
+    return True
 
 
 def _blocking_ids_are_allowed(actual: dict[str, Any], allowed: set[str]) -> bool:
@@ -435,7 +468,15 @@ def _evaluate_case(
         "fail": 2,
     }.get(expected["statuses"]["audit_status"])
 
-    validators_ok = _validators_ok(actual)
+    # The audit must have dispatched exactly the resolved route's canonical
+    # validator binding set; the runner fails closed on missing / forged ids.
+    expected_validators: list[str] = []
+    if actual["route"]:
+        try:
+            expected_validators = _ROUTE_REGISTRY.validators_for(actual["route"])
+        except registry_loader.UnknownRouteError:
+            expected_validators = []
+    validators_ok = _validators_ok(actual, expected_validators)
     if expected["verdict"] == "pass":
         case_passed = all(
             [

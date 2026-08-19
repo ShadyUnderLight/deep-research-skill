@@ -604,6 +604,25 @@ class TestAuditRegistryLoads:
         finally:
             tmp.unlink(missing_ok=True)
 
+    def test_delivery_scope_requires_automated_execution(self) -> None:
+        """Delivery-scope audits are pipeline validators: manual/process
+        execution would degrade to a global self-attestation audit — must
+        fail closed at registry load (issue #393)."""
+        doc = {
+            "version": 1,
+            "audits": [self._minimal_audit(
+                scope="delivery",
+                checklist=None,
+                execution_type="manual",
+            )],
+        }
+        tmp = self._tmp(doc)
+        try:
+            with pytest.raises(RegistryError, match="automated"):
+                load_audit_registry(tmp)
+        finally:
+            tmp.unlink(missing_ok=True)
+
     def test_invalid_scope_raises(self) -> None:
         doc = {"version": 1, "audits": [self._minimal_audit(scope="mystery")]}
         tmp = self._tmp(doc)
