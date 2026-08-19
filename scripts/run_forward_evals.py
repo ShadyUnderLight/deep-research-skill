@@ -199,10 +199,18 @@ def _validators_ok(
         return False
     # Strict one-to-one binding-set check: same length, same ids, same order.
     # Set comparison would hide duplicate entries and forged extras (#393).
-    recorded_ids = [str(item.get("validator_id")) for item in validators]
+    # Non-object entries are dropped so a malformed list fails the length
+    # match instead of crashing on item.get().
+    recorded_ids = [
+        str(item.get("validator_id"))
+        for item in validators
+        if isinstance(item, dict)
+    ]
     if recorded_ids != expected_validators:
         return False
     for item in validators:
+        if not isinstance(item, dict):
+            return False
         status = str(item.get("status"))
         if status not in VALID_VALIDATOR_STATUSES:
             return False
@@ -224,14 +232,17 @@ def _validators_ok(
         if not all(isinstance(e, str) and e.strip() for e in evidence):
             return False
         # pass evidence is a "no violations found" locator claim against the
-        # audited report: it must be verifiable or the verdict blocks.
+        # audited report.  Prefix matching would accept "<path>.evil: ...", so
+        # require the exact "<audited_path>:" prefix; unverifiable blocks.
         if status == "pass" and (
-            audited_path is None or not evidence[0].startswith(audited_path)
+            audited_path is None or not evidence[0].startswith(f"{audited_path}:")
         ):
             return False
-        if not isinstance(item.get("execution_source"), str):
+        execution_source = item.get("execution_source")
+        if not isinstance(execution_source, str) or not execution_source.strip():
             return False
-        if not isinstance(item.get("validator_version"), str):
+        validator_version = item.get("validator_version")
+        if not isinstance(validator_version, str) or not validator_version.strip():
             return False
     return True
 

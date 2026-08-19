@@ -363,6 +363,25 @@ def test_validators_ok_requires_complete_binding_set() -> None:
         ["report-quality"], audited_path="report",
     ) is False, "evidence locator must reference the audited report"
     assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(
+            evidence=["report.evil: no violations found by report-quality"])]},
+        ["report-quality"], audited_path="report",
+    ) is False, "prefix-bypass evidence (report.evil) must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(
+            execution_source="")]},
+        ["report-quality"], audited_path="report",
+    ) is False, "empty execution_source must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [_validator_entry(
+            validator_version="")]},
+        ["report-quality"], audited_path="report",
+    ) is False, "empty validator_version must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": ["not-a-dict"]},
+        ["report-quality"], audited_path="report",
+    ) is False, "non-object validator entry must fail closed"
+    assert run_forward_evals._validators_ok(
         {"schema_version": 1, "validators": [_validator_entry(validator_version=None)]},
         ["report-quality"], audited_path="report",
     ) is False, "missing validator_version must fail closed"
