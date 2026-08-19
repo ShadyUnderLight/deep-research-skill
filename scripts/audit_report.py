@@ -8,6 +8,7 @@ audit status) and a single exit code.
 
 Usage:
     python3 scripts/audit_report.py path/to/report.md [--route ROUTE] [--strict]
+        [--activation-snapshot path/to/activation.json]
 
 Route auto-detection (from ## Route and audit status block) is the default;
 pass --route to override or when no route block is present.
@@ -84,6 +85,11 @@ from validate_research_pack import (
     strip_fenced_code_blocks as vrp_strip_fenced_code_blocks,
 )
 from audit_evidence import validate_evidence_reference
+from activation_snapshot import (
+    ActivationSnapshotError,
+    extract_activation_snapshot_reference,
+    load_activation_snapshot,
+)
 
 # ── Runtime control-plane registry (issue #374) ─────────────────────────────
 # Route identity, aliases and validator dispatch bindings come from
@@ -564,6 +570,17 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
         )
     visible_text = vc_strip_fences(text)
 
+    activation_snapshot_path = kwargs.get("activation_snapshot")
+    activation_data: dict | None = None
+    if activation_snapshot_path is not None:
+        try:
+            activation_data = load_activation_snapshot(Path(activation_snapshot_path))
+        except ActivationSnapshotError as exc:
+            return CheckResult(
+                name="activation-record-integration",
+                errors=[str(exc)],
+            )
+
     # Cardinality checks on user-writable declarations (issue #378): more
     # than one contract block / route status block is structural
     # malformation — a second declaration could carry a conflicting route
@@ -583,10 +600,30 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
         )
 
     research_pack = kwargs.get("research_pack")
+    pack_activation_snapshot: dict | None = None
     if research_pack is not None:
         pack_section_errors = vc_validate_pack_sections(str(research_pack))
         if pack_section_errors:
             return CheckResult(name="contract-check", errors=pack_section_errors)
+        try:
+            pack_text = Path(research_pack).read_text(
+                encoding="utf-8", errors="replace"
+            )
+            pack_activation_snapshot, activation_errors = (
+                extract_activation_snapshot_reference(
+                    vc_strip_fences(pack_text), label="Research Pack"
+                )
+            )
+        except (OSError, UnicodeError) as exc:
+            return CheckResult(
+                name="activation-record-integration",
+                errors=[f"cannot read Research Pack activation snapshot: {exc}"],
+            )
+        if activation_errors:
+            return CheckResult(
+                name="activation-record-integration",
+                errors=activation_errors,
+            )
 
     report_route, route_malformed = vc_extract_report_route_declaration(text)
     if route_malformed:
@@ -606,7 +643,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
                 ],
             )
         # No contract block at all.
-        if require_contract:
+        if require_contract or activation_data is not None:
             return CheckResult(
                 name="contract-check",
                 errors=[
@@ -620,6 +657,9 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
     result = validate_contract(
         contract,
         report_primary_route=report_route,
+        pack_activation_snapshot=pack_activation_snapshot,
+        activation_snapshot=activation_data,
+        require_activation_snapshot=activation_data is not None,
         strict=strict,
         report_text=visible_text,
         evidence_base_dir=Path(__file__).resolve().parent.parent,
@@ -658,6 +698,9 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             contract,
             pack_primary_route=pack_primary,
             pack_artifact_id=pack_artifact,
+            pack_activation_snapshot=pack_activation_snapshot,
+            activation_snapshot=activation_data,
+            require_activation_snapshot=activation_data is not None,
             research_pack_provided=True,
             strict=strict,
             report_text=visible_text,
@@ -1580,6 +1623,7 @@ def _audit_report_impl(
     allow_route_fallback: bool = False,
     require_contract: bool = False,
     research_pack: Path | None = None,
+    activation_snapshot: Path | None = None,
     delivery_result: Path | None = None,
 ) -> AuditVerdict:
     """Run route-aware audit on a report and return the consolidated verdict.
@@ -1605,6 +1649,10 @@ def _audit_report_impl(
         Research Pack file to validate as the research-pack required audit.
         None records the audit as ``skipped`` (non-strict) or ``not_run``
         + blocking (strict, issue #378).
+    activation_snapshot : Path | None
+        Canonical structured activation snapshot. When supplied, strict
+        contract validation requires report/pack/contract route and reference
+        consistency with this snapshot.
 
     Returns
     -------
@@ -1694,6 +1742,7 @@ def _audit_report_impl(
             strict=strict,
             require_contract=effective_require_contract,
             research_pack=research_pack,
+            activation_snapshot=activation_snapshot,
         )
         results.append(result)
 
@@ -1738,6 +1787,7 @@ def audit_report(
     allow_route_fallback: bool = False,
     require_contract: bool = False,
     research_pack: Path | None = None,
+    activation_snapshot: Path | None = None,
     delivery_result: Path | None = None,
 ) -> AuditVerdict:
     """Public entry point: run the audit and attach provenance to the verdict.
@@ -1751,6 +1801,7 @@ def audit_report(
         allow_route_fallback=allow_route_fallback,
         require_contract=require_contract,
         research_pack=research_pack,
+        activation_snapshot=activation_snapshot,
         delivery_result=delivery_result,
     )
     return _finalize_verdict(verdict, path)
@@ -1809,6 +1860,15 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--activation-snapshot",
+        type=str,
+        default=None,
+        help=(
+            "Path to a canonical activation snapshot JSON. When supplied, "
+            "strict mode blocks activation/report/pack/contract mismatches."
+        ),
+    )
+    parser.add_argument(
         "--delivery-result",
         type=str,
         default=None,
@@ -1837,6 +1897,9 @@ def main(argv: list[str] | None = None) -> int:
         allow_route_fallback=args.allow_route_fallback,
         require_contract=args.require_contract,
         research_pack=Path(args.research_pack) if args.research_pack else None,
+        activation_snapshot=(
+            Path(args.activation_snapshot) if args.activation_snapshot else None
+        ),
         delivery_result=Path(args.delivery_result) if args.delivery_result else None,
     )
 

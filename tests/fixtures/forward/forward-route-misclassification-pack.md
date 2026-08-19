@@ -1,12 +1,12 @@
 ## Objective
 
-Explain the market direction represented by the positive baseline report [S01].
+Explain the market direction represented by the route-mismatch integration report [S01].
 
 ## Decision context
 
-Market Outlook was chosen because the question asks about direction rather than
-selection. Shared-workflow was rejected because the scenario and monitoring
-structure are load-bearing.
+The report fixture deliberately declares Market Outlook while the canonical
+activation snapshot resolves the selection burden to Constrained Choice. The
+integration audit must block this disagreement.
 
 ## Primary route
 
@@ -37,8 +37,8 @@ current-state, forward-looking, source-traceability, scope-completeness, quantit
 
 ## Activation snapshot
 
-- activation_id: forward-market-outlook-baseline
-- snapshot_sha256: aec9f2e6ccf91281590f5769abe1252d45a5a27c0680233ef77f861ec381949d
+- activation_id: forward-route-misclassification
+- snapshot_sha256: 3bf7ccf7086d1eba693dc753bb633d6a009a13421f6424250bcf98a2c4b89a56
 - snapshot_version: 1
 - decision_tree_version: 1
 
@@ -70,7 +70,7 @@ Stop when the current snapshot, scenarios, and monitoring signals are complete.
 
 ## Artifact id
 
-fixture-market-outlook-pos
+fixture-forward-route-misclassification
 
 ## Artifact contract
 

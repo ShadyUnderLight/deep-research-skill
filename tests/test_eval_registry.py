@@ -175,13 +175,62 @@ def test_offline_forward_runner_passes_and_reports_metrics() -> None:
     assert report["passed"] is True
     assert report["failed_cases"] == []
     assert report["offline"] is True
+    assert report["evaluation_mode"] == "offline"
+    assert report["case_evaluation_modes"] == {
+        "activation-record-integration": 2,
+        "structured-decision-replay": 9,
+    }
     assert report["decision_tree_version"] == 1
     metrics = report["metrics"]
     assert metrics["case_count"] >= 8
-    assert metrics["negative_detection_rate"] == 1.0
-    assert metrics["false_passed_rate"] == 0.3333
-    assert metrics["negative_case_failure_rate"] == 0.0
+    assert metrics["structured_route_resolution_rate"] == 1.0
+    assert metrics["activation_report_consistency"] == 1.0
+    assert metrics["audit_false_pass_rate"] == 0.0
+    assert metrics["oracle_mismatch_detection_rate"] == 1.0
+    assert metrics["negative_case_contract_pass_rate"] == 1.0
     assert metrics["blocked_partial_and_pdf_failed_status_correctness"] == 1.0
+
+
+def test_route_misclassification_is_blocked_by_production_integration_gate() -> None:
+    case = next(
+        item
+        for item in load_registry()["cases"]
+        if item["id"] == "forward-route-misclassification"
+    )
+    result = _evaluate_case(case, 1)
+    assert result["passed"] is True
+    assert result["actual"]["evaluation_mode"] == "activation-record-integration"
+    assert result["actual"]["activation_route"] == "constrained-choice"
+    assert result["actual"]["report_route"] == "market-outlook"
+    assert result["actual"]["overall"] == "fail"
+    assert result["actual"]["returncode"] == 2
+    assert result["actual"]["failure_stage"] == "contract"
+    assert result["checks"]["activation_snapshot_match"] is True
+
+
+def test_route_misclassification_does_not_mask_unrelated_report_failure(
+    tmp_path: Path,
+) -> None:
+    case = copy.deepcopy(next(
+        item
+        for item in load_registry()["cases"]
+        if item["id"] == "forward-route-misclassification"
+    ))
+    original = ROOT / case["fixtures"]["report"]
+    tampered = tmp_path / "mixed-route-mismatch.md"
+    tampered.write_text(
+        original.read_text(encoding="utf-8").replace(
+            "Body text with citations [S01], [S02] and [S03].",
+            "Body text with citations [S01], [S99] and [S03].",
+        ),
+        encoding="utf-8",
+    )
+    case["fixtures"]["report"] = str(tampered)
+
+    result = _evaluate_case(case, 1)
+    assert result["passed"] is False
+    assert result["actual"]["failure_family"] == "route-misclassification"
+    assert any(item.startswith("[report-quality]") for item in result["actual"]["blocking"])
 
 
 def test_cli_output_is_machine_readable() -> None:

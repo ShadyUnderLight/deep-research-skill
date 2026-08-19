@@ -20,6 +20,18 @@
       "minimum": 1,
       "description": "Version of schemas/route-decision-tree.json used to resolve action/object/conflict semantics."
     },
+    "activation_snapshot": {
+      "type": "object",
+      "description": "Stable reference to the canonical activation snapshot used by the integration audit.",
+      "required": ["activation_id", "snapshot_sha256", "snapshot_version", "decision_tree_version"],
+      "properties": {
+        "activation_id": {"type": "string", "minLength": 1},
+        "snapshot_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "snapshot_version": {"type": "integer", "minimum": 1},
+        "decision_tree_version": {"type": "integer", "minimum": 1}
+      },
+      "additionalProperties": false
+    },
     "created_at": {
       "type": "string",
       "description": "Generation timestamp (ISO 8601 date, e.g., 2026-08-13). Recommended; required under --strict."

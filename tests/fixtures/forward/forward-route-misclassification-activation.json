@@ -1,0 +1,15 @@
+{
+  "activation_id": "forward-route-misclassification",
+  "snapshot_version": 1,
+  "evaluation_mode": "activation-record-integration",
+  "decision_tree_version": 1,
+  "prompt_sha256": "0dac0cd9e48109f7a88f36088cf58f7ade0f0cf212f125cc194f5fc6575abc02",
+  "action_burden": "Select / rank / predict",
+  "weight_bearing_object": "Market / category trajectory",
+  "primary_route": "constrained-choice",
+  "secondary_routes": [],
+  "derived_secondary_routes": [],
+  "manual_secondary_routes": [],
+  "parallelization_decision": "single-track",
+  "snapshot_sha256": "3bf7ccf7086d1eba693dc753bb633d6a009a13421f6424250bcf98a2c4b89a56"
+}

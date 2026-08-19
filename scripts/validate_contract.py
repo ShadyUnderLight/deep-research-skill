@@ -18,7 +18,8 @@ and audits, plus reference integrity (issue #376):
   contract's primary route.
 
 Usage:
-    python3 scripts/validate_contract.py path/to/report.md [--strict] [--research-pack path/to/pack.md]
+    python3 scripts/validate_contract.py path/to/report.md [--strict]
+        [--research-pack path/to/pack.md] [--activation-snapshot path/to/activation.json]
 
 Exit codes:
     0 = contract is valid (or no contract found)
@@ -44,6 +45,14 @@ from registry_loader import (
     load_route_registry,
 )
 from audit_evidence import validate_evidence_reference
+from activation_snapshot import (
+    ActivationSnapshotError,
+    activation_reference,
+    extract_activation_snapshot_reference,
+    load_activation_snapshot,
+    validate_activation_reference,
+    validate_snapshot,
+)
 
 # ── Paths relative to project root ──────────────────────────────────────────
 
@@ -251,6 +260,9 @@ def validate_contract(
     pack_primary_route: str | None = None,
     report_primary_route: str | None = None,
     pack_artifact_id: str | None = None,
+    pack_activation_snapshot: dict | None = None,
+    activation_snapshot: dict | None = None,
+    require_activation_snapshot: bool = False,
     research_pack_provided: bool = False,
     strict: bool = False,
     report_text: str | None = None,
@@ -277,6 +289,7 @@ def validate_contract(
     14. report status block primary route matches contract primary route
         (when provided)
     15. pack artifact id matches contract artifact_id (when both provided)
+    16. activation snapshot references and route fields agree in integration mode
 
     Args:
         contract: parsed contract object.
@@ -294,6 +307,13 @@ def validate_contract(
         research_pack_provided: True when the CLI was given --research-pack.
             Single-side artifact id warnings are only emitted in that case
             (without --research-pack there is no pack to trace to).
+        pack_activation_snapshot: stable activation snapshot reference parsed
+            from the Research Pack, when present.
+        activation_snapshot: validated activation snapshot supplied by the
+            integration audit. When provided, its route and reference must
+            agree with the report contract and Research Pack.
+        require_activation_snapshot: require an actual activation snapshot
+            for this validation call.
         strict: when True, missing artifact identity fields are errors
             instead of warnings.
         report_text: visible report text used to resolve report-section/table
@@ -322,7 +342,8 @@ def validate_contract(
         "primary_route", "secondary_routes", "disciplines", "audits",
         "closest_alternative", "boundary_judgment",
         "artifact_id", "contract_version", "created_at",
-        "decision_tree_version", "secondary_route_contracts",
+        "decision_tree_version", "activation_snapshot",
+        "secondary_route_contracts",
     }
     for field in contract:
         if field not in known_fields:
@@ -417,6 +438,80 @@ def validate_contract(
                         f"decision_tree_version {decision_tree_version} does not match "
                         f"canonical version {canonical_tree.version}"
                     )
+
+    # 3c. Activation snapshot references are optional for legacy contracts,
+    # but become a required cross-artifact boundary for integration audits.
+    contract_activation_ref: dict | None = None
+    if "activation_snapshot" in contract:
+        try:
+            contract_activation_ref = validate_activation_reference(
+                contract["activation_snapshot"], label="contract activation_snapshot"
+            )
+        except ActivationSnapshotError as exc:
+            errors.append(str(exc))
+    if pack_activation_snapshot is not None:
+        try:
+            pack_activation_snapshot = validate_activation_reference(
+                pack_activation_snapshot, label="Research Pack activation_snapshot"
+            )
+        except ActivationSnapshotError as exc:
+            errors.append(str(exc))
+            pack_activation_snapshot = None
+    if require_activation_snapshot and activation_snapshot is None:
+        errors.append(
+            "activation snapshot is required for activation-record-integration"
+        )
+    actual_activation: dict | None = None
+    if activation_snapshot is not None:
+        try:
+            actual_activation = validate_snapshot(activation_snapshot)
+        except ActivationSnapshotError as exc:
+            errors.append(str(exc))
+        else:
+            actual_ref = activation_reference(actual_activation)
+            if contract_activation_ref is None:
+                errors.append(
+                    "integration audit requires contract.activation_snapshot"
+                )
+            elif contract_activation_ref != actual_ref:
+                errors.append(
+                    "contract activation_snapshot does not match the supplied "
+                    "activation snapshot"
+                )
+            if pack_activation_snapshot is None:
+                errors.append(
+                    "integration audit requires Research Pack activation_snapshot"
+                )
+            elif pack_activation_snapshot != actual_ref:
+                errors.append(
+                    "Research Pack activation_snapshot does not match the supplied "
+                    "activation snapshot"
+                )
+            if primary != actual_activation["primary_route"]:
+                errors.append(
+                    f"Activation/report route mismatch: activation snapshot declares "
+                    f"'{actual_activation['primary_route']}' but contract declares "
+                    f"'{primary}'"
+                )
+            if sorted(secondary) != actual_activation["secondary_routes"]:
+                errors.append(
+                    "Activation/contract secondary route mismatch: activation "
+                    "snapshot and contract must declare the same routes"
+                )
+            contract_tree_version = contract.get("decision_tree_version")
+            if (
+                contract_tree_version is not None
+                and contract_tree_version != actual_activation["decision_tree_version"]
+            ):
+                errors.append(
+                    "Activation/contract decision_tree_version mismatch"
+                )
+    elif contract_activation_ref is not None and pack_activation_snapshot is not None:
+        if contract_activation_ref != pack_activation_snapshot:
+            errors.append(
+                "Research Pack activation_snapshot does not match contract "
+                "activation_snapshot"
+            )
 
     if "secondary_route_contracts" in contract:
         secondary_contracts = contract["secondary_route_contracts"]
@@ -885,6 +980,15 @@ def main(argv: list[str] | None = None) -> int:
              "primary route matches the contract's primary route (exit code 2 "
              "on mismatch).",
     )
+    parser.add_argument(
+        "--activation-snapshot",
+        type=str,
+        default=None,
+        metavar="PATH",
+        help="Path to a canonical activation snapshot JSON. When supplied, "
+             "the report contract and Research Pack must reference the same "
+             "snapshot and route.",
+    )
     args = parser.parse_args(argv)
 
     path = Path(args.path)
@@ -914,14 +1018,20 @@ def main(argv: list[str] | None = None) -> int:
                 f"or not a valid object. Fix the ```contract fenced block."
             )
             return 2
-        if args.require_contract:
-            print(f"Error: No contract block found in {path} (--require-contract set).")
+        if args.require_contract or args.activation_snapshot:
+            reason = (
+                "--require-contract set"
+                if args.require_contract
+                else "--activation-snapshot requires a contract"
+            )
+            print(f"Error: No contract block found in {path} ({reason}).")
             return 2
         print(f"No contract block found in {path}. Skipping validation.")
         return 0
 
     pack_primary_route: str | None = None
     pack_artifact_id: str | None = None
+    pack_activation_snapshot: dict | None = None
     if args.research_pack:
         pack_section_errors = validate_pack_sections(args.research_pack)
         if pack_section_errors:
@@ -932,6 +1042,35 @@ def main(argv: list[str] | None = None) -> int:
         if pack_primary_route is None:
             return 2
         pack_artifact_id = _extract_pack_artifact_id(args.research_pack)
+        try:
+            pack_text = Path(args.research_pack).read_text(
+                encoding="utf-8", errors="replace"
+            )
+            pack_activation_snapshot, activation_errors = (
+                extract_activation_snapshot_reference(
+                    _strip_fences(pack_text), label="Research Pack"
+                )
+            )
+        except (OSError, UnicodeError) as exc:
+            print(
+                f"Error: cannot read Research Pack activation snapshot: {exc}",
+                file=sys.stderr,
+            )
+            return 2
+        if activation_errors:
+            for err in activation_errors:
+                print(f"Error: {err}", file=sys.stderr)
+            return 2
+
+    activation_snapshot: dict | None = None
+    if args.activation_snapshot:
+        try:
+            activation_snapshot = load_activation_snapshot(
+                Path(args.activation_snapshot)
+            )
+        except ActivationSnapshotError as exc:
+            print(f"Error: {exc}", file=sys.stderr)
+            return 2
 
     # Report status block route (issue #376 验收标准 5 — 三方一致性).
     report_primary_route, route_malformed = extract_report_route_declaration(text)
@@ -945,6 +1084,9 @@ def main(argv: list[str] | None = None) -> int:
         pack_primary_route=pack_primary_route,
         report_primary_route=report_primary_route,
         pack_artifact_id=pack_artifact_id,
+        pack_activation_snapshot=pack_activation_snapshot,
+        activation_snapshot=activation_snapshot,
+        require_activation_snapshot=args.activation_snapshot is not None,
         research_pack_provided=args.research_pack is not None,
         strict=args.strict,
         report_text=_strip_fences(text) if args.strict else None,

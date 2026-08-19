@@ -42,6 +42,11 @@ FORWARD_FIXTURE_DIR = ROOT / "tests" / "fixtures" / "forward"
 CASE_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]+$")
 ALLOWED_CASE_STATUSES = {"active", "archived"}
 ALLOWED_CASE_TYPES = {"positive", "negative"}
+ALLOWED_EVALUATION_MODES = {
+    "structured-decision-replay",
+    "activation-record-integration",
+    "agent-prompt",
+}
 ALLOWED_RESEARCH_STATUSES = {"complete", "partial", "blocked"}
 ALLOWED_AUDIT_STATUSES = {
     "pass",
@@ -69,11 +74,18 @@ FAILURE_FAMILY_TO_GAP_CLASS = {
     "fixture-reference-drift": "fixture-reference-drift",
     "orphan-fixture": "fixture-reference-drift",
 }
+FAILURE_FAMILY_TO_STAGE = {
+    "route-misclassification": "contract",
+    "secondary-route-not-verified": "audit",
+    "declared-not-executed": "evidence",
+    "audit-failure": "audit",
+}
 
 REQUIRED_CASE_FIELDS = {
     "id",
     "type",
     "status",
+    "evaluation_mode",
     "input",
     "expected",
     "fixtures",
@@ -100,7 +112,9 @@ REQUIRED_EXPECTED_FIELDS = {
     "verdict",
     "parallelization_decision",
 }
+OPTIONAL_EXPECTED_FIELDS = {"failure_stage"}
 REQUIRED_FIXTURE_FIELDS = {"report", "research_pack"}
+OPTIONAL_FIXTURE_FIELDS = {"activation_snapshot"}
 ALLOWED_STATUS_KEYS = {"research_status", "audit_status", "delivery_status"}
 PACK_FIELD_NAMES = {
     "Objective",
@@ -137,6 +151,13 @@ def gap_class_for_failure_family(failure_family: str | None) -> str | None:
         return None
     mapped = FAILURE_FAMILY_TO_GAP_CLASS.get(failure_family)
     return mapped if mapped in GAP_CLASSES else None
+
+
+def failure_stage_for_failure_family(failure_family: str | None) -> str | None:
+    """Map a concrete failure family to its observable control-plane stage."""
+    if not isinstance(failure_family, str):
+        return None
+    return FAILURE_FAMILY_TO_STAGE.get(failure_family)
 
 
 def _is_non_empty_string(value: Any) -> bool:
@@ -214,10 +235,20 @@ def _validate_case(
 
     case_type = case["type"]
     case_status = case["status"]
+    evaluation_mode = case["evaluation_mode"]
     if not isinstance(case_type, str) or case_type not in ALLOWED_CASE_TYPES:
         errors.append(f"{prefix}.type must be one of {sorted(ALLOWED_CASE_TYPES)}")
     if not isinstance(case_status, str) or case_status not in ALLOWED_CASE_STATUSES:
         errors.append(f"{prefix}.status must be one of {sorted(ALLOWED_CASE_STATUSES)}")
+    if not isinstance(evaluation_mode, str) or evaluation_mode not in ALLOWED_EVALUATION_MODES:
+        errors.append(
+            f"{prefix}.evaluation_mode must be one of "
+            f"{sorted(ALLOWED_EVALUATION_MODES)}"
+        )
+    elif evaluation_mode == "agent-prompt" and case_status == "active":
+        errors.append(
+            f"{prefix}.evaluation_mode=agent-prompt cannot be active in the offline runner"
+        )
     failure_family = case["failure_family"]
     if case_type == "negative" and not _is_non_empty_string(failure_family):
         errors.append(f"{prefix}.failure_family is required for negative cases")
@@ -335,7 +366,9 @@ def _validate_case(
         expected = {}
     else:
         missing_expected = REQUIRED_EXPECTED_FIELDS - set(expected)
-        unexpected_expected = set(expected) - REQUIRED_EXPECTED_FIELDS
+        unexpected_expected = set(expected) - (
+            REQUIRED_EXPECTED_FIELDS | OPTIONAL_EXPECTED_FIELDS
+        )
         if missing_expected:
             errors.append(
                 f"{prefix}.expected missing field(s): {', '.join(sorted(missing_expected))}"
@@ -464,6 +497,16 @@ def _validate_case(
     expected_parallelization = expected.get("parallelization_decision")
     if not isinstance(expected_parallelization, str) or expected_parallelization not in ALLOWED_PARALLELIZATION:
         errors.append(f"{prefix}.expected.parallelization_decision is invalid")
+    failure_stage = expected.get("failure_stage")
+    if case_type == "negative":
+        expected_stage = FAILURE_FAMILY_TO_STAGE.get(failure_family)
+        if failure_stage != expected_stage:
+            errors.append(
+                f"{prefix}.expected.failure_stage must be {expected_stage!r} "
+                f"for failure_family {failure_family!r}"
+            )
+    elif failure_stage is not None:
+        errors.append(f"{prefix}.expected.failure_stage is only valid for negative cases")
 
     fixtures = case["fixtures"]
     if not isinstance(fixtures, dict):
@@ -471,7 +514,9 @@ def _validate_case(
         fixtures = {}
     else:
         missing_fixtures = REQUIRED_FIXTURE_FIELDS - set(fixtures)
-        unexpected_fixtures = set(fixtures) - REQUIRED_FIXTURE_FIELDS
+        unexpected_fixtures = set(fixtures) - (
+            REQUIRED_FIXTURE_FIELDS | OPTIONAL_FIXTURE_FIELDS
+        )
         if missing_fixtures:
             errors.append(
                 f"{prefix}.fixtures missing field(s): {', '.join(sorted(missing_fixtures))}"
@@ -481,7 +526,21 @@ def _validate_case(
                 f"{prefix}.fixtures has unexpected field(s): "
                 f"{', '.join(sorted(unexpected_fixtures))}"
             )
-    for fixture_key in REQUIRED_FIXTURE_FIELDS:
+    fixture_keys = set(REQUIRED_FIXTURE_FIELDS)
+    if evaluation_mode == "activation-record-integration":
+        if "activation_snapshot" not in fixtures:
+            errors.append(
+                f"{prefix}.fixtures.activation_snapshot is required for "
+                "activation-record-integration"
+            )
+        else:
+            fixture_keys.add("activation_snapshot")
+    elif "activation_snapshot" in fixtures:
+        errors.append(
+            f"{prefix}.fixtures.activation_snapshot is only valid for "
+            "activation-record-integration"
+        )
+    for fixture_key in fixture_keys:
         fixture_value = fixtures.get(fixture_key)
         fixture_path = _repo_relative_path(fixture_value, root) if isinstance(fixture_value, str) else None
         if fixture_path is None:
@@ -491,6 +550,26 @@ def _validate_case(
         referenced.add(relative)
         if not fixture_path.is_file():
             errors.append(f"{prefix}.fixtures.{fixture_key} does not exist: {relative}")
+        elif fixture_key == "activation_snapshot":
+            try:
+                from activation_snapshot import load_activation_snapshot
+
+                snapshot = load_activation_snapshot(fixture_path)
+            except Exception as exc:
+                errors.append(
+                    f"{prefix}.fixtures.activation_snapshot is invalid: {exc}"
+                )
+            else:
+                if snapshot["activation_id"] != case_id:
+                    errors.append(
+                        f"{prefix}.fixtures.activation_snapshot activation_id "
+                        f"must be {case_id!r}"
+                    )
+                if snapshot["evaluation_mode"] != evaluation_mode:
+                    errors.append(
+                        f"{prefix}.fixtures.activation_snapshot evaluation_mode "
+                        f"must be {evaluation_mode!r}"
+                    )
 
     for field in ("related_rule", "related_validator"):
         if not _as_string_list(case[field]):

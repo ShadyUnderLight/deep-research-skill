@@ -33,6 +33,9 @@ Include when the pack is part of a tracked delivery (issue #376):
   `scripts/validate_contract.py report.md --research-pack pack.md`).
 - `## Contract reference` — points back to the final report/contract artifact id
   once the report is delivered.
+- `## Activation snapshot` — required for `activation-record-integration` evals;
+  records the shared `activation_id`, `snapshot_sha256`, `snapshot_version`,
+  and `decision_tree_version` reference used by the report contract.
 
 ## Conditional sections
 

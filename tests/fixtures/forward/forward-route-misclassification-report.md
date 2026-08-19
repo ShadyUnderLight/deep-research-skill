@@ -1,4 +1,4 @@
-# Market Outlook 2027 — Positive Fixture (issue #378)
+# Market Outlook 2027 — Route Mismatch Integration Fixture
 
 ## Route and audit status
 
@@ -51,5 +51,5 @@ Each dimension conclusion is backed by [S01] and [S02].
 | S03 | Example C | secondary | 2026-03-01 | https://example.com/c | high | §4 |
 
 ```contract
-{"primary_route": "market-outlook", "secondary_routes": [], "disciplines": [], "decision_tree_version": 1, "activation_snapshot": {"activation_id": "forward-market-outlook-baseline", "snapshot_sha256": "aec9f2e6ccf91281590f5769abe1252d45a5a27c0680233ef77f861ec381949d", "snapshot_version": 1, "decision_tree_version": 1}, "audits": [{"id": "market-outlook-audit", "status": "passed", "evidence": "report-section:Monitoring signals"}, {"id": "forward-looking-claims", "status": "passed", "evidence": "report-section:Monitoring signals"}, {"id": "source-traceability", "status": "passed", "evidence": "report-section:Findings"}, {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"}], "artifact_id": "fixture-market-outlook-pos", "contract_version": "1.0.0", "created_at": "2026-08-13"}
+{"primary_route": "market-outlook", "secondary_routes": [], "disciplines": [], "decision_tree_version": 1, "activation_snapshot": {"activation_id": "forward-route-misclassification", "snapshot_sha256": "3bf7ccf7086d1eba693dc753bb633d6a009a13421f6424250bcf98a2c4b89a56", "snapshot_version": 1, "decision_tree_version": 1}, "audits": [{"id": "market-outlook-audit", "status": "passed", "evidence": "report-section:Monitoring signals"}, {"id": "forward-looking-claims", "status": "passed", "evidence": "report-section:Monitoring signals"}, {"id": "source-traceability", "status": "passed", "evidence": "report-section:Findings"}, {"id": "final-audit", "status": "passed", "evidence": "report-section:Executive summary"}], "artifact_id": "fixture-forward-route-misclassification", "contract_version": "1.0.0", "created_at": "2026-08-18"}
 ```

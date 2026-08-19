@@ -87,7 +87,8 @@ Markdown case index:
 - `evals/registry.json` describes executable user-prompt, activation, process-
   artifact, audit, and delivery-status fixtures. Its `decision_tree_version`
   pins specialized Research Pack fields and activation snapshots to the same
-  canonical decision-tree registry.
+  canonical decision-tree registry. Each case declares an `evaluation_mode`:
+  `structured-decision-replay` or `activation-record-integration`.
 - `comparative-distillation/candidate-rule-registry.md` tracks candidate rule
   actions and coverage; it is not an execution registry.
 
@@ -101,9 +102,11 @@ python3 scripts/run_forward_evals.py --offline --check-baseline
 The runner binds each prompt to canonical `action_burden`,
 `weight_bearing_object`, secondary-route and prompt-hash fields, resolves that
 structured activation through the route-selection decision tree, then replays
-local report and Research Pack snapshots. It does not call a paid model or an
-external search provider, and it consumes the structured JSON verdict emitted
-by `scripts/audit_report.py` rather than parsing human-readable audit output.
+local report and Research Pack snapshots. Integration cases additionally pass
+the canonical activation snapshot to `scripts/audit_report.py`; a mismatch
+must be a blocking audit result. It does not call a paid model or an external
+search provider, and it consumes the structured JSON verdict emitted by
+`scripts/audit_report.py` rather than parsing human-readable audit output.
 The adapter is a fail-closed test surface, not a claim that production agent
 reasoning is a keyword classifier.
 
@@ -111,15 +114,21 @@ Forward cases retain a concrete `failure_family` and map it to one of four
 diagnostic classes: `missing-rule`, `missing-trigger`, `execution-drift`, or
 `fixture-reference-drift`. Registry and fixture failures are reported as
 `fixture-reference-drift` before any model or audit result is considered.
+Negative cases also expose a `failure_stage`: route misclassification is a
+`contract` mismatch, secondary-route verification is an `audit` failure, and
+declared-not-executed is an `evidence` failure.
 
-Metric denominators are explicit: `route_activation_accuracy` is correct
-prompt activation over positive cases; `pack_completeness` is complete expected
-pack fields over all active cases; `declared_not_executed_rate` is observed
-manual/process `not_run`/`partial`/`skipped` cases over all active cases; and
-`declared_not_executed_recall` is detection over its negative-case denominator.
-`false_passed_rate` counts negative fixtures whose raw audit verdict is Pass;
-`negative_case_failure_rate` counts negative fixtures the evaluator failed to
-recognize, so the two metrics are intentionally different.
+Metric denominators are explicit: `structured_route_resolution_rate` is correct
+structured activation over structured positive cases; `activation_report_consistency`
+is matching activation/report route over positive integration cases;
+`audit_false_pass_rate` counts only integration negative cases whose strict
+production audit still returns Pass and must be `0.0`; and
+`oracle_mismatch_detection_rate` counts route-mismatch negatives recognized by
+the evaluator. `negative_case_contract_pass_rate` is the positive rate at which
+all negative cases match their declared failure shape. `pack_completeness`,
+`declared_not_executed_rate`, and `declared_not_executed_recall` retain their
+existing denominators. The prompt SHA is fixture identity only, not route or
+agent accuracy.
 
 ## What not to put here
 
