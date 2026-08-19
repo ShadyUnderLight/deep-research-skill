@@ -53,15 +53,12 @@ CAPTION_ENGLISH = re.compile(
 )
 
 # Figure ENTITIES (Mermaid fences, images)
-# Mermaid fence: first info-string token is 'mermaid' (options like
-# 'mermaid theme=dark' are allowed; 'mermaid-example' is not) — matches
-# the shared sanitizer's tokenization (issue #378).
-MERMAID_FENCE_OPEN = re.compile(r'^[ ]{0,3}(?:`{3,}|~{3,})mermaid(?:\s|$)', re.IGNORECASE)
-FENCE_CLOSE = re.compile(r'^[ ]{0,3}(`{3,}|~{3,})\s*$')
+# Mermaid fence openers/closers are NOT defined here: the shared fence
+# semantics in validate_contract (`_fence_open_match` / `_fence_language` /
+# `_fence_close_re`) is the single authority.  Local look-alike regexes
+# would drift (e.g. a `\s*$` closer would wrongly accept NBSP as grammar
+# whitespace) — issue #394.
 IMAGE_REF = re.compile(r'!\[.*?\]\(.*?\)')
-
-# Code fence detection
-FENCE_OPEN = re.compile(r'^[ ]{0,3}(`{3,}|~{3,})')
 
 # Fence-shaped closer line (backtick/tilde run + whitespace), tolerant of
 # Unicode whitespace.  Used only to classify near-miss closers for

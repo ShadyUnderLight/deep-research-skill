@@ -63,6 +63,25 @@ def expect_fail(name: str, text: str) -> None:
     print(f"  PASS  {name}")
 
 
+def expect_fail_containing(name: str, text: str, *substrings: str) -> None:
+    """Expect exit 2 AND the given diagnostics in stdout.
+
+    Pins the blocking *reason* (issue #394 acceptance: adversarial cases
+    need explainable diagnostics), not just the exit code — the invalid
+    fence error must be present even when a missing-figure error also
+    blocks."""
+    result = run_validator(text)
+    assert result.returncode == 2, (
+        f"{name}: expected fail (exit 2), got {result.returncode}\n"
+        f"stdout: {result.stdout}\nstderr: {result.stderr}"
+    )
+    for sub in substrings:
+        assert sub in result.stdout, (
+            f"{name}: expected diagnostic {sub!r} in stdout:\n{result.stdout}"
+        )
+    print(f"  PASS  {name}")
+
+
 # ── Fixtures ───────────────────────────────────────────────────────────────
 
 NO_FIGURES = """\
@@ -501,7 +520,9 @@ graph TD
 
 No closing fence here.
 """
-    expect_fail("unclosed mermaid fence", text)
+    expect_fail_containing(
+        "unclosed mermaid fence", text, "Mermaid fence at line 5 is unclosed"
+    )
 
 
 def test_mermaid_fence_closed_at_eof_fails():
@@ -515,7 +536,9 @@ def test_mermaid_fence_closed_at_eof_fails():
 graph TD
     A-->B
 """
-    expect_fail("mermaid fence closed at eof", text)
+    expect_fail_containing(
+        "mermaid fence closed at eof", text, "Mermaid fence at line 5 is unclosed"
+    )
 
 
 def test_backtick_opener_tilde_closer_fails():
@@ -530,7 +553,10 @@ graph TD
     A-->B
 ~~~
 """
-    expect_fail("backtick opener tilde closer", text)
+    expect_fail_containing(
+        "backtick opener tilde closer", text,
+        "closer uses '~' but the opener uses '`'",
+    )
 
 
 def test_shorter_closer_fails():
@@ -545,13 +571,17 @@ graph TD
     A-->B
 ``
 """
-    expect_fail("shorter closer", text)
+    expect_fail_containing(
+        "shorter closer", text, "closer has 2 chars but the opener requires ≥ 5"
+    )
 
 
 def test_unicode_whitespace_closer_fails():
     """NBSP trailing after ``` is NOT a valid closer (issue #378 whitespace)."""
     text = "# Report\n\n图1 shows the diagram.\n\n```mermaid\ngraph TD\n    A-->B\n```\u00a0\n"
-    expect_fail("unicode whitespace closer", text)
+    expect_fail_containing(
+        "unicode whitespace closer", text, "non-space/tab trailing whitespace"
+    )
 
 
 def test_nested_fence_inside_mermaid_passes():
@@ -642,7 +672,10 @@ def test_nbsp_info_string_not_mermaid_fails():
     #378).  The block is a regular code fence, never a figure entity, so a
     图1 reference has no corresponding definition."""
     text = "# Report\n\n图1 shows the diagram.\n\n```mermaid\u00a0\ngraph TD\n    A-->B\n```\n"
-    expect_fail("nbsp info string not mermaid", text)
+    expect_fail_containing(
+        "nbsp info string not mermaid", text,
+        "no corresponding figure definition",
+    )
 
 
 # ── Cross-review regression tests (B1-B4 fixes) ─────────────────────────
