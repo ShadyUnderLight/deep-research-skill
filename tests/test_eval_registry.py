@@ -283,3 +283,51 @@ def test_cli_malformed_registry_returns_structured_fixture_drift(tmp_path: Path)
     assert result["valid"] is False
     assert result["gap_class"] == "fixture-reference-drift"
     assert "kebab-case" in result["error"]
+
+
+def test_forward_runner_records_audit_json_provenance() -> None:
+    """The forward runner must consume schema_version and validators[] so CI
+    reads structured fields instead of exit code / stdout only (#393)."""
+    import run_forward_evals
+
+    case = load_registry()["cases"][0]
+    result = _evaluate_case(case, 1)
+    actual = result["actual"]
+    assert actual["schema_version"] == 1, actual
+    assert actual["validators"], "runner must record route validator results"
+    for entry in actual["validators"]:
+        assert entry["validator_id"], entry
+        assert entry["status"], entry
+    assert result["checks"]["validators_ok"] is True, result["checks"]
+
+
+def test_validators_ok_fails_closed_on_unknown_schema() -> None:
+    """A JSON schema_version the runner does not know must never be treated
+    as a Pass — fail closed on unknown shapes (#393)."""
+    import run_forward_evals
+
+    ok = {"schema_version": 1, "validators": [{"status": "pass"}]}
+    assert run_forward_evals._validators_ok(ok) is True
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 999, "validators": [{"status": "pass"}]}
+    ) is False, "unknown schema_version must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"validators": [{"status": "pass"}]}
+    ) is False, "missing schema_version must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": []}
+    ) is False, "missing validator results must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validators": [{"status": "incomplete"}]}
+    ) is False, "incomplete validator must fail closed"
+
+
+def test_audit_json_schema_version_contract() -> None:
+    """The runner's pinned schema version must match audit_report's constant
+    so a JSON contract bump cannot silently drift past the runner (#393)."""
+    import audit_report
+    import run_forward_evals
+
+    assert audit_report.AUDIT_JSON_SCHEMA_VERSION == (
+        run_forward_evals.EXPECTED_AUDIT_JSON_SCHEMA_VERSION
+    )

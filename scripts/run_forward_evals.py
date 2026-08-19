@@ -47,6 +47,11 @@ ROOT = Path(__file__).resolve().parents[1]
 AUDIT_SCRIPT = ROOT / "scripts" / "audit_report.py"
 DEFAULT_BASELINE_PATH = ROOT / "evals" / "forward-metrics-baseline.json"
 
+# The audit JSON verdict schema this runner understands.  A schema_version it
+# does not know must fail closed instead of being treated as a Pass
+# (issue #393: unknown JSON shape ⇒ incomplete, never pass).
+EXPECTED_AUDIT_JSON_SCHEMA_VERSION = 1
+
 
 def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -153,6 +158,27 @@ def _audit_statuses(actual: dict[str, Any]) -> dict[str, str]:
         for item in actual.get("audits", [])
         if item.get("audit_id")
     }
+
+
+def _validators_ok(actual: dict[str, Any]) -> bool:
+    """Consume the structured audit JSON provenance fields (issue #393).
+
+    A verdict is consumable only when:
+    - the JSON schema_version is the one this runner understands; an unknown
+      shape fails closed (never treated as Pass);
+    - route-level validator results are present and none is ``incomplete`` /
+      ``not_run`` — a missing validator result must not be interpreted as
+      a silent Pass.
+    """
+    if actual.get("schema_version") != EXPECTED_AUDIT_JSON_SCHEMA_VERSION:
+        return False
+    validators = actual.get("validators") or []
+    if not validators:
+        return False
+    return all(
+        str(item.get("status")) not in {"incomplete", "not_run"}
+        for item in validators
+    )
 
 
 def _blocking_ids_are_allowed(actual: dict[str, Any], allowed: set[str]) -> bool:
@@ -356,6 +382,8 @@ def _evaluate_case(
             {str(item.get("audit_id")) for item in (audit_data or {}).get("audits", [])}
         ),
         "audits": (audit_data or {}).get("audits", []),
+        "validators": (audit_data or {}).get("validators", []),
+        "schema_version": (audit_data or {}).get("schema_version"),
         "overall": (audit_data or {}).get("overall"),
         "blocking": (audit_data or {}).get("blocking", []),
         "statuses": actual_statuses,
@@ -407,6 +435,7 @@ def _evaluate_case(
         "fail": 2,
     }.get(expected["statuses"]["audit_status"])
 
+    validators_ok = _validators_ok(actual)
     if expected["verdict"] == "pass":
         case_passed = all(
             [
@@ -423,6 +452,7 @@ def _evaluate_case(
                 prompt_identity_match,
                 decision_tree_version_match,
                 activation_snapshot_match,
+                validators_ok,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 returncode == expected_returncode,
             ]
@@ -453,6 +483,7 @@ def _evaluate_case(
             [
                 actual["failure_family"] == case["failure_family"],
                 _negative_structure_matches(case, actual, checks_for_negative),
+                validators_ok,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 negative_returncode_ok,
             ]
@@ -489,6 +520,8 @@ def _evaluate_case(
             "disciplines": actual["disciplines"],
             "audit_ids": actual["audit_ids"],
             "audits": actual["audits"],
+            "validators": actual["validators"],
+            "schema_version": actual["schema_version"],
             "blocking": actual["blocking"],
             "statuses": actual["statuses"],
             "overall": actual["overall"],
@@ -520,6 +553,7 @@ def _evaluate_case(
             "prompt_identity_match": prompt_identity_match,
             "decision_tree_version_match": decision_tree_version_match,
             "activation_snapshot_match": activation_snapshot_match,
+            "validators_ok": validators_ok,
         },
     }
 

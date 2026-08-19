@@ -31,6 +31,8 @@ SCRIPTS_DIR = ROOT / "scripts"
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
+import audit_report  # noqa: E402
+
 SCRIPT = str(SCRIPTS_DIR / "audit_report.py")
 
 # Contract template that satisfies all validate_contract rules (issue #376):
@@ -548,6 +550,7 @@ class TestAutomatedAuditBinding:
                 self.checklist = "checklists/forward-looking-claims.md"
                 self.description = ""
                 self.automation_reference = None
+                self.scope = "checklist"
 
         class FakeAuditRegistry:
             version = 1
@@ -569,6 +572,9 @@ class TestAutomatedAuditBinding:
 
             def audit_ids(self):
                 return set(self._audits)
+
+            def global_audit_ids(self):
+                return []
 
         monkeypatch.setattr(audit_report, "_AUDIT_REGISTRY", FakeAuditRegistry())
         path = _write(_report(contract=_contract()))
@@ -650,6 +656,72 @@ class TestJsonOutput:
         assert data["overall"] == "fail"
         assert data["input_sha256"], data
         assert data["validator_version"], data
+
+    def test_json_has_schema_version(self) -> None:
+        """The audit JSON must carry a stable schema_version for consumers."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        assert data["schema_version"] == 1, data
+
+    def test_json_lists_route_validators_with_provenance(self) -> None:
+        """Every route-level validator must appear in validators[] with
+        status, errors/warnings, evidence, execution source and version."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        assert data["validators"], "JSON must list route-level validator results"
+        for entry in data["validators"]:
+            assert entry["validator_id"], entry
+            assert entry["status"] in {
+                "pass", "conditional-pass", "fail", "incomplete", "not_run"
+            }, entry
+            assert "errors" in entry and "warnings" in entry
+            if entry["status"] != "incomplete":
+                assert entry["evidence"], entry
+            assert entry["execution_source"], entry
+            assert entry["validator_version"], entry
+
+    def test_json_validators_cover_dispatch_set(self) -> None:
+        """The validators[] set must exactly match the manifest dispatch set."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        recorded = {entry["validator_id"] for entry in data["validators"]}
+        assert recorded == {
+            "report-quality", "declared-execution", "table-role-labels",
+            "source-label-consistency", "market-outlook-monitoring-actionability",
+            "secondary-route-check", "contract-check",
+        }, recorded
+
+    def test_json_global_audits_come_from_registry(self) -> None:
+        """markdown-delivery / research-pack must appear in audits[] as
+        registry entries; the hardcoded GLOBAL_AUDITS identity is gone."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        audit_ids = {a["audit_id"] for a in data["audits"]}
+        assert {"markdown-delivery", "research-pack"} <= audit_ids, audit_ids
+        assert not hasattr(audit_report, "GLOBAL_AUDITS"), (
+            "GLOBAL_AUDITS hardcoded identity must be removed (issue #393)"
+        )
+
+    def test_missing_validator_result_is_incomplete_not_pass(self) -> None:
+        """A dispatched validator with no recorded result must be flagged
+        incomplete and blocking — never aggregated as a silent pass."""
+        ok = audit_report.CheckResult(name="report-quality", errors=[], warnings=[])
+        verdict = audit_report._compute_verdict(
+            "market-outlook",
+            [ok],
+            expected_validators=[
+                "report-quality", "declared-execution",
+            ],
+        )
+        by_id = {v.validator_id: v for v in verdict.validator_results}
+        assert by_id["report-quality"].status == "pass"
+        assert by_id["declared-execution"].status == "incomplete"
+        assert any("incomplete" in m for m in verdict.blocking), verdict.blocking
+        assert verdict.exit_code == audit_report.EXIT_BLOCKING
 
 
 class TestSingleCommandCoverage:

@@ -11,6 +11,15 @@ This file is intentionally lightweight. Use concise entries that explain:
 ## Unreleased
 
 ### Added
+- `schemas/audit-registry.json`, `scripts/registry_loader.py` (#393): register `markdown-delivery` and `research-pack` as first-class automated audits with `scope: "delivery"` and `checklist: null` (delivery-scope / virtual audits have no human checklist); `AuditRegistry.global_audit_ids()` derives the every-route audit set from the registry instead of code.
+- `scripts/audit_report.py` (#393): audit JSON verdict gains `schema_version` (currently 1) and a `validators[]` array listing every route-level validator result — canonical binding id, status, errors/warnings, evidence, execution source and validator version; a dispatched validator with no recorded result is flagged `incomplete` and blocks (never aggregated as a silent Pass); fields are additive-only so legacy consumers of `route`/`overall`/`exit_code`/`blocking`/`warnings`/`audits[]` keep working unchanged.
+- `scripts/run_forward_evals.py` (#393): forward runner records `schema_version` and `validators[]`, and fails closed on an unknown schema version or missing/incomplete validator results instead of assuming Pass.
+- `tests/test_audit_registry.py`, `tests/test_registry_loader.py`, `tests/test_audit_required_execution.py`, `tests/test_eval_registry.py` (#393): positive and negative coverage for delivery-scope registration, per-validator JSON provenance, missing-result `incomplete` fail-closed, and forward-runner schema/validator gates.
+
+### Changed
+- `scripts/audit_report.py` (#393): removed the hardcoded `GLOBAL_AUDITS` second audit identity — global audits now come from `schemas/audit-registry.json` (`scope: "delivery"`); legacy non-strict advisory behavior for delivery audits is preserved via the registry scope.
+
+### Added
 - `scripts/delivery/`, `scripts/check_pdf_regression.py`, and delivery fixtures (#377): split the Markdown/PDF delivery stages behind the existing CLI facade, keep intermediate HTML temporary by default, return structured `md_ready`/`pdf_ready`/`pdf_failed` results, and add PDF structure/Playwright visual smoke artifacts for CJK, mixed-language, long-table, code-heavy, multi-page, and special-path cases.
 - `scripts/md_to_pdf.py` (#377): add explicit `--keep-html`, `--write-status`, and `--json` options while preserving remote-resource blocking by default.
 
