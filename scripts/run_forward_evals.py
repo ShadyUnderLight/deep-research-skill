@@ -47,6 +47,12 @@ import registry_loader  # noqa: E402
 # audit JSON validators[] is a complete, un-forged binding set (issue #393).
 _ROUTE_REGISTRY = registry_loader.load_route_registry()
 
+# Canonical audit registry.  Used to derive the complete expected audit set
+# (route required audits + delivery-scope global audits + secondary hard-fail
+# audits) and to verify each automated audit's validator_binding against the
+# registry (issue #403: consumer fail-closed on missing/forged audit results).
+_AUDIT_REGISTRY = registry_loader.load_audit_registry()
+
 
 ROOT = Path(__file__).resolve().parents[1]
 AUDIT_SCRIPT = ROOT / "scripts" / "audit_report.py"
@@ -56,6 +62,40 @@ DEFAULT_BASELINE_PATH = ROOT / "evals" / "forward-metrics-baseline.json"
 # does not know must fail closed instead of being treated as a Pass
 # (issue #393: unknown JSON shape ⇒ incomplete, never pass).
 EXPECTED_AUDIT_JSON_SCHEMA_VERSION = 1
+
+# The canonical provenance version string every audit JSON must carry.  Mirrors
+# audit_report._registry_version() so the runner rejects any JSON whose
+# validator_version was forged or drifted (issue #403).  Schema version and
+# registry version are independent concepts — the JSON carries both.
+EXPECTED_VALIDATOR_VERSION = (
+    f"audit-registry-v{_AUDIT_REGISTRY.version} "
+    f"(route-manifest-v{_ROUTE_REGISTRY.version})"
+)
+
+# Route-level validators are always automated; any other execution_source is a
+# forged record and must fail closed (issue #403).
+ALLOWED_VALIDATOR_EXECUTION_SOURCES = {"automated_validator"}
+
+# Allowed execution_source vocabulary per audit execution_type.  A value
+# outside the type's allowlist (e.g. a forged "trusted_human") must fail
+# closed (issue #403).  "unknown" is permitted only as a degraded manual/process
+# attestation when strict evidence validation could not recover a source.
+AUDIT_EXECUTION_SOURCE_BY_TYPE = {
+    "automated": {"automated_validator"},
+    "manual": {"manual_checklist_attestation", "legacy_self_attested", "unknown"},
+    "process": {"process_node_evidence"},
+}
+
+# Unified audit result statuses the runner accepts.  Anything else is a forged
+# or malformed status and must fail closed (issue #403).
+ALLOWED_AUDIT_STATUSES = {
+    "pass",
+    "conditional-pass",
+    "fail",
+    "not_run",
+    "skipped",
+    "partial",
+}
 
 
 def _read_json(path: Path) -> Any:
@@ -180,6 +220,8 @@ def _validators_ok(
     A verdict is consumable only when:
     - the JSON schema_version is the one this runner understands; an unknown
       shape fails closed (never treated as Pass);
+    - the top-level validator_version matches the canonical registry version
+      (EXPECTED_VALIDATOR_VERSION); a forged or drifted version fails closed;
     - the validators[] ids are exactly the canonical binding set for the
       resolved route, one-to-one (same length, same order, no duplicates, no
       forged extra id);
@@ -193,6 +235,8 @@ def _validators_ok(
       unverifiable locator blocks instead of being treated as a Pass.
     """
     if actual.get("schema_version") != EXPECTED_AUDIT_JSON_SCHEMA_VERSION:
+        return False
+    if actual.get("validator_version") != EXPECTED_VALIDATOR_VERSION:
         return False
     validators = actual.get("validators") or []
     if not validators:
@@ -239,11 +283,131 @@ def _validators_ok(
         ):
             return False
         execution_source = item.get("execution_source")
-        if not isinstance(execution_source, str) or not execution_source.strip():
+        if execution_source not in ALLOWED_VALIDATOR_EXECUTION_SOURCES:
             return False
         validator_version = item.get("validator_version")
-        if not isinstance(validator_version, str) or not validator_version.strip():
+        if validator_version != EXPECTED_VALIDATOR_VERSION:
             return False
+    return True
+
+
+def _expected_audit_set(
+    route: str,
+    secondary_routes: list[str],
+) -> list[str] | None:
+    """Derive the canonical complete expected audit set for a route (issue #403).
+
+    Composes, in order:
+    - the route's required audits (``_ROUTE_REGISTRY.required_audits_for``);
+    - the delivery-scope global audits (``_AUDIT_REGISTRY.global_audit_ids``);
+    - each declared secondary route's ``<secondary>-secondary-hard-fail`` audit.
+
+    Returns a sorted, de-duplicated id list.  Returns ``None`` when a required
+    or global audit id has no entry in the audit registry — registry drift must
+    fail closed rather than produce a silently incomplete expected set.  The
+    ``<secondary>-secondary-hard-fail`` ids are contract-derived and are
+    intentionally not required to exist in the audit registry.
+    """
+    required_and_global = list(_ROUTE_REGISTRY.required_audits_for(route)) + list(
+        _AUDIT_REGISTRY.global_audit_ids()
+    )
+    for audit_id in required_and_global:
+        if _AUDIT_REGISTRY.get_audit(audit_id) is None:
+            return None
+    secondary_ids = [f"{sr}-secondary-hard-fail" for sr in secondary_routes]
+    all_ids = required_and_global + secondary_ids
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for audit_id in all_ids:
+        if audit_id not in seen:
+            seen.add(audit_id)
+            ordered.append(audit_id)
+    return sorted(ordered)
+
+
+def _audits_ok(
+    actual: dict[str, Any],
+    expected_audit_ids: list[str],
+) -> bool:
+    """Verify the audit JSON ``audits[]`` is complete and internally consistent.
+
+    Fails closed (returns ``False``) when any of:
+    - ``audits`` is not a list of objects;
+    - an audit id appears more than once (forged duplicate);
+    - the set of actual audit ids differs from ``expected_audit_ids`` (missing,
+      unknown/forged extra, or truncated result);
+    - an audit carries an unknown status, an out-of-vocabulary
+      ``execution_source`` for its ``execution_type``, or (for automated audits)
+      a ``validator_binding`` that does not match the audit registry;
+    - status is inconsistent with errors/warnings/reason (e.g. ``pass`` with
+      errors, ``fail`` without errors);
+    - a ``pass`` audit lacks verifiable ``evidence`` or ``evidence_provenance``.
+
+    Only positive cases call this; negative cases legitimately carry
+    non-passing audits and are validated by their structural failure family
+    instead (issue #403 scoping).
+    """
+    audits = actual.get("audits")
+    if not isinstance(audits, list):
+        return False
+    actual_ids = [
+        str(item.get("audit_id")) for item in audits if isinstance(item, dict)
+    ]
+    if len(actual_ids) != len(set(actual_ids)):
+        return False
+    if set(actual_ids) != set(expected_audit_ids):
+        return False
+    for item in audits:
+        if not isinstance(item, dict):
+            return False
+        status = str(item.get("status"))
+        if status not in ALLOWED_AUDIT_STATUSES:
+            return False
+        execution_type = item.get("execution_type")
+        execution_source = item.get("execution_source")
+        if (
+            not isinstance(execution_source, str)
+            or not execution_source.strip()
+        ):
+            return False
+        allowed_sources = AUDIT_EXECUTION_SOURCE_BY_TYPE.get(execution_type, set())
+        if execution_source not in allowed_sources:
+            return False
+        if execution_type == "automated":
+            registry_audit = _AUDIT_REGISTRY.get_audit(str(item.get("audit_id")))
+            if (
+                registry_audit is None
+                or item.get("validator_binding") != registry_audit.validator_binding
+            ):
+                return False
+        errors = item.get("errors") or []
+        warnings = item.get("warnings") or []
+        evidence = item.get("evidence") or []
+        if not isinstance(errors, list) or not isinstance(warnings, list):
+            return False
+        if not isinstance(evidence, list):
+            return False
+        if status == "pass":
+            if errors or warnings:
+                return False
+            if not evidence or not all(
+                isinstance(e, str) and e.strip() for e in evidence
+            ):
+                return False
+            if not item.get("evidence_provenance"):
+                return False
+        elif status == "conditional-pass":
+            if not warnings or errors:
+                return False
+            if not evidence:
+                return False
+        elif status == "fail":
+            if not errors:
+                return False
+        elif status == "partial":
+            if not (item.get("reason") or errors):
+                return False
+        # not_run / skipped: recorded but not executed — no extra requirement.
     return True
 
 
@@ -450,6 +614,7 @@ def _evaluate_case(
         "audits": (audit_data or {}).get("audits", []),
         "validators": (audit_data or {}).get("validators", []),
         "schema_version": (audit_data or {}).get("schema_version"),
+        "validator_version": (audit_data or {}).get("validator_version"),
         "overall": (audit_data or {}).get("overall"),
         "blocking": (audit_data or {}).get("blocking", []),
         "statuses": actual_statuses,
@@ -466,8 +631,22 @@ def _evaluate_case(
     )
 
     expected_pack_fields = set(expected["research_pack_fields"])
-    expected_audits = set(expected["required_audits"])
     actual_audits = set(actual["audit_ids"])
+    # Issue #403: derive the canonical expected audit set from the registries
+    # (route required audits + delivery-scope global audits + secondary
+    # hard-fail audits) instead of trusting the case's declared required_audits
+    # subset, and require the executed audit results to match it exactly — no
+    # missing, duplicate, unknown, or forged-extra result — and to be internally
+    # consistent (status/errors/warnings/evidence/provenance/binding).
+    expected_audit_ids = _expected_audit_set(
+        expected["primary_route"], expected["secondary_routes"]
+    )
+    if expected_audit_ids is None:
+        audit_set_ok = False  # registry drift → fail closed
+    else:
+        audit_set_exact = sorted(actual["audit_ids"]) == expected_audit_ids
+        audits_consistent = _audits_ok(actual, expected_audit_ids)
+        audit_set_ok = audit_set_exact and audits_consistent
     activation_route_match = actual["activation_route"] == expected["primary_route"]
     report_route_match = actual["report_route"] == expected["primary_route"]
     activation_report_consistent = actual["activation_route"] == actual["report_route"]
@@ -478,7 +657,7 @@ def _evaluate_case(
     report_secondary_match = actual["secondary_routes"] == sorted(expected["secondary_routes"])
     secondary_match = activation_secondary_match and report_secondary_match
     discipline_match = actual["disciplines"] == sorted(expected["disciplines"])
-    audit_ids_match = expected_audits.issubset(actual_audits)
+    audit_ids_match = audit_set_ok
     pack_fields_match = expected_pack_fields.issubset(set(actual["pack_fields"]))
     status_match = actual["statuses"] == expected["statuses"]
     parallelization_match = (
