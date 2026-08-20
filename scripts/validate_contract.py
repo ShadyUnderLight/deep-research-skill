@@ -747,12 +747,14 @@ def validate_contract(
         elif status == "passed":
             # Issue #401: strict contract audits must bind to the current artifact
             # when the evidence is an audit-record.  Pass the contract's stable
-            # artifact_id and the audit id so a forged record for another
-            # artifact/audit cannot be reused.
+            # artifact_id, primary route, and audit id so a forged record for another
+            # artifact/audit/route cannot be reused, and nested evidence is verified.
             expected_aid = None
             raw_aid = contract.get("artifact_id")
             if isinstance(raw_aid, str) and raw_aid.strip():
                 expected_aid = raw_aid.strip()
+            # Determine expected route for binding (contract's primary_route)
+            expected_route_for_record = primary if isinstance(primary, str) and primary.strip() else None
             evidence_result = validate_evidence_reference(
                 evidence,
                 artifact_text=report_text if strict else None,
@@ -763,6 +765,7 @@ def validate_contract(
                 execution_type=audit_execution_type,
                 expected_audit_id=audit_id,
                 expected_artifact_id=expected_aid,
+                expected_route=expected_route_for_record,
             )
             errors.extend(
                 f"Audit '{audit_id}' evidence: {error}"

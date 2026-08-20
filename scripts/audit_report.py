@@ -1318,8 +1318,12 @@ def _execute_required_audits(
                     expected_audit_id=audit_id,
                     expected_artifact_sha256=expected_artifact_sha256,
                     expected_artifact_id=expected_artifact_id,
+                    expected_route=route_id,
                 )
-                if evidence_result.legacy:
+                # P2: do not auto-fill execution_source when record declares it; use the record's value (already validated)
+                if evidence_result.provenance and "record_execution_source" in evidence_result.provenance:
+                    execution_source = str(evidence_result.provenance["record_execution_source"])
+                elif evidence_result.legacy:
                     execution_source = _execution_source(
                         audit.execution_type, legacy=True
                     )
@@ -1501,8 +1505,11 @@ def _execute_required_audits(
                 expected_audit_id=derived_id,
                 expected_artifact_sha256=expected_artifact_sha256,
                 expected_artifact_id=expected_artifact_id,
+                expected_route=route_id,
             )
-            if evidence_result.legacy:
+            if evidence_result.provenance and "record_execution_source" in evidence_result.provenance:
+                execution_source = str(evidence_result.provenance["record_execution_source"])
+            elif evidence_result.legacy:
                 execution_source = _execution_source("manual", legacy=True)
             if evidence_result.provenance:
                 evidence_provenance.append(

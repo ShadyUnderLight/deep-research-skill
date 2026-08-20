@@ -303,7 +303,10 @@ def _validate_audit_record(
     expected_audit_id: str | None = None,
     expected_artifact_sha256: str | None = None,
     expected_artifact_id: str | None = None,
+    expected_route: str | None = None,
     execution_type: str | None = None,
+    artifact_text: str | None = None,
+    artifact_label: str = "report",
 ) -> EvidenceValidation:
     match = re.fullmatch(r"([^#]+)#([^@]+)@(.+)", locator)
     if not match:
@@ -378,7 +381,8 @@ def _validate_audit_record(
         return parsed.astimezone(timezone.utc)
 
     expected_time = _parse_timestamp(timestamp)
-    matching_record = None
+    # Collect all matching records to detect duplicates (P3: first-match-wins is fail-open)
+    matching_records: list[dict] = []
     for record in records:
         if not isinstance(record, dict):
             continue
@@ -389,18 +393,30 @@ def _validate_audit_record(
         )
         if candidate_id != record_id or _parse_timestamp(candidate_time) != expected_time:
             continue
-        matching_record = record
-        break
-    if matching_record is None:
+        matching_records.append(record)
+    if not matching_records:
         return EvidenceValidation(
             errors=(
                 f"audit record {record_id!r} with timestamp {timestamp!r} "
                 f"was not found in {path_value}",
             )
         )
+    if len(matching_records) > 1:
+        return EvidenceValidation(
+            provenance={
+                **provenance,
+                "verified": False,
+                "duplicate_matches": len(matching_records),
+            },
+            errors=(
+                f"audit record {record_id!r} with timestamp {timestamp!r} "
+                f"is ambiguous ({len(matching_records)} matches) — duplicate/ambiguous record (see issue #401)",
+            ),
+        )
+    matching_record = matching_records[0]
 
     # Strict artifact / audit binding (issue #401): an audit-record must be
-    # provably bound to the current artifact, audit, and execution state.
+    # provably bound to the current artifact, audit, execution state, and evidence.
     if strict:
         strict_errors: list[str] = []
         # audit_id must match the audit being validated when expected is known
@@ -429,7 +445,7 @@ def _validate_audit_record(
                 f"audit record status {record_status!r} is not passed (strict requires passed)"
             )
         # artifact binding: each provided expected field is fail-closed independently (issue #401 P1).
-        # When audit_report passes both sha256 and artifact_id, both must match if the record declares them;
+        # When audit_report passes both sha256 and artifact_id, both must match;
         # a hash mismatch cannot be rescued by an id match.  When only one expected is given
         # (contract / pack), that single field must match.
         record_sha = matching_record.get("artifact_sha256") or matching_record.get("artifact_hash") or matching_record.get("sha256")
@@ -450,6 +466,13 @@ def _validate_audit_record(
             ):
                 strict_errors.append(
                     "audit record is missing artifact binding (strict requires artifact_sha256 or artifact_id)"
+                )
+        # route binding (issue #401 #4): record should declare the route it was executed for
+        if expected_route is not None:
+            record_route = matching_record.get("route") or matching_record.get("primary_route")
+            if not isinstance(record_route, str) or record_route.strip() != expected_route:
+                strict_errors.append(
+                    f"audit record route {record_route!r} does not match expected route {expected_route!r}"
                 )
         # executed_at must be present and not in the future
         executed_at_value = matching_record.get("executed_at") or matching_record.get("recorded_at") or matching_record.get("timestamp")
@@ -476,12 +499,15 @@ def _validate_audit_record(
                         strict_errors.append(
                             f"audit record executed_at {executed_at_value!r} is in the future"
                         )
-        # execution_source must align with registry execution_type (issue #401 P2).
-        # manual ↔ manual_checklist_attestation, process ↔ process_node_evidence; any cross (e.g. manual eating process record)
-        # or legacy/automated masquerading is fail-closed.  Use precise set check.
+        # execution_source must be explicitly declared and align with registry (issue #401 P2).
+        # Missing source is now fail-closed; caller must not auto-fill.
         if execution_type in {"manual", "process"}:
             src = matching_record.get("execution_source") or matching_record.get("source")
-            if isinstance(src, str) and src.strip():
+            if not isinstance(src, str) or not src.strip():
+                strict_errors.append(
+                    "audit record is missing execution_source (strict requires manual_checklist_attestation or process_node_evidence)"
+                )
+            else:
                 allowed = {
                     "manual": {"manual_checklist_attestation"},
                     "process": {"process_node_evidence"},
@@ -490,6 +516,63 @@ def _validate_audit_record(
                     strict_errors.append(
                         f"audit record execution_source {src!r} does not match {execution_type} audit (expected {sorted(allowed)})"
                     )
+        # evidence binding (issue #401 P1): record must reference the actual checklist/section that was checked
+        # This prevents JSON self-attestation: hash alone is not proof that a specific audit step was executed.
+        evidence_value = (
+            matching_record.get("evidence")
+            or matching_record.get("evidence_locator")
+            or matching_record.get("checklist_item")
+            or matching_record.get("report_section")
+            or matching_record.get("report_table")
+            or matching_record.get("pack_section")
+            or matching_record.get("pack_table")
+        )
+        if not isinstance(evidence_value, str) or not evidence_value.strip():
+            strict_errors.append(
+                "audit record is missing evidence (strict requires checklist-item or report-section/table reference that was verified, see issue #401)"
+            )
+        else:
+            evidence_str = evidence_value.strip()
+            m = _REFERENCE_RE.match(evidence_str)
+            if not m or m.group(1).lower() not in _PREFIX_TO_KIND:
+                strict_errors.append(
+                    f"audit record evidence {evidence_value!r} must be a typed reference (checklist-item, report-section, etc.)"
+                )
+            else:
+                kind = _PREFIX_TO_KIND[m.group(1).lower()]
+                locator = m.group(2).strip()
+                if kind not in {"checklist_item", "report_section", "report_table", "pack_section", "pack_table"}:
+                    strict_errors.append(
+                        f"audit record evidence kind {kind!r} is not allowed — use checklist-item or report/pack section/table"
+                    )
+                else:
+                    nested_result: EvidenceValidation | None = None
+                    if kind == "checklist_item":
+                        # Checklist definition existence only; strict definition-only check is bypassed for nested evidence
+                        # (the record is the execution attestation, the checklist item is the definition it attests to)
+                        nested_result = _validate_checklist_item(locator, base_dir, strict=False)
+                        # Also ensure the marker actually exists
+                        if nested_result.errors:
+                            strict_errors.append(
+                                f"audit record evidence {evidence_value!r} is not verifiable: {'; '.join(nested_result.errors)}"
+                            )
+                    elif kind in {"report_section", "pack_section"}:
+                        label = "pack" if kind == "pack_section" else artifact_label
+                        nested_result = _validate_artifact_heading(kind, locator, artifact_text, label)
+                        if nested_result.errors:
+                            strict_errors.append(
+                                f"audit record evidence {evidence_value!r} is not verifiable: {'; '.join(nested_result.errors)}"
+                            )
+                    elif kind in {"report_table", "pack_table"}:
+                        label = "pack" if kind == "pack_table" else artifact_label
+                        nested_result = _validate_artifact_table(kind, locator, artifact_text, label)
+                        if nested_result.errors:
+                            strict_errors.append(
+                                f"audit record evidence {evidence_value!r} is not verifiable: {'; '.join(nested_result.errors)}"
+                            )
+                    if nested_result is not None and not nested_result.errors and nested_result.provenance:
+                        provenance["record_evidence"] = evidence_value
+                        provenance["record_evidence_provenance"] = nested_result.provenance
 
         if strict_errors:
             provenance["verified"] = False
@@ -502,6 +585,16 @@ def _validate_audit_record(
                 provenance["record_artifact_sha256"] = record_sha
             if record_aid is not None:
                 provenance["record_artifact_id"] = record_aid
+            # expose route / execution_source / evidence for debugging
+            _r = matching_record.get("route") or matching_record.get("primary_route")
+            if _r is not None:
+                provenance["record_route"] = _r
+            _src = matching_record.get("execution_source") or matching_record.get("source")
+            if _src is not None:
+                provenance["record_execution_source"] = _src
+            _ev = matching_record.get("evidence") or matching_record.get("evidence_locator")
+            if _ev is not None:
+                provenance["record_evidence"] = _ev
             return EvidenceValidation(
                 provenance=provenance,
                 errors=tuple(strict_errors),
@@ -517,10 +610,45 @@ def _validate_audit_record(
         provenance["record_artifact_sha256"] = matching_record.get("artifact_sha256")
     if matching_record.get("artifact_id") is not None:
         provenance["record_artifact_id"] = matching_record.get("artifact_id")
+    if matching_record.get("route") is not None:
+        provenance["record_route"] = matching_record.get("route")
+    elif matching_record.get("primary_route") is not None:
+        provenance["record_route"] = matching_record.get("primary_route")
+    if matching_record.get("execution_source") is not None:
+        provenance["record_execution_source"] = matching_record.get("execution_source")
+    elif matching_record.get("source") is not None:
+        provenance["record_execution_source"] = matching_record.get("source")
+    if matching_record.get("evidence") is not None:
+        provenance["record_evidence"] = matching_record.get("evidence")
+    elif matching_record.get("evidence_locator") is not None:
+        provenance["record_evidence"] = matching_record.get("evidence_locator")
     if matching_record.get("executed_at") is not None:
         provenance["record_executed_at"] = matching_record.get("executed_at")
     elif matching_record.get("recorded_at") is not None:
         provenance["record_executed_at"] = matching_record.get("recorded_at")
+    # Preserve nested evidence provenance if it was computed in strict mode
+    if "record_evidence_provenance" not in provenance and matching_record.get("evidence") is not None:
+        # For non-strict, still try to expose nested evidence verification (best-effort)
+        try:
+            ev = matching_record.get("evidence")
+            if isinstance(ev, str) and ev.strip():
+                m2 = _REFERENCE_RE.match(ev.strip())
+                if m2 and _PREFIX_TO_KIND.get(m2.group(1).lower()) in {"checklist_item", "report_section", "report_table", "pack_section", "pack_table"}:
+                    k2 = _PREFIX_TO_KIND[m2.group(1).lower()]
+                    loc2 = m2.group(2).strip()
+                    nr = None
+                    if k2 == "checklist_item":
+                        nr = _validate_checklist_item(loc2, base_dir, strict=False)
+                    elif k2 in {"report_section", "pack_section"}:
+                        lbl = "pack" if k2 == "pack_section" else artifact_label
+                        nr = _validate_artifact_heading(k2, loc2, artifact_text, lbl)
+                    elif k2 in {"report_table", "pack_table"}:
+                        lbl = "pack" if k2 == "pack_table" else artifact_label
+                        nr = _validate_artifact_table(k2, loc2, artifact_text, lbl)
+                    if nr and nr.provenance:
+                        provenance["record_evidence_provenance"] = nr.provenance
+        except Exception:
+            pass
     return EvidenceValidation(provenance=provenance)
 
 
@@ -545,6 +673,7 @@ def validate_evidence_reference(
     expected_audit_id: str | None = None,
     expected_artifact_sha256: str | None = None,
     expected_artifact_id: str | None = None,
+    expected_route: str | None = None,
 ) -> EvidenceValidation:
     """Validate one typed evidence reference.
 
@@ -625,7 +754,10 @@ def validate_evidence_reference(
             expected_audit_id=expected_audit_id,
             expected_artifact_sha256=expected_artifact_sha256,
             expected_artifact_id=expected_artifact_id,
+            expected_route=expected_route,
             execution_type=execution_type,
+            artifact_text=artifact_text,
+            artifact_label=artifact_label,
         )
     if kind == "automated_validator":
         if execution_type in {"manual", "process"}:
