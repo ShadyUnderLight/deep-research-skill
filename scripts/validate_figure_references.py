@@ -8,10 +8,21 @@ Checks:
 - Warns about uncaptioned Mermaid blocks, figure numbering gaps,
   unreferenced captions, and generic "如下图所示" references without
   a following figure entity
+- Mermaid fence state is explicit for detected Mermaid blocks: closed /
+  mismatched / unclosed.  A fence whose first info-string token is NOT
+  exactly 'mermaid' (e.g. 'mermaid-example', or 'mermaid' followed by
+  NBSP) is NOT a Mermaid block at all — it is a regular code fence and
+  never a figure entity.  Unclosed or mis-closed (mismatched, shorter
+  closer, Unicode-whitespace closer) Mermaid fences are BLOCKING and are
+  NOT counted as legal figure entities (issue #394).
 
 Exit codes:
   0 = passed (all clear, or only warnings)
   2 = blocking errors found
+
+Independent advisory check: this validator is NOT part of the unified
+`scripts/audit_report.py` audit registry; run it separately when figures
+are part of the report (issue #394).
 
 Usage:
     python3 scripts/validate_figure_references.py report.md
@@ -21,7 +32,7 @@ from __future__ import annotations
 
 import argparse
 import re
-import sys
+from dataclasses import dataclass
 from pathlib import Path
 
 # Shared fence semantics (issue #378): validated opener, first info-string
@@ -42,15 +53,18 @@ CAPTION_ENGLISH = re.compile(
 )
 
 # Figure ENTITIES (Mermaid fences, images)
-# Mermaid fence: first info-string token is 'mermaid' (options like
-# 'mermaid theme=dark' are allowed; 'mermaid-example' is not) — matches
-# the shared sanitizer's tokenization (issue #378).
-MERMAID_FENCE_OPEN = re.compile(r'^[ ]{0,3}(?:`{3,}|~{3,})mermaid(?:\s|$)', re.IGNORECASE)
-FENCE_CLOSE = re.compile(r'^[ ]{0,3}(`{3,}|~{3,})\s*$')
+# Mermaid fence openers/closers are NOT defined here: the shared fence
+# semantics in validate_contract (`_fence_open_match` / `_fence_language` /
+# `_fence_close_re`) is the single authority.  Local look-alike regexes
+# would drift (e.g. a `\s*$` closer would wrongly accept NBSP as grammar
+# whitespace) — issue #394.
 IMAGE_REF = re.compile(r'!\[.*?\]\(.*?\)')
 
-# Code fence detection
-FENCE_OPEN = re.compile(r'^[ ]{0,3}(`{3,}|~{3,})')
+# Fence-shaped closer line (backtick/tilde run + whitespace), tolerant of
+# Unicode whitespace.  Used only to classify near-miss closers for
+# diagnostics (issue #394): the strict closer rule lives in
+# validate_contract._fence_close_re.
+_FENCE_SHAPE_LOOSE = re.compile(r'^[ ]{0,3}([`~]+)[\t ]*\s*$')
 
 # ── Data structures ────────────────────────────────────────────────────────
 
@@ -81,6 +95,27 @@ class FigureDef:
 
     def __repr__(self) -> str:
         return f"FigureDef(num={self.num}, line={self.line}, kind={self.kind})"
+
+
+@dataclass
+class MermaidFence:
+    """A detected Mermaid fence block and its explicit state (issue #394).
+
+    ``state`` is one of:
+    - "closed": a valid same-character, >= opener-length closer was found
+      (the block is a legal figure entity)
+    - "mismatched": a bare fence-shaped closer line failed the strict rule
+      (different char / shorter length / Unicode whitespace trailing)
+    - "unclosed": no valid closer found before the end of the text
+
+    ``end`` is the end-exclusive line index of the closer (None when the
+    block is not closed).  ``diagnostic`` is a human-readable blocking
+    message for invalid blocks (None for closed blocks).
+    """
+    start: int
+    end: int | None
+    state: str
+    diagnostic: str | None
 
 
 # ── Parsing functions ──────────────────────────────────────────────────────
@@ -121,23 +156,31 @@ def collect_figure_refs(cleaned: str) -> list[FigureRef]:
     return refs
 
 
-def _mermaid_spans(text: str) -> list[tuple[int, int]]:
-    """Line spans (start, end-exclusive) of mermaid fences.
+def _mermaid_fences(text: str) -> list[MermaidFence]:
+    """Mermaid fence blocks with explicit state (issue #394).
 
-    Uses the shared fence semantics: validated opener, first info-string
-    token 'mermaid', same-character minimum-length closer (issue #378).
+    Uses the shared fence semantics (issue #378): validated opener via
+    ``_fence_open_match``, first info-string token exactly 'mermaid' via
+    ``_fence_language``, and a same-character minimum-length closer via
+    ``_fence_close_re``.  A block is ``closed`` only when a valid closer
+    is found; otherwise it is ``unclosed`` (no closer at all) or
+    ``mismatched`` (a bare fence-shaped closer line that fails the strict
+    rule — different character, shorter length, or Unicode whitespace
+    trailing).  Invalid blocks are NOT figure entities.
+
+    No rstrip() here: the shared fence regexes only accept spaces/tabs as
+    grammar whitespace, so a trailing NBSP keeps a line from being a valid
+    closer/opener (issue #378).
     """
-    spans: list[tuple[int, int]] = []
+    fences: list[MermaidFence] = []
     lines = text.splitlines()
     in_mermaid = False
     start = -1
     char = ""
     length = 0
+    near_miss: tuple[int, str] | None = None  # (line index, reason)
+
     for i, line in enumerate(lines):
-        # No rstrip() here: the shared fence regexes themselves only
-        # accept spaces/tabs as grammar whitespace, so a trailing NBSP
-        # (or any other Unicode whitespace) keeps a line from being a
-        # valid closer/opener (issue #378).
         if not in_mermaid:
             fm = _fence_open_match(line)
             if fm is not None and _fence_language(fm) == "mermaid":
@@ -145,23 +188,99 @@ def _mermaid_spans(text: str) -> list[tuple[int, int]]:
                 start = i
                 char = fm.group(1)[0]
                 length = len(fm.group(1))
-        else:
-            if _fence_close_re(char, length).match(line):
-                spans.append((start, i + 1))
-                in_mermaid = False
+                near_miss = None
+            continue
+
+        # Inside a mermaid block.
+        if _fence_close_re(char, length).match(line):
+            fences.append(MermaidFence(
+                start=start, end=i + 1, state="closed", diagnostic=None
+            ))
+            in_mermaid = False
+            near_miss = None
+            continue
+
+        # A bare fence-shaped closer line that fails the strict closer rule
+        # is a near-miss closer (different char / shorter length / Unicode
+        # whitespace trailing).  Record the FIRST one for diagnostics.
+        if near_miss is None and _FENCE_SHAPE_LOOSE.match(line):
+            near_miss = (i, _closer_mismatch_reason(char, length, line))
+
     if in_mermaid:
-        spans.append((start, len(lines)))
-    return spans
+        if near_miss is not None:
+            idx, reason = near_miss
+            state = "mismatched"
+            diagnostic = (
+                f"Mermaid fence at line {start + 1} is not closed: "
+                f"invalid closer at line {idx + 1} — {reason}"
+            )
+        else:
+            state = "unclosed"
+            diagnostic = (
+                f"Mermaid fence at line {start + 1} is unclosed "
+                f"(no valid closing fence of {length} {char}"
+                f"{'s' if length > 1 else ''} found)"
+            )
+        fences.append(MermaidFence(
+            start=start, end=None, state=state, diagnostic=diagnostic
+        ))
+
+    return fences
+
+
+def _closer_mismatch_reason(fence_char: str, fence_len: int, line: str) -> str:
+    """Explain why a bare fence-shaped line is not a valid closer."""
+    m = _FENCE_SHAPE_LOOSE.match(line)
+    other_char = m.group(1)[0] if m else ""
+    other_len = len(m.group(1)) if m else 0
+    if other_char != fence_char:
+        return f"closer uses '{other_char}' but the opener uses '{fence_char}'"
+    if other_len < fence_len:
+        return (
+            f"closer has {other_len} chars but the opener requires "
+            f"≥ {fence_len}"
+        )
+    # Same character, same/longer run: only Unicode whitespace (e.g. NBSP)
+    # can make a strict closer fail while the loose shape still matches.
+    return "closer has non-space/tab trailing whitespace (e.g. NBSP)"
+
+
+def _blank_fence_region(text: str, fences: list[MermaidFence]) -> str:
+    """Blank all lines of invalid (unclosed / mismatched) mermaid fences.
+
+    Invalid mermaid content is not a rendered figure, so figure references
+    and captions inside it must not count (issue #394).  Closed fences are
+    left visible.  Line numbers are preserved via blank lines.
+    """
+    lines = text.splitlines()
+    out = list(lines)
+    for f in fences:
+        if f.state == "closed":
+            continue
+        end = f.end if f.end is not None else len(lines)
+        for i in range(f.start, end):
+            out[i] = ""
+    return "\n".join(out)
 
 
 def collect_figure_defs(text: str) -> list[FigureDef]:
-    """Extract all figure definitions from raw text (fences preserved)."""
+    """Extract all figure definitions from raw text (fences preserved).
+
+    Only CLOSED mermaid blocks count as figure entities; unclosed or
+    mismatched fences are not legal figures (issue #394).
+    """
     defs: list[FigureDef] = []
     lines = text.splitlines()
-    mermaid_spans = _mermaid_spans(text)
+    mermaid_fences = _mermaid_fences(text)
 
     def in_mermaid_block(i: int) -> bool:
-        return any(s <= i < e for s, e in mermaid_spans)
+        # Invalid (unclosed/mismatched) fences run to the end of the text;
+        # their content is blanked by the caller, so the skip is a safety
+        # net rather than the primary mechanism (issue #394).
+        return any(
+            f.start <= i < (f.end if f.end is not None else len(lines))
+            for f in mermaid_fences
+        )
 
     # Phase 1: scan for captions (mermaid block content is the diagram
     # itself, not captions — issue #378)
@@ -178,9 +297,10 @@ def collect_figure_defs(text: str) -> list[FigureDef]:
             rest = line[m.end():].strip()
             defs.append(FigureDef(num, i, "caption", rest))
 
-    # Phase 2: mermaid entities (one per block) and image references
-    for s, _e in mermaid_spans:
-        defs.append(FigureDef(None, s, "mermaid"))
+    # Phase 2: mermaid entities (one per CLOSED block) and image references
+    for f in mermaid_fences:
+        if f.state == "closed":
+            defs.append(FigureDef(None, f.start, "mermaid"))
     for i, line in enumerate(lines):
         if in_mermaid_block(i):
             continue
@@ -323,19 +443,38 @@ def validate_figure_references(text: str) -> tuple[list[str], list[str]]:
     
     Returns (errors, warnings) where errors are blocking (exit code 2)
     and warnings are advisory (exit code 0).
+
+    Unclosed or mismatched Mermaid fences are blocking errors and are
+    NOT counted as figure entities (issue #394): a fence that never
+    closes is not a rendered diagram, so it cannot satisfy a 图N/Figure N
+    reference and content inside it is not body text.
     """
     # Strip code fences (but keep mermaid fences)
     cleaned = strip_fenced_code_blocks(text)
 
+    # Classify mermaid fence state using the shared fence semantics.
+    fences = _mermaid_fences(cleaned)
+
+    # Blank invalid (unclosed / mismatched) mermaid content: it is not a
+    # rendered figure, so refs/captions inside it must not count.
+    body = _blank_fence_region(cleaned, fences)
+
     # Collect figure refs from body text (code fences stripped)
-    refs = collect_figure_refs(cleaned)
+    refs = collect_figure_refs(body)
 
     # Collect figure defs from cleaned text (code fences stripped,
-    # mermaid fences preserved)
-    defs = collect_figure_defs(cleaned)
+    # closed mermaid fences preserved)
+    defs = collect_figure_defs(body)
 
     # Cross-reference
-    return cross_reference(refs, defs)
+    errors, warnings = cross_reference(refs, defs)
+
+    # Invalid mermaid fences are blocking: never a legal figure entity.
+    for f in fences:
+        if f.state != "closed" and f.diagnostic:
+            errors.append(f"[line {f.start + 1}] {f.diagnostic}")
+
+    return errors, warnings
 
 
 # ── CLI ────────────────────────────────────────────────────────────────────
