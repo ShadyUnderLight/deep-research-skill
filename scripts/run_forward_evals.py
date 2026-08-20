@@ -12,6 +12,7 @@ mismatch is a real blocking assertion rather than a runner-only oracle.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -216,6 +217,7 @@ def _validators_ok(
     actual: dict[str, Any],
     expected_validators: list[str],
     audited_path: str | None = None,
+    expected_input_sha256: str | None = None,
 ) -> bool:
     """Consume the structured audit JSON provenance fields (issue #393).
 
@@ -239,6 +241,15 @@ def _validators_ok(
     if actual.get("schema_version") != EXPECTED_AUDIT_JSON_SCHEMA_VERSION:
         return False
     if actual.get("validator_version") != EXPECTED_VALIDATOR_VERSION:
+        return False
+    # External trust anchor: the verdict's audited-file hash must equal the hash
+    # the consumer computes from the report on disk — a missing / forged
+    # top-level hash (or one that merely matches another JSON field) fails
+    # closed (issue #403 P1).
+    if (
+        expected_input_sha256 is not None
+        and actual.get("input_sha256") != expected_input_sha256
+    ):
         return False
     validators = actual.get("validators") or []
     if not validators:
@@ -290,22 +301,29 @@ def _validators_ok(
         validator_version = item.get("validator_version")
         if validator_version != EXPECTED_VALIDATOR_VERSION:
             return False
-        # Bind the validator result to the audited file: its target path and
-        # artifact hash must match the verdict's audited input, otherwise a
-        # result produced for a different report could be replayed (issue #403
-        # P1 / scope 3).
-        if audited_path is not None and item.get("target") != audited_path:
-            return False
-        item_hash = item.get("input_sha256")
-        actual_hash = actual.get("input_sha256")
-        if (
-            isinstance(item_hash, str)
-            and item_hash
-            and isinstance(actual_hash, str)
-            and actual_hash
-            and item_hash != actual_hash
-        ):
-            return False
+        # Bind the validator result to the audited file.  When an external
+        # trust anchor is available (the consumer-computed report hash) it is
+        # mandatory: target must equal audited_path and artifact hash must
+        # equal the consumer-computed hash — a missing / forged hash (even
+        # when top-level and item agree) fails closed (issue #403 P1).  Without
+        # an external anchor (simple unit tests) fall back to requiring the
+        # fields to be present and internally consistent.
+        if audited_path is not None:
+            if not isinstance(item.get("target"), str) or not item.get("target").strip():
+                return False
+            if item.get("target") != audited_path:
+                return False
+            if (
+                not isinstance(item.get("input_sha256"), str)
+                or not item.get("input_sha256").strip()
+            ):
+                return False
+        if expected_input_sha256 is not None:
+            if item.get("input_sha256") != expected_input_sha256:
+                return False
+        elif actual.get("input_sha256") is not None:
+            if item.get("input_sha256") != actual.get("input_sha256"):
+                return False
     return True
 
 
@@ -343,10 +361,26 @@ def _expected_audit_set(
     return sorted(ordered)
 
 
+def _sha256(path: object) -> str | None:
+    """SHA-256 of a file's bytes, or ``None`` on read failure.
+
+    The consumer computes this itself so audit provenance is anchored to the
+    real on-disk artifact rather than to a hash that travelled inside the audit
+    JSON (issue #403 P1: a forged/missing JSON hash must not be trusted).
+    """
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except (OSError, ValueError, UnicodeError):
+        return None
+
+
 def _audits_ok(
     actual: dict[str, Any],
     expected_audit_ids: list[str],
     audited_path: str | None = None,
+    expected_report_sha256: str | None = None,
+    research_pack_path: str | None = None,
+    expected_pack_sha256: str | None = None,
 ) -> bool:
     """Verify the audit JSON ``audits[]`` is complete and internally consistent.
 
@@ -365,9 +399,12 @@ def _audits_ok(
     - status is inconsistent with errors/warnings/reason (e.g. ``pass`` with
       errors, ``fail`` without errors);
     - a ``pass`` audit lacks verifiable ``evidence`` or a provenance record that
-      is actually ``verified`` and internally consistent (audit id / binding /
-      execution_source / validator_version, and the artifact hash when the
-      provenance targets the audited file) — truthy-only provenance is rejected
+      is actually ``verified`` and anchored to the real artifact: automated
+      records must carry ``target`` / ``input_sha256`` binding to the expected
+      artifact (``research-pack`` → the research pack, every other automated
+      audit → the report) using the consumer-computed file hash, and manual/
+      process records must carry a real ``kind`` / ``locator`` provenance (not a
+      bare ``{"verified": true}``) — truthy-only provenance is rejected
       (issue #403 P1).
 
     Only positive cases call this; negative cases legitimately carry
@@ -384,7 +421,15 @@ def _audits_ok(
         return False
     if set(actual_ids) != set(expected_audit_ids):
         return False
-    actual_input_sha256 = actual.get("input_sha256")
+    # External trust anchor: the verdict's audited-file hash must equal the hash
+    # the consumer computes from the report on disk — a missing / forged
+    # top-level hash (or one that merely matches another JSON field) fails
+    # closed (issue #403 P1).
+    if (
+        expected_report_sha256 is not None
+        and actual.get("input_sha256") != expected_report_sha256
+    ):
+        return False
     for item in audits:
         if not isinstance(item, dict):
             return False
@@ -432,13 +477,23 @@ def _audits_ok(
                 isinstance(e, str) and e.strip() for e in evidence
             ):
                 return False
+            # Each audit type binds to a specific artifact; resolve the expected
+            # target/hash and let the consumer-computed values be the anchor.
+            if audit_id == "research-pack":
+                expected_target = (
+                    str(research_pack_path) if research_pack_path else None
+                )
+                expected_hash = expected_pack_sha256
+            else:
+                expected_target = audited_path
+                expected_hash = expected_report_sha256
             if not _audit_provenance_ok(
                 item,
                 audit_id,
                 execution_type,
                 execution_source,
-                audited_path,
-                actual_input_sha256,
+                expected_target,
+                expected_hash,
             ):
                 return False
         elif status == "conditional-pass":
@@ -461,16 +516,23 @@ def _audit_provenance_ok(
     audit_id: str,
     execution_type: str,
     execution_source: str,
-    audited_path: str | None,
-    actual_input_sha256: object,
+    expected_target: str | None,
+    expected_hash: str | None,
 ) -> bool:
     """Verify a ``pass`` audit's ``evidence_provenance`` is genuine, not truthy.
 
-    The producer already emits structured provenance (``verified``, ``audit_id``,
-    ``validator_binding``, ``execution_source``, ``target``, ``input_sha256``,
-    ``validator_version``).  The consumer must consume it instead of only
-    checking the list is non-empty — otherwise ``["hello"]`` or
-    ``[{"verified": false}]`` would pass (issue #403 P1).
+    The producer already emits structured provenance.  The consumer must consume
+    it against an *externally computed* artifact anchor (``expected_target`` /
+    ``expected_hash``), not merely check the list is non-empty — otherwise
+    ``["hello"]`` / ``[{"verified": false}]`` / a ``target`` swap would pass
+    (issue #403 P1).
+
+    For automated audits the verified record must bind ``target`` and
+    ``input_sha256`` to the expected artifact (``research-pack`` → the research
+    pack, everything else → the report).  For manual/process audits the producer
+    emits a ``report_section`` style record without a file hash, so the gate is a
+    real ``kind`` / ``locator`` provenance rather than a bare ``{"verified":
+    true}``.
     """
     provenance = item.get("evidence_provenance")
     if not isinstance(provenance, list) or not provenance:
@@ -492,22 +554,36 @@ def _audit_provenance_ok(
                 return False
             if record.get("validator_version") != EXPECTED_VALIDATOR_VERSION:
                 return False
-            prov_input = record.get("input_sha256")
-            if not isinstance(prov_input, str) or not prov_input:
-                return False
-            # Bind the artifact hash when the provenance targets the audited file
-            # (delivery-scope audits such as research-pack target a different
-            # artifact, so only compare when target == audited_path).
-            if (
-                audited_path is not None
-                and record.get("target") == audited_path
-                and actual_input_sha256 is not None
-                and prov_input != actual_input_sha256
+            # Mandatory artifact binding for automated provenance: the record
+            # must name the expected target and carry the consumer-computed hash.
+            # Missing / swapped / forged target or hash fails closed.  When the
+            # caller does not supply an external anchor (e.g. simple unit tests
+            # that call _audits_ok without hashes), fall back to requiring the
+            # fields to be present as non-empty strings.
+            if expected_target is not None:
+                if record.get("target") != expected_target:
+                    return False
+            elif (
+                not isinstance(record.get("target"), str)
+                or not record.get("target").strip()
             ):
                 return False
-        # manual/process: execution_source already matched; the producer's #401
-        # evidence schema governs the remaining fields — a verified record with
-        # a matching source is the consumer's fail-closed gate.
+            prov_input = record.get("input_sha256")
+            if expected_hash is not None:
+                if not isinstance(prov_input, str) or prov_input != expected_hash:
+                    return False
+            elif not isinstance(prov_input, str) or not prov_input:
+                return False
+        else:
+            # manual/process: require a real provenance record, not a bare
+            # {"verified": true} that an attacker can fabricate alongside the JSON.
+            if not isinstance(record.get("kind"), str) or not record.get("kind").strip():
+                return False
+            if (
+                not isinstance(record.get("locator"), str)
+                or not record.get("locator").strip()
+            ):
+                return False
     return True
 
 
@@ -614,6 +690,11 @@ def _evaluate_case(
     report = ROOT / fixtures["report"]
     research_pack = ROOT / fixtures["research_pack"]
     pack = _pack_observation(research_pack)
+    # External trust anchor: compute the artifact hashes ourselves rather than
+    # trusting any hash embedded in the audit JSON (issue #403 P1).  A None here
+    # (unreadable file) fails the downstream bindings closed.
+    expected_report_sha256 = _sha256(report)
+    expected_pack_sha256 = _sha256(research_pack)
 
     activation_error: str | None = None
     activation_snapshot_error: str | None = None
@@ -751,7 +832,12 @@ def _evaluate_case(
     else:
         audit_set_exact = sorted(actual["audit_ids"]) == expected_audit_ids
         audits_consistent = _audits_ok(
-            actual, expected_audit_ids, audited_path=str(report)
+            actual,
+            expected_audit_ids,
+            audited_path=str(report),
+            expected_report_sha256=expected_report_sha256,
+            research_pack_path=str(research_pack),
+            expected_pack_sha256=expected_pack_sha256,
         )
         audit_set_ok = audit_set_exact and audits_consistent
     activation_route_match = actual["activation_route"] == expected["primary_route"]
@@ -796,7 +882,10 @@ def _evaluate_case(
         except registry_loader.UnknownRouteError:
             expected_validators = []
     validators_ok = _validators_ok(
-        actual, expected_validators, audited_path=str(report)
+        actual,
+        expected_validators,
+        audited_path=str(report),
+        expected_input_sha256=expected_report_sha256,
     )
     if expected["verdict"] == "pass":
         case_passed = all(

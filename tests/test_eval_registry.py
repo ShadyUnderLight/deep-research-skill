@@ -346,6 +346,21 @@ def test_validators_ok_requires_complete_binding_set() -> None:
         ["report-quality"], audited_path="report",
     ) is False, "validator with a mismatched artifact hash must fail closed"
     assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
+         "input_sha256": "abc", "validators": [_validator_entry(input_sha256=None)]},
+        ["report-quality"], audited_path="report",
+    ) is False, "validator with a missing artifact hash must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
+         "validators": [_validator_entry()]},
+        ["report-quality"], audited_path="report", expected_input_sha256="abc",
+    ) is False, "missing top-level audited-file hash must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
+         "input_sha256": "forged", "validators": [_validator_entry(input_sha256="forged")]},
+        ["report-quality"], audited_path="report", expected_input_sha256="abc",
+    ) is False, "top-level + validator hashes simultaneously forged to the same value must still fail against the external anchor"
+    assert run_forward_evals._validators_ok(
         ok, ["report-quality"], audited_path="report"
     ) is True
     assert run_forward_evals._validators_ok(

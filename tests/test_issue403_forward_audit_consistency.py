@@ -84,7 +84,25 @@ def test_expected_audit_set_registry_drift_returns_none() -> None:
 
 def test_audits_ok_accepts_genuine_audit_json() -> None:
     case, data = _real_audit_for(POSITIVE_CASE_ID)
-    assert _audits_ok(data, _expected_for(case)) is True
+    expected = _expected_for(case)
+    # Verify with consumer-computed hash anchor (mandatory path for real pipeline)
+    import hashlib
+    from pathlib import Path
+
+    report = ROOT / case["fixtures"]["report"]
+    rp = ROOT / case["fixtures"]["research_pack"]
+    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
+    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
+    assert _audits_ok(
+        data,
+        expected,
+        audited_path=str(report),
+        expected_report_sha256=expected_report_sha256,
+        research_pack_path=str(rp),
+        expected_pack_sha256=expected_pack_sha256,
+    ) is True
+    # Also passes when called without the external anchor (fallback to non-empty)
+    assert _audits_ok(data, expected) is True
 
 
 # ── _audits_ok: fail closed on truncation / forgery ──────────────────────────
@@ -235,16 +253,91 @@ def test_audits_ok_rejects_provenance_field_mismatch() -> None:
 def test_audits_ok_rejects_provenance_hash_mismatch() -> None:
     """For a report-targeted automated audit, a forged artifact hash in the
     provenance must fail closed (issue #403 P1 / scope 3)."""
+    import hashlib
+    from pathlib import Path
+
     case, data = _real_audit_for(POSITIVE_CASE_ID)
     expected = _expected_for(case)
     tampered = copy.deepcopy(data)
     target = None
+    report = ROOT / case["fixtures"]["report"]
+    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
     for a in tampered["audits"]:
         if a["audit_id"] == "source-traceability":
             target = a["evidence_provenance"][0]["target"]
             a["evidence_provenance"][0]["input_sha256"] = "forged-hash"
     assert target is not None
-    assert _audits_ok(tampered, expected, audited_path=target) is False
+    assert _audits_ok(
+        tampered,
+        expected,
+        audited_path=target,
+        expected_report_sha256=expected_report_sha256,
+    ) is False
+
+
+def test_audits_ok_rejects_provenance_target_swap() -> None:
+    """Swapping a report-targeted provenance target to another file must fail
+    closed — the hash comparison must not be skippable via target (issue #403
+    P1)."""
+    import hashlib
+
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    report = ROOT / case["fixtures"]["report"]
+    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
+    for a in tampered["audits"]:
+        if a["audit_id"] == "source-traceability":
+            a["evidence_provenance"][0]["target"] = "some-other-report.md"
+            a["evidence_provenance"][0]["input_sha256"] = "anything-non-empty"
+    assert _audits_ok(
+        tampered,
+        expected,
+        audited_path=str(report),
+        expected_report_sha256=expected_report_sha256,
+    ) is False
+
+
+def test_audits_ok_rejects_research_pack_provenance_wrong_artifact() -> None:
+    """The research-pack audit's provenance must bind to the research pack,
+    not the report — swapping to the report target/hash must fail closed
+    (issue #403 P1)."""
+    import hashlib
+
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    report = ROOT / case["fixtures"]["report"]
+    rp = ROOT / case["fixtures"]["research_pack"]
+    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
+    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
+    for a in tampered["audits"]:
+        if a["audit_id"] == "research-pack":
+            a["evidence_provenance"][0]["target"] = str(report)
+            a["evidence_provenance"][0]["input_sha256"] = expected_report_sha256
+    assert _audits_ok(
+        tampered,
+        expected,
+        audited_path=str(report),
+        expected_report_sha256=expected_report_sha256,
+        research_pack_path=str(rp),
+        expected_pack_sha256=expected_pack_sha256,
+    ) is False
+
+
+def test_audits_ok_rejects_manual_stripped_provenance() -> None:
+    """A manual pass audit whose provenance is stripped to bare
+    verified+execution_source (no kind/locator) must fail closed — otherwise
+    an attacker can fabricate the boolean alongside the JSON (issue #403 P1)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "option-selection-final-audit":  # registry: manual
+            a["evidence_provenance"] = [
+                {"verified": True, "execution_source": "manual_checklist_attestation"}
+            ]
+    assert _audits_ok(tampered, expected) is False
 
 
 def test_audits_ok_rejects_malformed_audits_without_crash() -> None:
@@ -297,6 +390,55 @@ def test_forward_eval_rejects_forged_validator_version(monkeypatch) -> None:
     monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)
     result = _evaluate_case(case, load_registry()["decision_tree_version"])
     assert result["checks"]["validators_ok"] is False
+    assert result["passed"] is False
+
+
+def test_forward_eval_rejects_simultaneously_forged_hashes(monkeypatch) -> None:
+    """Top-level + validator hashes simultaneously forged to the same fake value
+    must still fail against the consumer-computed external anchor (issue #403
+    P1)."""
+    case = _positive_case()
+    original = run_forward_evals._run_audit
+
+    def fake_run(report, research_pack, activation_snapshot=None):
+        data, err, rc = original(report, research_pack)
+        forged = copy.deepcopy(data)
+        forged["input_sha256"] = "forged"
+        for v in forged["validators"]:
+            v["input_sha256"] = "forged"
+        return forged, err, rc
+
+    monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)
+    result = _evaluate_case(case, load_registry()["decision_tree_version"])
+    assert result["checks"]["validators_ok"] is False
+    assert result["passed"] is False
+
+
+def test_forward_eval_rejects_research_pack_wrong_artifact(monkeypatch) -> None:
+    """The research-pack provenance must bind to the research pack, not the
+    report — swapping its target/hash to the report must fail closed (issue
+    #403 P1)."""
+    case = _positive_case()
+    original = run_forward_evals._run_audit
+
+    def fake_run(report, research_pack, activation_snapshot=None):
+        data, err, rc = original(report, research_pack)
+        forged = copy.deepcopy(data)
+        for a in forged["audits"]:
+            if a["audit_id"] == "research-pack":
+                rec = a["evidence_provenance"][0]
+                rec["target"] = str(report)
+                # also forge hash to report's hash so it would pass a
+                # JSON-internal check but fail the consumer's pack anchor
+                import hashlib
+                from pathlib import Path
+
+                rec["input_sha256"] = hashlib.sha256(Path(report).read_bytes()).hexdigest()
+        return forged, err, rc
+
+    monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)
+    result = _evaluate_case(case, load_registry()["decision_tree_version"])
+    assert result["checks"]["required_audits_present"] is False
     assert result["passed"] is False
 
 
