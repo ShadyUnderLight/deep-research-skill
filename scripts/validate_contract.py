@@ -766,6 +766,8 @@ def validate_contract(
                 expected_audit_id=audit_id,
                 expected_artifact_id=expected_aid,
                 expected_route=expected_route_for_record,
+                report_text=report_text if strict else None,
+                pack_text=None,
             )
             errors.extend(
                 f"Audit '{audit_id}' evidence: {error}"

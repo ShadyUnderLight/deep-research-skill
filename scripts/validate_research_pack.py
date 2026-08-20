@@ -655,6 +655,8 @@ def _check_audit_evidence(
                 expected_audit_id=str(audit_id) if isinstance(audit_id, str) else None,
                 expected_artifact_id=pack_artifact_id,
                 expected_route=pack_route,
+                report_text=report_text,
+                pack_text=artifact_text,
             )
             errors.extend(
                 f"Required audit evidence: {error}"

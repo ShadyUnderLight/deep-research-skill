@@ -307,6 +307,8 @@ def _validate_audit_record(
     execution_type: str | None = None,
     artifact_text: str | None = None,
     artifact_label: str = "report",
+    report_text: str | None = None,
+    pack_text: str | None = None,
 ) -> EvidenceValidation:
     match = re.fullmatch(r"([^#]+)#([^@]+)@(.+)", locator)
     if not match:
@@ -518,6 +520,10 @@ def _validate_audit_record(
                     )
         # evidence binding (issue #401 P1): record must reference the actual checklist/section that was checked
         # This prevents JSON self-attestation: hash alone is not proof that a specific audit step was executed.
+        # P1/P2 review (b1916b3): nested report-/pack- evidence must be validated against the correct artifact text.
+        # Using a single artifact_text for both causes type confusion (e.g. report-section:Artifact contract
+        # verified against pack text).  Dispatch strictly: report-* against report_text, pack-* against pack_text,
+        # checklist against base_dir (both contexts allowed).
         evidence_value = (
             matching_record.get("evidence")
             or matching_record.get("evidence_locator")
@@ -548,28 +554,59 @@ def _validate_audit_record(
                 else:
                     nested_result: EvidenceValidation | None = None
                     if kind == "checklist_item":
-                        # Checklist definition existence only; strict definition-only check is bypassed for nested evidence
-                        # (the record is the execution attestation, the checklist item is the definition it attests to)
                         nested_result = _validate_checklist_item(locator, base_dir, strict=False)
-                        # Also ensure the marker actually exists
                         if nested_result.errors:
                             strict_errors.append(
                                 f"audit record evidence {evidence_value!r} is not verifiable: {'; '.join(nested_result.errors)}"
                             )
-                    elif kind in {"report_section", "pack_section"}:
-                        label = "pack" if kind == "pack_section" else artifact_label
-                        nested_result = _validate_artifact_heading(kind, locator, artifact_text, label)
-                        if nested_result.errors:
+                    elif kind in {"report_section", "report_table"}:
+                        # Report evidence must be validated against report artifact, not pack
+                        effective_report_text = report_text
+                        if effective_report_text is None and artifact_label == "report":
+                            effective_report_text = artifact_text
+                        if effective_report_text is None:
                             strict_errors.append(
-                                f"audit record evidence {evidence_value!r} is not verifiable: {'; '.join(nested_result.errors)}"
+                                f"audit record evidence {evidence_value!r} is report-scoped but no report artifact text is available for verification"
                             )
-                    elif kind in {"report_table", "pack_table"}:
-                        label = "pack" if kind == "pack_table" else artifact_label
-                        nested_result = _validate_artifact_table(kind, locator, artifact_text, label)
-                        if nested_result.errors:
+                        else:
+                            # Also enforce context: report context should not verify pack evidence via report text
+                            # If this record is being validated in a pack-only context (e.g. research-pack without report_text), report evidence is allowed only if report_text was supplied
+                            if report_text is None and artifact_label == "pack" and pack_text is not None:
+                                # Pack context without report_text — report evidence is cross-artifact, require explicit report_text
+                                strict_errors.append(
+                                    f"audit record evidence {evidence_value!r} is report-scoped but current pack validation has no report text"
+                                )
+                            else:
+                                if kind == "report_section":
+                                    nested_result = _validate_artifact_heading(kind, locator, effective_report_text, "report")
+                                else:
+                                    nested_result = _validate_artifact_table(kind, locator, effective_report_text, "report")
+                                if nested_result and nested_result.errors:
+                                    strict_errors.append(
+                                        f"audit record evidence {evidence_value!r} is not verifiable in report: {'; '.join(nested_result.errors)}"
+                                    )
+                    elif kind in {"pack_section", "pack_table"}:
+                        effective_pack_text = pack_text
+                        if effective_pack_text is None and artifact_label == "pack":
+                            effective_pack_text = artifact_text
+                        if effective_pack_text is None:
                             strict_errors.append(
-                                f"audit record evidence {evidence_value!r} is not verifiable: {'; '.join(nested_result.errors)}"
+                                f"audit record evidence {evidence_value!r} is pack-scoped but no pack artifact text is available — not allowed in report context (see issue #401)"
                             )
+                        else:
+                            if pack_text is None and artifact_label == "report":
+                                strict_errors.append(
+                                    f"audit record evidence {evidence_value!r} is pack-scoped but current report validation has no pack text — not allowed in report context"
+                                )
+                            else:
+                                if kind == "pack_section":
+                                    nested_result = _validate_artifact_heading(kind, locator, effective_pack_text, "pack")
+                                else:
+                                    nested_result = _validate_artifact_table(kind, locator, effective_pack_text, "pack")
+                                if nested_result and nested_result.errors:
+                                    strict_errors.append(
+                                        f"audit record evidence {evidence_value!r} is not verifiable in pack: {'; '.join(nested_result.errors)}"
+                                    )
                     if nested_result is not None and not nested_result.errors and nested_result.provenance:
                         provenance["record_evidence"] = evidence_value
                         provenance["record_evidence_provenance"] = nested_result.provenance
@@ -674,6 +711,8 @@ def validate_evidence_reference(
     expected_artifact_sha256: str | None = None,
     expected_artifact_id: str | None = None,
     expected_route: str | None = None,
+    report_text: str | None = None,
+    pack_text: str | None = None,
 ) -> EvidenceValidation:
     """Validate one typed evidence reference.
 
@@ -758,6 +797,8 @@ def validate_evidence_reference(
             execution_type=execution_type,
             artifact_text=artifact_text,
             artifact_label=artifact_label,
+            report_text=report_text,
+            pack_text=pack_text,
         )
     if kind == "automated_validator":
         if execution_type in {"manual", "process"}:

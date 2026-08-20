@@ -302,7 +302,7 @@ def test_audit_record_legacy_source_cannot_pass(tmp_path: Path) -> None:
 
 
 def test_audit_record_missing_execution_source_cannot_pass(tmp_path: Path) -> None:
-    """P1-blocker: record without execution_source must not obtain trusted pass."""
+    """P1-blocker: record without execution_source must not obtain trusted pass and must not be伪造为 manual."""
     record_dir = _make_record_dir()
     try:
         content = POS.read_text(encoding="utf-8")
@@ -322,9 +322,10 @@ def test_audit_record_missing_execution_source_cannot_pass(tmp_path: Path) -> No
         assert proc.returncode == 2, proc.stdout
         data = json.loads(proc.stdout)
         assert any("execution_source" in b.lower() and "missing" in b.lower() for b in data["blocking"])
-        # Ensure JSON does not伪造为 manual_checklist_attestation
         audit = next(a for a in data["audits"] if a["audit_id"] == "market-outlook-audit")
         assert audit["status"] != "pass"
+        # P2: missing source must not be displayed as trusted attestation
+        assert audit["execution_source"] != "manual_checklist_attestation", "missing source should not be shown as trusted attestation"
     finally:
         shutil.rmtree(record_dir, ignore_errors=True)
 
@@ -441,5 +442,96 @@ def test_json_distinguishes_execution_sources(tmp_path: Path) -> None:
         res = validate_evidence_reference(f"audit-record:{rel}#p1@2026-08-18T10:00:00Z", base_dir=ROOT, strict=True, execution_type="process", expected_audit_id="mid-research-review-audit", expected_artifact_sha256="b"*64, expected_route="market-outlook", artifact_text="## Monitoring signals\n\ncontent")
         assert res.is_valid, res.errors
         assert res.provenance and res.provenance["verified"] is True
+    finally:
+        shutil.rmtree(rec_dir, ignore_errors=True)
+
+
+def test_nested_report_section_only_in_pack_must_fail(tmp_path: Path) -> None:
+    """P1/P2: report-section evidence that exists only in pack must not be verified against report."""
+    from audit_evidence import validate_evidence_reference
+    rec_dir = _make_record_dir()
+    try:
+        # Pack has ## Artifact contract, report fixture does not
+        pack_text = "## Artifact contract\n\ncontract body\n"
+        report_text = "## Monitoring signals\n\nsignals\n"
+        payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "c"*64, "artifact_id": "test-artifact", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Artifact contract", "route": "market-outlook"}]}
+        rec_path, rel = _write_record_file(rec_dir, "r.json", payload)
+        # Validate as report audit: report_text is report_text (without Artifact contract), pack_text is pack_text
+        # Inner report-section:Artifact contract should fail because it's not in report_text
+        res = validate_evidence_reference(
+            f"audit-record:{rel}#r1@2026-08-18T10:00:00Z",
+            base_dir=ROOT,
+            strict=True,
+            execution_type="manual",
+            expected_audit_id="market-outlook-audit",
+            expected_artifact_sha256="c"*64,
+            expected_artifact_id="test-artifact",
+            expected_route="market-outlook",
+            artifact_text=report_text,
+            report_text=report_text,
+            pack_text=pack_text,
+        )
+        assert not res.is_valid, "report-section that only exists in pack should not verify against report"
+        assert any("Artifact contract" in e for e in res.errors)
+    finally:
+        shutil.rmtree(rec_dir, ignore_errors=True)
+
+
+def test_nested_pack_section_only_in_report_must_fail(tmp_path: Path) -> None:
+    """P1/P2: pack-section evidence that exists only in report must not be verified against pack."""
+    from audit_evidence import validate_evidence_reference
+    rec_dir = _make_record_dir()
+    try:
+        # Report has Monitoring signals, pack has Artifact contract only
+        pack_text = "## Artifact contract\n\ncontract body\n"
+        report_text = "## Monitoring signals\n\nsignals\n"
+        payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "c"*64, "artifact_id": "test-artifact", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "pack-section:Monitoring signals", "route": "market-outlook"}]}
+        rec_path, rel = _write_record_file(rec_dir, "r.json", payload)
+        # Validate via research_pack context: artifact_text is pack, report_text is report
+        # Inner pack-section:Monitoring signals should fail because pack_text doesn't have it
+        res = validate_evidence_reference(
+            f"audit-record:{rel}#r1@2026-08-18T10:00:00Z",
+            base_dir=ROOT,
+            strict=True,
+            execution_type="manual",
+            expected_audit_id="market-outlook-audit",
+            expected_artifact_sha256="c"*64,
+            expected_artifact_id="test-artifact",
+            expected_route="market-outlook",
+            artifact_text=pack_text,
+            artifact_label="pack",
+            report_text=report_text,
+            pack_text=pack_text,
+        )
+        assert not res.is_valid, "pack-section that only exists in report should not verify against pack"
+        assert any("Monitoring signals" in e for e in res.errors)
+    finally:
+        shutil.rmtree(rec_dir, ignore_errors=True)
+
+
+def test_report_context_rejects_pack_evidence_without_pack_text(tmp_path: Path) -> None:
+    """Report context without pack_text must reject pack-scoped evidence."""
+    from audit_evidence import validate_evidence_reference
+    rec_dir = _make_record_dir()
+    try:
+        payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "d"*64, "artifact_id": "art", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "pack-section:Artifact contract", "route": "market-outlook"}]}
+        rec_path, rel = _write_record_file(rec_dir, "r.json", payload)
+        # Report-only context: no pack_text
+        res = validate_evidence_reference(
+            f"audit-record:{rel}#r1@2026-08-18T10:00:00Z",
+            base_dir=ROOT,
+            strict=True,
+            execution_type="manual",
+            expected_audit_id="market-outlook-audit",
+            expected_artifact_sha256="d"*64,
+            expected_artifact_id="art",
+            expected_route="market-outlook",
+            artifact_text="## Monitoring signals\n",
+            artifact_label="report",
+            report_text="## Monitoring signals\n",
+            pack_text=None,
+        )
+        assert not res.is_valid
+        assert any("pack" in e.lower() and "not allowed" in e.lower() for e in res.errors)
     finally:
         shutil.rmtree(rec_dir, ignore_errors=True)
