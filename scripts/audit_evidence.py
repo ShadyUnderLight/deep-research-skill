@@ -428,40 +428,23 @@ def _validate_audit_record(
             strict_errors.append(
                 f"audit record status {record_status!r} is not passed (strict requires passed)"
             )
-        # artifact binding: at least one of sha256 / artifact_id must match expected when provided,
-        # otherwise at least one must exist
+        # artifact binding: each provided expected field is fail-closed independently (issue #401 P1).
+        # When audit_report passes both sha256 and artifact_id, both must match if the record declares them;
+        # a hash mismatch cannot be rescued by an id match.  When only one expected is given
+        # (contract / pack), that single field must match.
         record_sha = matching_record.get("artifact_sha256") or matching_record.get("artifact_hash") or matching_record.get("sha256")
         record_aid = matching_record.get("artifact_id") or matching_record.get("artifactId")
-        if expected_artifact_sha256 is not None or expected_artifact_id is not None:
-            sha_ok = (
-                isinstance(record_sha, str)
-                and record_sha.strip().lower() == expected_artifact_sha256.lower()
-                if expected_artifact_sha256 is not None and isinstance(record_sha, str)
-                else False
-            )
-            aid_ok = (
-                isinstance(record_aid, str)
-                and record_aid.strip() == expected_artifact_id
-                if expected_artifact_id is not None and isinstance(record_aid, str)
-                else False
-            )
-            # Require the corresponding field to be present and equal; if both expected are given, one match is enough
-            if expected_artifact_sha256 is not None and expected_artifact_id is not None:
-                if not (sha_ok or aid_ok):
-                    strict_errors.append(
-                        "audit record artifact binding does not match current artifact (sha256/id mismatch)"
-                    )
-            elif expected_artifact_sha256 is not None:
-                if not sha_ok:
-                    strict_errors.append(
-                        f"audit record artifact_sha256 {record_sha!r} does not match expected {expected_artifact_sha256!r}"
-                    )
-            elif expected_artifact_id is not None:
-                if not aid_ok:
-                    strict_errors.append(
-                        f"audit record artifact_id {record_aid!r} does not match expected {expected_artifact_id!r}"
-                    )
-        else:
+        if expected_artifact_sha256 is not None:
+            if not isinstance(record_sha, str) or record_sha.strip().lower() != expected_artifact_sha256.lower():
+                strict_errors.append(
+                    f"audit record artifact_sha256 {record_sha!r} does not match expected {expected_artifact_sha256!r}"
+                )
+        if expected_artifact_id is not None:
+            if not isinstance(record_aid, str) or record_aid.strip() != expected_artifact_id:
+                strict_errors.append(
+                    f"audit record artifact_id {record_aid!r} does not match expected {expected_artifact_id!r}"
+                )
+        if expected_artifact_sha256 is None and expected_artifact_id is None:
             if not (isinstance(record_sha, str) and record_sha.strip()) and not (
                 isinstance(record_aid, str) and record_aid.strip()
             ):
@@ -493,7 +476,9 @@ def _validate_audit_record(
                         strict_errors.append(
                             f"audit record executed_at {executed_at_value!r} is in the future"
                         )
-        # execution_source alignment (advisory but fail-closed if explicitly wrong)
+        # execution_source must align with registry execution_type (issue #401 P2).
+        # manual ↔ manual_checklist_attestation, process ↔ process_node_evidence; any cross (e.g. manual eating process record)
+        # or legacy/automated masquerading is fail-closed.  Use precise set check.
         if execution_type in {"manual", "process"}:
             src = matching_record.get("execution_source") or matching_record.get("source")
             if isinstance(src, str) and src.strip():
@@ -501,13 +486,10 @@ def _validate_audit_record(
                     "manual": {"manual_checklist_attestation"},
                     "process": {"process_node_evidence"},
                 }.get(execution_type, set())
-                # Allow the matching type, reject automated/legacy masquerading
-                if src.strip() not in allowed and src.strip() not in {"manual_checklist_attestation", "process_node_evidence"}:
-                    # If record claims automated but audit is manual, that's a mismatch
-                    if src.strip() == "automated_validator":
-                        strict_errors.append(
-                            f"audit record execution_source {src!r} does not match {execution_type} audit"
-                        )
+                if src.strip() not in allowed:
+                    strict_errors.append(
+                        f"audit record execution_source {src!r} does not match {execution_type} audit (expected {sorted(allowed)})"
+                    )
 
         if strict_errors:
             provenance["verified"] = False
