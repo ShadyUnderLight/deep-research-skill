@@ -181,6 +181,81 @@ def test_audits_ok_rejects_fail_without_errors() -> None:
     assert _audits_ok(tampered, expected) is False
 
 
+def test_audits_ok_rejects_automated_masquerading_as_manual() -> None:
+    """An automated audit (registry: automated) flipping to manual + a manual
+    attestation source must NOT dodge the validator_binding check (issue #403
+    P1)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "source-traceability":  # registry: automated
+            a["execution_type"] = "manual"
+            a["execution_source"] = "manual_checklist_attestation"
+            a["validator_binding"] = "whatever-or-null"
+    assert _audits_ok(tampered, expected) is False
+
+
+def test_audits_ok_rejects_string_provenance() -> None:
+    """A list of strings is not a provenance record (issue #403 P1)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    tampered["audits"][0]["evidence_provenance"] = ["hello"]
+    assert _audits_ok(tampered, expected) is False
+
+
+def test_audits_ok_rejects_unverified_provenance() -> None:
+    """A provenance record with verified != True must be rejected (issue #403
+    P1)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    tampered["audits"][0]["evidence_provenance"] = [
+        {"verified": False, "execution_source": "automated_validator"}
+    ]
+    assert _audits_ok(tampered, expected) is False
+
+
+def test_audits_ok_rejects_provenance_field_mismatch() -> None:
+    """An automated provenance record must match the audit result's
+    audit_id / binding / validator_version (issue #403 P1)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "source-traceability":
+            rec = a["evidence_provenance"][0]
+            rec["audit_id"] = "not-source-traceability"
+            rec["validator_binding"] = "wrong-binding"
+            rec["validator_version"] = "audit-registry-v1 (route-manifest-v1)"
+    assert _audits_ok(tampered, expected) is False
+
+
+def test_audits_ok_rejects_provenance_hash_mismatch() -> None:
+    """For a report-targeted automated audit, a forged artifact hash in the
+    provenance must fail closed (issue #403 P1 / scope 3)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    target = None
+    for a in tampered["audits"]:
+        if a["audit_id"] == "source-traceability":
+            target = a["evidence_provenance"][0]["target"]
+            a["evidence_provenance"][0]["input_sha256"] = "forged-hash"
+    assert target is not None
+    assert _audits_ok(tampered, expected, audited_path=target) is False
+
+
+def test_audits_ok_rejects_malformed_audits_without_crash() -> None:
+    """Non-object audit entries (null / string) must fail closed, not raise
+    (issue #403 P2)."""
+    expected = ["markdown-delivery", "research-pack"]
+    assert _audits_ok({"audits": [None]}, expected) is False
+    assert _audits_ok({"audits": ["corrupted"]}, expected) is False
+    assert _audits_ok({"audits": [{"audit_id": "markdown-delivery"}]}, expected) is False
+
+
 # ── Full consumer pipeline (via _evaluate_case) fail closed ──────────────────
 
 
@@ -222,4 +297,64 @@ def test_forward_eval_rejects_forged_validator_version(monkeypatch) -> None:
     monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)
     result = _evaluate_case(case, load_registry()["decision_tree_version"])
     assert result["checks"]["validators_ok"] is False
+    assert result["passed"] is False
+
+
+def test_forward_eval_rejects_malformed_audits_without_crash(monkeypatch) -> None:
+    """Malformed audits (null / string entries) must fail the positive case
+    via the consumer gate, not crash the runner (issue #403 P2)."""
+    case = _positive_case()
+    original = run_forward_evals._run_audit
+
+    def fake_run(report, research_pack, activation_snapshot=None):
+        data, err, rc = original(report, research_pack)
+        malformed = copy.deepcopy(data)
+        malformed["audits"] = [None, "corrupted", {"audit_id": "markdown-delivery"}]
+        return malformed, err, rc
+
+    monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)
+    result = _evaluate_case(case, load_registry()["decision_tree_version"])
+    assert result["checks"]["required_audits_present"] is False
+    assert result["passed"] is False
+
+
+def test_forward_eval_rejects_masqueraded_automated_audit(monkeypatch) -> None:
+    """Flipping an automated audit to manual + manual source must fail the
+    positive case (issue #403 P1)."""
+    case = _positive_case()
+    original = run_forward_evals._run_audit
+
+    def fake_run(report, research_pack, activation_snapshot=None):
+        data, err, rc = original(report, research_pack)
+        forged = copy.deepcopy(data)
+        for a in forged["audits"]:
+            if a["audit_id"] == "source-traceability":
+                a["execution_type"] = "manual"
+                a["execution_source"] = "manual_checklist_attestation"
+                a["validator_binding"] = "whatever"
+        return forged, err, rc
+
+    monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)
+    result = _evaluate_case(case, load_registry()["decision_tree_version"])
+    assert result["checks"]["required_audits_present"] is False
+    assert result["passed"] is False
+
+
+def test_forward_eval_rejects_false_provenance(monkeypatch) -> None:
+    """A pass audit with unverified / non-record provenance must fail the
+    positive case (issue #403 P1)."""
+    case = _positive_case()
+    original = run_forward_evals._run_audit
+
+    def fake_run(report, research_pack, activation_snapshot=None):
+        data, err, rc = original(report, research_pack)
+        forged = copy.deepcopy(data)
+        for a in forged["audits"]:
+            if a["audit_id"] == "source-traceability":
+                a["evidence_provenance"] = [{"verified": False}]
+        return forged, err, rc
+
+    monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)
+    result = _evaluate_case(case, load_registry()["decision_tree_version"])
+    assert result["checks"]["required_audits_present"] is False
     assert result["passed"] is False

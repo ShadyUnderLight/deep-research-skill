@@ -175,7 +175,8 @@ def _detect_failure_family(case: dict[str, Any], actual: dict[str, Any]) -> str 
         secondary_audits = [
             item
             for item in actual.get("audits", [])
-            if str(item.get("audit_id", "")) in expected_targets
+            if isinstance(item, dict)
+            and str(item.get("audit_id", "")) in expected_targets
         ]
         if expected_targets and {
             str(item.get("audit_id")) for item in secondary_audits
@@ -187,7 +188,8 @@ def _detect_failure_family(case: dict[str, Any], actual: dict[str, Any]) -> str 
             return expected_family
     if expected_family == "declared-not-executed":
         if any(
-            item.get("execution_type") in {"manual", "process"}
+            isinstance(item, dict)
+            and item.get("execution_type") in {"manual", "process"}
             and item.get("status") in {"not_run", "partial", "skipped"}
             for item in actual.get("audits", [])
         ):
@@ -201,7 +203,7 @@ def _audit_statuses(actual: dict[str, Any]) -> dict[str, str]:
     return {
         str(item.get("audit_id")): str(item.get("status"))
         for item in actual.get("audits", [])
-        if item.get("audit_id")
+        if isinstance(item, dict) and item.get("audit_id")
     }
 
 
@@ -288,6 +290,22 @@ def _validators_ok(
         validator_version = item.get("validator_version")
         if validator_version != EXPECTED_VALIDATOR_VERSION:
             return False
+        # Bind the validator result to the audited file: its target path and
+        # artifact hash must match the verdict's audited input, otherwise a
+        # result produced for a different report could be replayed (issue #403
+        # P1 / scope 3).
+        if audited_path is not None and item.get("target") != audited_path:
+            return False
+        item_hash = item.get("input_sha256")
+        actual_hash = actual.get("input_sha256")
+        if (
+            isinstance(item_hash, str)
+            and item_hash
+            and isinstance(actual_hash, str)
+            and actual_hash
+            and item_hash != actual_hash
+        ):
+            return False
     return True
 
 
@@ -328,6 +346,7 @@ def _expected_audit_set(
 def _audits_ok(
     actual: dict[str, Any],
     expected_audit_ids: list[str],
+    audited_path: str | None = None,
 ) -> bool:
     """Verify the audit JSON ``audits[]`` is complete and internally consistent.
 
@@ -336,12 +355,20 @@ def _audits_ok(
     - an audit id appears more than once (forged duplicate);
     - the set of actual audit ids differs from ``expected_audit_ids`` (missing,
       unknown/forged extra, or truncated result);
-    - an audit carries an unknown status, an out-of-vocabulary
-      ``execution_source`` for its ``execution_type``, or (for automated audits)
-      a ``validator_binding`` that does not match the audit registry;
+    - an audit's declared ``execution_type`` does not match the audit registry
+      (an automated audit cannot masquerade as manual to dodge the
+      validator_binding check) — contract-derived secondary hard-fail audits
+      are the only non-registry entries and must be ``manual`` (issue #403 P1);
+    - an audit carries an out-of-vocabulary ``execution_source`` for its
+      (registry-confirmed) ``execution_type``;
+    - an automated audit's ``validator_binding`` does not match the registry;
     - status is inconsistent with errors/warnings/reason (e.g. ``pass`` with
       errors, ``fail`` without errors);
-    - a ``pass`` audit lacks verifiable ``evidence`` or ``evidence_provenance``.
+    - a ``pass`` audit lacks verifiable ``evidence`` or a provenance record that
+      is actually ``verified`` and internally consistent (audit id / binding /
+      execution_source / validator_version, and the artifact hash when the
+      provenance targets the audited file) — truthy-only provenance is rejected
+      (issue #403 P1).
 
     Only positive cases call this; negative cases legitimately carry
     non-passing audits and are validated by their structural failure family
@@ -357,29 +384,40 @@ def _audits_ok(
         return False
     if set(actual_ids) != set(expected_audit_ids):
         return False
+    actual_input_sha256 = actual.get("input_sha256")
     for item in audits:
         if not isinstance(item, dict):
             return False
+        audit_id = str(item.get("audit_id"))
         status = str(item.get("status"))
         if status not in ALLOWED_AUDIT_STATUSES:
             return False
         execution_type = item.get("execution_type")
         execution_source = item.get("execution_source")
-        if (
-            not isinstance(execution_source, str)
-            or not execution_source.strip()
+        if not isinstance(execution_source, str) or not execution_source.strip():
+            return False
+
+        # Registry-anchored identity: the declared execution_type must match the
+        # registry. This blocks an automated audit (e.g. source-traceability)
+        # from flipping to "manual" + a manual attestation source to skip the
+        # automated validator_binding consistency check below.
+        registry_audit = _AUDIT_REGISTRY.get_audit(audit_id)
+        if registry_audit is not None:
+            if execution_type != registry_audit.execution_type:
+                return False
+        elif not (
+            audit_id.endswith("-secondary-hard-fail") and execution_type == "manual"
         ):
             return False
+
         allowed_sources = AUDIT_EXECUTION_SOURCE_BY_TYPE.get(execution_type, set())
         if execution_source not in allowed_sources:
             return False
+
         if execution_type == "automated":
-            registry_audit = _AUDIT_REGISTRY.get_audit(str(item.get("audit_id")))
-            if (
-                registry_audit is None
-                or item.get("validator_binding") != registry_audit.validator_binding
-            ):
+            if item.get("validator_binding") != registry_audit.validator_binding:
                 return False
+
         errors = item.get("errors") or []
         warnings = item.get("warnings") or []
         evidence = item.get("evidence") or []
@@ -394,7 +432,14 @@ def _audits_ok(
                 isinstance(e, str) and e.strip() for e in evidence
             ):
                 return False
-            if not item.get("evidence_provenance"):
+            if not _audit_provenance_ok(
+                item,
+                audit_id,
+                execution_type,
+                execution_source,
+                audited_path,
+                actual_input_sha256,
+            ):
                 return False
         elif status == "conditional-pass":
             if not warnings or errors:
@@ -408,6 +453,61 @@ def _audits_ok(
             if not (item.get("reason") or errors):
                 return False
         # not_run / skipped: recorded but not executed — no extra requirement.
+    return True
+
+
+def _audit_provenance_ok(
+    item: dict[str, Any],
+    audit_id: str,
+    execution_type: str,
+    execution_source: str,
+    audited_path: str | None,
+    actual_input_sha256: object,
+) -> bool:
+    """Verify a ``pass`` audit's ``evidence_provenance`` is genuine, not truthy.
+
+    The producer already emits structured provenance (``verified``, ``audit_id``,
+    ``validator_binding``, ``execution_source``, ``target``, ``input_sha256``,
+    ``validator_version``).  The consumer must consume it instead of only
+    checking the list is non-empty — otherwise ``["hello"]`` or
+    ``[{"verified": false}]`` would pass (issue #403 P1).
+    """
+    provenance = item.get("evidence_provenance")
+    if not isinstance(provenance, list) or not provenance:
+        return False
+    if not any(isinstance(p, dict) for p in provenance):
+        return False
+    verified_records = [
+        p for p in provenance if isinstance(p, dict) and p.get("verified") is True
+    ]
+    if not verified_records:
+        return False
+    for record in verified_records:
+        if record.get("execution_source") != execution_source:
+            return False
+        if execution_type == "automated":
+            if record.get("audit_id") != audit_id:
+                return False
+            if record.get("validator_binding") != item.get("validator_binding"):
+                return False
+            if record.get("validator_version") != EXPECTED_VALIDATOR_VERSION:
+                return False
+            prov_input = record.get("input_sha256")
+            if not isinstance(prov_input, str) or not prov_input:
+                return False
+            # Bind the artifact hash when the provenance targets the audited file
+            # (delivery-scope audits such as research-pack target a different
+            # artifact, so only compare when target == audited_path).
+            if (
+                audited_path is not None
+                and record.get("target") == audited_path
+                and actual_input_sha256 is not None
+                and prov_input != actual_input_sha256
+            ):
+                return False
+        # manual/process: execution_source already matched; the producer's #401
+        # evidence schema governs the remaining fields — a verified record with
+        # a matching source is the consumer's fail-closed gate.
     return True
 
 
@@ -609,12 +709,17 @@ def _evaluate_case(
         "secondary_routes": sorted(contract.get("secondary_routes", []) or []),
         "disciplines": sorted(contract.get("disciplines", []) or []),
         "audit_ids": sorted(
-            {str(item.get("audit_id")) for item in (audit_data or {}).get("audits", [])}
+            {
+                str(item["audit_id"])
+                for item in (audit_data or {}).get("audits", [])
+                if isinstance(item, dict) and item.get("audit_id")
+            }
         ),
         "audits": (audit_data or {}).get("audits", []),
         "validators": (audit_data or {}).get("validators", []),
         "schema_version": (audit_data or {}).get("schema_version"),
         "validator_version": (audit_data or {}).get("validator_version"),
+        "input_sha256": (audit_data or {}).get("input_sha256"),
         "overall": (audit_data or {}).get("overall"),
         "blocking": (audit_data or {}).get("blocking", []),
         "statuses": actual_statuses,
@@ -645,7 +750,9 @@ def _evaluate_case(
         audit_set_ok = False  # registry drift → fail closed
     else:
         audit_set_exact = sorted(actual["audit_ids"]) == expected_audit_ids
-        audits_consistent = _audits_ok(actual, expected_audit_ids)
+        audits_consistent = _audits_ok(
+            actual, expected_audit_ids, audited_path=str(report)
+        )
         audit_set_ok = audit_set_exact and audits_consistent
     activation_route_match = actual["activation_route"] == expected["primary_route"]
     report_route_match = actual["report_route"] == expected["primary_route"]
