@@ -1238,6 +1238,23 @@ def _execute_required_audits(
         )
     except (OSError, UnicodeError):
         visible_text = None
+    # Artifact binding for strict provenance (issue #401): audit-record must
+    # prove it targets the current artifact, not any template.  Compute the
+    # input hash once and extract the contract's stable artifact_id up front
+    # so validation can fail closed on mismatched bindings.
+    expected_artifact_sha256 = _sha256(path) if path.is_file() else None
+    contract_data_for_binding: dict | None = None
+    try:
+        contract_data_for_binding = extract_contract_from_markdown(
+            path.read_text(encoding="utf-8", errors="replace")
+        )
+    except (OSError, UnicodeError):
+        contract_data_for_binding = None
+    expected_artifact_id: str | None = None
+    if isinstance(contract_data_for_binding, dict):
+        raw_aid = contract_data_for_binding.get("artifact_id")
+        if isinstance(raw_aid, str) and raw_aid.strip():
+            expected_artifact_id = raw_aid.strip()
     results: list[AuditResult] = []
     blocking: list[str] = []
     warnings: list[str] = []
@@ -1298,6 +1315,9 @@ def _execute_required_audits(
                     artifact_label="report",
                     known_validator_bindings=_registered_validator_bindings(),
                     execution_type=audit.execution_type,
+                    expected_audit_id=audit_id,
+                    expected_artifact_sha256=expected_artifact_sha256,
+                    expected_artifact_id=expected_artifact_id,
                 )
                 if evidence_result.legacy:
                     execution_source = _execution_source(
@@ -1478,6 +1498,9 @@ def _execute_required_audits(
                 artifact_label="report",
                 known_validator_bindings=_registered_validator_bindings(),
                 execution_type="manual",
+                expected_audit_id=derived_id,
+                expected_artifact_sha256=expected_artifact_sha256,
+                expected_artifact_id=expected_artifact_id,
             )
             if evidence_result.legacy:
                 execution_source = _execution_source("manual", legacy=True)

@@ -745,6 +745,14 @@ def validate_contract(
                 f"Evidence must reference a concrete location in the artifact."
             )
         elif status == "passed":
+            # Issue #401: strict contract audits must bind to the current artifact
+            # when the evidence is an audit-record.  Pass the contract's stable
+            # artifact_id and the audit id so a forged record for another
+            # artifact/audit cannot be reused.
+            expected_aid = None
+            raw_aid = contract.get("artifact_id")
+            if isinstance(raw_aid, str) and raw_aid.strip():
+                expected_aid = raw_aid.strip()
             evidence_result = validate_evidence_reference(
                 evidence,
                 artifact_text=report_text if strict else None,
@@ -753,6 +761,8 @@ def validate_contract(
                 artifact_label="report",
                 known_validator_bindings=known_validator_bindings,
                 execution_type=audit_execution_type,
+                expected_audit_id=audit_id,
+                expected_artifact_id=expected_aid,
             )
             errors.extend(
                 f"Audit '{audit_id}' evidence: {error}"
