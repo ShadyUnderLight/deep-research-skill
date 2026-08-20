@@ -551,3 +551,163 @@ def test_validator_reference_matches_expected_binding() -> None:
         expected_validator_binding="forward-looking-claims",
     )
     assert result.is_valid, result.errors
+
+
+# ─── Issue #402 review round 1: automated audit-record must prove the
+# registry validator executed it ────────────────────────────────────────────
+
+
+def _automated_record(**overrides) -> dict:
+    """Base JSON record for an automated audit execution."""
+    base = {
+        "record_id": "auto-001",
+        "recorded_at": "2026-08-19T10:00:00Z",
+        "audit_id": "forward-looking-claims",
+        "status": "passed",
+        "artifact_sha256": "b" * 64,
+        "executed_at": "2026-08-19T10:00:00Z",
+        "execution_source": "automated_validator",
+        "validator_binding": "forward-looking-claims",
+        "evidence": "report-section:Monitoring signals",
+        "route": "market-outlook",
+    }
+    base.update(overrides)
+    return base
+
+
+def _write_record(tmp_path: Path, record: dict) -> Path:
+    path = tmp_path / "audit-record.json"
+    path.write_text(json.dumps({"records": [record]}), encoding="utf-8")
+    return path
+
+
+def _validate_auto_record(record: dict, *, base_dir: Path) -> object:
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+    return validate_evidence_reference(
+        "audit-record:audit-record.json#auto-001@2026-08-19T10:00:00Z",
+        base_dir=base_dir,
+        strict=True,
+        expected_audit_id="forward-looking-claims",
+        expected_artifact_sha256="b" * 64,
+        expected_route="market-outlook",
+        expected_validator_binding="forward-looking-claims",
+        execution_type="automated",
+        artifact_text="## Monitoring signals\n\ncontent",
+    )
+
+
+def test_automated_audit_record_with_binding_and_source_passes(tmp_path: Path) -> None:
+    """Positive: an automated audit-record that declares the registry binding
+    and automated_validator source is accepted."""
+    record_path = _write_record(tmp_path, _automated_record())
+    result = _validate_auto_record(_automated_record(), base_dir=tmp_path)
+    assert result.is_valid, result.errors
+    assert result.provenance and result.provenance["verified"] is True
+
+
+def test_automated_audit_record_missing_binding_is_rejected(tmp_path: Path) -> None:
+    """An automated audit-record without validator_binding must fail closed —
+    the registry binding is the audit's execution identity."""
+    record = _automated_record()
+    del record["validator_binding"]
+    _write_record(tmp_path, record)
+    result = _validate_auto_record(record, base_dir=tmp_path)
+    assert not result.is_valid
+    assert any("validator_binding" in error for error in result.errors)
+
+
+def test_automated_audit_record_non_string_binding_is_rejected(tmp_path: Path) -> None:
+    """A non-string validator_binding must fail closed."""
+    record = _automated_record(validator_binding=123)
+    _write_record(tmp_path, record)
+    result = _validate_auto_record(record, base_dir=tmp_path)
+    assert not result.is_valid
+    assert any("validator_binding" in error for error in result.errors)
+
+
+def test_automated_audit_record_missing_execution_source_is_rejected(tmp_path: Path) -> None:
+    """An automated audit-record must declare execution_source=automated_validator."""
+    record = _automated_record()
+    del record["execution_source"]
+    _write_record(tmp_path, record)
+    result = _validate_auto_record(record, base_dir=tmp_path)
+    assert not result.is_valid
+    assert any("execution_source" in error for error in result.errors)
+
+
+def test_automated_audit_record_wrong_execution_source_is_rejected(tmp_path: Path) -> None:
+    """execution_source=manual_checklist_attestation on an automated audit is a
+    semantic drift — the record claims a manual attestation for a validator run."""
+    record = _automated_record(execution_source="manual_checklist_attestation")
+    _write_record(tmp_path, record)
+    result = _validate_auto_record(record, base_dir=tmp_path)
+    assert not result.is_valid
+    assert any("execution_source" in error for error in result.errors)
+
+
+# ─── Issue #402 review round 1: nested object kind must be the exact schema
+# enum (schemas/route-activation-contract.json) ──────────────────────────────
+
+
+@pytest.mark.parametrize(
+    "kind",
+    [
+        "validator",            # prefix vocabulary, not a schema enum value
+        "report-section",       # prefix vocabulary, not a schema enum value
+        "AUTOMATED_VALIDATOR",  # schema enum is case-sensitive
+        " automated_validator ",  # schema enum is exact, no whitespace tolerance
+    ],
+)
+def test_evidence_object_kind_must_be_exact_schema_enum(kind: str) -> None:
+    """A nested evidence object's kind must be one of the JSON Schema enum
+    values exactly — schema-rejected kinds must not be accepted at runtime."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+
+    result = validate_evidence_reference(
+        {"kind": kind, "locator": "forward-looking-claims"},
+        strict=True,
+        execution_type="automated",
+        known_validator_bindings={"forward-looking-claims"},
+    )
+    assert not result.is_valid
+    assert any("kind" in error for error in result.errors)
+
+
+# ─── Issue #402 review round 1: complete JSON provenance tuple ──────────────
+
+
+def test_json_automated_audit_provenance_is_complete() -> None:
+    """The automated audit evidence_provenance must carry audit_id, binding,
+    execution_source, target, input/artifact hash and validator version —
+    not just locator/binding/verified."""
+    result = _run_report(POSITIVE, "--strict", "--require-contract", "--json")
+    assert result.returncode == 0, result.stdout
+    data = json.loads(result.stdout)
+    automated = next(
+        audit for audit in data["audits"]
+        if audit["audit_id"] == "forward-looking-claims"
+    )
+    prov = automated["evidence_provenance"][0]
+    assert prov["kind"] == "automated_validator"
+    assert prov["audit_id"] == "forward-looking-claims"
+    assert prov["validator_binding"] == "forward-looking-claims"
+    assert prov["execution_source"] == "automated_validator"
+    assert prov["target"]
+    assert prov["input_sha256"] == data["input_sha256"]
+    assert prov["validator_version"]
+    assert prov["verified"] is True
+
+
+def test_json_validator_record_has_target_and_hash() -> None:
+    """Each route-level validator record must carry target and input/artifact
+    hash alongside execution_source and validator_version."""
+    result = _run_report(POSITIVE, "--strict", "--require-contract", "--json")
+    assert result.returncode == 0, result.stdout
+    data = json.loads(result.stdout)
+    for entry in data["validators"]:
+        assert entry["execution_source"]
+        assert entry["validator_version"]
+        assert entry["target"]
+        assert entry["input_sha256"] == data["input_sha256"]

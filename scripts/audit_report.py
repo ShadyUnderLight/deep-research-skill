@@ -949,6 +949,8 @@ class ValidatorResult:
     evidence: list[str] = field(default_factory=list)
     execution_source: str = "automated_validator"
     validator_version: str | None = None
+    target: str | None = None
+    input_sha256: str | None = None
     reason: str | None = None
 
 
@@ -1207,6 +1209,14 @@ def _execution_source(execution_type: str, *, legacy: bool = False) -> str:
     return "manual_checklist_attestation"
 
 
+def _registry_version() -> str:
+    """Canonical registry version string recorded on every provenance record."""
+    return (
+        f"audit-registry-v{_AUDIT_REGISTRY.version} "
+        f"(route-manifest-v{_ROUTE_REGISTRY.version})"
+    )
+
+
 def _registered_validator_bindings() -> set[str]:
     """Return validator ids with runtime functions in this module."""
     return set(_VALIDATOR_REGISTRY) | set(_AUDIT_VALIDATOR_REGISTRY)
@@ -1439,9 +1449,13 @@ def _execute_required_audits(
             evidence = [f"{target}: no violations found by {binding}"]
         evidence_provenance = [{
             "kind": "automated_validator",
+            "audit_id": audit_id,
             "locator": binding,
             "validator_binding": binding,
+            "execution_source": "automated_validator",
             "target": str(target),
+            "input_sha256": _sha256(target),
+            "validator_version": _registry_version(),
             "verified": True,
         }]
         results.append(AuditResult(
@@ -1612,6 +1626,7 @@ def _compute_verdict(
                     errors=list(result.errors),
                     warnings=list(result.warnings),
                     evidence=evidence,
+                    target=source_path,
                 ))
             else:
                 # Fail-closed: a dispatched validator with no recorded result
@@ -1619,6 +1634,7 @@ def _compute_verdict(
                 validator_results.append(ValidatorResult(
                     validator_id=validator_id,
                     status="incomplete",
+                    target=source_path,
                     reason="validator result missing — never aggregated as pass",
                 ))
                 blocking.append(
@@ -1727,6 +1743,8 @@ def _verdict_to_json(verdict: AuditVerdict) -> str:
                 "evidence": v.evidence,
                 "execution_source": v.execution_source,
                 "validator_version": v.validator_version,
+                "target": v.target,
+                "input_sha256": v.input_sha256,
                 "reason": v.reason,
             }
             for v in verdict.validator_results
@@ -1912,15 +1930,16 @@ def _finalize_verdict(verdict: AuditVerdict, path: Path) -> AuditVerdict:
     if verdict.input_sha256 is None:
         verdict.input_sha256 = _sha256(path)
     if verdict.validator_version is None:
-        verdict.validator_version = (
-            f"audit-registry-v{_AUDIT_REGISTRY.version} "
-            f"(route-manifest-v{_ROUTE_REGISTRY.version})"
-        )
-    # Propagate the shared validator version onto each route-level validator
-    # result so JSON carries per-validator provenance (issue #393).
+        verdict.validator_version = _registry_version()
+    # Propagate the shared validator version and artifact hash onto each
+    # route-level validator result so JSON carries per-validator provenance
+    # (issue #393) and each record is bound to the audited artifact
+    # (issue #402: target, input/artifact hash, version).
     for validator in verdict.validator_results:
         if validator.validator_version is None:
             validator.validator_version = verdict.validator_version
+        if validator.input_sha256 is None:
+            validator.input_sha256 = verdict.input_sha256
     return verdict
 
 

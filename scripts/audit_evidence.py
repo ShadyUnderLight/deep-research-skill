@@ -73,11 +73,18 @@ def _normalise_heading(value: str) -> str:
 
 
 def _normalise_kind(value: object) -> str | None:
+    """Normalise a *dict-form* evidence kind (issue #402).
+
+    The JSON Schema (schemas/route-activation-contract.json) declares an
+    exact enum for a nested evidence object's ``kind``:
+    report_section / report_table / pack_section / pack_table /
+    checklist_item / audit_record / automated_validator.  Prefix vocabulary
+    (``validator``, ``report-section``) and case/whitespace variants are
+    string-reference forms and must NOT be accepted for objects — otherwise
+    schema-rejected objects pass runtime validation.
+    """
     if not isinstance(value, str):
         return None
-    value = value.strip().lower()
-    if value in _PREFIX_TO_KIND:
-        return _PREFIX_TO_KIND[value]
     if value in _KIND_TO_PREFIX:
         return value
     return None
@@ -504,7 +511,17 @@ def _validate_audit_record(
                         )
         # execution_source must be explicitly declared and align with registry (issue #401 P2).
         # Missing source is now fail-closed; caller must not auto-fill.
-        if execution_type in {"manual", "process"}:
+        if execution_type == "automated":
+            # Issue #402: an automated audit-record is a validator execution
+            # record — it must declare the automated_validator source, never a
+            # manual attestation.  Missing source is fail-closed too.
+            src = matching_record.get("execution_source") or matching_record.get("source")
+            if not isinstance(src, str) or src.strip() != "automated_validator":
+                strict_errors.append(
+                    "audit record execution_source must be 'automated_validator' "
+                    "for an automated audit (strict requires it)"
+                )
+        elif execution_type in {"manual", "process"}:
             src = matching_record.get("execution_source") or matching_record.get("source")
             if not isinstance(src, str) or not src.strip():
                 strict_errors.append(
@@ -524,16 +541,29 @@ def _validate_audit_record(
         # manual/process record must not declare any validator_binding at all.
         record_binding = matching_record.get("validator_binding")
         if expected_validator_binding is not None:
-            if isinstance(record_binding, str) and record_binding.strip() != expected_validator_binding:
+            # Automated audit: the registry binding is the execution identity —
+            # missing / null / non-string / wrong string all fail closed.
+            if not isinstance(record_binding, str) or (
+                record_binding.strip() != expected_validator_binding
+            ):
                 strict_errors.append(
-                    f"audit record validator_binding {record_binding!r} does not match "
-                    f"expected binding {expected_validator_binding!r}"
+                    f"audit record validator_binding {record_binding!r} does not "
+                    f"match expected binding {expected_validator_binding!r} "
+                    "(automated audit requires the registry binding)"
                 )
-        elif strict and isinstance(record_binding, str) and record_binding.strip():
-            strict_errors.append(
-                "audit record declares validator_binding for a manual/process "
-                "audit (only automated audits execute a validator)"
-            )
+        elif strict:
+            # Manual/process audit: a declared validator_binding (string or
+            # non-string) claims automated support that must fail closed.
+            if isinstance(record_binding, str) and record_binding.strip():
+                strict_errors.append(
+                    "audit record declares validator_binding for a manual/process "
+                    "audit (only automated audits execute a validator)"
+                )
+            elif record_binding is not None and not isinstance(record_binding, str):
+                strict_errors.append(
+                    "audit record validator_binding must be null for a "
+                    "manual/process audit (only automated audits execute a validator)"
+                )
         # evidence binding (issue #401 P1): record must reference the actual checklist/section that was checked
         # This prevents JSON self-attestation: hash alone is not proof that a specific audit step was executed.
         # P1/P2 review (b1916b3): nested report-/pack- evidence must be validated against the correct artifact text.
