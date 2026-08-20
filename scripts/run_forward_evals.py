@@ -12,6 +12,7 @@ mismatch is a real blocking assertion rather than a runner-only oracle.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import subprocess
@@ -42,10 +43,17 @@ from activation_snapshot import (
     load_activation_snapshot,
 )
 import registry_loader  # noqa: E402
+from audit_evidence import validate_evidence_reference  # noqa: E402 — re-validate manual/process evidence against real artifact (issue #403 re-review)
 
 # Canonical route → validator binding set.  The runner uses it to verify the
 # audit JSON validators[] is a complete, un-forged binding set (issue #393).
 _ROUTE_REGISTRY = registry_loader.load_route_registry()
+
+# Canonical audit registry.  Used to derive the complete expected audit set
+# (route required audits + delivery-scope global audits + secondary hard-fail
+# audits) and to verify each automated audit's validator_binding against the
+# registry (issue #403: consumer fail-closed on missing/forged audit results).
+_AUDIT_REGISTRY = registry_loader.load_audit_registry()
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -56,6 +64,40 @@ DEFAULT_BASELINE_PATH = ROOT / "evals" / "forward-metrics-baseline.json"
 # does not know must fail closed instead of being treated as a Pass
 # (issue #393: unknown JSON shape ⇒ incomplete, never pass).
 EXPECTED_AUDIT_JSON_SCHEMA_VERSION = 1
+
+# The canonical provenance version string every audit JSON must carry.  Mirrors
+# audit_report._registry_version() so the runner rejects any JSON whose
+# validator_version was forged or drifted (issue #403).  Schema version and
+# registry version are independent concepts — the JSON carries both.
+EXPECTED_VALIDATOR_VERSION = (
+    f"audit-registry-v{_AUDIT_REGISTRY.version} "
+    f"(route-manifest-v{_ROUTE_REGISTRY.version})"
+)
+
+# Route-level validators are always automated; any other execution_source is a
+# forged record and must fail closed (issue #403).
+ALLOWED_VALIDATOR_EXECUTION_SOURCES = {"automated_validator"}
+
+# Allowed execution_source vocabulary per audit execution_type.  A value
+# outside the type's allowlist (e.g. a forged "trusted_human") must fail
+# closed (issue #403).  "unknown" is permitted only as a degraded manual/process
+# attestation when strict evidence validation could not recover a source.
+AUDIT_EXECUTION_SOURCE_BY_TYPE = {
+    "automated": {"automated_validator"},
+    "manual": {"manual_checklist_attestation", "legacy_self_attested", "unknown"},
+    "process": {"process_node_evidence"},
+}
+
+# Unified audit result statuses the runner accepts.  Anything else is a forged
+# or malformed status and must fail closed (issue #403).
+ALLOWED_AUDIT_STATUSES = {
+    "pass",
+    "conditional-pass",
+    "fail",
+    "not_run",
+    "skipped",
+    "partial",
+}
 
 
 def _read_json(path: Path) -> Any:
@@ -135,7 +177,8 @@ def _detect_failure_family(case: dict[str, Any], actual: dict[str, Any]) -> str 
         secondary_audits = [
             item
             for item in actual.get("audits", [])
-            if str(item.get("audit_id", "")) in expected_targets
+            if isinstance(item, dict)
+            and str(item.get("audit_id", "")) in expected_targets
         ]
         if expected_targets and {
             str(item.get("audit_id")) for item in secondary_audits
@@ -147,7 +190,8 @@ def _detect_failure_family(case: dict[str, Any], actual: dict[str, Any]) -> str 
             return expected_family
     if expected_family == "declared-not-executed":
         if any(
-            item.get("execution_type") in {"manual", "process"}
+            isinstance(item, dict)
+            and item.get("execution_type") in {"manual", "process"}
             and item.get("status") in {"not_run", "partial", "skipped"}
             for item in actual.get("audits", [])
         ):
@@ -161,7 +205,7 @@ def _audit_statuses(actual: dict[str, Any]) -> dict[str, str]:
     return {
         str(item.get("audit_id")): str(item.get("status"))
         for item in actual.get("audits", [])
-        if item.get("audit_id")
+        if isinstance(item, dict) and item.get("audit_id")
     }
 
 
@@ -174,12 +218,15 @@ def _validators_ok(
     actual: dict[str, Any],
     expected_validators: list[str],
     audited_path: str | None = None,
+    expected_input_sha256: str | None = None,
 ) -> bool:
     """Consume the structured audit JSON provenance fields (issue #393).
 
     A verdict is consumable only when:
     - the JSON schema_version is the one this runner understands; an unknown
       shape fails closed (never treated as Pass);
+    - the top-level validator_version matches the canonical registry version
+      (EXPECTED_VALIDATOR_VERSION); a forged or drifted version fails closed;
     - the validators[] ids are exactly the canonical binding set for the
       resolved route, one-to-one (same length, same order, no duplicates, no
       forged extra id);
@@ -193,6 +240,17 @@ def _validators_ok(
       unverifiable locator blocks instead of being treated as a Pass.
     """
     if actual.get("schema_version") != EXPECTED_AUDIT_JSON_SCHEMA_VERSION:
+        return False
+    if actual.get("validator_version") != EXPECTED_VALIDATOR_VERSION:
+        return False
+    # External trust anchor: the verdict's audited-file hash must equal the hash
+    # the consumer computes from the report on disk — a missing / forged
+    # top-level hash (or one that merely matches another JSON field) fails
+    # closed (issue #403 P1).
+    if (
+        expected_input_sha256 is not None
+        and actual.get("input_sha256") != expected_input_sha256
+    ):
         return False
     validators = actual.get("validators") or []
     if not validators:
@@ -239,11 +297,356 @@ def _validators_ok(
         ):
             return False
         execution_source = item.get("execution_source")
-        if not isinstance(execution_source, str) or not execution_source.strip():
+        if execution_source not in ALLOWED_VALIDATOR_EXECUTION_SOURCES:
             return False
         validator_version = item.get("validator_version")
-        if not isinstance(validator_version, str) or not validator_version.strip():
+        if validator_version != EXPECTED_VALIDATOR_VERSION:
             return False
+        # Bind the validator result to the audited file.  When an external
+        # trust anchor is available (the consumer-computed report hash) it is
+        # mandatory: target must equal audited_path and artifact hash must
+        # equal the consumer-computed hash — a missing / forged hash (even
+        # when top-level and item agree) fails closed (issue #403 P1).  Without
+        # an external anchor (simple unit tests) fall back to requiring the
+        # fields to be present and internally consistent.
+        if audited_path is not None:
+            if not isinstance(item.get("target"), str) or not item.get("target").strip():
+                return False
+            if item.get("target") != audited_path:
+                return False
+            if (
+                not isinstance(item.get("input_sha256"), str)
+                or not item.get("input_sha256").strip()
+            ):
+                return False
+        if expected_input_sha256 is not None:
+            if item.get("input_sha256") != expected_input_sha256:
+                return False
+        elif actual.get("input_sha256") is not None:
+            if item.get("input_sha256") != actual.get("input_sha256"):
+                return False
+    return True
+
+
+def _expected_audit_set(
+    route: str,
+    secondary_routes: list[str],
+) -> list[str] | None:
+    """Derive the canonical complete expected audit set for a route (issue #403).
+
+    Composes, in order:
+    - the route's required audits (``_ROUTE_REGISTRY.required_audits_for``);
+    - the delivery-scope global audits (``_AUDIT_REGISTRY.global_audit_ids``);
+    - each declared secondary route's ``<secondary>-secondary-hard-fail`` audit.
+
+    Returns a sorted, de-duplicated id list.  Returns ``None`` when a required
+    or global audit id has no entry in the audit registry — registry drift must
+    fail closed rather than produce a silently incomplete expected set.  The
+    ``<secondary>-secondary-hard-fail`` ids are contract-derived and are
+    intentionally not required to exist in the audit registry.
+    """
+    required_and_global = list(_ROUTE_REGISTRY.required_audits_for(route)) + list(
+        _AUDIT_REGISTRY.global_audit_ids()
+    )
+    for audit_id in required_and_global:
+        if _AUDIT_REGISTRY.get_audit(audit_id) is None:
+            return None
+    secondary_ids = [f"{sr}-secondary-hard-fail" for sr in secondary_routes]
+    all_ids = required_and_global + secondary_ids
+    seen: set[str] = set()
+    ordered: list[str] = []
+    for audit_id in all_ids:
+        if audit_id not in seen:
+            seen.add(audit_id)
+            ordered.append(audit_id)
+    return sorted(ordered)
+
+
+def _sha256(path: object) -> str | None:
+    """SHA-256 of a file's bytes, or ``None`` on read failure.
+
+    The consumer computes this itself so audit provenance is anchored to the
+    real on-disk artifact rather than to a hash that travelled inside the audit
+    JSON (issue #403 P1: a forged/missing JSON hash must not be trusted).
+    """
+    try:
+        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
+    except (OSError, ValueError, UnicodeError):
+        return None
+
+
+def _audits_ok(
+    actual: dict[str, Any],
+    expected_audit_ids: list[str],
+    audited_path: str | None = None,
+    expected_report_sha256: str | None = None,
+    research_pack_path: str | None = None,
+    expected_pack_sha256: str | None = None,
+    report_text: str | None = None,
+    pack_text: str | None = None,
+    expected_route: str | None = None,
+) -> bool:
+    """Verify the audit JSON ``audits[]`` is complete and internally consistent.
+
+    Fails closed (returns ``False``) when any of:
+    - ``audits`` is not a list of objects;
+    - an audit id appears more than once (forged duplicate);
+    - the set of actual audit ids differs from ``expected_audit_ids`` (missing,
+      unknown/forged extra, or truncated result);
+    - an audit's declared ``execution_type`` does not match the audit registry
+      (an automated audit cannot masquerade as manual to dodge the
+      validator_binding check) — contract-derived secondary hard-fail audits
+      are the only non-registry entries and must be ``manual`` (issue #403 P1);
+    - an audit carries an out-of-vocabulary ``execution_source`` for its
+      (registry-confirmed) ``execution_type``;
+    - an automated audit's ``validator_binding`` does not match the registry;
+    - status is inconsistent with errors/warnings/reason (e.g. ``pass`` with
+      errors, ``fail`` without errors);
+    - a ``pass`` audit lacks verifiable ``evidence`` or a provenance record that
+      is actually ``verified`` and anchored to the real artifact: automated
+      records must carry ``target`` / ``input_sha256`` binding to the expected
+      artifact (``research-pack`` → the research pack, every other automated
+      audit → the report) using the consumer-computed file hash, and manual/
+      process records must carry a real ``kind`` / ``locator`` provenance (not a
+      bare ``{"verified": true}``) — truthy-only provenance is rejected
+      (issue #403 P1).
+
+    Only positive cases call this; negative cases legitimately carry
+    non-passing audits and are validated by their structural failure family
+    instead (issue #403 scoping).
+    """
+    audits = actual.get("audits")
+    if not isinstance(audits, list):
+        return False
+    actual_ids = [
+        str(item.get("audit_id")) for item in audits if isinstance(item, dict)
+    ]
+    if len(actual_ids) != len(set(actual_ids)):
+        return False
+    if set(actual_ids) != set(expected_audit_ids):
+        return False
+    # External trust anchor: the verdict's audited-file hash must equal the hash
+    # the consumer computes from the report on disk — a missing / forged
+    # top-level hash (or one that merely matches another JSON field) fails
+    # closed (issue #403 P1).
+    if (
+        expected_report_sha256 is not None
+        and actual.get("input_sha256") != expected_report_sha256
+    ):
+        return False
+    for item in audits:
+        if not isinstance(item, dict):
+            return False
+        audit_id = str(item.get("audit_id"))
+        status = str(item.get("status"))
+        if status not in ALLOWED_AUDIT_STATUSES:
+            return False
+        execution_type = item.get("execution_type")
+        execution_source = item.get("execution_source")
+        if not isinstance(execution_source, str) or not execution_source.strip():
+            return False
+
+        # Registry-anchored identity: the declared execution_type must match the
+        # registry. This blocks an automated audit (e.g. source-traceability)
+        # from flipping to "manual" + a manual attestation source to skip the
+        # automated validator_binding consistency check below.
+        registry_audit = _AUDIT_REGISTRY.get_audit(audit_id)
+        if registry_audit is not None:
+            if execution_type != registry_audit.execution_type:
+                return False
+        elif not (
+            audit_id.endswith("-secondary-hard-fail") and execution_type == "manual"
+        ):
+            return False
+
+        allowed_sources = AUDIT_EXECUTION_SOURCE_BY_TYPE.get(execution_type, set())
+        if execution_source not in allowed_sources:
+            return False
+
+        if execution_type == "automated":
+            if item.get("validator_binding") != registry_audit.validator_binding:
+                return False
+
+        errors = item.get("errors") or []
+        warnings = item.get("warnings") or []
+        evidence = item.get("evidence") or []
+        if not isinstance(errors, list) or not isinstance(warnings, list):
+            return False
+        if not isinstance(evidence, list):
+            return False
+        if status == "pass":
+            if errors or warnings:
+                return False
+            if not evidence or not all(
+                isinstance(e, str) and e.strip() for e in evidence
+            ):
+                return False
+            # Strict positive path: a degraded/legacy source must not aggregate
+            # to Pass (issue #403 re-review). In strict mode unknown/legacy
+            # are downgraded to partial, not pass.
+            if execution_type == "manual" and execution_source != "manual_checklist_attestation":
+                return False
+            if execution_type == "process" and execution_source != "process_node_evidence":
+                return False
+            # Each audit type binds to a specific artifact; resolve the expected
+            # target/hash and let the consumer-computed values be the anchor.
+            if audit_id == "research-pack":
+                expected_target = (
+                    str(research_pack_path) if research_pack_path else None
+                )
+                expected_hash = expected_pack_sha256
+            else:
+                expected_target = audited_path
+                expected_hash = expected_report_sha256
+            if not _audit_provenance_ok(
+                item,
+                audit_id,
+                execution_type,
+                execution_source,
+                expected_target,
+                expected_hash,
+                report_text=report_text,
+                pack_text=pack_text,
+                expected_route=expected_route,
+            ):
+                return False
+        elif status == "conditional-pass":
+            if not warnings or errors:
+                return False
+            if not evidence:
+                return False
+        elif status == "fail":
+            if not errors:
+                return False
+        elif status == "partial":
+            if not (item.get("reason") or errors):
+                return False
+        # not_run / skipped: recorded but not executed — no extra requirement.
+    return True
+
+
+def _audit_provenance_ok(
+    item: dict[str, Any],
+    audit_id: str,
+    execution_type: str,
+    execution_source: str,
+    expected_target: str | None,
+    expected_hash: str | None,
+    report_text: str | None = None,
+    pack_text: str | None = None,
+    expected_route: str | None = None,
+) -> bool:
+    """Verify a ``pass`` audit's ``evidence_provenance`` is genuine, not truthy.
+
+    The producer already emits structured provenance.  The consumer must consume
+    it against an *externally computed* artifact anchor (``expected_target`` /
+    ``expected_hash``), not merely check the list is non-empty — otherwise
+    ``["hello"]`` / ``[{"verified": false}]`` / a ``target`` swap would pass
+    (issue #403 P1).
+
+    For automated audits the verified record must bind ``target`` and
+    ``input_sha256`` to the expected artifact (``research-pack`` → the research
+    pack, everything else → the report).  For manual/process audits the producer
+    emits a ``report_section`` style record without a file hash, so the gate is a
+    real ``kind`` / ``locator`` provenance rather than a bare ``{"verified":
+    true}``.
+    """
+    provenance = item.get("evidence_provenance")
+    if not isinstance(provenance, list) or not provenance:
+        return False
+    if not any(isinstance(p, dict) for p in provenance):
+        return False
+    verified_records = [
+        p for p in provenance if isinstance(p, dict) and p.get("verified") is True
+    ]
+    if not verified_records:
+        return False
+    for record in verified_records:
+        if record.get("execution_source") != execution_source:
+            return False
+        if execution_type == "automated":
+            if record.get("audit_id") != audit_id:
+                return False
+            if record.get("validator_binding") != item.get("validator_binding"):
+                return False
+            if record.get("validator_version") != EXPECTED_VALIDATOR_VERSION:
+                return False
+            # Mandatory artifact binding for automated provenance: the record
+            # must name the expected target and carry the consumer-computed hash.
+            # Missing / swapped / forged target or hash fails closed.  When the
+            # caller does not supply an external anchor (e.g. simple unit tests
+            # that call _audits_ok without hashes), fall back to requiring the
+            # fields to be present as non-empty strings.
+            if expected_target is not None:
+                if record.get("target") != expected_target:
+                    return False
+            elif (
+                not isinstance(record.get("target"), str)
+                or not record.get("target").strip()
+            ):
+                return False
+            prov_input = record.get("input_sha256")
+            if expected_hash is not None:
+                if not isinstance(prov_input, str) or prov_input != expected_hash:
+                    return False
+            elif not isinstance(prov_input, str) or not prov_input:
+                return False
+        else:
+            # manual/process: require a real provenance record, not a bare
+            # {"verified": true} that an attacker can fabricate alongside the JSON.
+            kind = record.get("kind")
+            locator = record.get("locator")
+            if not isinstance(kind, str) or not kind.strip():
+                return False
+            if not isinstance(locator, str) or not locator.strip():
+                return False
+            allowed_kinds = {
+                "report_section": "report-section",
+                "report_table": "report-table",
+                "pack_section": "pack-section",
+                "pack_table": "pack-table",
+                "checklist_item": "checklist-item",
+                "audit_record": "audit-record",
+            }
+            prefix = allowed_kinds.get(kind)
+            if prefix is None:
+                return False
+            canonical = f"{prefix}:{locator.strip()}"
+            evidence = item.get("evidence", [])
+            # evidence must contain the canonical typed reference
+            if canonical not in evidence:
+                return False
+            # Re-validate against the real artifact when available — a
+            # self-consistent JSON pair (evidence + provenance both forged to
+            # the same fake locator) must still fail if the locator does not
+            # exist in the report/pack. For audit_record, also bind the
+            # expected audit/artifact/route context so a record belonging to
+            # another audit or another report's hash cannot be replayed.
+            if report_text is not None or pack_text is not None:
+                if kind in ("report_section", "report_table"):
+                    artifact_text = report_text
+                    artifact_label = "report"
+                elif kind in ("pack_section", "pack_table"):
+                    artifact_text = pack_text
+                    artifact_label = "pack"
+                else:
+                    artifact_text = report_text
+                    artifact_label = "report"
+                result = validate_evidence_reference(
+                    canonical,
+                    artifact_text=artifact_text,
+                    base_dir=ROOT,
+                    strict=True,
+                    artifact_label=artifact_label,
+                    execution_type=execution_type,
+                    expected_audit_id=audit_id,
+                    expected_artifact_sha256=expected_hash,
+                    expected_route=expected_route,
+                    report_text=report_text,
+                    pack_text=pack_text,
+                )
+                if not result.is_valid or not result.provenance or not result.provenance.get("verified"):
+                    return False
     return True
 
 
@@ -350,6 +753,22 @@ def _evaluate_case(
     report = ROOT / fixtures["report"]
     research_pack = ROOT / fixtures["research_pack"]
     pack = _pack_observation(research_pack)
+    # External trust anchor: compute the artifact hashes ourselves rather than
+    # trusting any hash embedded in the audit JSON (issue #403 P1).  A None here
+    # (unreadable file) fails the downstream bindings closed.
+    expected_report_sha256 = _sha256(report)
+    expected_pack_sha256 = _sha256(research_pack)
+    # Visible texts for evidence re-validation (manual/process provenance must
+    # be anchored to a real heading/table/checklist item, not just a JSON-
+    # self-consistent evidence+provenance pair).
+    try:
+        report_text_for_provenance = report.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        report_text_for_provenance = None
+    try:
+        pack_text_for_provenance = research_pack.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        pack_text_for_provenance = None
 
     activation_error: str | None = None
     activation_snapshot_error: str | None = None
@@ -445,11 +864,17 @@ def _evaluate_case(
         "secondary_routes": sorted(contract.get("secondary_routes", []) or []),
         "disciplines": sorted(contract.get("disciplines", []) or []),
         "audit_ids": sorted(
-            {str(item.get("audit_id")) for item in (audit_data or {}).get("audits", [])}
+            {
+                str(item["audit_id"])
+                for item in (audit_data or {}).get("audits", [])
+                if isinstance(item, dict) and item.get("audit_id")
+            }
         ),
         "audits": (audit_data or {}).get("audits", []),
         "validators": (audit_data or {}).get("validators", []),
         "schema_version": (audit_data or {}).get("schema_version"),
+        "validator_version": (audit_data or {}).get("validator_version"),
+        "input_sha256": (audit_data or {}).get("input_sha256"),
         "overall": (audit_data or {}).get("overall"),
         "blocking": (audit_data or {}).get("blocking", []),
         "statuses": actual_statuses,
@@ -466,8 +891,32 @@ def _evaluate_case(
     )
 
     expected_pack_fields = set(expected["research_pack_fields"])
-    expected_audits = set(expected["required_audits"])
     actual_audits = set(actual["audit_ids"])
+    # Issue #403: derive the canonical expected audit set from the registries
+    # (route required audits + delivery-scope global audits + secondary
+    # hard-fail audits) instead of trusting the case's declared required_audits
+    # subset, and require the executed audit results to match it exactly — no
+    # missing, duplicate, unknown, or forged-extra result — and to be internally
+    # consistent (status/errors/warnings/evidence/provenance/binding).
+    expected_audit_ids = _expected_audit_set(
+        expected["primary_route"], expected["secondary_routes"]
+    )
+    if expected_audit_ids is None:
+        audit_set_ok = False  # registry drift → fail closed
+    else:
+        audit_set_exact = sorted(actual["audit_ids"]) == expected_audit_ids
+        audits_consistent = _audits_ok(
+            actual,
+            expected_audit_ids,
+            audited_path=str(report),
+            expected_report_sha256=expected_report_sha256,
+            research_pack_path=str(research_pack),
+            expected_pack_sha256=expected_pack_sha256,
+            report_text=report_text_for_provenance,
+            pack_text=pack_text_for_provenance,
+            expected_route=expected["primary_route"],
+        )
+        audit_set_ok = audit_set_exact and audits_consistent
     activation_route_match = actual["activation_route"] == expected["primary_route"]
     report_route_match = actual["report_route"] == expected["primary_route"]
     activation_report_consistent = actual["activation_route"] == actual["report_route"]
@@ -478,7 +927,7 @@ def _evaluate_case(
     report_secondary_match = actual["secondary_routes"] == sorted(expected["secondary_routes"])
     secondary_match = activation_secondary_match and report_secondary_match
     discipline_match = actual["disciplines"] == sorted(expected["disciplines"])
-    audit_ids_match = expected_audits.issubset(actual_audits)
+    audit_ids_match = audit_set_ok
     pack_fields_match = expected_pack_fields.issubset(set(actual["pack_fields"]))
     status_match = actual["statuses"] == expected["statuses"]
     parallelization_match = (
@@ -510,7 +959,10 @@ def _evaluate_case(
         except registry_loader.UnknownRouteError:
             expected_validators = []
     validators_ok = _validators_ok(
-        actual, expected_validators, audited_path=str(report)
+        actual,
+        expected_validators,
+        audited_path=str(report),
+        expected_input_sha256=expected_report_sha256,
     )
     if expected["verdict"] == "pass":
         case_passed = all(

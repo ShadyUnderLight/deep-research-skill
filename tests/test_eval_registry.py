@@ -21,6 +21,7 @@ from eval_registry import (  # noqa: E402
     load_registry,
     validate_registry,
 )
+import run_forward_evals  # noqa: E402
 from run_forward_evals import _evaluate_case, run  # noqa: E402
 from route_activation import RouteActivationError, activate_prompt  # noqa: E402
 
@@ -310,7 +311,9 @@ def _validator_entry(status="pass", **overrides) -> dict:
         "warnings": [],
         "evidence": ["report: no violations found by report-quality"],
         "execution_source": "automated_validator",
-        "validator_version": "audit-registry-v2",
+        "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
+        "target": "report",
+        "input_sha256": "abc",
     }
     entry.update(overrides)
     return entry
@@ -321,7 +324,42 @@ def test_validators_ok_requires_complete_binding_set() -> None:
     results, not just on an empty array (issue #393 forged-path negative)."""
     import run_forward_evals
 
-    ok = {"schema_version": 1, "validators": [_validator_entry()]}
+    ok = {
+        "schema_version": 1,
+        "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
+        "input_sha256": "abc",
+        "validators": [_validator_entry()],
+    }
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validator_version": "forged-top",
+         "validators": [_validator_entry()]},
+        ["report-quality"], audited_path="report",
+    ) is False, "forged top-level validator_version must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
+         "input_sha256": "abc", "validators": [_validator_entry(target="other-report.md")]},
+        ["report-quality"], audited_path="report",
+    ) is False, "validator targeting a different file must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
+         "input_sha256": "abc", "validators": [_validator_entry(input_sha256="forged-hash")]},
+        ["report-quality"], audited_path="report",
+    ) is False, "validator with a mismatched artifact hash must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
+         "input_sha256": "abc", "validators": [_validator_entry(input_sha256=None)]},
+        ["report-quality"], audited_path="report",
+    ) is False, "validator with a missing artifact hash must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
+         "validators": [_validator_entry()]},
+        ["report-quality"], audited_path="report", expected_input_sha256="abc",
+    ) is False, "missing top-level audited-file hash must fail closed"
+    assert run_forward_evals._validators_ok(
+        {"schema_version": 1, "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
+         "input_sha256": "forged", "validators": [_validator_entry(input_sha256="forged")]},
+        ["report-quality"], audited_path="report", expected_input_sha256="abc",
+    ) is False, "top-level + validator hashes simultaneously forged to the same value must still fail against the external anchor"
     assert run_forward_evals._validators_ok(
         ok, ["report-quality"], audited_path="report"
     ) is True
