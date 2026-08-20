@@ -393,6 +393,80 @@ def test_audits_ok_rejects_legacy_source_for_pass() -> None:
         assert _audits_ok(tampered, expected) is False, forged_source
 
 
+def test_audits_ok_rejects_nonexistent_report_section() -> None:
+    """A report-section evidence+provenance pair that is internally consistent
+    but whose locator does not exist in the report must fail closed (issue
+    #403 re-review: JSON self-consistency → real artifact verification)."""
+    import hashlib
+
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    report = ROOT / case["fixtures"]["report"]
+    rp = ROOT / case["fixtures"]["research_pack"]
+    report_text = report.read_text(encoding="utf-8", errors="replace")
+    pack_text = rp.read_text(encoding="utf-8", errors="replace")
+    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
+    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "option-selection-final-audit":
+            a["evidence"] = ["report-section:Does Not Exist"]
+            a["evidence_provenance"] = [
+                {
+                    "verified": True,
+                    "execution_source": "manual_checklist_attestation",
+                    "kind": "report_section",
+                    "locator": "Does Not Exist",
+                }
+            ]
+    assert _audits_ok(
+        tampered,
+        expected,
+        audited_path=str(report),
+        expected_report_sha256=expected_report_sha256,
+        research_pack_path=str(rp),
+        expected_pack_sha256=expected_pack_sha256,
+        report_text=report_text,
+        pack_text=pack_text,
+    ) is False
+
+
+def test_audits_ok_rejects_nonexistent_pack_section() -> None:
+    """Same as above for pack-scoped evidence."""
+    import hashlib
+
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    report = ROOT / case["fixtures"]["report"]
+    rp = ROOT / case["fixtures"]["research_pack"]
+    report_text = report.read_text(encoding="utf-8", errors="replace")
+    pack_text = rp.read_text(encoding="utf-8", errors="replace")
+    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
+    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "option-selection-final-audit":
+            a["evidence"] = ["pack-section:Does Not Exist"]
+            a["evidence_provenance"] = [
+                {
+                    "verified": True,
+                    "execution_source": "manual_checklist_attestation",
+                    "kind": "pack_section",
+                    "locator": "Does Not Exist",
+                }
+            ]
+    assert _audits_ok(
+        tampered,
+        expected,
+        audited_path=str(report),
+        expected_report_sha256=expected_report_sha256,
+        research_pack_path=str(rp),
+        expected_pack_sha256=expected_pack_sha256,
+        report_text=report_text,
+        pack_text=pack_text,
+    ) is False
+
+
 def test_audits_ok_rejects_malformed_audits_without_crash() -> None:
     """Non-object audit entries (null / string) must fail closed, not raise
     (issue #403 P2)."""

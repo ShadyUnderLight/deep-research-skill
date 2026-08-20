@@ -43,6 +43,7 @@ from activation_snapshot import (
     load_activation_snapshot,
 )
 import registry_loader  # noqa: E402
+from audit_evidence import validate_evidence_reference  # noqa: E402 — re-validate manual/process evidence against real artifact (issue #403 re-review)
 
 # Canonical route → validator binding set.  The runner uses it to verify the
 # audit JSON validators[] is a complete, un-forged binding set (issue #393).
@@ -381,6 +382,8 @@ def _audits_ok(
     expected_report_sha256: str | None = None,
     research_pack_path: str | None = None,
     expected_pack_sha256: str | None = None,
+    report_text: str | None = None,
+    pack_text: str | None = None,
 ) -> bool:
     """Verify the audit JSON ``audits[]`` is complete and internally consistent.
 
@@ -501,6 +504,8 @@ def _audits_ok(
                 execution_source,
                 expected_target,
                 expected_hash,
+                report_text=report_text,
+                pack_text=pack_text,
             ):
                 return False
         elif status == "conditional-pass":
@@ -525,6 +530,8 @@ def _audit_provenance_ok(
     execution_source: str,
     expected_target: str | None,
     expected_hash: str | None,
+    report_text: str | None = None,
+    pack_text: str | None = None,
 ) -> bool:
     """Verify a ``pass`` audit's ``evidence_provenance`` is genuine, not truthy.
 
@@ -606,6 +613,31 @@ def _audit_provenance_ok(
             # evidence must contain the canonical typed reference
             if canonical not in evidence:
                 return False
+            # Re-validate against the real artifact when available — a
+            # self-consistent JSON pair (evidence + provenance both forged to
+            # the same fake locator) must still fail if the locator does not
+            # exist in the report/pack.
+            if report_text is not None or pack_text is not None:
+                if kind in ("report_section", "report_table"):
+                    artifact_text = report_text
+                    artifact_label = "report"
+                elif kind in ("pack_section", "pack_table"):
+                    artifact_text = pack_text
+                    artifact_label = "pack"
+                else:
+                    artifact_text = report_text
+                    artifact_label = "report"
+                result = validate_evidence_reference(
+                    canonical,
+                    artifact_text=artifact_text,
+                    base_dir=ROOT,
+                    strict=True,
+                    artifact_label=artifact_label,
+                    report_text=report_text,
+                    pack_text=pack_text,
+                )
+                if not result.is_valid or not result.provenance or not result.provenance.get("verified"):
+                    return False
     return True
 
 
@@ -717,6 +749,17 @@ def _evaluate_case(
     # (unreadable file) fails the downstream bindings closed.
     expected_report_sha256 = _sha256(report)
     expected_pack_sha256 = _sha256(research_pack)
+    # Visible texts for evidence re-validation (manual/process provenance must
+    # be anchored to a real heading/table/checklist item, not just a JSON-
+    # self-consistent evidence+provenance pair).
+    try:
+        report_text_for_provenance = report.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        report_text_for_provenance = None
+    try:
+        pack_text_for_provenance = research_pack.read_text(encoding="utf-8", errors="replace")
+    except OSError:
+        pack_text_for_provenance = None
 
     activation_error: str | None = None
     activation_snapshot_error: str | None = None
@@ -860,6 +903,8 @@ def _evaluate_case(
             expected_report_sha256=expected_report_sha256,
             research_pack_path=str(research_pack),
             expected_pack_sha256=expected_pack_sha256,
+            report_text=report_text_for_provenance,
+            pack_text=pack_text_for_provenance,
         )
         audit_set_ok = audit_set_exact and audits_consistent
     activation_route_match = actual["activation_route"] == expected["primary_route"]
