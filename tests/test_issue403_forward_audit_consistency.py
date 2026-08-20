@@ -340,6 +340,59 @@ def test_audits_ok_rejects_manual_stripped_provenance() -> None:
     assert _audits_ok(tampered, expected) is False
 
 
+def test_audits_ok_rejects_fake_kind() -> None:
+    """A manual provenance with a forged kind must fail closed (issue #403
+    re-review)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "option-selection-final-audit":
+            a["evidence_provenance"] = [
+                {
+                    "verified": True,
+                    "execution_source": "manual_checklist_attestation",
+                    "kind": "forged_kind",
+                    "locator": "whatever",
+                }
+            ]
+    assert _audits_ok(tampered, expected) is False
+
+
+def test_audits_ok_rejects_locator_mismatch() -> None:
+    """A valid-looking kind but locator that does not match evidence must fail
+    closed (issue #403 re-review)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "option-selection-final-audit":
+            a["evidence_provenance"] = [
+                {
+                    "verified": True,
+                    "execution_source": "manual_checklist_attestation",
+                    "kind": "report_section",
+                    "locator": "A Completely Different Section",
+                }
+            ]
+    assert _audits_ok(tampered, expected) is False
+
+
+def test_audits_ok_rejects_legacy_source_for_pass() -> None:
+    """A manual pass with a degraded/legacy execution_source must fail closed
+    in strict mode (issue #403 re-review)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    for forged_source in ("unknown", "legacy_self_attested"):
+        tampered = copy.deepcopy(data)
+        for a in tampered["audits"]:
+            if a["audit_id"] == "option-selection-final-audit":
+                a["execution_source"] = forged_source
+                # also adjust provenance to stay consistent with the forged source
+                a["evidence_provenance"][0]["execution_source"] = forged_source
+        assert _audits_ok(tampered, expected) is False, forged_source
+
+
 def test_audits_ok_rejects_malformed_audits_without_crash() -> None:
     """Non-object audit entries (null / string) must fail closed, not raise
     (issue #403 P2)."""

@@ -477,6 +477,13 @@ def _audits_ok(
                 isinstance(e, str) and e.strip() for e in evidence
             ):
                 return False
+            # Strict positive path: a degraded/legacy source must not aggregate
+            # to Pass (issue #403 re-review). In strict mode unknown/legacy
+            # are downgraded to partial, not pass.
+            if execution_type == "manual" and execution_source != "manual_checklist_attestation":
+                return False
+            if execution_type == "process" and execution_source != "process_node_evidence":
+                return False
             # Each audit type binds to a specific artifact; resolve the expected
             # target/hash and let the consumer-computed values be the anchor.
             if audit_id == "research-pack":
@@ -577,12 +584,27 @@ def _audit_provenance_ok(
         else:
             # manual/process: require a real provenance record, not a bare
             # {"verified": true} that an attacker can fabricate alongside the JSON.
-            if not isinstance(record.get("kind"), str) or not record.get("kind").strip():
+            kind = record.get("kind")
+            locator = record.get("locator")
+            if not isinstance(kind, str) or not kind.strip():
                 return False
-            if (
-                not isinstance(record.get("locator"), str)
-                or not record.get("locator").strip()
-            ):
+            if not isinstance(locator, str) or not locator.strip():
+                return False
+            allowed_kinds = {
+                "report_section": "report-section",
+                "report_table": "report-table",
+                "pack_section": "pack-section",
+                "pack_table": "pack-table",
+                "checklist_item": "checklist-item",
+                "audit_record": "audit-record",
+            }
+            prefix = allowed_kinds.get(kind)
+            if prefix is None:
+                return False
+            canonical = f"{prefix}:{locator.strip()}"
+            evidence = item.get("evidence", [])
+            # evidence must contain the canonical typed reference
+            if canonical not in evidence:
                 return False
     return True
 
