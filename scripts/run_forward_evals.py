@@ -384,6 +384,7 @@ def _audits_ok(
     expected_pack_sha256: str | None = None,
     report_text: str | None = None,
     pack_text: str | None = None,
+    expected_route: str | None = None,
 ) -> bool:
     """Verify the audit JSON ``audits[]`` is complete and internally consistent.
 
@@ -506,6 +507,7 @@ def _audits_ok(
                 expected_hash,
                 report_text=report_text,
                 pack_text=pack_text,
+                expected_route=expected_route,
             ):
                 return False
         elif status == "conditional-pass":
@@ -532,6 +534,7 @@ def _audit_provenance_ok(
     expected_hash: str | None,
     report_text: str | None = None,
     pack_text: str | None = None,
+    expected_route: str | None = None,
 ) -> bool:
     """Verify a ``pass`` audit's ``evidence_provenance`` is genuine, not truthy.
 
@@ -616,7 +619,9 @@ def _audit_provenance_ok(
             # Re-validate against the real artifact when available — a
             # self-consistent JSON pair (evidence + provenance both forged to
             # the same fake locator) must still fail if the locator does not
-            # exist in the report/pack.
+            # exist in the report/pack. For audit_record, also bind the
+            # expected audit/artifact/route context so a record belonging to
+            # another audit or another report's hash cannot be replayed.
             if report_text is not None or pack_text is not None:
                 if kind in ("report_section", "report_table"):
                     artifact_text = report_text
@@ -633,6 +638,10 @@ def _audit_provenance_ok(
                     base_dir=ROOT,
                     strict=True,
                     artifact_label=artifact_label,
+                    execution_type=execution_type,
+                    expected_audit_id=audit_id,
+                    expected_artifact_sha256=expected_hash,
+                    expected_route=expected_route,
                     report_text=report_text,
                     pack_text=pack_text,
                 )
@@ -905,6 +914,7 @@ def _evaluate_case(
             expected_pack_sha256=expected_pack_sha256,
             report_text=report_text_for_provenance,
             pack_text=pack_text_for_provenance,
+            expected_route=expected["primary_route"],
         )
         audit_set_ok = audit_set_exact and audits_consistent
     activation_route_match = actual["activation_route"] == expected["primary_route"]

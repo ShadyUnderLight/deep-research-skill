@@ -393,6 +393,141 @@ def test_audits_ok_rejects_legacy_source_for_pass() -> None:
         assert _audits_ok(tampered, expected) is False, forged_source
 
 
+def test_audits_ok_rejects_audit_record_wrong_audit_id(tmp_path) -> None:
+    """An audit-record whose record audit_id belongs to another audit must
+    fail closed even when the record file and evidence are otherwise valid
+    (issue #403 re-review)."""
+    import hashlib
+    import json
+    import shutil
+
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    report = ROOT / case["fixtures"]["report"]
+    rp = ROOT / case["fixtures"]["research_pack"]
+    report_text = report.read_text(encoding="utf-8", errors="replace")
+    pack_text = rp.read_text(encoding="utf-8", errors="replace")
+    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
+    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
+    rec_dir = ROOT / "tmp" / f"test-rec-wrong-audit-{tmp_path.name}"
+    rec_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        evidence_str = "report-section:Decision scope"
+        rec_path = rec_dir / "record.json"
+        rel = rec_path.relative_to(ROOT).as_posix()
+        locator = f"{rel}#rec-001@2026-08-14T00:00:00Z"
+        canonical = f"audit-record:{locator}"
+        payload = {
+            "records": [
+                {
+                    "record_id": "rec-001",
+                    "recorded_at": "2026-08-14T00:00:00Z",
+                    "audit_id": "different-audit",
+                    "status": "passed",
+                    "artifact_sha256": expected_report_sha256,
+                    "artifact_id": "test-artifact",
+                    "executed_at": "2026-08-14T00:00:00Z",
+                    "execution_source": "manual_checklist_attestation",
+                    "evidence": evidence_str,
+                    "route": "provider-selection",
+                }
+            ]
+        }
+        rec_path.write_text(json.dumps(payload), encoding="utf-8")
+        tampered = copy.deepcopy(data)
+        for a in tampered["audits"]:
+            if a["audit_id"] == "option-selection-final-audit":
+                a["evidence"] = [canonical]
+                a["evidence_provenance"] = [
+                    {
+                        "verified": True,
+                        "execution_source": "manual_checklist_attestation",
+                        "kind": "audit_record",
+                        "locator": locator,
+                    }
+                ]
+        assert _audits_ok(
+            tampered,
+            expected,
+            audited_path=str(report),
+            expected_report_sha256=expected_report_sha256,
+            research_pack_path=str(rp),
+            expected_pack_sha256=expected_pack_sha256,
+            report_text=report_text,
+            pack_text=pack_text,
+            expected_route="provider-selection",
+        ) is False
+    finally:
+        shutil.rmtree(rec_dir, ignore_errors=True)
+
+
+def test_audits_ok_rejects_audit_record_wrong_artifact(tmp_path) -> None:
+    """An audit-record whose artifact_sha256 belongs to another report must
+    fail closed (issue #403 re-review)."""
+    import hashlib
+    import json
+    import shutil
+
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    report = ROOT / case["fixtures"]["report"]
+    rp = ROOT / case["fixtures"]["research_pack"]
+    report_text = report.read_text(encoding="utf-8", errors="replace")
+    pack_text = rp.read_text(encoding="utf-8", errors="replace")
+    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
+    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
+    rec_dir = ROOT / "tmp" / f"test-rec-wrong-artifact-{tmp_path.name}"
+    rec_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        evidence_str = "report-section:Decision scope"
+        rec_path = rec_dir / "record.json"
+        rel = rec_path.relative_to(ROOT).as_posix()
+        locator = f"{rel}#rec-001@2026-08-14T00:00:00Z"
+        canonical = f"audit-record:{locator}"
+        payload = {
+            "records": [
+                {
+                    "record_id": "rec-001",
+                    "recorded_at": "2026-08-14T00:00:00Z",
+                    "audit_id": "option-selection-final-audit",
+                    "status": "passed",
+                    "artifact_sha256": "0" * 64,
+                    "artifact_id": "test-artifact",
+                    "executed_at": "2026-08-14T00:00:00Z",
+                    "execution_source": "manual_checklist_attestation",
+                    "evidence": evidence_str,
+                    "route": "provider-selection",
+                }
+            ]
+        }
+        rec_path.write_text(json.dumps(payload), encoding="utf-8")
+        tampered = copy.deepcopy(data)
+        for a in tampered["audits"]:
+            if a["audit_id"] == "option-selection-final-audit":
+                a["evidence"] = [canonical]
+                a["evidence_provenance"] = [
+                    {
+                        "verified": True,
+                        "execution_source": "manual_checklist_attestation",
+                        "kind": "audit_record",
+                        "locator": locator,
+                    }
+                ]
+        assert _audits_ok(
+            tampered,
+            expected,
+            audited_path=str(report),
+            expected_report_sha256=expected_report_sha256,
+            research_pack_path=str(rp),
+            expected_pack_sha256=expected_pack_sha256,
+            report_text=report_text,
+            pack_text=pack_text,
+            expected_route="provider-selection",
+        ) is False
+    finally:
+        shutil.rmtree(rec_dir, ignore_errors=True)
+
+
 def test_audits_ok_rejects_nonexistent_report_section() -> None:
     """A report-section evidence+provenance pair that is internally consistent
     but whose locator does not exist in the report must fail closed (issue
