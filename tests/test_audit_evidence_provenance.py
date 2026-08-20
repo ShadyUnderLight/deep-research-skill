@@ -711,3 +711,71 @@ def test_json_validator_record_has_target_and_hash() -> None:
         assert entry["validator_version"]
         assert entry["target"]
         assert entry["input_sha256"] == data["input_sha256"]
+
+
+# ─── Issue #402 review round 2: nested object optional-field types must match
+# the JSON Schema (all are {"type": "string"} when present) ──────────────────
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [
+        ("validator_binding", 123),
+        ("record_path", 123),
+        ("record_id", []),
+        ("recorded_at", {}),
+    ],
+)
+def test_evidence_object_optional_fields_must_be_strings(
+    field: str, value: object
+) -> None:
+    """The schema declares record_path/record_id/recorded_at/validator_binding
+    as strings when present.  A non-string value on ANY kind must fail closed
+    at the dict layer, not only in the automated_validator branch."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+
+    result = validate_evidence_reference(
+        {"kind": "report_section", "locator": "Findings", field: value},
+        strict=True,
+        artifact_text="## Findings\n\ncontent",
+    )
+    assert not result.is_valid
+    assert any("must be a string" in error for error in result.errors)
+
+
+def test_manual_audit_record_empty_binding_is_rejected(tmp_path: Path) -> None:
+    """A manual/process audit-record with validator_binding='' must fail
+    closed: null is the only allowed value (it claims no validator)."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+
+    record = {
+        "record_id": "manual-001",
+        "recorded_at": "2026-08-18T10:00:00Z",
+        "audit_id": "market-outlook-audit",
+        "status": "passed",
+        "artifact_sha256": "a" * 64,
+        "executed_at": "2026-08-18T10:00:00Z",
+        "execution_source": "manual_checklist_attestation",
+        "evidence": "report-section:Monitoring signals",
+        "route": "market-outlook",
+        "validator_binding": "",
+    }
+    record_path = tmp_path / "audit-record.json"
+    record_path.write_text(
+        json.dumps({"records": [record]}), encoding="utf-8"
+    )
+
+    result = validate_evidence_reference(
+        "audit-record:audit-record.json#manual-001@2026-08-18T10:00:00Z",
+        base_dir=tmp_path,
+        strict=True,
+        expected_audit_id="market-outlook-audit",
+        expected_artifact_sha256="a" * 64,
+        expected_route="market-outlook",
+        execution_type="manual",
+        artifact_text="## Monitoring signals\n\ncontent",
+    )
+    assert not result.is_valid
+    assert any("validator_binding" in error for error in result.errors)

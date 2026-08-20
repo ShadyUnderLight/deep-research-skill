@@ -552,17 +552,14 @@ def _validate_audit_record(
                     "(automated audit requires the registry binding)"
                 )
         elif strict:
-            # Manual/process audit: a declared validator_binding (string or
-            # non-string) claims automated support that must fail closed.
-            if isinstance(record_binding, str) and record_binding.strip():
+            # Manual/process audit: null is the only allowed validator_binding —
+            # any non-null value (string, empty string, or non-string) claims
+            # automated support and must fail closed.
+            if record_binding is not None:
                 strict_errors.append(
                     "audit record declares validator_binding for a manual/process "
-                    "audit (only automated audits execute a validator)"
-                )
-            elif record_binding is not None and not isinstance(record_binding, str):
-                strict_errors.append(
-                    "audit record validator_binding must be null for a "
-                    "manual/process audit (only automated audits execute a validator)"
+                    "audit (only automated audits execute a validator; null is "
+                    "the only allowed value)"
                 )
         # evidence binding (issue #401 P1): record must reference the actual checklist/section that was checked
         # This prevents JSON self-attestation: hash alone is not proof that a specific audit step was executed.
@@ -795,6 +792,16 @@ def validate_evidence_reference(
                     + ", ".join(sorted(extra)),
                 )
             )
+        # Issue #402 (review round 2): the JSON Schema declares every optional
+        # field as {"type": "string"} when present.  Type-check them here, at
+        # the dict layer, so a non-string value on ANY kind (e.g. a
+        # report_section with validator_binding=123) is rejected before
+        # dispatch — not only inside the automated_validator branch.
+        for field in ("record_path", "record_id", "recorded_at", "validator_binding"):
+            if field in reference and not isinstance(reference[field], str):
+                return EvidenceValidation(
+                    errors=(f"evidence {field} must be a string",),
+                )
         kind = _normalise_kind(reference.get("kind"))
         raw_locator = reference.get("locator")
         if isinstance(raw_locator, str):
@@ -905,31 +912,21 @@ def validate_evidence_reference(
             )
         # Issue #402: a nested object's validator_binding field must agree with
         # its locator (declared support must name the referenced validator).
-        if declared_binding is not None:
-            if not isinstance(declared_binding, str):
-                return EvidenceValidation(
-                    provenance={
-                        "kind": "automated_validator",
-                        "locator": locator,
-                        "validator_binding": locator,
-                        "verified": False,
-                    },
-                    errors=("evidence validator_binding must be a string",),
-                )
-            if declared_binding.strip() != locator:
-                return EvidenceValidation(
-                    provenance={
-                        "kind": "automated_validator",
-                        "locator": locator,
-                        "validator_binding": locator,
-                        "declared_binding": declared_binding,
-                        "verified": False,
-                    },
-                    errors=(
-                        f"evidence validator_binding {declared_binding!r} does "
-                        f"not match locator {locator!r}",
-                    ),
-                )
+        # Non-string values were already rejected at the dict layer.
+        if isinstance(declared_binding, str) and declared_binding.strip() != locator:
+            return EvidenceValidation(
+                provenance={
+                    "kind": "automated_validator",
+                    "locator": locator,
+                    "validator_binding": locator,
+                    "declared_binding": declared_binding,
+                    "verified": False,
+                },
+                errors=(
+                    f"evidence validator_binding {declared_binding!r} does "
+                    f"not match locator {locator!r}",
+                ),
+            )
         # Issue #402: the binding must exactly match the audit's registry
         # validator_binding.  A registered-but-wrong binding (e.g.
         # validator:report-quality for the forward-looking-claims audit) fails
