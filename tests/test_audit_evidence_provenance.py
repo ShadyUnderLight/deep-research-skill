@@ -280,13 +280,24 @@ def test_real_checklist_item_is_verified() -> None:
     sys.path.insert(0, str(ROOT / "scripts"))
     from audit_evidence import validate_evidence_reference
 
-    result = validate_evidence_reference(
+    # Strict mode: checklist definition alone is not execution evidence (issue #401)
+    strict_result = validate_evidence_reference(
         "checklist-item:checklists/final-audit.md#FA-001",
         base_dir=ROOT,
         strict=True,
     )
-    assert result.is_valid, result.errors
-    assert result.provenance and result.provenance["verified"] is True
+    assert not strict_result.is_valid
+    assert any("definition-only" in e or "audit-record" in e for e in strict_result.errors)
+    assert strict_result.provenance and strict_result.provenance.get("definition_only") is True
+
+    # Compatibility mode: the definition can still be verified as existing
+    compat = validate_evidence_reference(
+        "checklist-item:checklists/final-audit.md#FA-001",
+        base_dir=ROOT,
+        strict=False,
+    )
+    assert compat.is_valid, compat.errors
+    assert compat.provenance and compat.provenance["verified"] is True
 
 
 def test_audit_record_requires_matching_record_content(tmp_path: Path) -> None:
@@ -294,12 +305,20 @@ def test_audit_record_requires_matching_record_content(tmp_path: Path) -> None:
     from audit_evidence import validate_evidence_reference
 
     record_file = tmp_path / "audit-record.json"
+    # Valid record must include strict provenance fields (issue #401) including evidence
     record_file.write_text(
         json.dumps({
             "records": [
                 {
                     "record_id": "manual-001",
                     "recorded_at": "2026-08-18T10:00:00Z",
+                    "audit_id": "market-outlook-audit",
+                    "status": "passed",
+                    "artifact_sha256": "a" * 64,
+                    "executed_at": "2026-08-18T10:00:00Z",
+                    "execution_source": "manual_checklist_attestation",
+                    "evidence": "report-section:Monitoring signals",
+                    "route": "market-outlook",
                 }
             ]
         }),
@@ -309,6 +328,10 @@ def test_audit_record_requires_matching_record_content(tmp_path: Path) -> None:
         "audit-record:audit-record.json#manual-001@2026-08-18T10:00:00Z",
         base_dir=tmp_path,
         strict=True,
+        expected_audit_id="market-outlook-audit",
+        expected_artifact_sha256="a" * 64,
+        expected_route="market-outlook",
+        artifact_text="## Monitoring signals\n\ncontent",
     )
     assert valid.is_valid, valid.errors
     assert valid.provenance and valid.provenance["verified"] is True

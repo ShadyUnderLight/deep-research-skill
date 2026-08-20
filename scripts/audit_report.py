@@ -1238,6 +1238,23 @@ def _execute_required_audits(
         )
     except (OSError, UnicodeError):
         visible_text = None
+    # Artifact binding for strict provenance (issue #401): audit-record must
+    # prove it targets the current artifact, not any template.  Compute the
+    # input hash once and extract the contract's stable artifact_id up front
+    # so validation can fail closed on mismatched bindings.
+    expected_artifact_sha256 = _sha256(path) if path.is_file() else None
+    contract_data_for_binding: dict | None = None
+    try:
+        contract_data_for_binding = extract_contract_from_markdown(
+            path.read_text(encoding="utf-8", errors="replace")
+        )
+    except (OSError, UnicodeError):
+        contract_data_for_binding = None
+    expected_artifact_id: str | None = None
+    if isinstance(contract_data_for_binding, dict):
+        raw_aid = contract_data_for_binding.get("artifact_id")
+        if isinstance(raw_aid, str) and raw_aid.strip():
+            expected_artifact_id = raw_aid.strip()
     results: list[AuditResult] = []
     blocking: list[str] = []
     warnings: list[str] = []
@@ -1298,11 +1315,27 @@ def _execute_required_audits(
                     artifact_label="report",
                     known_validator_bindings=_registered_validator_bindings(),
                     execution_type=audit.execution_type,
+                    expected_audit_id=audit_id,
+                    expected_artifact_sha256=expected_artifact_sha256,
+                    expected_artifact_id=expected_artifact_id,
+                    expected_route=route_id,
+                    report_text=visible_text,
+                    pack_text=None,
                 )
-                if evidence_result.legacy:
+                # P2: do not auto-fill execution_source when record declares it; use the record's value (already validated)
+                if evidence_result.provenance and "record_execution_source" in evidence_result.provenance:
+                    execution_source = str(evidence_result.provenance["record_execution_source"])
+                elif evidence_result.legacy:
                     execution_source = _execution_source(
                         audit.execution_type, legacy=True
                     )
+                # P2: if record is audit-record but missing/invalid source, do not伪造 trusted attestation
+                elif strict and evidence and evidence[0].startswith("audit-record:"):
+                    # If strict validation failed due to missing execution_source, don't keep derived trusted source
+                    if any("missing execution_source" in e for e in evidence_result.errors) or any(
+                        "execution_source" in e for e in evidence_result.errors
+                    ):
+                        execution_source = "unknown"
                 if evidence_result.provenance:
                     evidence_provenance.append(
                         {
@@ -1478,9 +1511,22 @@ def _execute_required_audits(
                 artifact_label="report",
                 known_validator_bindings=_registered_validator_bindings(),
                 execution_type="manual",
+                expected_audit_id=derived_id,
+                expected_artifact_sha256=expected_artifact_sha256,
+                expected_artifact_id=expected_artifact_id,
+                expected_route=route_id,
+                report_text=visible_text,
+                pack_text=None,
             )
-            if evidence_result.legacy:
+            if evidence_result.provenance and "record_execution_source" in evidence_result.provenance:
+                execution_source = str(evidence_result.provenance["record_execution_source"])
+            elif evidence_result.legacy:
                 execution_source = _execution_source("manual", legacy=True)
+            elif strict and raw_evidence and isinstance(raw_evidence, str) and raw_evidence.startswith("audit-record:"):
+                if any("missing execution_source" in e for e in evidence_result.errors) or any(
+                    "execution_source" in e for e in evidence_result.errors
+                ):
+                    execution_source = "unknown"
             if evidence_result.provenance:
                 evidence_provenance.append(
                     {

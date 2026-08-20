@@ -612,6 +612,38 @@ def _check_audit_evidence(
             ):
                 target_text = report_text
                 target_label = "report"
+            # Issue #401: pack audit evidence must also be artifact-bound
+            # when it is an audit-record.  Extract the pack's declared artifact id
+            # and primary route so a record for another artifact/route cannot be reused.
+            pack_artifact_id: str | None = None
+            pack_route: str | None = None
+            try:
+                _pack_aid_body = _section_body(artifact_text, "Artifact id")
+                if _pack_aid_body:
+                    first_aid_line = next(
+                        (ln.strip() for ln in _pack_aid_body.split("\n") if ln.strip()),
+                        "",
+                    )
+                    if first_aid_line:
+                        pack_artifact_id = first_aid_line.split()[0]
+                # Primary route for route binding (P2)
+                _pack_route_body = _section_body(artifact_text, "Primary route")
+                if _pack_route_body:
+                    first_route_line = next(
+                        (ln.strip() for ln in _pack_route_body.split("\n") if ln.strip() and not ln.strip().lower().startswith("closest")),
+                        "",
+                    )
+                    if first_route_line:
+                        raw = re.sub(r"^[-*>]+\s+", "", first_route_line)
+                        raw = re.sub(r"^\d+[.)]\s+", "", raw)
+                        raw = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", raw)
+                        try:
+                            pack_route = load_route_registry().resolve_route(raw)
+                        except Exception:
+                            pack_route = None
+            except Exception:
+                pack_artifact_id = None
+                pack_route = None
             result = validate_evidence_reference(
                 evidence,
                 artifact_text=target_text,
@@ -620,6 +652,11 @@ def _check_audit_evidence(
                 artifact_label=target_label,
                 known_validator_bindings=known_validator_bindings,
                 execution_type=execution_type,
+                expected_audit_id=str(audit_id) if isinstance(audit_id, str) else None,
+                expected_artifact_id=pack_artifact_id,
+                expected_route=pack_route,
+                report_text=report_text,
+                pack_text=artifact_text,
             )
             errors.extend(
                 f"Required audit evidence: {error}"
