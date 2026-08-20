@@ -535,3 +535,24 @@ def test_report_context_rejects_pack_evidence_without_pack_text(tmp_path: Path) 
         assert any("pack" in e.lower() and "not allowed" in e.lower() for e in res.errors)
     finally:
         shutil.rmtree(rec_dir, ignore_errors=True)
+
+
+def test_report_template_does_not_advertise_direct_checklist_item_as_strict_valid() -> None:
+    """Regression: canonical report-template must not teach bare checklist-item as strict Passed evidence."""
+    text = (ROOT / "references" / "report-template.md").read_text(encoding="utf-8")
+    # Find the evidence row for Passed
+    passed_idx = text.find("已通过 (Passed)")
+    assert passed_idx != -1, "template must contain Passed evidence description"
+    # The next ~500 chars after that header should contain the allowed references
+    snippet = text[passed_idx : passed_idx + 800]
+    # It must mention audit-record as allowed
+    assert "audit-record:" in snippet, "template should advertise audit-record for Passed"
+    # It must NOT list checklist-item as a direct allowed Passed evidence without qualification
+    # Extract the line that lists the allowed refs (starts with ✅ or contains report-section)
+    lines = snippet.split("\n")
+    allowed_line = next((l for l in lines if "report-section" in l and "audit-record" in l), "")
+    assert allowed_line, "could not find allowed evidence line"
+    assert "checklist-item" not in allowed_line, "direct checklist-item must not be listed as standalone Passed evidence"
+    # Must contain the clarifying note that checklist-item is definition-only and must be via audit-record
+    assert "only identifies a checklist definition" in text
+    assert "must be referenced from an artifact-bound" in text
