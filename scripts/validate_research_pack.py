@@ -655,6 +655,11 @@ def _check_audit_evidence(
                 expected_audit_id=str(audit_id) if isinstance(audit_id, str) else None,
                 expected_artifact_id=pack_artifact_id,
                 expected_route=pack_route,
+                expected_validator_binding=(
+                    audit_info.validator_binding
+                    if audit_info is not None
+                    else None
+                ),
                 report_text=report_text,
                 pack_text=artifact_text,
             )

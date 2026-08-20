@@ -343,3 +343,211 @@ def test_audit_record_requires_matching_record_content(tmp_path: Path) -> None:
     )
     assert not forged.is_valid
     assert any("was not found" in error for error in forged.errors)
+
+
+# ─── Issue #402: validator binding must match the audit's registry binding ──
+#
+# The registry is the single source of truth for which validator executes an
+# automated audit.  A registered-but-wrong binding (e.g. validator:report-quality
+# for the forward-looking-claims audit) must fail closed in the contract,
+# the Research Pack, and the unified audit report.  execution_source must be
+# derived from the registry execution_type, not arbitrarily overridden by the
+# report.  Nested evidence objects must match the JSON Schema
+# (schemas/route-activation-contract.json): unknown fields and a
+# validator_binding field that disagrees with locator are rejected.
+
+
+def test_registered_but_wrong_validator_binding_cannot_pass(tmp_path: Path) -> None:
+    """forward-looking-claims audit evidence = validator:report-quality
+    (registered but wrong binding) must fail strict contract validation."""
+    content = POSITIVE.read_text(encoding="utf-8")
+    content = content.replace(
+        '"id": "forward-looking-claims", "status": "passed", '
+        '"evidence": "report-section:Monitoring signals"',
+        '"id": "forward-looking-claims", "status": "passed", '
+        '"evidence": "validator:report-quality"',
+        1,
+    )
+    report = tmp_path / "wrong-binding.md"
+    report.write_text(content, encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "validate_contract.py"),
+            str(report),
+            "--strict",
+            "--require-contract",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2, result.stdout
+    assert "does not match" in result.stdout or "binding" in result.stdout.lower()
+
+
+def test_wrong_validator_binding_fails_audit_report(tmp_path: Path) -> None:
+    """The unified audit_report --strict path must reject the same forgery."""
+    content = POSITIVE.read_text(encoding="utf-8")
+    content = content.replace(
+        '"id": "forward-looking-claims", "status": "passed", '
+        '"evidence": "report-section:Monitoring signals"',
+        '"id": "forward-looking-claims", "status": "passed", '
+        '"evidence": "validator:report-quality"',
+        1,
+    )
+    report = tmp_path / "wrong-binding.md"
+    report.write_text(content, encoding="utf-8")
+
+    result = _run_report(report, "--strict", "--require-contract", "--json")
+    assert result.returncode == 2, result.stdout
+    data = json.loads(result.stdout)
+    assert data["overall"] == "fail"
+    assert any("binding" in error.lower() for error in data["blocking"])
+
+
+def test_wrong_validator_binding_fails_research_pack(tmp_path: Path) -> None:
+    """A Research Pack declaring forward-looking-claims with a registered but
+    wrong binding must fail the standalone strict pack validator."""
+    content = PACK.read_text(encoding="utf-8").replace(
+        "- forward-looking-claims — passed — pack-section:Artifact contract",
+        "- forward-looking-claims — passed — validator:report-quality",
+        1,
+    )
+    pack = tmp_path / "wrong-binding-pack.md"
+    pack.write_text(content, encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "validate_research_pack.py"),
+            str(pack),
+            "--strict",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 4, result.stdout
+    assert "does not match" in result.stdout
+
+
+def test_correct_validator_binding_passes(tmp_path: Path) -> None:
+    """The exact registry binding for forward-looking-claims is accepted
+    end-to-end (positive regression guard for #402)."""
+    content = POSITIVE.read_text(encoding="utf-8")
+    content = content.replace(
+        '"id": "forward-looking-claims", "status": "passed", '
+        '"evidence": "report-section:Monitoring signals"',
+        '"id": "forward-looking-claims", "status": "passed", '
+        '"evidence": "validator:forward-looking-claims"',
+        1,
+    )
+    report = tmp_path / "correct-binding.md"
+    report.write_text(content, encoding="utf-8")
+
+    result = _run_report(report, "--strict", "--require-contract", "--json")
+    assert result.returncode == 0, result.stdout
+    data = json.loads(result.stdout)
+    assert data["overall"] == "pass"
+
+
+def test_execution_source_mismatch_is_rejected(tmp_path: Path) -> None:
+    """A manual audit declaring execution_source=automated_validator must not
+    be accepted: execution_source is derived from the registry execution_type."""
+    content = POSITIVE.read_text(encoding="utf-8")
+    content = content.replace(
+        '"id": "market-outlook-audit", "status": "passed", '
+        '"evidence": "report-section:Monitoring signals"',
+        '"id": "market-outlook-audit", "status": "passed", '
+        '"evidence": "report-section:Monitoring signals", '
+        '"execution_source": "automated_validator"',
+        1,
+    )
+    report = tmp_path / "wrong-exec-source.md"
+    report.write_text(content, encoding="utf-8")
+
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "validate_contract.py"),
+            str(report),
+            "--strict",
+            "--require-contract",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 2, result.stdout
+    assert "execution_source" in result.stdout
+
+
+def test_evidence_object_unknown_field_is_rejected() -> None:
+    """Nested evidence object with an extra field is rejected — the JSON
+    Schema (additionalProperties: false) must not be contradicted by runtime."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+
+    result = validate_evidence_reference(
+        {
+            "kind": "automated_validator",
+            "locator": "forward-looking-claims",
+            "bogus": 1,
+        },
+        strict=True,
+        execution_type="automated",
+        known_validator_bindings={"forward-looking-claims"},
+    )
+    assert not result.is_valid
+    assert any("unknown field" in error for error in result.errors)
+
+
+def test_evidence_object_wrong_validator_binding_field_is_rejected() -> None:
+    """Nested evidence object whose validator_binding field disagrees with its
+    locator is rejected (declared support must match the referenced validator)."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+
+    result = validate_evidence_reference(
+        {
+            "kind": "automated_validator",
+            "locator": "forward-looking-claims",
+            "validator_binding": "report-quality",
+        },
+        strict=True,
+        execution_type="automated",
+        known_validator_bindings={"forward-looking-claims", "report-quality"},
+    )
+    assert not result.is_valid
+    assert any("validator_binding" in error for error in result.errors)
+
+
+def test_validator_reference_must_match_expected_binding() -> None:
+    """A registered-but-wrong validator reference must fail exact-match against
+    the audit's registry validator_binding."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+
+    result = validate_evidence_reference(
+        "validator:report-quality",
+        strict=True,
+        execution_type="automated",
+        known_validator_bindings={"forward-looking-claims", "report-quality"},
+        expected_validator_binding="forward-looking-claims",
+    )
+    assert not result.is_valid
+    assert any("does not match" in error for error in result.errors)
+
+
+def test_validator_reference_matches_expected_binding() -> None:
+    """The exact registry binding satisfies the expected-binding check."""
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+
+    result = validate_evidence_reference(
+        "validator:forward-looking-claims",
+        strict=True,
+        execution_type="automated",
+        known_validator_bindings={"forward-looking-claims"},
+        expected_validator_binding="forward-looking-claims",
+    )
+    assert result.is_valid, result.errors
