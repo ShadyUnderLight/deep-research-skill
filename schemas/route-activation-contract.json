@@ -109,7 +109,7 @@
             "description": "Execution status of this audit"
           },
           "evidence": {
-            "description": "Typed reference to a concrete evidence location. Legacy free-form strings are compatibility-only and cannot pass strict validation.",
+            "description": "Typed reference to a concrete evidence location. Legacy free-form strings are compatibility-only and cannot pass strict validation. Issue #402: for an automated audit a validator reference must exactly match the audit's registry validator_binding (schemas/audit-registry.json) — a registered-but-wrong binding fails closed; a nested object's validator_binding field must agree with locator, and additional fields are rejected at runtime.",
             "oneOf": [
               {
                 "type": "string",

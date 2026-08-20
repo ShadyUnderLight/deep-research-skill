@@ -67,6 +67,17 @@ VALID_AUDIT_STATUSES = {"passed", "skipped", "not_run", "partial"}
 ARTIFACT_META_FIELDS = ("artifact_id", "contract_version", "created_at")
 
 
+def _execution_source(execution_type: str) -> str:
+    """Map a registry audit execution_type to the canonical provenance
+    vocabulary (issue #402).  execution_source cannot be arbitrarily
+    overridden by the report — it must be derived from the registry."""
+    if execution_type == "automated":
+        return "automated_validator"
+    if execution_type == "process":
+        return "process_node_evidence"
+    return "manual_checklist_attestation"
+
+
 # ── Data types ──────────────────────────────────────────────────────────────
 
 
@@ -694,6 +705,14 @@ def validate_contract(
             if audit_info is not None
             else "manual" if is_derived_hard_fail else None
         )
+        # Issue #402: the audit's registry validator_binding is the only
+        # binding an automated audit may claim.  Manual/process and derived
+        # hard-fail audits have no binding.
+        audit_validator_binding = (
+            audit_info.validator_binding
+            if audit_info is not None
+            else None
+        )
 
         status = audit.get("status", "")
         if not isinstance(status, str):
@@ -726,6 +745,26 @@ def validate_contract(
                 f"Audit '{audit_id}' has invalid execution_source "
                 f"'{execution_source}'"
             )
+        # Issue #402: execution_source must be derived from the registry
+        # execution_type, not arbitrarily overridden by the report.
+        # legacy_self_attested is a compatibility label allowed only on the
+        # non-strict path (where legacy free-form evidence is tolerated).
+        if execution_source is not None and audit_execution_type is not None:
+            derived_source = _execution_source(audit_execution_type)
+            if execution_source != derived_source:
+                if strict or execution_source != "legacy_self_attested":
+                    errors.append(
+                        f"Audit '{audit_id}' execution_source "
+                        f"'{execution_source}' does not match registry "
+                        f"execution_type '{audit_execution_type}' "
+                        f"(expected '{derived_source}')"
+                    )
+                else:
+                    warnings.append(
+                        f"Audit '{audit_id}' execution_source "
+                        f"'{execution_source}' is a legacy compatibility label "
+                        f"(expected '{derived_source}')"
+                    )
 
         if status not in VALID_AUDIT_STATUSES:
             errors.append(
@@ -766,6 +805,7 @@ def validate_contract(
                 expected_audit_id=audit_id,
                 expected_artifact_id=expected_aid,
                 expected_route=expected_route_for_record,
+                expected_validator_binding=audit_validator_binding,
                 report_text=report_text if strict else None,
                 pack_text=None,
             )
