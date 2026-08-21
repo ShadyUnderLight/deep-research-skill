@@ -618,17 +618,18 @@ def _validate_audit_record(
                                 f"audit record evidence {evidence_value!r} is not verifiable: {'; '.join(nested_result.errors)}"
                             )
                     elif kind in {"report_section", "report_table"}:
-                        # Report evidence must be validated against report artifact, not pack
+                        # Report evidence must be validated against visible report artifact, not pack.
+                        # Public trust boundary (issue #234 analog / #409): sanitize before lookup so a
+                        # heading inside a fence/HTML block cannot be minted via a raw record.
                         effective_report_text = report_text
                         if effective_report_text is None and artifact_label == "report":
                             effective_report_text = artifact_text
+                        effective_report_text = _sanitize_visible_text(effective_report_text)
                         if effective_report_text is None:
                             strict_errors.append(
                                 f"audit record evidence {evidence_value!r} is report-scoped but no report artifact text is available for verification"
                             )
                         else:
-                            # Also enforce context: report context should not verify pack evidence via report text
-                            # If this record is being validated in a pack-only context (e.g. research-pack without report_text), report evidence is allowed only if report_text was supplied
                             if report_text is None and artifact_label == "pack" and pack_text is not None:
                                 # Pack context without report_text — report evidence is cross-artifact, require explicit report_text
                                 strict_errors.append(
@@ -647,6 +648,7 @@ def _validate_audit_record(
                         effective_pack_text = pack_text
                         if effective_pack_text is None and artifact_label == "pack":
                             effective_pack_text = artifact_text
+                        effective_pack_text = _sanitize_visible_text(effective_pack_text)
                         if effective_pack_text is None:
                             strict_errors.append(
                                 f"audit record evidence {evidence_value!r} is pack-scoped but no pack artifact text is available — not allowed in report context (see issue #401)"
@@ -739,15 +741,45 @@ def _validate_audit_record(
                         nr = _validate_checklist_item(loc2, base_dir, strict=False)
                     elif k2 in {"report_section", "pack_section"}:
                         lbl = "pack" if k2 == "pack_section" else artifact_label
-                        nr = _validate_artifact_heading(k2, loc2, artifact_text, lbl)
+                        sanitized_artifact = _sanitize_visible_text(artifact_text)
+                        nr = _validate_artifact_heading(k2, loc2, sanitized_artifact, lbl)
                     elif k2 in {"report_table", "pack_table"}:
                         lbl = "pack" if k2 == "pack_table" else artifact_label
-                        nr = _validate_artifact_table(k2, loc2, artifact_text, lbl)
+                        sanitized_artifact = _sanitize_visible_text(artifact_text)
+                        nr = _validate_artifact_table(k2, loc2, sanitized_artifact, lbl)
                     if nr and nr.provenance:
                         provenance["record_evidence_provenance"] = nr.provenance
         except Exception:
             pass
     return EvidenceValidation(provenance=provenance)
+
+
+def _sanitize_visible_text(text: str | None) -> str | None:
+    """Sanitize *text* to visible Markdown before trust decisions.
+
+    Public evidence validation must never trust a heading/table that only
+    exists inside a fenced code block or raw HTML container (issue #409).
+    The sanitizer shares the canonical CommonMark state machine from
+    ``validate_contract``.  This helper is the trust boundary: any public
+    ``validate_evidence_reference`` call that supplies raw Markdown is
+    internally reduced to its rendered content before the locator lookup,
+    so an external caller cannot mint ``verified=True`` via a hidden locator.
+
+    Internal callers (``audit_report``/``run_forward_evals``) already pass
+    sanitized text; double-sanitizing is idempotent.
+
+    On sanitizer load failure we return ``\"\"`` so the subsequent lookup
+    fails closed rather than falling back to raw text.
+    """
+
+    if text is None:
+        return None
+    try:
+        from validate_contract import sanitize_visible_markdown
+
+        return sanitize_visible_markdown(text)
+    except Exception:
+        return ""
 
 
 def _default_validator_bindings() -> frozenset[str]:
@@ -780,9 +812,18 @@ def validate_evidence_reference(
 
     ``artifact_text`` is optional because standalone contract/pack validators
     may only have the process artifact, not the final report.  When supplied,
-    section/table references are resolved against visible content.  Legacy
-    free-form strings are warnings outside strict mode and errors in strict
-    mode; callers can still expose their provenance explicitly.
+    section/table references are resolved against **visible** content only.
+    The public entry point always sanitizes ``artifact_text`` /
+    ``report_text`` / ``pack_text`` through the canonical CommonMark
+    fence/HTML sanitizer before the heading/table lookup, so a heading that
+    only exists inside a fenced code block or raw HTML container can never
+    yield ``verified=True`` via the public API (issue #409 trust boundary
+    — analogous to ``SnapshotSectionCoverage(runtimeTrust: .trusted)`` being
+    closed).  Internal callers that already supply sanitized text are
+    unaffected (double-sanitization is idempotent).
+
+    Legacy free-form strings are warnings outside strict mode and errors in
+    strict mode; callers can still expose their provenance explicitly.
 
     ``expected_validator_binding`` (issue #402) is the audit's registry
     validator_binding.  An ``automated_validator`` reference must match it
@@ -872,10 +913,12 @@ def validate_evidence_reference(
 
     if kind in {"report_section", "pack_section"}:
         label = "pack" if kind == "pack_section" else artifact_label
-        return _validate_artifact_heading(kind, locator, artifact_text, label)
+        sanitized = _sanitize_visible_text(artifact_text)
+        return _validate_artifact_heading(kind, locator, sanitized, label)
     if kind in {"report_table", "pack_table"}:
         label = "pack" if kind == "pack_table" else artifact_label
-        return _validate_artifact_table(kind, locator, artifact_text, label)
+        sanitized = _sanitize_visible_text(artifact_text)
+        return _validate_artifact_table(kind, locator, sanitized, label)
     if kind == "checklist_item":
         return _validate_checklist_item(locator, base_dir, strict=strict)
     if kind == "audit_record":
