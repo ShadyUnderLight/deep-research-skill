@@ -20,30 +20,32 @@ This file covers:
 
 from __future__ import annotations
 
+# Dynamic sys.path setup is intentional for direct script-module tests.
+# ruff: noqa: E402
+
 import copy
 import hashlib
-import json
 import sys
 from pathlib import Path
-
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from audit_evidence import validate_evidence_reference
-from validate_contract import sanitize_visible_markdown, strip_fenced_code_blocks_only
+from audit_evidence import validate_evidence_reference  # noqa: E402
+from validate_contract import (
+    sanitize_checklist_visible_markdown,
+    sanitize_visible_markdown,
+)  # noqa: E402
 
-import run_forward_evals
+import run_forward_evals  # noqa: E402
 from run_forward_evals import (
     _audit_consistency_details,
     _audit_provenance_details,
     _audits_ok,
-    _expected_audit_set,
     load_registry,
-)
+)  # noqa: E402
 
 # Use a known manual audit that exists in the registry; its evidence is
 # report-scoped manual attestation.
@@ -470,6 +472,36 @@ def test_consumer_rejects_hidden_report_section_via_audits_ok():
     assert any(MANUAL_AUDIT_ID in e for e in errs)
 
 
+def test_consumer_sanitizes_raw_text_at_audits_ok_boundary():
+    """The helper must stay fail-closed even when callers pass raw Markdown."""
+    audit = _pass_audit(
+        MANUAL_AUDIT_ID,
+        f"report-section:{HIDDEN_HEADING}",
+        "report_section",
+        HIDDEN_HEADING,
+    )
+    actual = {
+        "overall": "pass",
+        "audits": [audit],
+        "validators": [],
+        "blocking": [],
+        "input_sha256": "x" * 64,
+    }
+    raw_report = REPORT_WITH_HIDDEN_ONLY
+    raw_pack = PACK_WITH_VISIBLE
+    assert _audits_ok(
+        actual,
+        [MANUAL_AUDIT_ID],
+        audited_path="report.md",
+        expected_report_sha256="x" * 64,
+        research_pack_path="pack.md",
+        expected_pack_sha256="y" * 64,
+        report_text=raw_report,
+        pack_text=raw_pack,
+        expected_route="provider-selection",
+    ) is False
+
+
 def test_consumer_accepts_visible_report_section_via_audits_ok():
     sanitized_report = _sanitized(REPORT_WITH_VISIBLE)
     sanitized_pack = _sanitized(PACK_WITH_VISIBLE)
@@ -531,13 +563,6 @@ def test_consumer_hidden_pack_section_fails_and_diagnostic_is_locatable():
 
 
 def test_consumer_provenance_target_mismatch_still_distinct_diagnostic():
-    sanitized_report = _sanitized(REPORT_WITH_VISIBLE)
-    audit = _pass_audit(
-        MANUAL_AUDIT_ID,
-        f"report-section:{HIDDEN_HEADING}",
-        "report_section",
-        HIDDEN_HEADING,
-    )
     # Force an automated-style binding mismatch via a manual audit that uses
     # audit_record; easier to test automated provenance directly via
     # _audit_provenance_details.
@@ -585,13 +610,6 @@ def test_provenance_details_propagates_not_found_for_hidden_table():
         "report_table",
         HIDDEN_HEADING,
     )
-    actual = {
-        "overall": "pass",
-        "audits": [audit],
-        "validators": [],
-        "blocking": [],
-        "input_sha256": None,
-    }
     ok, errs = _audit_provenance_details(
         audit,
         MANUAL_AUDIT_ID,
@@ -688,11 +706,30 @@ def test_checklist_html_comment_outside_fence_is_still_visible(tmp_path: Path):
     assert result.is_valid, result.errors
 
 
-def test_strip_fenced_code_blocks_only_preserves_html(tmp_path: Path):
+def test_checklist_html_comment_inside_raw_html_block_is_invisible(tmp_path: Path):
+    checklist = tmp_path / "checklist.md"
+    checklist.write_text(
+        "<div>\n"
+        "<!-- audit-item: FA-999 -->\n"
+        "</div>\n\n"
+        "No visible marker.\n",
+        encoding="utf-8",
+    )
+    result = validate_evidence_reference(
+        f"checklist-item:{checklist.name}#FA-999",
+        artifact_text=None,
+        base_dir=tmp_path,
+        strict=False,
+    )
+    assert not result.is_valid
+    assert "was not found" in "; ".join(result.errors)
+
+
+def test_checklist_sanitizer_removes_raw_html_but_keeps_top_level_marker(tmp_path: Path):
     text = "<!-- audit-item: FA-001 -->\n\n```md\ncode\n```\n\n<div>hi</div>"
-    stripped = strip_fenced_code_blocks_only(text)
+    stripped = sanitize_checklist_visible_markdown(text)
     assert "<!-- audit-item: FA-001 -->" in stripped
-    assert "<div>hi</div>" in stripped
+    assert "<div>hi</div>" not in stripped
     assert "code" not in stripped
 
 
@@ -703,7 +740,6 @@ def test_hash_is_raw_byte_not_sanitized(tmp_path: Path):
     # Same logical heading but different raw bytes: sanitized hashes would be
     # identical if computed from visible text, but raw hashes differ.
     raw_hidden = REPORT_WITH_HIDDEN_ONLY
-    raw_visible = REPORT_WITH_VISIBLE
     # Visible sanitized texts would differ, but we test that _sha256 is raw.
     report_hidden = tmp_path / "hidden.md"
     report_hidden.write_bytes(raw_hidden.encode("utf-8"))

@@ -21,8 +21,8 @@ SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-import run_forward_evals
-from run_forward_evals import _evaluate_case, _expected_audit_set, load_registry
+import run_forward_evals  # noqa: E402
+from run_forward_evals import _evaluate_case, load_registry  # noqa: E402
 
 POSITIVE_CASE_ID = "forward-provider-selection"
 NEGATIVE_DECLARED = "forward-declared-not-executed"
