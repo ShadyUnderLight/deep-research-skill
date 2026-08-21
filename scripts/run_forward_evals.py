@@ -916,9 +916,12 @@ def _evaluate_case(
         audit_route_for_set = expected["primary_route"]
         audit_secondary_for_set = expected["secondary_routes"]
         audit_expected_route = expected["primary_route"]
-    expected_audit_ids = _expected_audit_set(
-        audit_route_for_set, audit_secondary_for_set
-    )
+    try:
+        expected_audit_ids = _expected_audit_set(
+            audit_route_for_set, audit_secondary_for_set
+        )
+    except registry_loader.UnknownRouteError:
+        expected_audit_ids = None
     raw_audit_ids = [
         str(item.get("audit_id"))
         for item in actual.get("audits", [])

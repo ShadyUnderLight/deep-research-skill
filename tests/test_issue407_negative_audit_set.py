@@ -204,6 +204,28 @@ def test_forged_unknown_audit_fails_negative(case_id: str, monkeypatch) -> None:
     assert result["passed"] is False
 
 
+def test_unknown_report_route_fails_closed_for_route_misclassification(monkeypatch) -> None:
+    """Forged unknown report route must fail closed, not raise UnknownRouteError (review P1)."""
+    case, dt_version = _case(NEGATIVE_ROUTE_MIS)
+
+    original = run_forward_evals._run_audit
+
+    def _run(report, research_pack, activation_snapshot=None):
+        data, err, rc = original(report, research_pack, activation_snapshot)
+        tampered = copy.deepcopy(data)
+        tampered["route"] = "forged-unknown-route"
+        # keep audits consistent with original (market-outlook) so only the route is forged
+        return tampered, err, rc
+
+    monkeypatch.setattr(run_forward_evals, "_run_audit", _run)
+    # must not raise
+    result = _evaluate_case(case, dt_version)
+    assert result["passed"] is False
+    assert result["checks"]["required_audits_present"] is False
+    assert result["checks"]["audit_set_exact"] is False
+    assert result["checks"]["audits_consistent"] is False
+
+
 # ── mixed defects: correct failure_family alone must not rescue a truncated set ─
 
 
