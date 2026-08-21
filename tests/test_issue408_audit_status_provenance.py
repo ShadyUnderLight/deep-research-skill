@@ -714,6 +714,24 @@ def test_partial_evidence_provenance_not_list_fails() -> None:
     assert any("evidence_provenance" in e.lower() for e in errs), errs
 
 
+def test_partial_with_reason_and_whitespace_error_fails() -> None:
+    case, data = _real_audit("forward-provider-selection")[:2]
+    expected = _expected(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "option-selection-final-audit":
+            a["status"] = "partial"
+            a["reason"] = "needs review"
+            a["errors"] = ["   "]
+            a["warnings"] = []
+            a["evidence"] = []
+            a["evidence_provenance"] = []
+            break
+    ok, errs = _audit_consistency_details(tampered, expected)
+    assert ok is False
+    assert any("errors" in e.lower() and "option-selection-final-audit" in e for e in errs), errs
+
+
 def test_partial_warnings_empty_string_also_rejected_diagnostically() -> None:
     # Ensures the diagnostic path from P2 is exercised: warnings=["   "] is
     # not silently accepted as internally consistent.

@@ -496,24 +496,27 @@ def _audit_consistency_details(
             errors.append(f"{prefix} reason must be string or null")
             continue
         # Unified element-type and non-empty checks for present collections (P2)
-        for idx, e in enumerate(errs):
-            if not isinstance(e, str):
-                errors.append(f"{prefix} errors[{idx}] must be string")
-                break
-            if e is not None and not e.strip():
-                # Empty/whitespace-only strings are never locatable errors
-                # but we defer the per-status non-empty check to the branches
-                # below; still record for diagnostics if the status requires
-                # errors to be present.
-                pass
-        for idx, w in enumerate(warns):
-            if not isinstance(w, str):
-                errors.append(f"{prefix} warnings[{idx}] must be string")
-                break
-        for idx, e in enumerate(evids):
-            if not isinstance(e, str):
-                errors.append(f"{prefix} evidence[{idx}] must be string")
-                break
+        # Every present element must be a non-empty string; a whitespace-only
+        # string is never a locatable error/warning/evidence (closes
+        # partial+reason+whitespace-errors bypass, see re-review P2).
+        if any(not isinstance(e, str) for e in errs):
+            errors.append(f"{prefix} errors must be list of strings")
+            continue
+        if errs and any(not e.strip() for e in errs):
+            errors.append(f"{prefix} errors must be non-empty strings")
+            continue
+        if any(not isinstance(w, str) for w in warns):
+            errors.append(f"{prefix} warnings must be list of strings")
+            continue
+        if warns and any(not w.strip() for w in warns):
+            errors.append(f"{prefix} warnings must be non-empty strings")
+            continue
+        if any(not isinstance(e, str) for e in evids):
+            errors.append(f"{prefix} evidence must be list of strings")
+            continue
+        if evids and any(not e.strip() for e in evids):
+            errors.append(f"{prefix} evidence must be non-empty strings")
+            continue
         # evidence_provenance structural check for all statuses (P2)
         if raw_provenance is not None and not isinstance(raw_provenance, list):
             errors.append(f"{prefix} evidence_provenance must be list")
@@ -523,10 +526,6 @@ def _audit_consistency_details(
                 if not isinstance(p, dict):
                     errors.append(f"{prefix} evidence_provenance[{idx}] must be object")
                     break
-        # Per-status warnings whitespace check (P2: unified)
-        if warns and any(isinstance(w, str) and not w.strip() for w in warns):
-            errors.append(f"{prefix} warnings contains empty/whitespace string")
-            continue
         # Per-status semantics
         if status == "pass":
             if errs or warns:
