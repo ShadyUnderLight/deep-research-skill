@@ -400,8 +400,7 @@ def _audits_ok(
     - an audit carries an out-of-vocabulary ``execution_source`` for its
       (registry-confirmed) ``execution_type``;
     - an automated audit's ``validator_binding`` does not match the registry;
-    - status is inconsistent with errors/warnings/reason (e.g. ``pass`` with
-      errors, ``fail`` without errors);
+    - status is inconsistent with errors/warnings/reason/evidence (issue #408);
     - a ``pass`` audit lacks verifiable ``evidence`` or a provenance record that
       is actually ``verified`` and anchored to the real artifact: automated
       records must carry ``target`` / ``input_sha256`` binding to the expected
@@ -409,7 +408,15 @@ def _audits_ok(
       audit → the report) using the consumer-computed file hash, and manual/
       process records must carry a real ``kind`` / ``locator`` provenance (not a
       bare ``{"verified": true}``) — truthy-only provenance is rejected
-      (issue #403 P1).
+      (issue #403 P1);
+    - a ``conditional-pass`` audit does not carry the same provenance binding as
+      ``pass`` (issue #408);
+    - a ``fail`` audit lacks locatable ``errors``;
+    - a ``partial`` audit lacks a non-empty ``reason`` or structured ``errors``;
+    - a ``not_run``/``skipped`` audit lacks a non-empty ``reason`` or carries
+      execution evidence (issue #408);
+    - top-level ``overall`` aggregates an incomplete audit as ``pass`` (issue
+      #408).
 
     Since issue #407 this is used for both positive and negative cases:
     every active case must carry a complete, de-duplicated, registry-anchored
@@ -469,19 +476,39 @@ def _audits_ok(
             if item.get("validator_binding") != registry_audit.validator_binding:
                 return False
 
-        errors = item.get("errors") or []
-        warnings = item.get("warnings") or []
-        evidence = item.get("evidence") or []
+        errors = item.get("errors")
+        warnings = item.get("warnings")
+        evidence = item.get("evidence")
+        reason = item.get("reason")
+        # Structural type checks — none of these may be forged to non-list/str.
+        if errors is None:
+            errors = []
+        if warnings is None:
+            warnings = []
+        if evidence is None:
+            evidence = []
         if not isinstance(errors, list) or not isinstance(warnings, list):
             return False
         if not isinstance(evidence, list):
             return False
+        if reason is not None and not isinstance(reason, str):
+            return False
+        # errors/warnings elements must be non-empty strings when present (tighten
+        # forged [""] bypass).
+        if any(not isinstance(e, str) for e in errors):
+            return False
+        if any(not isinstance(w, str) for w in warnings):
+            return False
+        # Evidence elements are validated per-status, but any non-string entry
+        # is always a malformed record.
+        if any(not isinstance(e, str) for e in evidence):
+            return False
         if status == "pass":
             if errors or warnings:
                 return False
-            if not evidence or not all(
-                isinstance(e, str) and e.strip() for e in evidence
-            ):
+            if reason is not None and reason.strip():
+                return False
+            if not evidence or not all(e.strip() for e in evidence):
                 return False
             # Strict positive path: a degraded/legacy source must not aggregate
             # to Pass (issue #403 re-review). In strict mode unknown/legacy
@@ -513,17 +540,100 @@ def _audits_ok(
             ):
                 return False
         elif status == "conditional-pass":
+            # Must have warnings, no errors, non-empty evidence and same
+            # provenance binding as pass (issue #408).
             if not warnings or errors:
                 return False
-            if not evidence:
+            if not all(w.strip() for w in warnings):
+                return False
+            if reason is not None and reason.strip():
+                return False
+            if not evidence or not all(e.strip() for e in evidence):
+                return False
+            if execution_type == "manual" and execution_source != "manual_checklist_attestation":
+                return False
+            if execution_type == "process" and execution_source != "process_node_evidence":
+                return False
+            if audit_id == "research-pack":
+                expected_target = (
+                    str(research_pack_path) if research_pack_path else None
+                )
+                expected_hash = expected_pack_sha256
+            else:
+                expected_target = audited_path
+                expected_hash = expected_report_sha256
+            if not _audit_provenance_ok(
+                item,
+                audit_id,
+                execution_type,
+                execution_source,
+                expected_target,
+                expected_hash,
+                report_text=report_text,
+                pack_text=pack_text,
+                expected_route=expected_route,
+            ):
                 return False
         elif status == "fail":
-            if not errors:
+            if not errors or not any(e.strip() for e in errors):
+                return False
+            if not all(e.strip() for e in errors):
+                return False
+            if evidence and not all(e.strip() for e in evidence):
+                return False
+            if reason is not None and reason.strip() == "":
                 return False
         elif status == "partial":
-            if not (item.get("reason") or errors):
+            has_reason = isinstance(reason, str) and reason.strip()
+            has_errors = bool(errors) and any(e.strip() for e in errors)
+            if not (has_reason or has_errors):
                 return False
-        # not_run / skipped: recorded but not executed — no extra requirement.
+            if has_errors and not all(e.strip() for e in errors):
+                return False
+            if evidence and not all(e.strip() for e in evidence):
+                return False
+            if reason is not None and not has_reason and not has_errors:
+                return False
+        elif status in {"not_run", "skipped"}:
+            # Must have non-empty reason, no execution evidence, no
+            # errors/warnings, and no verified provenance (issue #408).
+            if not isinstance(reason, str) or not reason.strip():
+                return False
+            if evidence:
+                return False
+            if errors or warnings:
+                return False
+            provenance = item.get("evidence_provenance")
+            if provenance is not None:
+                if not isinstance(provenance, list):
+                    return False
+                if provenance:
+                    # Any provenance on a not-executed audit is forged
+                    # execution evidence — fail closed.
+                    if any(
+                        isinstance(p, dict) and p.get("verified") is True
+                        for p in provenance
+                    ):
+                        return False
+                    # Non-empty provenance (even unverified) is still
+                    # unexpected execution evidence.
+                    return False
+        else:
+            return False
+    # Top-level overall must not aggregate an incomplete audit as pass
+    # (issue #408: not_run/skipped/partial/fail/conditional-pass cannot be
+    # hidden under overall=pass).
+    overall = actual.get("overall")
+    if isinstance(overall, str):
+        audit_statuses = [
+            str(a.get("status")) for a in audits if isinstance(a, dict) and a.get("status")
+        ]
+        if overall == "pass" and any(s != "pass" for s in audit_statuses):
+            return False
+        if overall == "conditional-pass" and any(
+            s in {"fail", "partial", "not_run", "skipped"} for s in audit_statuses
+        ):
+            return False
     return True
 
 
@@ -649,6 +759,73 @@ def _audit_provenance_ok(
                 )
                 if not result.is_valid or not result.provenance or not result.provenance.get("verified"):
                     return False
+    return True
+
+
+def _overall_and_returncode_consistent(
+    actual: dict[str, Any], returncode: int | None
+) -> bool:
+    """Fail closed when overall / returncode / audit statuses diverge (issue #408).
+
+    - ``overall`` must be one of {pass, conditional-pass, fail}.
+    - ``returncode`` must match ``overall`` (0/1/2) when available.
+    - ``overall=pass`` must not hide a non-pass audit (already checked in
+      ``_audits_ok`` but re-checked here against the live ``audits``/``validators``
+      for defence in depth, and to catch overall forged independently of the
+      audit-set check).
+    - ``overall=conditional-pass`` must not hide a fail-like audit and must
+      have at least one conditional-pass audit or validator; a pure fail-like
+      set cannot be conditional-pass.
+    - ``overall=fail`` with all audits/validators pass and empty blocking is
+      unlocatable and must fail closed (prevents a forged fail with no evidence).
+    """
+    overall = actual.get("overall")
+    if overall not in {"pass", "conditional-pass", "fail"}:
+        return False
+    # Returncode binding (actual process exit code vs actual overall).
+    if returncode is not None:
+        expected_rc = {"pass": 0, "conditional-pass": 1, "fail": 2}.get(overall)
+        if expected_rc is not None and returncode != expected_rc:
+            return False
+    audits = actual.get("audits") or []
+    validators = actual.get("validators") or []
+    blocking = actual.get("blocking") or []
+    audit_statuses = [
+        str(a.get("status"))
+        for a in audits
+        if isinstance(a, dict) and a.get("status")
+    ]
+    validator_statuses = [
+        str(v.get("status"))
+        for v in validators
+        if isinstance(v, dict) and v.get("status")
+    ]
+    has_fail_like = any(s in {"fail", "partial", "not_run", "skipped"} for s in audit_statuses)
+    has_conditional = any(s == "conditional-pass" for s in audit_statuses)
+    has_validator_fail = any(s in {"fail", "incomplete"} for s in validator_statuses)
+    has_validator_conditional = any(s == "conditional-pass" for s in validator_statuses)
+    if overall == "pass":
+        if has_fail_like or has_conditional or has_validator_fail or has_validator_conditional:
+            return False
+        if blocking:
+            return False
+    elif overall == "conditional-pass":
+        if has_fail_like or has_validator_fail:
+            return False
+        if not (has_conditional or has_validator_conditional):
+            return False
+        if blocking:
+            return False
+    elif overall == "fail":
+        # Must be locatable: at least one fail-like audit, or a validator fail,
+        # or explicit blocking messages. A fail with no locatable source is
+        # either forged or a producer bug — fail closed rather than accept.
+        if not (has_fail_like or has_validator_fail or blocking):
+            # Exception: a fail driven solely by conditional-pass audits
+            # aggregating to fail is not valid — conditional-pass alone must be
+            # conditional-pass, not fail. So even with has_conditional but no
+            # fail-like/validator-fail/blocking, fail is unlocatable.
+            return False
     return True
 
 
@@ -993,6 +1170,7 @@ def _evaluate_case(
         audited_path=str(report),
         expected_input_sha256=expected_report_sha256,
     )
+    overall_and_returncode_ok = _overall_and_returncode_consistent(actual, returncode)
     if expected["verdict"] == "pass":
         case_passed = all(
             [
@@ -1010,6 +1188,7 @@ def _evaluate_case(
                 decision_tree_version_match,
                 activation_snapshot_match,
                 validators_ok,
+                overall_and_returncode_ok,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 returncode == expected_returncode,
             ]
@@ -1042,6 +1221,7 @@ def _evaluate_case(
                 _negative_structure_matches(case, actual, checks_for_negative),
                 audit_ids_match,
                 validators_ok,
+                overall_and_returncode_ok,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 negative_returncode_ok,
             ]
@@ -1114,6 +1294,7 @@ def _evaluate_case(
             "decision_tree_version_match": decision_tree_version_match,
             "activation_snapshot_match": activation_snapshot_match,
             "validators_ok": validators_ok,
+            "overall_and_returncode_ok": overall_and_returncode_ok,
         },
     }
 
