@@ -708,6 +708,16 @@ def _audit_provenance_details(
     ``_audit_consistency_details`` pattern introduced in #408.
     """
     errors: list[str] = []
+    # Enforce the visible-artifact contract at this helper boundary too.  The
+    # normal _evaluate_case path already supplies sanitized text, but callers
+    # of this compatibility/helper API must not be able to pass raw Markdown
+    # and re-enable fenced/HTML hidden evidence (issue #409 follow-up).
+    visible_report_text = (
+        sanitize_visible_markdown(report_text) if report_text is not None else None
+    )
+    visible_pack_text = (
+        sanitize_visible_markdown(pack_text) if pack_text is not None else None
+    )
     provenance = item.get("evidence_provenance")
     if not isinstance(provenance, list) or not provenance:
         return False, ["evidence_provenance must be a non-empty list"]
@@ -780,13 +790,13 @@ def _audit_provenance_details(
                 ]
             if report_text is not None or pack_text is not None:
                 if kind in ("report_section", "report_table"):
-                    artifact_text = report_text
+                    artifact_text = visible_report_text
                     artifact_label = "report"
                 elif kind in ("pack_section", "pack_table"):
-                    artifact_text = pack_text
+                    artifact_text = visible_pack_text
                     artifact_label = "pack"
                 else:
-                    artifact_text = report_text
+                    artifact_text = visible_report_text
                     artifact_label = "report"
                 result = validate_evidence_reference(
                     canonical,
@@ -798,8 +808,8 @@ def _audit_provenance_details(
                     expected_audit_id=audit_id,
                     expected_artifact_sha256=expected_hash,
                     expected_route=expected_route,
-                    report_text=report_text,
-                    pack_text=pack_text,
+                    report_text=visible_report_text,
+                    pack_text=visible_pack_text,
                 )
                 if not result.is_valid:
                     # Propagate the underlying validator's diagnostic, which
@@ -1154,7 +1164,6 @@ def _evaluate_case(
     )
 
     expected_pack_fields = set(expected["research_pack_fields"])
-    actual_audits = set(actual["audit_ids"])
     # Issue #403: derive the canonical expected audit set from the registries
     # (route required audits + delivery-scope global audits + secondary
     # hard-fail audits) instead of trusting the case's declared required_audits

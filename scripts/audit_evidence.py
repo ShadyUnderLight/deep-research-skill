@@ -274,27 +274,25 @@ def _validate_checklist_item(
             errors=(f"cannot read checklist file {path_value}: {exc}",)
         )
 
-    # Checklist markers must be visible outside fenced code.  HTML comments
-    # are legitimate markers (<!-- audit-item: ID -->) so the full
-    # sanitize_visible_markdown would incorrectly delete them.  Use the
-    # fence-only helper that shares the canonical fence state machine
-    # (issue #409).  Lazy import avoids a circular import with
-    # validate_contract → audit_evidence.  On import failure fail closed
-    # (do not fall back to raw text) — a fenced marker must not become
-    # visible via a missing sanitizer (issue #409 P1).
+    # Checklist markers are legitimate top-level HTML comments, but markers
+    # inside fenced code or raw HTML containers are not visible evidence.
+    # Use the checklist-specific sanitizer that shares the canonical
+    # CommonMark state machine (issue #409).  Lazy import avoids a circular
+    # import with validate_contract → audit_evidence.  On import failure fail
+    # closed (do not fall back to raw text).
     try:
-        from validate_contract import strip_fenced_code_blocks_only
+        from validate_contract import sanitize_checklist_visible_markdown
 
-        visible_text = strip_fenced_code_blocks_only(text)
+        visible_text = sanitize_checklist_visible_markdown(text)
     except Exception as exc:  # ImportError or any load failure → fail closed
         return EvidenceValidation(
             errors=(f"cannot load canonical fence sanitizer: {exc}",)
         )
 
     marker_patterns = (
-        rf"<!--\s*audit-item\s*:\s*{re.escape(item_id)}\s*-->",
-        rf"\{{#{re.escape(item_id)}\}}",
-        rf"^\s*-\s*\[[ xX]\]\s+\*\*{re.escape(item_id)}\*\*",
+        rf"^[ ]{{0,3}}<!--[ \t]*audit-item[ \t]*:[ \t]*{re.escape(item_id)}[ \t]*-->[ \t]*$",
+        rf"^[ ]{{0,3}}\{{#{re.escape(item_id)}\}}[ \t]*$",
+        rf"^[ ]{{0,3}}-[ \t]+\[[ xX]\][ \t]+\*\*{re.escape(item_id)}\*\*[ \t]*$",
     )
     if not any(re.search(pattern, visible_text, re.MULTILINE) for pattern in marker_patterns):
         return EvidenceValidation(

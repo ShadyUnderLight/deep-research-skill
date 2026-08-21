@@ -12,19 +12,20 @@ Covers:
 
 from __future__ import annotations
 
+# Dynamic sys.path setup is intentional for direct script-module tests.
+# ruff: noqa: E402
+
 import copy
 import hashlib
 import sys
 from pathlib import Path
-
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-import run_forward_evals
+import run_forward_evals  # noqa: E402
 from run_forward_evals import (
     _audits_ok,
     _audit_consistency_details,
@@ -33,7 +34,7 @@ from run_forward_evals import (
     _overall_consistency_details,
     _evaluate_case,
     load_registry,
-)
+)  # noqa: E402
 
 
 def _real_audit(case_id: str):
@@ -294,7 +295,6 @@ def test_conditional_pass_cross_artifact_fails() -> None:
 
 def test_conditional_pass_degraded_source_fails() -> None:
     case, data = _real_audit("forward-academic-vs-technical")[:2]
-    expected = _expected(case)
     # This case is automated so not applicable, test manual conditional-pass via synthetic
     # Instead test that a manual conditional-pass with legacy source fails
     # Create minimal manual conditional-pass audit

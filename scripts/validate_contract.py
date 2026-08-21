@@ -344,9 +344,9 @@ def validate_contract(
 
     # 1. Required fields
     required_fields = ["primary_route", "secondary_routes", "disciplines", "audits"]
-    for field in required_fields:
-        if field not in contract:
-            errors.append(f"Missing required field: {field}")
+    for required_field in required_fields:
+        if required_field not in contract:
+            errors.append(f"Missing required field: {required_field}")
 
     # 1a. Unknown top-level fields fail closed (issue #376 范围 3).
     known_fields = {
@@ -356,10 +356,10 @@ def validate_contract(
         "decision_tree_version", "activation_snapshot",
         "secondary_route_contracts",
     }
-    for field in contract:
-        if field not in known_fields:
+    for contract_field in contract:
+        if contract_field not in known_fields:
             errors.append(
-                f"Unknown contract field: '{field}'. "
+                f"Unknown contract field: '{contract_field}'. "
                 f"Known fields: {sorted(known_fields)}"
             )
 
@@ -1220,8 +1220,8 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
 
     # First non-empty line that is not "Closest alternative:" prose.
     lines = [
-        l.strip() for l in match.group(1).split("\n")
-        if l.strip() and not l.strip().lower().startswith("closest")
+        line.strip() for line in match.group(1).split("\n")
+        if line.strip() and not line.strip().lower().startswith("closest")
     ]
     if not lines:
         print(
@@ -1429,6 +1429,7 @@ def _sanitize_visible_lines(
     keep_mermaid: bool = False,
     blank: bool = False,
     keep_fences: bool = False,
+    keep_checklist_comments: bool = False,
 ) -> list[str]:
     """Single-pass rendered-content sanitizer state machine.
 
@@ -1445,14 +1446,17 @@ def _sanitize_visible_lines(
       (figure entities, used by the figure-reference validator).
     - keep_fences=True: all fenced content is kept (used before contract
       extraction so the ```contract fence itself survives).
+    - keep_checklist_comments=True: top-level HTML comments are kept for
+      checklist marker validation, while comments inside raw HTML blocks are
+      still removed.
     """
     out: list[str] = []
     state: str | None = None  # fence/comment/t1:<tag>/raw/cdata/pi/decl
     fence_char = ""
     fence_len = 0
-    t1_tag = ""
     mermaid = False
     in_paragraph = False
+    comment_lines: list[str] = []
 
     def emit(line: str, visible: bool) -> None:
         if visible or not blank:
@@ -1471,8 +1475,14 @@ def _sanitize_visible_lines(
                 out.append("")
             continue
         if state == "comment":
+            comment_lines.append(line)
             if "-->" in stripped:
                 state = None
+                if keep_checklist_comments:
+                    out.extend(comment_lines)
+                comment_lines = []
+                if keep_checklist_comments:
+                    continue
             if blank:
                 out.append("")
             continue
@@ -1523,8 +1533,11 @@ def _sanitize_visible_lines(
         if re.match(r"^[ ]{0,3}<!--", line):
             if "-->" in stripped:
                 in_paragraph = False  # type-2 block interrupts the paragraph
+                if keep_checklist_comments:
+                    out.append(line)
                 continue
             state = "comment"
+            comment_lines = [line]
             in_paragraph = False
             if blank:
                 out.append("")
@@ -1635,35 +1648,34 @@ def _strip_fences(text: str) -> str:
     return sanitize_visible_markdown(text)
 
 
-def strip_fenced_code_blocks_only(text: str) -> str:
-    """Remove only fenced code blocks, preserving HTML comments and raw HTML.
+def sanitize_checklist_visible_markdown(text: str) -> str:
+    """Keep checklist markers visible at the top level only.
 
-    Used for checklist marker validation where HTML comments are legitimate
-    ``<!-- audit-item: ID -->`` markers and must not be stripped — only
-    markers hidden inside fenced code are invisible (issue #409).  Reuses
-    the same fence detection (``_fence_open_match`` / ``_fence_close_re``)
-    as the full sanitizer so fence semantics stay canonical.
+    Checklist definitions use HTML comments as a deliberate marker format,
+    so the normal visible-Markdown sanitizer cannot be used verbatim.  This
+    variant keeps top-level comments but still removes fenced code and raw
+    HTML containers.  Therefore a marker inside ``<div>...</div>`` remains
+    invisible, while a standalone ``<!-- audit-item: ... -->`` remains a
+    valid checklist marker (issue #409).
     """
 
-    lines = text.split("\n")
-    out: list[str] = []
-    in_fence = False
-    fence_char = ""
-    fence_len = 0
-    for line in lines:
-        if not in_fence:
-            m = _fence_open_match(line)
-            if m:
-                fence_char = m.group(1)[0]
-                fence_len = len(m.group(1))
-                in_fence = True
-                continue
-            out.append(line)
-        else:
-            if _fence_close_re(fence_char, fence_len).match(line):
-                in_fence = False
-            continue
-    return "\n".join(out)
+    return "\n".join(
+        _sanitize_visible_lines(
+            text.split("\n"),
+            keep_checklist_comments=True,
+        )
+    )
+
+
+def strip_fenced_code_blocks_only(text: str) -> str:
+    """Legacy alias for :func:`sanitize_checklist_visible_markdown`.
+
+    The name is retained for callers introduced by the first #409 patch, but
+    checklist validation now also excludes raw HTML containers so its
+    visibility semantics match the shared CommonMark sanitizer.
+    """
+
+    return sanitize_checklist_visible_markdown(text)
 
 
 def count_report_route_blocks(text: str) -> int:
