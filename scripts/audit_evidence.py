@@ -290,9 +290,9 @@ def _validate_checklist_item(
         )
 
     marker_patterns = (
-        rf"<!--\s*audit-item\s*:\s*{re.escape(item_id)}\s*-->",
-        rf"\{{#{re.escape(item_id)}\}}",
-        rf"^\s*-\s*\[[ xX]\]\s+\*\*{re.escape(item_id)}\*\*",
+        rf"^[ ]{{0,3}}<!--[ \t]*audit-item[ \t]*:[ \t]*{re.escape(item_id)}[ \t]*-->[ \t]*$",
+        rf"^[ ]{{0,3}}\{{#{re.escape(item_id)}\}}[ \t]*$",
+        rf"^[ ]{{0,3}}-[ \t]+\[[ xX]\][ \t]+\*\*{re.escape(item_id)}\*\*[ \t]*$",
     )
     if not any(re.search(pattern, visible_text, re.MULTILINE) for pattern in marker_patterns):
         return EvidenceValidation(

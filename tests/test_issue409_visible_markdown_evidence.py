@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import copy
 import hashlib
+import json
 import sys
 from pathlib import Path
 
@@ -723,6 +724,90 @@ def test_checklist_html_comment_inside_raw_html_block_is_invisible(tmp_path: Pat
     )
     assert not result.is_valid
     assert "was not found" in "; ".join(result.errors)
+
+
+def test_checklist_inline_html_comment_marker_is_invisible(tmp_path: Path):
+    checklist = tmp_path / "checklist.md"
+    checklist.write_text(
+        "Some explanation <!-- audit-item: FA-999 --> not a marker.\n",
+        encoding="utf-8",
+    )
+    result = validate_evidence_reference(
+        f"checklist-item:{checklist.name}#FA-999",
+        artifact_text=None,
+        base_dir=tmp_path,
+        strict=False,
+    )
+    assert not result.is_valid
+
+
+def test_checklist_inline_code_marker_is_invisible(tmp_path: Path):
+    checklist = tmp_path / "checklist.md"
+    checklist.write_text(
+        "`<!-- audit-item: FA-999 -->`\n",
+        encoding="utf-8",
+    )
+    result = validate_evidence_reference(
+        f"checklist-item:{checklist.name}#FA-999",
+        artifact_text=None,
+        base_dir=tmp_path,
+        strict=False,
+    )
+    assert not result.is_valid
+
+
+def test_checklist_indented_code_marker_is_invisible(tmp_path: Path):
+    checklist = tmp_path / "checklist.md"
+    checklist.write_text(
+        "    <!-- audit-item: FA-999 -->\n",
+        encoding="utf-8",
+    )
+    result = validate_evidence_reference(
+        f"checklist-item:{checklist.name}#FA-999",
+        artifact_text=None,
+        base_dir=tmp_path,
+        strict=False,
+    )
+    assert not result.is_valid
+
+
+def test_strict_audit_record_rejects_non_top_level_checklist_marker(tmp_path: Path):
+    checklist = tmp_path / "checklist.md"
+    checklist.write_text(
+        "`<!-- audit-item: FA-999 -->`\n",
+        encoding="utf-8",
+    )
+    record = tmp_path / "audit-record.json"
+    record.write_text(
+        json.dumps(
+            {
+                "records": [
+                    {
+                        "record_id": "manual-001",
+                        "recorded_at": "2026-08-18T10:00:00Z",
+                        "audit_id": "market-outlook-audit",
+                        "status": "passed",
+                        "artifact_sha256": "a" * 64,
+                        "executed_at": "2026-08-18T10:00:00Z",
+                        "execution_source": "manual_checklist_attestation",
+                        "evidence": "checklist-item:checklist.md#FA-999",
+                        "route": "market-outlook",
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    result = validate_evidence_reference(
+        "audit-record:audit-record.json#manual-001@2026-08-18T10:00:00Z",
+        base_dir=tmp_path,
+        strict=True,
+        expected_audit_id="market-outlook-audit",
+        expected_artifact_sha256="a" * 64,
+        expected_route="market-outlook",
+    )
+    assert not result.is_valid
+    assert any("checklist item" in error.lower() for error in result.errors)
 
 
 def test_checklist_sanitizer_removes_raw_html_but_keeps_top_level_marker(tmp_path: Path):
