@@ -27,8 +27,10 @@ if str(SCRIPTS) not in sys.path:
 import run_forward_evals
 from run_forward_evals import (
     _audits_ok,
+    _audit_consistency_details,
     _expected_audit_set,
     _overall_and_returncode_consistent,
+    _overall_consistency_details,
     _evaluate_case,
     load_registry,
 )
@@ -566,3 +568,198 @@ def test_forward_eval_overall_returncode_mismatch_fails(monkeypatch) -> None:
     result = _evaluate_case(case, reg["decision_tree_version"])
     assert result["passed"] is False
     assert result["checks"]["overall_and_returncode_ok"] is False
+
+
+# ── P1: locatable errors ──────────────────────────────────────────────────
+
+
+def test_audit_consistency_errors_contain_audit_id_and_field() -> None:
+    case, data = _real_audit("forward-provider-selection")[:2]
+    expected = _expected(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "option-selection-final-audit":
+            a["status"] = "not_run"
+            a["reason"] = None
+            a["evidence"] = []
+            a["evidence_provenance"] = []
+            break
+    ok, errs = _audit_consistency_details(tampered, expected)
+    assert ok is False
+    assert any("option-selection-final-audit" in e and "reason" in e.lower() for e in errs), errs
+
+
+def test_conditional_pass_provenance_error_is_locatable() -> None:
+    case, data = _real_audit("forward-academic-vs-technical")[:2]
+    expected = _expected(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "markdown-delivery":
+            a["evidence_provenance"] = []
+            break
+    ok, errs = _audit_consistency_details(
+        tampered, expected,
+        audited_path=str(ROOT / case["fixtures"]["report"]),
+        expected_report_sha256=hashlib.sha256((ROOT / case["fixtures"]["report"]).read_bytes()).hexdigest(),
+        research_pack_path=str(ROOT / case["fixtures"]["research_pack"]),
+        expected_pack_sha256=hashlib.sha256((ROOT / case["fixtures"]["research_pack"]).read_bytes()).hexdigest(),
+    )
+    assert ok is False
+    assert any("markdown-delivery" in e and "provenance" in e.lower() for e in errs), errs
+
+
+def test_overall_consistency_errors_locatable() -> None:
+    case, data = _real_audit("forward-provider-selection")[:2]
+    tampered = copy.deepcopy(data)
+    tampered["overall"] = "pass"
+    # keep returncode 2 to trigger returncode mismatch
+    ok, errs = _overall_consistency_details(tampered, 2)
+    assert ok is False
+    assert any("returncode" in e.lower() or "overall" in e.lower() for e in errs), errs
+
+
+def test_evaluate_case_exposes_audit_and_overall_errors(monkeypatch) -> None:
+    reg = load_registry()
+    case = next(c for c in reg["cases"] if c["id"] == "forward-provider-selection")
+    orig = run_forward_evals._run_audit
+
+    def fake(report, research_pack, activation_snapshot=None):
+        data, err, rc = orig(report, research_pack, activation_snapshot)
+        tampered = copy.deepcopy(data)
+        for a in tampered["audits"]:
+            if a["audit_id"] == "option-selection-final-audit":
+                a["status"] = "not_run"
+                a["reason"] = None
+                a["evidence"] = []
+                a["evidence_provenance"] = []
+                break
+        return tampered, err, rc
+
+    monkeypatch.setattr(run_forward_evals, "_run_audit", fake)
+    result = _evaluate_case(case, reg["decision_tree_version"])
+    assert result["checks"]["audits_consistent"] is False
+    assert "audit_consistency_errors" in result["checks"]
+    assert any("option-selection-final-audit" in e for e in result["checks"]["audit_consistency_errors"])
+    # returncode mismatch variant
+    def fake2(report, research_pack, activation_snapshot=None):
+        data, err, rc = orig(report, research_pack, activation_snapshot)
+        return data, err, 2  # overall pass but rc 2
+
+    monkeypatch.setattr(run_forward_evals, "_run_audit", fake2)
+    result2 = _evaluate_case(case, reg["decision_tree_version"])
+    assert result2["checks"]["overall_and_returncode_ok"] is False
+    assert any("returncode" in e.lower() for e in result2["checks"]["overall_consistency_errors"])
+
+
+# ── P2: unified non-empty / type checks for fail/partial ──────────────────
+
+
+def test_fail_with_whitespace_warnings_fails() -> None:
+    case, data = _real_audit("forward-provider-selection")[:2]
+    expected = _expected(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "option-selection-final-audit":
+            a["status"] = "fail"
+            a["errors"] = ["something failed"]
+            a["warnings"] = ["   "]
+            break
+    ok, errs = _audit_consistency_details(tampered, expected)
+    assert ok is False
+    assert any("warnings" in e.lower() for e in errs), errs
+
+
+def test_partial_with_whitespace_warnings_fails() -> None:
+    case, data = _real_audit("forward-provider-selection")[:2]
+    expected = _expected(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "option-selection-final-audit":
+            a["status"] = "partial"
+            a["reason"] = "needs review"
+            a["warnings"] = ["   "]
+            break
+    ok, errs = _audit_consistency_details(tampered, expected)
+    assert ok is False
+    assert any("warnings" in e.lower() for e in errs), errs
+
+
+def test_fail_evidence_provenance_not_list_fails() -> None:
+    case, data = _real_audit("forward-provider-selection")[:2]
+    expected = _expected(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "option-selection-final-audit":
+            a["status"] = "fail"
+            a["errors"] = ["err"]
+            a["evidence_provenance"] = {"verified": True}  # type error
+            break
+    ok, errs = _audit_consistency_details(tampered, expected)
+    assert ok is False
+    assert any("evidence_provenance" in e.lower() for e in errs), errs
+
+
+def test_partial_evidence_provenance_not_list_fails() -> None:
+    case, data = _real_audit("forward-provider-selection")[:2]
+    expected = _expected(case)
+    tampered = copy.deepcopy(data)
+    for a in tampered["audits"]:
+        if a["audit_id"] == "option-selection-final-audit":
+            a["status"] = "partial"
+            a["reason"] = "needs review"
+            a["evidence_provenance"] = {"verified": True}
+            break
+    ok, errs = _audit_consistency_details(tampered, expected)
+    assert ok is False
+    assert any("evidence_provenance" in e.lower() for e in errs), errs
+
+
+def test_partial_warnings_empty_string_also_rejected_diagnostically() -> None:
+    # Ensures the diagnostic path from P2 is exercised: warnings=["   "] is
+    # not silently accepted as internally consistent.
+    actual = {
+        "overall": "fail",
+        "audits": [
+            {
+                "audit_id": "final-audit",
+                "execution_type": "manual",
+                "execution_source": "manual_checklist_attestation",
+                "status": "partial",
+                "reason": "needs review",
+                "errors": [],
+                "warnings": ["   "],
+                "evidence": [],
+                "evidence_provenance": [],
+            },
+            {
+                "audit_id": "markdown-delivery",
+                "execution_type": "automated",
+                "execution_source": "automated_validator",
+                "status": "pass",
+                "errors": [],
+                "warnings": [],
+                "evidence": ["x: y"],
+                "evidence_provenance": [{"verified": True, "execution_source": "automated_validator", "audit_id": "markdown-delivery", "validator_binding": "markdown-delivery", "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION, "target": "x", "input_sha256": "y"}],
+                "validator_binding": "markdown-delivery",
+            },
+            {
+                "audit_id": "research-pack",
+                "execution_type": "automated",
+                "execution_source": "automated_validator",
+                "status": "pass",
+                "errors": [],
+                "warnings": [],
+                "evidence": ["x: y"],
+                "evidence_provenance": [{"verified": True, "execution_source": "automated_validator", "audit_id": "research-pack", "validator_binding": "research-pack", "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION, "target": "x", "input_sha256": "y"}],
+                "validator_binding": "research-pack",
+            },
+        ],
+        "validators": [],
+        "blocking": [],
+        "input_sha256": None,
+    }
+    # Use a minimal expected set that matches the audits above
+    expected_ids = ["final-audit", "markdown-delivery", "research-pack"]
+    ok, errs = _audit_consistency_details(actual, expected_ids)
+    assert ok is False
+    assert any("warnings" in e.lower() and "final-audit" in e for e in errs), errs
