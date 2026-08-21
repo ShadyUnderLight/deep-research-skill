@@ -375,6 +375,289 @@ def _sha256(path: object) -> str | None:
         return None
 
 
+def _audit_consistency_details(
+    actual: dict[str, Any],
+    expected_audit_ids: list[str],
+    audited_path: str | None = None,
+    expected_report_sha256: str | None = None,
+    research_pack_path: str | None = None,
+    expected_pack_sha256: str | None = None,
+    report_text: str | None = None,
+    pack_text: str | None = None,
+    expected_route: str | None = None,
+) -> tuple[bool, list[str]]:
+    """Detailed audit-set validation that returns locatable errors (issue #408).
+
+    Returns ``(ok, errors)`` where ``errors`` contains one entry per violated
+    invariant, each prefixed with the offending ``audit_id`` when applicable
+    (e.g. ``audit option-selection-final-audit: not_run requires non-empty
+    reason``).  ``ok`` is ``True`` iff ``errors`` is empty.  This is the
+    single source of truth for audit status semantics; ``_audits_ok`` is a
+    boolean wrapper for backwards compatibility.
+    """
+    errors: list[str] = []
+    audits = actual.get("audits")
+    if not isinstance(audits, list):
+        return False, ["audits is not a list"]
+    actual_ids = [
+        str(item.get("audit_id")) for item in audits if isinstance(item, dict)
+    ]
+    if len(actual_ids) != len(set(actual_ids)):
+        dup = next((x for x in actual_ids if actual_ids.count(x) > 1), actual_ids[0] if actual_ids else "unknown")
+        errors.append(f"duplicate audit_id '{dup}'")
+    if set(actual_ids) != set(expected_audit_ids):
+        missing = sorted(set(expected_audit_ids) - set(actual_ids))
+        extra = sorted(set(actual_ids) - set(expected_audit_ids))
+        if missing:
+            errors.append(f"missing required audit(s): {', '.join(missing)}")
+        if extra:
+            errors.append(f"unknown/forged audit(s): {', '.join(extra)}")
+    # External trust anchor
+    if (
+        expected_report_sha256 is not None
+        and actual.get("input_sha256") != expected_report_sha256
+    ):
+        errors.append(
+            f"top-level input_sha256 does not match consumer-computed report hash ({actual.get('input_sha256')!r} != {expected_report_sha256!r})"
+        )
+
+    for item in audits:
+        if not isinstance(item, dict):
+            errors.append("audit entry is not an object")
+            continue
+        audit_id = str(item.get("audit_id") or "<missing>")
+        status = str(item.get("status") or "")
+        prefix = f"audit {audit_id}:"
+        if status not in ALLOWED_AUDIT_STATUSES:
+            errors.append(f"{prefix} unknown status '{status}'")
+            continue
+        execution_type = item.get("execution_type")
+        execution_source = item.get("execution_source")
+        if not isinstance(execution_source, str) or not execution_source.strip():
+            errors.append(f"{prefix} execution_source must be non-empty string")
+            continue
+
+        registry_audit = _AUDIT_REGISTRY.get_audit(audit_id)
+        if registry_audit is not None:
+            if execution_type != registry_audit.execution_type:
+                errors.append(
+                    f"{prefix} execution_type '{execution_type}' does not match registry '{registry_audit.execution_type}'"
+                )
+                continue
+        elif not (
+            audit_id.endswith("-secondary-hard-fail") and execution_type == "manual"
+        ):
+            errors.append(f"{prefix} unknown audit_id and not a secondary-hard-fail manual audit")
+            continue
+
+        allowed_sources = AUDIT_EXECUTION_SOURCE_BY_TYPE.get(execution_type, set())
+        if execution_source not in allowed_sources:
+            errors.append(
+                f"{prefix} execution_source '{execution_source}' not allowed for execution_type '{execution_type}'"
+            )
+            continue
+
+        if execution_type == "automated":
+            if item.get("validator_binding") != registry_audit.validator_binding:
+                errors.append(
+                    f"{prefix} validator_binding {item.get('validator_binding')!r} does not match registry {registry_audit.validator_binding!r}"
+                )
+                continue
+
+        # Structural type checks
+        raw_errors = item.get("errors")
+        raw_warnings = item.get("warnings")
+        raw_evidence = item.get("evidence")
+        reason = item.get("reason")
+        raw_provenance = item.get("evidence_provenance")
+
+        if raw_errors is None:
+            errs: list[Any] = []
+        elif isinstance(raw_errors, list):
+            errs = raw_errors
+        else:
+            errors.append(f"{prefix} errors must be list")
+            continue
+        if raw_warnings is None:
+            warns: list[Any] = []
+        elif isinstance(raw_warnings, list):
+            warns = raw_warnings
+        else:
+            errors.append(f"{prefix} warnings must be list")
+            continue
+        if raw_evidence is None:
+            evids: list[Any] = []
+        elif isinstance(raw_evidence, list):
+            evids = raw_evidence
+        else:
+            errors.append(f"{prefix} evidence must be list")
+            continue
+        if reason is not None and not isinstance(reason, str):
+            errors.append(f"{prefix} reason must be string or null")
+            continue
+        # Unified element-type and non-empty checks for present collections (P2)
+        # Every present element must be a non-empty string; a whitespace-only
+        # string is never a locatable error/warning/evidence (closes
+        # partial+reason+whitespace-errors bypass, see re-review P2).
+        if any(not isinstance(e, str) for e in errs):
+            errors.append(f"{prefix} errors must be list of strings")
+            continue
+        if errs and any(not e.strip() for e in errs):
+            errors.append(f"{prefix} errors must be non-empty strings")
+            continue
+        if any(not isinstance(w, str) for w in warns):
+            errors.append(f"{prefix} warnings must be list of strings")
+            continue
+        if warns and any(not w.strip() for w in warns):
+            errors.append(f"{prefix} warnings must be non-empty strings")
+            continue
+        if any(not isinstance(e, str) for e in evids):
+            errors.append(f"{prefix} evidence must be list of strings")
+            continue
+        if evids and any(not e.strip() for e in evids):
+            errors.append(f"{prefix} evidence must be non-empty strings")
+            continue
+        # evidence_provenance structural check for all statuses (P2)
+        if raw_provenance is not None and not isinstance(raw_provenance, list):
+            errors.append(f"{prefix} evidence_provenance must be list")
+            continue
+        if isinstance(raw_provenance, list):
+            for idx, p in enumerate(raw_provenance):
+                if not isinstance(p, dict):
+                    errors.append(f"{prefix} evidence_provenance[{idx}] must be object")
+                    break
+        # Per-status semantics
+        if status == "pass":
+            if errs or warns:
+                errors.append(f"{prefix} pass must have no errors/warnings (got errors={errs!r} warnings={warns!r})")
+                continue
+            if reason is not None and reason.strip():
+                errors.append(f"{prefix} pass must not have reason")
+                continue
+            if not evids or not all(isinstance(e, str) and e.strip() for e in evids):
+                errors.append(f"{prefix} pass requires non-empty evidence")
+                continue
+            if execution_type == "manual" and execution_source != "manual_checklist_attestation":
+                errors.append(f"{prefix} pass with execution_type manual requires execution_source manual_checklist_attestation (got {execution_source!r})")
+                continue
+            if execution_type == "process" and execution_source != "process_node_evidence":
+                errors.append(f"{prefix} pass with execution_type process requires execution_source process_node_evidence (got {execution_source!r})")
+                continue
+            if audit_id == "research-pack":
+                expected_target = str(research_pack_path) if research_pack_path else None
+                expected_hash = expected_pack_sha256
+            else:
+                expected_target = audited_path
+                expected_hash = expected_report_sha256
+            if not _audit_provenance_ok(
+                item, audit_id, execution_type, execution_source,
+                expected_target, expected_hash,
+                report_text=report_text, pack_text=pack_text, expected_route=expected_route,
+            ):
+                errors.append(f"{prefix} pass provenance failed (missing/unverified or artifact binding mismatch)")
+                continue
+        elif status == "conditional-pass":
+            if not warns or errs:
+                errors.append(f"{prefix} conditional-pass requires warnings and no errors (got warnings={warns!r} errors={errs!r})")
+                continue
+            if not all(isinstance(w, str) and w.strip() for w in warns):
+                errors.append(f"{prefix} conditional-pass warnings must be non-empty strings")
+                continue
+            if reason is not None and reason.strip():
+                errors.append(f"{prefix} conditional-pass must not have reason")
+                continue
+            if not evids or not all(isinstance(e, str) and e.strip() for e in evids):
+                errors.append(f"{prefix} conditional-pass requires non-empty evidence")
+                continue
+            if execution_type == "manual" and execution_source != "manual_checklist_attestation":
+                errors.append(f"{prefix} conditional-pass with execution_type manual requires execution_source manual_checklist_attestation")
+                continue
+            if execution_type == "process" and execution_source != "process_node_evidence":
+                errors.append(f"{prefix} conditional-pass with execution_type process requires execution_source process_node_evidence")
+                continue
+            if audit_id == "research-pack":
+                expected_target = str(research_pack_path) if research_pack_path else None
+                expected_hash = expected_pack_sha256
+            else:
+                expected_target = audited_path
+                expected_hash = expected_report_sha256
+            if not _audit_provenance_ok(
+                item, audit_id, execution_type, execution_source,
+                expected_target, expected_hash,
+                report_text=report_text, pack_text=pack_text, expected_route=expected_route,
+            ):
+                errors.append(f"{prefix} conditional-pass provenance failed (same binding as pass required)")
+                continue
+        elif status == "fail":
+            if not errs or not any(isinstance(e, str) and e.strip() for e in errs):
+                errors.append(f"{prefix} fail requires non-empty errors")
+                continue
+            if not all(isinstance(e, str) and e.strip() for e in errs):
+                errors.append(f"{prefix} fail errors must be non-empty strings")
+                continue
+            if evids and not all(isinstance(e, str) and e.strip() for e in evids):
+                errors.append(f"{prefix} fail evidence must be non-empty strings when present")
+                continue
+            if warns and not all(isinstance(w, str) and w.strip() for w in warns):
+                errors.append(f"{prefix} fail warnings must be non-empty strings when present")
+                continue
+            if reason is not None and isinstance(reason, str) and reason.strip() == "":
+                errors.append(f"{prefix} fail reason must be non-empty when present")
+                continue
+            # evidence_provenance already structurally checked above; no
+            # verified provenance required for fail
+        elif status == "partial":
+            has_reason = isinstance(reason, str) and reason.strip()
+            has_errors = bool(errs) and any(isinstance(e, str) and e.strip() for e in errs)
+            if not (has_reason or has_errors):
+                errors.append(f"{prefix} partial requires non-empty reason or non-empty errors")
+                continue
+            if has_errors and not all(isinstance(e, str) and e.strip() for e in errs):
+                errors.append(f"{prefix} partial errors must be non-empty strings")
+                continue
+            if evids and not all(isinstance(e, str) and e.strip() for e in evids):
+                errors.append(f"{prefix} partial evidence must be non-empty strings when present")
+                continue
+            if warns and not all(isinstance(w, str) and w.strip() for w in warns):
+                errors.append(f"{prefix} partial warnings must be non-empty strings when present")
+                continue
+            if reason is not None and not has_reason and not has_errors:
+                errors.append(f"{prefix} partial reason must be non-empty when errors empty")
+                continue
+        elif status in {"not_run", "skipped"}:
+            if not isinstance(reason, str) or not reason.strip():
+                errors.append(f"{prefix} {status} requires non-empty reason")
+                continue
+            if evids:
+                errors.append(f"{prefix} {status} must not carry evidence (got {evids!r})")
+                continue
+            if errs or warns:
+                errors.append(f"{prefix} {status} must not carry errors/warnings (got errors={errs!r} warnings={warns!r})")
+                continue
+            if isinstance(raw_provenance, list) and raw_provenance:
+                if any(isinstance(p, dict) and p.get("verified") is True for p in raw_provenance):
+                    errors.append(f"{prefix} {status} must not carry verified provenance")
+                    continue
+                errors.append(f"{prefix} {status} must not carry evidence_provenance (got {raw_provenance!r})")
+                continue
+        else:
+            errors.append(f"{prefix} unknown status '{status}'")
+            continue
+
+    # Top-level overall aggregation check
+    overall = actual.get("overall")
+    if isinstance(overall, str):
+        audit_statuses = [str(a.get("status")) for a in audits if isinstance(a, dict) and a.get("status")]
+        if overall == "pass" and any(s != "pass" for s in audit_statuses):
+            offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") != "pass"]
+            errors.append(f"overall pass aggregates non-pass audit(s): {', '.join(offending)}")
+        if overall == "conditional-pass" and any(s in {"fail", "partial", "not_run", "skipped"} for s in audit_statuses):
+            offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") in {"fail", "partial", "not_run", "skipped"}]
+            errors.append(f"overall conditional-pass aggregates fail-like audit(s): {', '.join(offending)}")
+
+    return (len(errors) == 0, errors)
+
+
 def _audits_ok(
     actual: dict[str, Any],
     expected_audit_ids: list[str],
@@ -386,145 +669,16 @@ def _audits_ok(
     pack_text: str | None = None,
     expected_route: str | None = None,
 ) -> bool:
-    """Verify the audit JSON ``audits[]`` is complete and internally consistent.
+    """Boolean wrapper around :func:`_audit_consistency_details` for backwards compat.
 
-    Fails closed (returns ``False``) when any of:
-    - ``audits`` is not a list of objects;
-    - an audit id appears more than once (forged duplicate);
-    - the set of actual audit ids differs from ``expected_audit_ids`` (missing,
-      unknown/forged extra, or truncated result);
-    - an audit's declared ``execution_type`` does not match the audit registry
-      (an automated audit cannot masquerade as manual to dodge the
-      validator_binding check) — contract-derived secondary hard-fail audits
-      are the only non-registry entries and must be ``manual`` (issue #403 P1);
-    - an audit carries an out-of-vocabulary ``execution_source`` for its
-      (registry-confirmed) ``execution_type``;
-    - an automated audit's ``validator_binding`` does not match the registry;
-    - status is inconsistent with errors/warnings/reason (e.g. ``pass`` with
-      errors, ``fail`` without errors);
-    - a ``pass`` audit lacks verifiable ``evidence`` or a provenance record that
-      is actually ``verified`` and anchored to the real artifact: automated
-      records must carry ``target`` / ``input_sha256`` binding to the expected
-      artifact (``research-pack`` → the research pack, every other automated
-      audit → the report) using the consumer-computed file hash, and manual/
-      process records must carry a real ``kind`` / ``locator`` provenance (not a
-      bare ``{"verified": true}``) — truthy-only provenance is rejected
-      (issue #403 P1).
-
-    Since issue #407 this is used for both positive and negative cases:
-    every active case must carry a complete, de-duplicated, registry-anchored
-    audit result set.  Negative business-failure assertions and audit-set
-    completeness are independent conditions evaluated alongside the structural
-    failure-family check (issue #403 scoping is superseded by #407).
+    New code should call ``_audit_consistency_details`` to obtain locatable
+    error messages (issue #408 P1).
     """
-    audits = actual.get("audits")
-    if not isinstance(audits, list):
-        return False
-    actual_ids = [
-        str(item.get("audit_id")) for item in audits if isinstance(item, dict)
-    ]
-    if len(actual_ids) != len(set(actual_ids)):
-        return False
-    if set(actual_ids) != set(expected_audit_ids):
-        return False
-    # External trust anchor: the verdict's audited-file hash must equal the hash
-    # the consumer computes from the report on disk — a missing / forged
-    # top-level hash (or one that merely matches another JSON field) fails
-    # closed (issue #403 P1).
-    if (
-        expected_report_sha256 is not None
-        and actual.get("input_sha256") != expected_report_sha256
-    ):
-        return False
-    for item in audits:
-        if not isinstance(item, dict):
-            return False
-        audit_id = str(item.get("audit_id"))
-        status = str(item.get("status"))
-        if status not in ALLOWED_AUDIT_STATUSES:
-            return False
-        execution_type = item.get("execution_type")
-        execution_source = item.get("execution_source")
-        if not isinstance(execution_source, str) or not execution_source.strip():
-            return False
-
-        # Registry-anchored identity: the declared execution_type must match the
-        # registry. This blocks an automated audit (e.g. source-traceability)
-        # from flipping to "manual" + a manual attestation source to skip the
-        # automated validator_binding consistency check below.
-        registry_audit = _AUDIT_REGISTRY.get_audit(audit_id)
-        if registry_audit is not None:
-            if execution_type != registry_audit.execution_type:
-                return False
-        elif not (
-            audit_id.endswith("-secondary-hard-fail") and execution_type == "manual"
-        ):
-            return False
-
-        allowed_sources = AUDIT_EXECUTION_SOURCE_BY_TYPE.get(execution_type, set())
-        if execution_source not in allowed_sources:
-            return False
-
-        if execution_type == "automated":
-            if item.get("validator_binding") != registry_audit.validator_binding:
-                return False
-
-        errors = item.get("errors") or []
-        warnings = item.get("warnings") or []
-        evidence = item.get("evidence") or []
-        if not isinstance(errors, list) or not isinstance(warnings, list):
-            return False
-        if not isinstance(evidence, list):
-            return False
-        if status == "pass":
-            if errors or warnings:
-                return False
-            if not evidence or not all(
-                isinstance(e, str) and e.strip() for e in evidence
-            ):
-                return False
-            # Strict positive path: a degraded/legacy source must not aggregate
-            # to Pass (issue #403 re-review). In strict mode unknown/legacy
-            # are downgraded to partial, not pass.
-            if execution_type == "manual" and execution_source != "manual_checklist_attestation":
-                return False
-            if execution_type == "process" and execution_source != "process_node_evidence":
-                return False
-            # Each audit type binds to a specific artifact; resolve the expected
-            # target/hash and let the consumer-computed values be the anchor.
-            if audit_id == "research-pack":
-                expected_target = (
-                    str(research_pack_path) if research_pack_path else None
-                )
-                expected_hash = expected_pack_sha256
-            else:
-                expected_target = audited_path
-                expected_hash = expected_report_sha256
-            if not _audit_provenance_ok(
-                item,
-                audit_id,
-                execution_type,
-                execution_source,
-                expected_target,
-                expected_hash,
-                report_text=report_text,
-                pack_text=pack_text,
-                expected_route=expected_route,
-            ):
-                return False
-        elif status == "conditional-pass":
-            if not warnings or errors:
-                return False
-            if not evidence:
-                return False
-        elif status == "fail":
-            if not errors:
-                return False
-        elif status == "partial":
-            if not (item.get("reason") or errors):
-                return False
-        # not_run / skipped: recorded but not executed — no extra requirement.
-    return True
+    ok, _ = _audit_consistency_details(
+        actual, expected_audit_ids, audited_path, expected_report_sha256,
+        research_pack_path, expected_pack_sha256, report_text, pack_text, expected_route,
+    )
+    return ok
 
 
 def _audit_provenance_ok(
@@ -650,6 +804,80 @@ def _audit_provenance_ok(
                 if not result.is_valid or not result.provenance or not result.provenance.get("verified"):
                     return False
     return True
+
+
+def _overall_consistency_details(
+    actual: dict[str, Any], returncode: int | None
+) -> tuple[bool, list[str]]:
+    """Detailed overall/returncode validation with locatable errors (issue #408 P1).
+
+    Returns ``(ok, errors)``.  Errors are prefixed with ``overall`` or
+    ``returncode`` so they are directly locatable in CI output.
+    """
+    errors: list[str] = []
+    overall = actual.get("overall")
+    if overall not in {"pass", "conditional-pass", "fail"}:
+        errors.append(f"overall unknown status '{overall}' (expected pass/conditional-pass/fail)")
+        return False, errors
+    if returncode is not None:
+        expected_rc = {"pass": 0, "conditional-pass": 1, "fail": 2}.get(overall)
+        if expected_rc is not None and returncode != expected_rc:
+            errors.append(f"returncode {returncode} does not match overall '{overall}' (expected {expected_rc})")
+    audits = actual.get("audits") or []
+    validators = actual.get("validators") or []
+    blocking = actual.get("blocking") or []
+    audit_statuses = [
+        str(a.get("status"))
+        for a in audits
+        if isinstance(a, dict) and a.get("status")
+    ]
+    validator_statuses = [
+        str(v.get("status"))
+        for v in validators
+        if isinstance(v, dict) and v.get("status")
+    ]
+    has_fail_like = any(s in {"fail", "partial", "not_run", "skipped"} for s in audit_statuses)
+    has_conditional = any(s == "conditional-pass" for s in audit_statuses)
+    has_validator_fail = any(s in {"fail", "incomplete"} for s in validator_statuses)
+    has_validator_conditional = any(s == "conditional-pass" for s in validator_statuses)
+    if overall == "pass":
+        if has_fail_like:
+            offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") in {"fail", "partial", "not_run", "skipped"}]
+            errors.append(f"overall pass aggregates fail-like audit(s): {', '.join(offending)}")
+        if has_conditional:
+            offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") == "conditional-pass"]
+            errors.append(f"overall pass aggregates conditional-pass audit(s): {', '.join(offending)}")
+        if has_validator_fail:
+            offending = [f"{v.get('validator_id')}:{v.get('status')}" for v in validators if isinstance(v, dict) and v.get("status") in {"fail", "incomplete"}]
+            errors.append(f"overall pass aggregates validator fail(s): {', '.join(offending)}")
+        if has_validator_conditional:
+            offending = [f"{v.get('validator_id')}:{v.get('status')}" for v in validators if isinstance(v, dict) and v.get("status") == "conditional-pass"]
+            errors.append(f"overall pass aggregates validator conditional-pass: {', '.join(offending)}")
+        if blocking:
+            errors.append(f"overall pass must have no blocking (got {blocking[:2]!r})")
+    elif overall == "conditional-pass":
+        if has_fail_like:
+            offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") in {"fail", "partial", "not_run", "skipped"}]
+            errors.append(f"overall conditional-pass aggregates fail-like audit(s): {', '.join(offending)}")
+        if has_validator_fail:
+            offending = [f"{v.get('validator_id')}:{v.get('status')}" for v in validators if isinstance(v, dict) and v.get("status") in {"fail", "incomplete"}]
+            errors.append(f"overall conditional-pass aggregates validator fail(s): {', '.join(offending)}")
+        if not (has_conditional or has_validator_conditional):
+            errors.append("overall conditional-pass requires at least one conditional-pass audit or validator")
+        if blocking:
+            errors.append(f"overall conditional-pass must have no blocking (got {blocking[:2]!r})")
+    elif overall == "fail":
+        if not (has_fail_like or has_validator_fail or blocking):
+            errors.append("overall fail is unlocatable: no fail-like audit, no validator fail, and no blocking message")
+    return (len(errors) == 0, errors)
+
+
+def _overall_and_returncode_consistent(
+    actual: dict[str, Any], returncode: int | None
+) -> bool:
+    """Boolean wrapper around :func:`_overall_consistency_details` for backwards compat."""
+    ok, _ = _overall_consistency_details(actual, returncode)
+    return ok
 
 
 def _blocking_ids_are_allowed(actual: dict[str, Any], allowed: set[str]) -> bool:
@@ -931,10 +1159,11 @@ def _evaluate_case(
     if expected_audit_ids is None:
         audit_set_exact = False
         audits_consistent = False
+        audit_consistency_errors: list[str] = ["unknown route for expected audit set (registry drift)"]
         audit_set_ok = False  # registry drift → fail closed
     else:
         audit_set_exact = has_no_duplicates and sorted(actual["audit_ids"]) == expected_audit_ids
-        audits_consistent = _audits_ok(
+        audits_consistent, audit_consistency_errors = _audit_consistency_details(
             actual,
             expected_audit_ids,
             audited_path=str(report),
@@ -945,6 +1174,14 @@ def _evaluate_case(
             pack_text=pack_text_for_provenance,
             expected_route=audit_expected_route,
         )
+        # Duplicate audit_ids are already reported via _audit_consistency_details,
+        # but audit_set_exact gives a fast pre-check for the common truncation case.
+        if not has_no_duplicates:
+            audit_consistency_errors = [f"duplicate audit_id '{next(x for x in raw_audit_ids if raw_audit_ids.count(x) > 1)}'"] + audit_consistency_errors
+        if sorted(actual["audit_ids"]) != expected_audit_ids:
+            # _audit_consistency_details already reports missing/extra, keep both for
+            # backwards compat but avoid duplicate noise in the final list
+            pass
         audit_set_ok = audit_set_exact and audits_consistent
     activation_route_match = actual["activation_route"] == expected["primary_route"]
     report_route_match = actual["report_route"] == expected["primary_route"]
@@ -993,6 +1230,7 @@ def _evaluate_case(
         audited_path=str(report),
         expected_input_sha256=expected_report_sha256,
     )
+    overall_and_returncode_ok, overall_consistency_errors = _overall_consistency_details(actual, returncode)
     if expected["verdict"] == "pass":
         case_passed = all(
             [
@@ -1010,6 +1248,7 @@ def _evaluate_case(
                 decision_tree_version_match,
                 activation_snapshot_match,
                 validators_ok,
+                overall_and_returncode_ok,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 returncode == expected_returncode,
             ]
@@ -1042,6 +1281,7 @@ def _evaluate_case(
                 _negative_structure_matches(case, actual, checks_for_negative),
                 audit_ids_match,
                 validators_ok,
+                overall_and_returncode_ok,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 negative_returncode_ok,
             ]
@@ -1107,6 +1347,7 @@ def _evaluate_case(
             "required_audits_present": audit_ids_match,
             "audit_set_exact": audit_set_exact,
             "audits_consistent": audits_consistent,
+            "audit_consistency_errors": audit_consistency_errors,
             "pack_fields_present": pack_fields_match,
             "statuses_match": status_match,
             "parallelization_match": parallelization_match,
@@ -1114,6 +1355,8 @@ def _evaluate_case(
             "decision_tree_version_match": decision_tree_version_match,
             "activation_snapshot_match": activation_snapshot_match,
             "validators_ok": validators_ok,
+            "overall_and_returncode_ok": overall_and_returncode_ok,
+            "overall_consistency_errors": overall_consistency_errors,
         },
     }
 
