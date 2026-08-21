@@ -279,13 +279,17 @@ def _validate_checklist_item(
     # sanitize_visible_markdown would incorrectly delete them.  Use the
     # fence-only helper that shares the canonical fence state machine
     # (issue #409).  Lazy import avoids a circular import with
-    # validate_contract → audit_evidence.
+    # validate_contract → audit_evidence.  On import failure fail closed
+    # (do not fall back to raw text) — a fenced marker must not become
+    # visible via a missing sanitizer (issue #409 P1).
     try:
         from validate_contract import strip_fenced_code_blocks_only
 
         visible_text = strip_fenced_code_blocks_only(text)
-    except ImportError:
-        visible_text = text
+    except Exception as exc:  # ImportError or any load failure → fail closed
+        return EvidenceValidation(
+            errors=(f"cannot load canonical fence sanitizer: {exc}",)
+        )
 
     marker_patterns = (
         rf"<!--\s*audit-item\s*:\s*{re.escape(item_id)}\s*-->",
