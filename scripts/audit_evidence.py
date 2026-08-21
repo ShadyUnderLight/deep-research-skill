@@ -274,12 +274,29 @@ def _validate_checklist_item(
             errors=(f"cannot read checklist file {path_value}: {exc}",)
         )
 
+    # Checklist markers must be visible outside fenced code.  HTML comments
+    # are legitimate markers (<!-- audit-item: ID -->) so the full
+    # sanitize_visible_markdown would incorrectly delete them.  Use the
+    # fence-only helper that shares the canonical fence state machine
+    # (issue #409).  Lazy import avoids a circular import with
+    # validate_contract → audit_evidence.  On import failure fail closed
+    # (do not fall back to raw text) — a fenced marker must not become
+    # visible via a missing sanitizer (issue #409 P1).
+    try:
+        from validate_contract import strip_fenced_code_blocks_only
+
+        visible_text = strip_fenced_code_blocks_only(text)
+    except Exception as exc:  # ImportError or any load failure → fail closed
+        return EvidenceValidation(
+            errors=(f"cannot load canonical fence sanitizer: {exc}",)
+        )
+
     marker_patterns = (
         rf"<!--\s*audit-item\s*:\s*{re.escape(item_id)}\s*-->",
         rf"\{{#{re.escape(item_id)}\}}",
         rf"^\s*-\s*\[[ xX]\]\s+\*\*{re.escape(item_id)}\*\*",
     )
-    if not any(re.search(pattern, text, re.MULTILINE) for pattern in marker_patterns):
+    if not any(re.search(pattern, visible_text, re.MULTILINE) for pattern in marker_patterns):
         return EvidenceValidation(
             errors=(
                 f"checklist item {item_id!r} was not found in {path_value}",
