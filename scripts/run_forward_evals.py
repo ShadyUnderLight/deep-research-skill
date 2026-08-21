@@ -28,7 +28,7 @@ from eval_registry import (
     failure_stage_for_failure_family,
     load_registry,
 )
-from validate_contract import extract_contract_from_markdown
+from validate_contract import extract_contract_from_markdown, sanitize_visible_markdown
 from validate_research_pack import (
     extract_declared_statuses,
     find_missing_headings,
@@ -549,12 +549,17 @@ def _audit_consistency_details(
             else:
                 expected_target = audited_path
                 expected_hash = expected_report_sha256
-            if not _audit_provenance_ok(
+            prov_ok, prov_errors = _audit_provenance_details(
                 item, audit_id, execution_type, execution_source,
                 expected_target, expected_hash,
                 report_text=report_text, pack_text=pack_text, expected_route=expected_route,
-            ):
-                errors.append(f"{prefix} pass provenance failed (missing/unverified or artifact binding mismatch)")
+            )
+            if not prov_ok:
+                # Surface the underlying locator / binding diagnostic so a hidden
+                # heading inside a fence / HTML block is distinguishable from a
+                # generic provenance mismatch (issue #409).
+                detail = f" ({'; '.join(prov_errors)})" if prov_errors else ""
+                errors.append(f"{prefix} pass provenance failed (missing/unverified or artifact binding mismatch){detail}")
                 continue
         elif status == "conditional-pass":
             if not warns or errs:
@@ -581,12 +586,14 @@ def _audit_consistency_details(
             else:
                 expected_target = audited_path
                 expected_hash = expected_report_sha256
-            if not _audit_provenance_ok(
+            prov_ok, prov_errors = _audit_provenance_details(
                 item, audit_id, execution_type, execution_source,
                 expected_target, expected_hash,
                 report_text=report_text, pack_text=pack_text, expected_route=expected_route,
-            ):
-                errors.append(f"{prefix} conditional-pass provenance failed (same binding as pass required)")
+            )
+            if not prov_ok:
+                detail = f" ({'; '.join(prov_errors)})" if prov_errors else ""
+                errors.append(f"{prefix} conditional-pass provenance failed (same binding as pass required){detail}")
                 continue
         elif status == "fail":
             if not errs or not any(isinstance(e, str) and e.strip() for e in errs):
@@ -681,7 +688,7 @@ def _audits_ok(
     return ok
 
 
-def _audit_provenance_ok(
+def _audit_provenance_details(
     item: dict[str, Any],
     audit_id: str,
     execution_type: str,
@@ -691,71 +698,69 @@ def _audit_provenance_ok(
     report_text: str | None = None,
     pack_text: str | None = None,
     expected_route: str | None = None,
-) -> bool:
-    """Verify a ``pass`` audit's ``evidence_provenance`` is genuine, not truthy.
+) -> tuple[bool, list[str]]:
+    """Detailed provenance verification that returns locatable errors (issue #409).
 
-    The producer already emits structured provenance.  The consumer must consume
-    it against an *externally computed* artifact anchor (``expected_target`` /
-    ``expected_hash``), not merely check the list is non-empty — otherwise
-    ``["hello"]`` / ``[{"verified": false}]`` / a ``target`` swap would pass
-    (issue #403 P1).
-
-    For automated audits the verified record must bind ``target`` and
-    ``input_sha256`` to the expected artifact (``research-pack`` → the research
-    pack, everything else → the report).  For manual/process audits the producer
-    emits a ``report_section`` style record without a file hash, so the gate is a
-    real ``kind`` / ``locator`` provenance rather than a bare ``{"verified":
-    true}``.
+    Same semantics as :func:`_audit_provenance_ok` but returns ``(ok, errors)``
+    where ``errors`` contains specific diagnostics (e.g. ``not found in the
+    visible report`` or ``target mismatch``) so callers can surface them
+    instead of a generic ``pass provenance failed``.  This mirrors the
+    ``_audit_consistency_details`` pattern introduced in #408.
     """
+    errors: list[str] = []
     provenance = item.get("evidence_provenance")
     if not isinstance(provenance, list) or not provenance:
-        return False
+        return False, ["evidence_provenance must be a non-empty list"]
     if not any(isinstance(p, dict) for p in provenance):
-        return False
+        return False, ["evidence_provenance must contain at least one object"]
     verified_records = [
         p for p in provenance if isinstance(p, dict) and p.get("verified") is True
     ]
     if not verified_records:
-        return False
+        return False, ["evidence_provenance has no verified record"]
     for record in verified_records:
         if record.get("execution_source") != execution_source:
-            return False
+            return False, [
+                f"provenance execution_source {record.get('execution_source')!r} != expected {execution_source!r}"
+            ]
         if execution_type == "automated":
             if record.get("audit_id") != audit_id:
-                return False
+                return False, [
+                    f"provenance audit_id {record.get('audit_id')!r} != expected {audit_id!r}"
+                ]
             if record.get("validator_binding") != item.get("validator_binding"):
-                return False
+                return False, [
+                    f"provenance validator_binding {record.get('validator_binding')!r} != expected {item.get('validator_binding')!r}"
+                ]
             if record.get("validator_version") != EXPECTED_VALIDATOR_VERSION:
-                return False
-            # Mandatory artifact binding for automated provenance: the record
-            # must name the expected target and carry the consumer-computed hash.
-            # Missing / swapped / forged target or hash fails closed.  When the
-            # caller does not supply an external anchor (e.g. simple unit tests
-            # that call _audits_ok without hashes), fall back to requiring the
-            # fields to be present as non-empty strings.
+                return False, [
+                    f"provenance validator_version {record.get('validator_version')!r} != expected {EXPECTED_VALIDATOR_VERSION!r}"
+                ]
             if expected_target is not None:
                 if record.get("target") != expected_target:
-                    return False
+                    return False, [
+                        f"provenance target {record.get('target')!r} != expected {expected_target!r}"
+                    ]
             elif (
                 not isinstance(record.get("target"), str)
                 or not record.get("target").strip()
             ):
-                return False
+                return False, ["provenance target must be a non-empty string"]
             prov_input = record.get("input_sha256")
             if expected_hash is not None:
                 if not isinstance(prov_input, str) or prov_input != expected_hash:
-                    return False
+                    return False, [
+                        f"provenance input_sha256 {prov_input!r} != expected {expected_hash!r}"
+                    ]
             elif not isinstance(prov_input, str) or not prov_input:
-                return False
+                return False, ["provenance input_sha256 must be a non-empty string"]
         else:
-            # manual/process: require a real provenance record, not a bare
-            # {"verified": true} that an attacker can fabricate alongside the JSON.
             kind = record.get("kind")
             locator = record.get("locator")
             if not isinstance(kind, str) or not kind.strip():
-                return False
+                return False, ["provenance kind must be a non-empty string"]
             if not isinstance(locator, str) or not locator.strip():
-                return False
+                return False, ["provenance locator must be a non-empty string"]
             allowed_kinds = {
                 "report_section": "report-section",
                 "report_table": "report-table",
@@ -766,18 +771,13 @@ def _audit_provenance_ok(
             }
             prefix = allowed_kinds.get(kind)
             if prefix is None:
-                return False
+                return False, [f"provenance kind {kind!r} is not allowed"]
             canonical = f"{prefix}:{locator.strip()}"
             evidence = item.get("evidence", [])
-            # evidence must contain the canonical typed reference
             if canonical not in evidence:
-                return False
-            # Re-validate against the real artifact when available — a
-            # self-consistent JSON pair (evidence + provenance both forged to
-            # the same fake locator) must still fail if the locator does not
-            # exist in the report/pack. For audit_record, also bind the
-            # expected audit/artifact/route context so a record belonging to
-            # another audit or another report's hash cannot be replayed.
+                return False, [
+                    f"provenance locator {locator!r} (kind {kind}) not in evidence {evidence!r}"
+                ]
             if report_text is not None or pack_text is not None:
                 if kind in ("report_section", "report_table"):
                     artifact_text = report_text
@@ -801,9 +801,38 @@ def _audit_provenance_ok(
                     report_text=report_text,
                     pack_text=pack_text,
                 )
-                if not result.is_valid or not result.provenance or not result.provenance.get("verified"):
-                    return False
-    return True
+                if not result.is_valid:
+                    # Propagate the underlying validator's diagnostic, which
+                    # already contains "not found in the visible report/pack"
+                    # for hidden locators (issue #409).
+                    for err in result.errors:
+                        errors.append(err)
+                    return False, errors
+                if not result.provenance or not result.provenance.get("verified"):
+                    return False, [
+                        f"provenance locator {locator!r} was not verified against visible {artifact_label}"
+                    ]
+    return True, []
+
+
+def _audit_provenance_ok(
+    item: dict[str, Any],
+    audit_id: str,
+    execution_type: str,
+    execution_source: str,
+    expected_target: str | None,
+    expected_hash: str | None,
+    report_text: str | None = None,
+    pack_text: str | None = None,
+    expected_route: str | None = None,
+) -> bool:
+    """Boolean wrapper around :func:`_audit_provenance_details` for backwards compat."""
+    ok, _ = _audit_provenance_details(
+        item, audit_id, execution_type, execution_source,
+        expected_target, expected_hash,
+        report_text=report_text, pack_text=pack_text, expected_route=expected_route,
+    )
+    return ok
 
 
 def _overall_consistency_details(
@@ -990,13 +1019,17 @@ def _evaluate_case(
     expected_pack_sha256 = _sha256(research_pack)
     # Visible texts for evidence re-validation (manual/process provenance must
     # be anchored to a real heading/table/checklist item, not just a JSON-
-    # self-consistent evidence+provenance pair).
+    # self-consistent evidence+provenance pair).  Hashes above remain raw-byte
+    # anchored; only the locator lookup uses the canonical visible sanitizer
+    # (issue #409: fences / raw HTML must not contribute heading/table evidence).
     try:
-        report_text_for_provenance = report.read_text(encoding="utf-8", errors="replace")
+        raw_report_text = report.read_text(encoding="utf-8", errors="replace")
+        report_text_for_provenance = sanitize_visible_markdown(raw_report_text)
     except OSError:
         report_text_for_provenance = None
     try:
-        pack_text_for_provenance = research_pack.read_text(encoding="utf-8", errors="replace")
+        raw_pack_text = research_pack.read_text(encoding="utf-8", errors="replace")
+        pack_text_for_provenance = sanitize_visible_markdown(raw_pack_text)
     except OSError:
         pack_text_for_provenance = None
 

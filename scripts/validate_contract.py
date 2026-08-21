@@ -1633,6 +1633,39 @@ def _strip_non_fence_containers(text: str) -> str:
 def _strip_fences(text: str) -> str:
     """Legacy alias for :func:`sanitize_visible_markdown`."""
     return sanitize_visible_markdown(text)
+
+
+def strip_fenced_code_blocks_only(text: str) -> str:
+    """Remove only fenced code blocks, preserving HTML comments and raw HTML.
+
+    Used for checklist marker validation where HTML comments are legitimate
+    ``<!-- audit-item: ID -->`` markers and must not be stripped — only
+    markers hidden inside fenced code are invisible (issue #409).  Reuses
+    the same fence detection (``_fence_open_match`` / ``_fence_close_re``)
+    as the full sanitizer so fence semantics stay canonical.
+    """
+
+    lines = text.split("\n")
+    out: list[str] = []
+    in_fence = False
+    fence_char = ""
+    fence_len = 0
+    for line in lines:
+        if not in_fence:
+            m = _fence_open_match(line)
+            if m:
+                fence_char = m.group(1)[0]
+                fence_len = len(m.group(1))
+                in_fence = True
+                continue
+            out.append(line)
+        else:
+            if _fence_close_re(fence_char, fence_len).match(line):
+                in_fence = False
+            continue
+    return "\n".join(out)
+
+
 def count_report_route_blocks(text: str) -> int:
     """Number of visible (non-fenced) '## Route and audit status' blocks."""
     cleaned = _strip_fences(text)
