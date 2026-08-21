@@ -411,9 +411,11 @@ def _audits_ok(
       bare ``{"verified": true}``) — truthy-only provenance is rejected
       (issue #403 P1).
 
-    Only positive cases call this; negative cases legitimately carry
-    non-passing audits and are validated by their structural failure family
-    instead (issue #403 scoping).
+    Since issue #407 this is used for both positive and negative cases:
+    every active case must carry a complete, de-duplicated, registry-anchored
+    audit result set.  Negative business-failure assertions and audit-set
+    completeness are independent conditions evaluated alongside the structural
+    failure-family check (issue #403 scoping is superseded by #407).
     """
     audits = actual.get("audits")
     if not isinstance(audits, list):
@@ -898,13 +900,40 @@ def _evaluate_case(
     # subset, and require the executed audit results to match it exactly — no
     # missing, duplicate, unknown, or forged-extra result — and to be internally
     # consistent (status/errors/warnings/evidence/provenance/binding).
-    expected_audit_ids = _expected_audit_set(
-        expected["primary_route"], expected["secondary_routes"]
-    )
+    # Issue #407: negative cases must share the same fail-closed audit-set gate
+    # as positives.  Duplicate detection is performed on the raw list before
+    # set conversion so a forged duplicate is not hidden by de-duplication.
+    # For route-misclassification the report's actual route differs from the
+    # expected activation route; the audit set must be verified against the
+    # report's declared route (the artifact under test), otherwise the genuine
+    # negative would always fail its audit-set check and baseline 11/11 would
+    # be impossible.
+    if case.get("failure_family") == "route-misclassification" and actual.get("report_route"):
+        audit_route_for_set = actual["report_route"]
+        audit_secondary_for_set = actual.get("secondary_routes") or expected["secondary_routes"]
+        audit_expected_route = actual["report_route"]
+    else:
+        audit_route_for_set = expected["primary_route"]
+        audit_secondary_for_set = expected["secondary_routes"]
+        audit_expected_route = expected["primary_route"]
+    try:
+        expected_audit_ids = _expected_audit_set(
+            audit_route_for_set, audit_secondary_for_set
+        )
+    except registry_loader.UnknownRouteError:
+        expected_audit_ids = None
+    raw_audit_ids = [
+        str(item.get("audit_id"))
+        for item in actual.get("audits", [])
+        if isinstance(item, dict) and item.get("audit_id")
+    ]
+    has_no_duplicates = len(raw_audit_ids) == len(set(raw_audit_ids))
     if expected_audit_ids is None:
+        audit_set_exact = False
+        audits_consistent = False
         audit_set_ok = False  # registry drift → fail closed
     else:
-        audit_set_exact = sorted(actual["audit_ids"]) == expected_audit_ids
+        audit_set_exact = has_no_duplicates and sorted(actual["audit_ids"]) == expected_audit_ids
         audits_consistent = _audits_ok(
             actual,
             expected_audit_ids,
@@ -914,7 +943,7 @@ def _evaluate_case(
             expected_pack_sha256=expected_pack_sha256,
             report_text=report_text_for_provenance,
             pack_text=pack_text_for_provenance,
-            expected_route=expected["primary_route"],
+            expected_route=audit_expected_route,
         )
         audit_set_ok = audit_set_exact and audits_consistent
     activation_route_match = actual["activation_route"] == expected["primary_route"]
@@ -1011,6 +1040,7 @@ def _evaluate_case(
             [
                 actual["failure_family"] == case["failure_family"],
                 _negative_structure_matches(case, actual, checks_for_negative),
+                audit_ids_match,
                 validators_ok,
                 actual["overall"] == expected["statuses"]["audit_status"],
                 negative_returncode_ok,
@@ -1075,6 +1105,8 @@ def _evaluate_case(
             "secondary_routes_match": secondary_match,
             "disciplines_match": discipline_match,
             "required_audits_present": audit_ids_match,
+            "audit_set_exact": audit_set_exact,
+            "audits_consistent": audits_consistent,
             "pack_fields_present": pack_fields_match,
             "statuses_match": status_match,
             "parallelization_match": parallelization_match,
