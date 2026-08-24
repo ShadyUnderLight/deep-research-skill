@@ -15,8 +15,14 @@ Exit codes:
     2 = fail closed: missing file, bad JSON, or any validation issue
 
 Usage:
-    python3 scripts/validate_track_handoff.py <handoff.json> \
-        [--expected-track-id <track-id>]
+    python3 scripts/validate_track_handoff.py <handoff.json> \\
+        [--expected-track-id <id>] [--expected-handoff-id <id>] \\
+        [--expected-question <text>] [--expected-artifact-id <id>]
+
+Identity bindings: track_id only proves the track name; pass
+--expected-handoff-id (dispatch/run identity) or --expected-question to
+reject stale or misrouted handoffs from a previous run, and
+--expected-artifact-id to bind the handoff to the downstream artifact.
 """
 
 from __future__ import annotations
@@ -25,6 +31,7 @@ import argparse
 import json
 import re
 import sys
+from datetime import date, datetime
 from pathlib import Path
 
 HANDOFF_INCOMPLETE = "HANDOFF_INCOMPLETE"
@@ -56,8 +63,8 @@ OPTIONAL_TOP_LEVEL = frozenset({"status_reason", "recovery_action", "artifact_re
 KNOWN_TOP_LEVEL = REQUIRED_TOP_LEVEL | OPTIONAL_TOP_LEVEL
 
 SCOPE_REQUIRED = frozenset({"in_scope", "out_of_scope", "timeframe", "geography"})
-SOURCE_REQUIRED = frozenset({"source_id", "title"})
-SOURCE_OPTIONAL = frozenset({"url"})
+SOURCE_REQUIRED = frozenset({"source_id", "title", "url"})
+SOURCE_OPTIONAL = frozenset()
 FINDING_REQUIRED = frozenset(
     {"finding_id", "claim", "evidence_refs", "evidence_role", "confidence"}
 )
@@ -69,11 +76,36 @@ CONFLICT_OPTIONAL = frozenset({"resolution_note"})
 UNKNOWN_REQUIRED = frozenset({"description", "reason", "impact", "next_action"})
 ARTIFACT_REF_REQUIRED = frozenset({"artifact_id"})
 
-# ISO-8601 date (2026-08-24) or RFC 3339 timestamp with zone offset.
+# Shape gate for ISO-8601 date (2026-08-24) or RFC 3339 timestamp.  The
+# regex only checks digit/separator shape; real calendar validity is checked
+# separately via date/datetime.fromisoformat so impossible values such as
+# 2026-02-31 fail closed.
 _TIMESTAMP_RE = re.compile(
-    r"^\d{4}-\d{2}-\d{2}"
-    r"(?:[Tt]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[Zz]|[+-]\d{2}:\d{2})?)?$"
+    r"^(\d{4}-\d{2}-\d{2})"
+    r"(?:[Tt](\d{2}:\d{2}(?::\d{2}(?:\.\d+)?))([Zz]|[+-]\d{2}:\d{2})?)?$"
 )
+
+
+def _is_valid_timestamp(value: object) -> bool:
+    """True for a real calendar date or a timezone-aware RFC 3339 datetime."""
+    if not isinstance(value, str):
+        return False
+    match = _TIMESTAMP_RE.match(value)
+    if not match:
+        return False
+    date_part, time_part, zone_part = match.groups()
+    try:
+        if time_part is None:
+            date.fromisoformat(date_part)
+            return True
+        # Normalize RFC 3339's lowercase 'z' designator for fromisoformat.
+        zone = (zone_part or "").replace("z", "Z").replace("Z", "+00:00")
+        dt = datetime.fromisoformat(f"{date_part}T{time_part}{zone}")
+    except ValueError:
+        return False
+    # RFC 3339 timestamps carry an explicit UTC offset; naive datetimes are
+    # ambiguous about when the handoff was produced, so they fail closed.
+    return dt.tzinfo is not None
 
 EXIT_OK = 0
 EXIT_FAIL_CLOSED = 2
@@ -138,13 +170,11 @@ def validate_handoff_data(data: object) -> list[str]:
         errors.append("'blocked' status requires a non-empty 'recovery_action'")
 
     # ── Timestamp ────────────────────────────────────────────────────────
-    if "generated_at" in data and not (
-        isinstance(data["generated_at"], str)
-        and _TIMESTAMP_RE.match(data["generated_at"])
-    ):
+    if "generated_at" in data and not _is_valid_timestamp(data["generated_at"]):
         errors.append(
-            "'generated_at' must be an ISO-8601 date or RFC 3339 timestamp, "
-            f"got {data['generated_at']!r}"
+            "'generated_at' must be an ISO-8601 date or a timezone-aware "
+            "RFC 3339 timestamp (naive datetimes and impossible calendar "
+            f"values are rejected), got {data['generated_at']!r}"
         )
 
     # ── Scope ────────────────────────────────────────────────────────────
@@ -167,8 +197,11 @@ def validate_handoff_data(data: object) -> list[str]:
                 elif any(not item.strip() for item in in_scope):
                     errors.append("'scope.in_scope' items must be non-empty strings")
             out_of_scope = scope.get("out_of_scope")
-            if out_of_scope is not None and not _is_string_list(out_of_scope):
-                errors.append("'scope.out_of_scope' must be a list of strings")
+            if out_of_scope is not None:
+                if not _is_string_list(out_of_scope):
+                    errors.append("'scope.out_of_scope' must be a list of strings")
+                elif any(not item.strip() for item in out_of_scope):
+                    errors.append("'scope.out_of_scope' items must be non-empty strings")
             for field in ("timeframe", "geography"):
                 if field in scope and not _is_non_empty_str(scope[field]):
                     errors.append(f"'scope.{field}' must be a non-empty string")
@@ -177,14 +210,16 @@ def validate_handoff_data(data: object) -> list[str]:
     register = data.get("source_register")
     source_ids: set[str] = set()
     duplicate_source_ids: set[str] = set()
-    malformed_source_ids: list[str] = []
     if "source_register" in data:
         if not isinstance(register, list):
             errors.append("'source_register' must be a list")
         else:
             for entry in register:
                 if not isinstance(entry, dict):
-                    malformed_source_ids.append(str(entry))
+                    errors.append(
+                        "each source_register entry must be an object; got "
+                        f"{type(entry).__name__} ({str(entry)[:60]!r})"
+                    )
                     continue
                 extra = sorted(set(entry) - SOURCE_REQUIRED - SOURCE_OPTIONAL)
                 if extra:
@@ -384,12 +419,31 @@ def validate_handoff_data(data: object) -> list[str]:
     return errors
 
 
-def load_handoff_for_merge(path: Path | str, *, expected_track_id: str | None = None) -> dict:
+def load_handoff_for_merge(
+    path: Path | str,
+    *,
+    expected_track_id: str | None = None,
+    expected_handoff_id: str | None = None,
+    expected_question: str | None = None,
+    expected_artifact_id: str | None = None,
+) -> dict:
     """Consumer-side loader: parse + validate, raising instead of guessing.
 
     The parent synthesizer must call this before merging so that a missing,
     malformed, or incomplete handoff surfaces as :class:`HandoffIncomplete`
     rather than as an empty-but-plausible merge result.
+
+    Identity bindings (all optional, each fails closed on mismatch):
+
+    - ``expected_track_id`` proves which track produced the handoff — but a
+      track id alone does NOT prove freshness: yesterday's handoff for the
+      same track passes this check.
+    - ``expected_handoff_id`` binds to one specific dispatch/run when the
+      parent pre-assigns handoff ids; this is the strongest stale guard.
+    - ``expected_question`` catches cross-task reuse when ids are not
+      pre-assigned.
+    - ``expected_artifact_id`` binds the handoff to the downstream artifact
+      via its optional ``artifact_ref``; an absent artifact_ref fails.
     """
     path = Path(path)
     problems: list[str] = []
@@ -412,6 +466,28 @@ def load_handoff_for_merge(path: Path | str, *, expected_track_id: str | None = 
             f"track_id mismatch: expected {expected_track_id!r}, "
             f"got {data.get('track_id')!r}"
         )
+    if (
+        expected_handoff_id is not None
+        and data.get("handoff_id") != expected_handoff_id
+    ):
+        problems.append(
+            "handoff_id mismatch (stale or misrouted handoff?): expected "
+            f"{expected_handoff_id!r}, got {data.get('handoff_id')!r}"
+        )
+    if expected_question is not None and data.get("question") != expected_question:
+        problems.append(
+            "question mismatch (handoff was not produced for this dispatch): "
+            f"expected {expected_question!r}, got {data.get('question')!r}"
+        )
+    if expected_artifact_id is not None:
+        artifact_ref = data.get("artifact_ref")
+        actual = artifact_ref.get("artifact_id") if isinstance(artifact_ref, dict) else None
+        if actual != expected_artifact_id:
+            problems.append(
+                "artifact binding mismatch: expected artifact_id "
+                f"{expected_artifact_id!r}, got {actual!r} (a handoff without "
+                "artifact_ref cannot satisfy an artifact-bound merge)"
+            )
     if problems:
         detail = "\n".join(f"  - {problem}" for problem in problems)
         raise HandoffIncomplete(
@@ -429,12 +505,38 @@ def main(argv: list[str] | None = None) -> int:
         "--expected-track-id",
         type=str,
         default=None,
-        help="Consumer guard: reject the handoff unless track_id matches",
+        help="Consumer guard: reject unless track_id matches (proves track name only)",
+    )
+    parser.add_argument(
+        "--expected-handoff-id",
+        type=str,
+        default=None,
+        help="Consumer guard: reject unless handoff_id matches the dispatched run id "
+        "(strongest guard against reusing a stale handoff from a previous run)",
+    )
+    parser.add_argument(
+        "--expected-question",
+        type=str,
+        default=None,
+        help="Consumer guard: reject unless question matches this dispatch's track question",
+    )
+    parser.add_argument(
+        "--expected-artifact-id",
+        type=str,
+        default=None,
+        help="Consumer guard: reject unless artifact_ref.artifact_id matches; a handoff "
+        "without artifact_ref cannot pass an artifact-bound merge",
     )
     args = parser.parse_args(argv)
 
     try:
-        load_handoff_for_merge(args.handoff_file, expected_track_id=args.expected_track_id)
+        load_handoff_for_merge(
+            args.handoff_file,
+            expected_track_id=args.expected_track_id,
+            expected_handoff_id=args.expected_handoff_id,
+            expected_question=args.expected_question,
+            expected_artifact_id=args.expected_artifact_id,
+        )
     except HandoffIncomplete as exc:
         print(exc)
         print(

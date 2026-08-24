@@ -2,6 +2,10 @@
 
 Use parallel research only when the topic naturally separates into mostly independent tracks.
 
+Single-track research does not create Track Handoffs and never runs
+`scripts/validate_track_handoff.py`; every contract on this page binds only
+the parallel path.
+
 ## Good candidates
 
 Parallelize when the task has 2-4 distinct tracks such as:
@@ -106,8 +110,12 @@ Minimum shape every track must produce:
    track to re-run instead.
 4. Preserve each track's `partial` / `blocked` / unknown states in the merged
    Research Pack's uncertainty and counter-evidence registers.
-5. When dispatching, pass `--expected-track-id <id>` so a stale or misrouted
-   handoff cannot be merged under the wrong track.
+5. Bind the merge to **this** dispatch — `track_id` only proves the track
+   name, so yesterday's structurally valid handoff for the same track would
+   otherwise pass. Prefer pre-assigning `handoff_id` at dispatch time and
+   merging with `--expected-handoff-id <id>`; when ids are not pre-assigned,
+   use `--expected-question "<track question>"`; bind downstream artifacts
+   with `--expected-artifact-id <id>` (requires the handoff's `artifact_ref`).
 
 ## Merge step
 

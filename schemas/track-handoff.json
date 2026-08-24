@@ -75,7 +75,7 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["source_id", "title"],
+        "required": ["source_id", "title", "url"],
         "properties": {
           "source_id": {
             "type": "string",
@@ -88,7 +88,8 @@
           },
           "url": {
             "type": "string",
-            "minLength": 1
+            "minLength": 1,
+            "description": "Required: every track source must be explicitly traceable (SKILL.md requires explicit source URLs)."
           }
         }
       }
@@ -202,7 +203,7 @@
     },
     "generated_at": {
       "type": "string",
-      "description": "ISO-8601 date (2026-08-24) or RFC 3339 timestamp (2026-08-24T09:30:00Z)."
+      "description": "ISO-8601 date (2026-08-24) or timezone-aware RFC 3339 timestamp (2026-08-24T09:30:00Z). Impossible calendar values (2026-02-31) and naive datetimes without a zone offset fail validation."
     },
     "artifact_ref": {
       "type": "object",
