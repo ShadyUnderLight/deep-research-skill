@@ -192,7 +192,7 @@ def validate_handoff_data(data: object) -> list[str]:
             for field in sorted(SCOPE_REQUIRED - set(scope)):
                 errors.append(f"'scope' is missing required field '{field}'")
             in_scope = scope.get("in_scope")
-            if in_scope is not None:
+            if "in_scope" in scope:
                 if not _is_string_list(in_scope) or not in_scope:
                     errors.append(
                         "'scope.in_scope' must be a non-empty list of strings"
@@ -200,11 +200,13 @@ def validate_handoff_data(data: object) -> list[str]:
                 elif any(not item.strip() for item in in_scope):
                     errors.append("'scope.in_scope' items must be non-empty strings")
             out_of_scope = scope.get("out_of_scope")
-            if out_of_scope is not None:
+            if "out_of_scope" in scope:
                 if not _is_string_list(out_of_scope):
                     errors.append("'scope.out_of_scope' must be a list of strings")
                 elif any(not item.strip() for item in out_of_scope):
-                    errors.append("'scope.out_of_scope' items must be non-empty strings")
+                    errors.append(
+                        "'scope.out_of_scope' items must be non-empty strings"
+                    )
             for field in ("timeframe", "geography"):
                 if field in scope and not _is_non_empty_str(scope[field]):
                     errors.append(f"'scope.{field}' must be a non-empty string")
@@ -284,7 +286,7 @@ def validate_handoff_data(data: object) -> list[str]:
                         f"finding {fid or '?'} 'claim' must be a non-empty string"
                     )
                 refs = finding.get("evidence_refs")
-                if refs is not None:
+                if "evidence_refs" in finding:
                     if not _is_string_list(refs) or not refs:
                         errors.append(
                             f"finding {fid or '?'} 'evidence_refs' must be a "
@@ -299,13 +301,13 @@ def validate_handoff_data(data: object) -> list[str]:
                                 "handoff's source_register"
                             )
                 role = finding.get("evidence_role")
-                if role is not None and role not in ALLOWED_EVIDENCE_ROLES:
+                if "evidence_role" in finding and role not in ALLOWED_EVIDENCE_ROLES:
                     errors.append(
                         f"finding {fid or '?'} 'evidence_role' must be one of "
                         f"{list(ALLOWED_EVIDENCE_ROLES)}, got {role!r}"
                     )
                 confidence = finding.get("confidence")
-                if confidence is not None and (
+                if "confidence" in finding and (
                     not isinstance(confidence, (int, float))
                     or isinstance(confidence, bool)
                     or not 0 <= confidence <= 1
@@ -343,7 +345,7 @@ def validate_handoff_data(data: object) -> list[str]:
                 if "topic" in conflict and not _is_non_empty_str(topic):
                     errors.append("conflict 'topic' must be a non-empty string")
                 refs = conflict.get("finding_refs")
-                if refs is not None:
+                if "finding_refs" in conflict:
                     if not _is_string_list(refs) or not refs:
                         errors.append(
                             "conflict 'finding_refs' must be a non-empty list "
@@ -358,7 +360,7 @@ def validate_handoff_data(data: object) -> list[str]:
                                 "handoff's findings"
                             )
                 resolution_status = conflict.get("resolution_status")
-                if resolution_status is not None and resolution_status not in (
+                if "resolution_status" in conflict and resolution_status not in (
                     ALLOWED_RESOLUTION_STATUS
                 ):
                     errors.append(
@@ -372,7 +374,10 @@ def validate_handoff_data(data: object) -> list[str]:
                         "resolved conflict requires a non-empty 'resolution_note'"
                     )
                 affects = conflict.get("affects_overall_question")
-                if affects is not None and not isinstance(affects, bool):
+                if (
+                    "affects_overall_question" in conflict
+                    and not isinstance(affects, bool)
+                ):
                     errors.append(
                         "conflict 'affects_overall_question' must be a boolean"
                     )
@@ -399,15 +404,20 @@ def validate_handoff_data(data: object) -> list[str]:
 
     # ── Implications ─────────────────────────────────────────────────────
     implications = data.get("implications")
-    if implications is not None:
+    if "implications" in data:
         if not _is_string_list(implications):
             errors.append("'implications' must be a list of strings")
         elif any(not item.strip() for item in implications):
             errors.append("'implications' items must be non-empty strings")
 
+    # ── Optional string fields: null is never a lawful value ─────────────
+    for field in ("status_reason", "recovery_action"):
+        if field in data and not _is_non_empty_str(data[field]):
+            errors.append(f"'{field}' must be a non-empty string when present")
+
     # ── Reserved artifact_ref shape (Run State, issue #417) ──────────────
     artifact_ref = data.get("artifact_ref")
-    if artifact_ref is not None:
+    if "artifact_ref" in data:
         if not isinstance(artifact_ref, dict):
             errors.append("'artifact_ref' must be an object")
         else:
@@ -517,6 +527,13 @@ def load_handoff_for_merge(
         raise HandoffIncomplete(
             f"{HANDOFF_INCOMPLETE}: handoff file {path} is not valid JSON: {exc}"
         ) from exc
+    if not isinstance(data, dict):
+        # Identity bindings below use dict access; a non-object root (list,
+        # string, number, null) must fail closed here instead of crashing.
+        raise HandoffIncomplete(
+            f"{HANDOFF_INCOMPLETE}: handoff file {path} must contain a single "
+            f"JSON object, got {type(data).__name__}"
+        )
 
     problems.extend(validate_handoff_data(data))
     if expected_track_id is not None and data.get("track_id") != expected_track_id:

@@ -21,6 +21,38 @@
     "status",
     "generated_at"
   ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {"status": {"const": "complete"}},
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {"findings": {"minItems": 1}},
+        "description": "A complete track must carry at least one finding; empty arrays are reserved for partial/blocked with reasons."
+      }
+    },
+    {
+      "if": {
+        "properties": {"status": {"enum": ["partial", "blocked"]}},
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["status_reason"],
+        "description": "partial and blocked tracks must explain why."
+      }
+    },
+    {
+      "if": {
+        "properties": {"status": {"const": "blocked"}},
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["recovery_action"],
+        "description": "blocked tracks must state how the track can be retried."
+      }
+    }
+  ],
   "properties": {
     "schema_version": {
       "type": "string",

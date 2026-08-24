@@ -412,6 +412,122 @@ def test_missing_expected_scope_file_fails_closed(tmp_path):
     assert vth.HANDOFF_INCOMPLETE in proc.stdout
 
 
+# ── Present-but-null values fail closed (review round 3, finding 1) ───────
+
+
+NULL_CASES = [
+    ("question", lambda d: d.update(question=None)),
+    ("handoff_id", lambda d: d.update(handoff_id=None)),
+    ("track_id", lambda d: d.update(track_id=None)),
+    ("status", lambda d: d.update(status=None)),
+    ("generated_at", lambda d: d.update(generated_at=None)),
+    ("implications", lambda d: d.update(implications=None)),
+    ("artifact_ref", lambda d: d.update(artifact_ref=None)),
+    ("scope.in_scope", lambda d: d["scope"].update(in_scope=None)),
+    ("scope.out_of_scope", lambda d: d["scope"].update(out_of_scope=None)),
+    ("scope.timeframe", lambda d: d["scope"].update(timeframe=None)),
+    ("scope.geography", lambda d: d["scope"].update(geography=None)),
+    ("source.title", lambda d: d["source_register"][0].update(title=None)),
+    ("source.url", lambda d: d["source_register"][0].update(url=None)),
+    ("finding.claim", lambda d: d["findings"][0].update(claim=None)),
+    ("finding.evidence_refs", lambda d: d["findings"][0].update(evidence_refs=None)),
+    ("finding.evidence_role", lambda d: d["findings"][0].update(evidence_role=None)),
+    ("finding.confidence", lambda d: d["findings"][0].update(confidence=None)),
+    ("finding.limitations", lambda d: d["findings"][0].update(limitations=None)),
+    ("conflict.topic", lambda d: d["conflicts"][0].update(topic=None)),
+    ("conflict.finding_refs", lambda d: d["conflicts"][0].update(finding_refs=None)),
+    (
+        "conflict.resolution_status",
+        lambda d: d["conflicts"][0].update(resolution_status=None),
+    ),
+    (
+        "conflict.affects_overall_question",
+        lambda d: d["conflicts"][0].update(affects_overall_question=None),
+    ),
+]
+
+
+@pytest.mark.parametrize("case_name,null_mutation", NULL_CASES, ids=[c[0] for c in NULL_CASES])
+def test_present_but_null_field_fails_closed(valid_complete, case_name, null_mutation):
+    """A key present with JSON null violates its schema type; the validator
+    must never treat it as absent-and-therefore-skippable."""
+    data = copy.deepcopy(valid_complete)
+    null_mutation(data)
+    errors = vth.validate_handoff_data(data)
+    field = case_name.split(".")[-1]
+    assert errors != [], f"{case_name}=null must be rejected"
+    assert any(field in err for err in errors), (
+        f"{case_name}=null rejection must name the field: {errors}"
+    )
+
+
+def test_null_status_reason_and_recovery_action_rejected():
+    partial = load_valid("valid-partial.json")
+    partial["status_reason"] = None
+    assert any("status_reason" in err for err in vth.validate_handoff_data(partial))
+
+    blocked = load_valid("valid-blocked.json")
+    blocked["recovery_action"] = None
+    blocked["status_reason"] = None
+    errs = vth.validate_handoff_data(blocked)
+    assert any("status_reason" in err for err in errs)
+    assert any("recovery_action" in err for err in errs)
+
+    # Optional-but-present under complete status: null still violates the
+    # declared string type.
+    complete = load_valid("valid-complete.json")
+    complete["status_reason"] = None
+    assert vth.validate_handoff_data(complete) != []
+
+
+def test_null_artifact_ref_rejected_at_command_level(valid_complete, tmp_path):
+    data = mutate(valid_complete, {"artifact_ref": None})
+    proc = cli_validates(data, tmp_path)
+    assert proc.returncode == 2
+    assert vth.HANDOFF_INCOMPLETE in proc.stdout
+
+
+# ── Non-object root payloads fail closed cleanly (review round 3, finding 2)
+
+
+@pytest.mark.parametrize("raw_payload", ["[]", '"just a string"', "42", "null"])
+def test_non_object_root_rejected_cleanly_at_command_level(tmp_path, raw_payload):
+    path = tmp_path / "root.json"
+    path.write_text(raw_payload, encoding="utf-8")
+    proc = run_cli(str(path), "--expected-handoff-id", "some-run-id")
+    assert proc.returncode == 2, f"{raw_payload}: expected exit 2, got {proc.returncode}"
+    assert vth.HANDOFF_INCOMPLETE in proc.stdout
+    assert "Traceback" not in proc.stderr, (
+        f"{raw_payload} crashed the validator instead of failing closed"
+    )
+
+
+def test_loader_non_object_root_raises_handoff_incomplete(tmp_path):
+    path = write_tmp(tmp_path, [])  # list, not object
+    with pytest.raises(vth.HandoffIncomplete):
+        vth.load_handoff_for_merge(path)
+    # Identity bindings must not crash on non-dict payloads either.
+    with pytest.raises(vth.HandoffIncomplete):
+        vth.load_handoff_for_merge(path, expected_handoff_id="run-123")
+    with pytest.raises(vth.HandoffIncomplete):
+        vth.load_handoff_for_merge(path, expected_scope={"in_scope": ["x"]})
+
+
+# ── Schema encodes cross-field conditionals (review round 3, addendum) ────
+
+
+def test_schema_doc_encodes_status_conditionals():
+    doc = json.loads(SCHEMA_DOC.read_text(encoding="utf-8"))
+    allof_text = json.dumps(doc.get("allOf", []))
+    assert '"const": "complete"' in allof_text and '"minItems": 1' in allof_text, (
+        "schema must encode 'complete requires >=1 finding' as a conditional, "
+        "not only in a description"
+    )
+    assert '"status_reason"' in allof_text and '"recovery_action"' in allof_text, (
+        "schema must encode partial/blocked reason requirements conditionally"
+    )
+
+
 # ── Field formats and enums ───────────────────────────────────────────────
 
 
