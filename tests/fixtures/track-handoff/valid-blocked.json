@@ -1,0 +1,32 @@
+{
+  "schema_version": "1",
+  "handoff_id": "track-2026-08-24-regulation-blocked",
+  "track_id": "track-regulation",
+  "question": "Which regulatory changes in 2026 affect data-residency obligations for analytics vendors?",
+  "scope": {
+    "in_scope": [
+      "2026 data-residency legislative changes in the EU and US"
+    ],
+    "out_of_scope": [
+      "sector-specific health-care compliance"
+    ],
+    "timeframe": "2026-01 through 2026-08",
+    "geography": "EU and US"
+  },
+  "source_register": [],
+  "findings": [],
+  "conflicts": [],
+  "unknowns": [
+    {
+      "description": "Whether the 2026 EU data-residency amendment passed committee",
+      "reason": "Search channels were unavailable during the research window",
+      "impact": "The regulatory track contributes no evidence to the overall question",
+      "next_action": "Re-run this track when external search is restored; parent must treat regulation as unverified"
+    }
+  ],
+  "implications": [],
+  "status": "blocked",
+  "status_reason": "All external search channels failed preflight; no sources could be retrieved",
+  "recovery_action": "Retry after channel preflight passes; escalate to single-track fallback if outage persists beyond one batch window",
+  "generated_at": "2026-08-24T10:00:00+09:00"
+}

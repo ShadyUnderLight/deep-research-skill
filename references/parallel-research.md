@@ -53,28 +53,65 @@ When spawning sub-agents, give each one:
 2. the specific track question
 3. the preferred source types
 4. the research mode
-5. an instruction to return structured findings only
-6. an instruction to separate confirmed facts from inference
-7. an instruction to include source URLs
+5. an instruction to return a Track Handoff (see below), not polished prose
+6. an instruction to record confirmed facts vs inference via `evidence_role`
+7. an instruction to put every used source into `source_register` with URLs
 
 Keep sub-agent tasks narrow. Narrow tasks merge better.
 
-## Expected sub-agent output
+## Track Handoff contract (required when parallelizing)
 
-Ask each sub-agent to return:
+Each track does not return a free-form report. It returns one **Track Handoff** —
+a schema-valid JSON artifact defined by `schemas/track-handoff.json`
+(schema version `1`).
 
-- track summary
-- key findings
-- uncertainties or conflicts
-- source list
+The canonical field vocabulary lives in the schema; do not redefine it here.
+Minimum shape every track must produce:
 
-If the topic is decision-oriented, also ask for:
+- `schema_version`, `handoff_id`, `track_id`, `question`
+- `scope` with explicit `in_scope`, `out_of_scope`, `timeframe`, `geography`
+  so the parent can detect scope drift between tracks
+- `source_register` — the sources this track actually used, each with a stable
+  local `source_id`
+- `findings[]` — load-bearing claims; each carries a stable `finding_id`,
+  non-empty `evidence_refs` resolving into this handoff's `source_register`,
+  an `evidence_role` (`observed | primary | secondary | inferred | unknown`),
+  and a numeric `confidence`
+- `conflicts[]` — disagreements between claims, bound to the involved
+  `finding_refs`, with a resolution status
+- `unknowns[]` — each with reason, impact, and next verification action
+- `implications[]` for decision-oriented topics
+- `status`: `complete | partial | blocked`; `partial` requires
+  `status_reason`, `blocked` requires `status_reason` plus `recovery_action`
 
-- implications for the overall question
+### Producer rules (the track)
+
+1. Validate before handing off:
+
+   ```bash
+   python3 scripts/validate_track_handoff.py <handoff>.json
+   ```
+
+2. A track whose handoff fails validation is not complete — fix or mark it
+   `partial`/`blocked` with reasons. Never downgrade a validation failure to
+   an empty array.
+
+### Consumer rules (the parent)
+
+1. Re-validate every incoming handoff before merging (same validator).
+2. A handoff that fails validation is reported as `HANDOFF_INCOMPLETE`.
+   Refuse to merge it and **never interpret it as "no evidence for this
+   direction"** — a missing or malformed handoff is not a finding.
+3. Do not auto-fill missing claims, sources, conflicts, or unknowns; ask the
+   track to re-run instead.
+4. Preserve each track's `partial` / `blocked` / unknown states in the merged
+   Research Pack's uncertainty and counter-evidence registers.
+5. When dispatching, pass `--expected-track-id <id>` so a stale or misrouted
+   handoff cannot be merged under the wrong track.
 
 ## Merge step
 
-After sub-agents finish:
+After all tracks return valid handoffs:
 
 1. compare overlapping claims
 2. resolve conflicts using stronger or more primary sources
@@ -82,7 +119,8 @@ After sub-agents finish:
 4. remove duplicate evidence
 5. synthesize one coherent report
 
-Do not paste sub-agent outputs together without reconciliation.
+Do not paste sub-agent outputs together without reconciliation. Do not merge
+any track whose handoff did not pass validation (see consumer rules above).
 
 ## Batch parallelism (rate-limit safe)
 
