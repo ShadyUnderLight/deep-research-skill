@@ -314,6 +314,104 @@ def test_loader_identity_bindings_fail_closed(valid_complete, tmp_path):
     assert payload["findings"]
 
 
+# ── Consumer scope binding (review round 2, issue #416 consumer contract) ─
+
+
+def _write_scope_file(tmp_path, scope: dict) -> str:
+    path = tmp_path / "dispatch-scope.json"
+    path.write_text(json.dumps(scope), encoding="utf-8")
+    return str(path)
+
+
+def test_expected_scope_drift_fails_despite_matching_identity(valid_complete, tmp_path):
+    """The #416 acceptance scenario: handoff_id / track_id / question all
+    match the dispatch, yet geography and timeframe drifted. Only the scope
+    binding can catch this."""
+    drifted = copy.deepcopy(valid_complete)
+    drifted["scope"]["geography"] = "global"
+    drifted["scope"]["timeframe"] = "all-time"
+    assert vth.validate_handoff_data(drifted) == [], (
+        "precondition: the drifted handoff must be structurally valid so "
+        "only the scope binding can reject it"
+    )
+
+    identity_args = [
+        "--expected-handoff-id", valid_complete["handoff_id"],
+        "--expected-track-id", valid_complete["track_id"],
+        "--expected-question", valid_complete["question"],
+    ]
+    identity_only = cli_validates(drifted, tmp_path, *identity_args)
+    assert identity_only.returncode == 0, (
+        "identity bindings alone cannot detect scope drift"
+    )
+
+    guarded = cli_validates(
+        drifted, tmp_path, *identity_args,
+        "--expected-scope-file",
+        _write_scope_file(tmp_path, valid_complete["scope"]),
+    )
+    assert guarded.returncode == 2
+    assert vth.HANDOFF_INCOMPLETE in guarded.stdout
+    assert "geography" in guarded.stdout
+    assert "timeframe" in guarded.stdout
+
+
+def test_expected_scope_match_passes(valid_complete, tmp_path):
+    proc = cli_validates(
+        valid_complete, tmp_path,
+        "--expected-scope-file",
+        _write_scope_file(tmp_path, valid_complete["scope"]),
+    )
+    assert proc.returncode == 0, proc.stdout
+
+
+def test_expected_scope_list_order_is_not_drift(valid_complete, tmp_path):
+    """Scope item order carries no meaning; reordering is not drift."""
+    reordered = copy.deepcopy(valid_complete)
+    reordered["scope"]["in_scope"] = list(reversed(reordered["scope"]["in_scope"]))
+    proc = cli_validates(
+        reordered, tmp_path,
+        "--expected-scope-file",
+        _write_scope_file(tmp_path, valid_complete["scope"]),
+    )
+    assert proc.returncode == 0, proc.stdout
+
+
+def test_malformed_expected_scope_binding_fails_closed(valid_complete, tmp_path):
+    partial = {"timeframe": valid_complete["scope"]["timeframe"]}
+    proc = cli_validates(
+        valid_complete, tmp_path,
+        "--expected-scope-file", _write_scope_file(tmp_path, partial),
+    )
+    assert proc.returncode == 2
+    assert "expected_scope" in proc.stdout
+
+    extra = dict(valid_complete["scope"], population="mid-market teams")
+    proc = cli_validates(
+        valid_complete, tmp_path,
+        "--expected-scope-file", _write_scope_file(tmp_path, extra),
+    )
+    assert proc.returncode == 2
+    assert "expected_scope" in proc.stdout
+
+
+def test_loader_expected_scope_drift_raises(valid_complete, tmp_path):
+    path = write_tmp(tmp_path, valid_complete)
+    drifted_scope = dict(valid_complete["scope"], geography="Mars")
+    with pytest.raises(vth.HandoffIncomplete) as excinfo:
+        vth.load_handoff_for_merge(path, expected_scope=drifted_scope)
+    assert "geography" in str(excinfo.value)
+
+
+def test_missing_expected_scope_file_fails_closed(tmp_path):
+    proc = run_cli(
+        str(FIXTURES / "valid-complete.json"),
+        "--expected-scope-file", str(tmp_path / "does-not-exist.json"),
+    )
+    assert proc.returncode == 2
+    assert vth.HANDOFF_INCOMPLETE in proc.stdout
+
+
 # ── Field formats and enums ───────────────────────────────────────────────
 
 

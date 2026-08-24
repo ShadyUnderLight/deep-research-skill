@@ -110,12 +110,17 @@ Minimum shape every track must produce:
    track to re-run instead.
 4. Preserve each track's `partial` / `blocked` / unknown states in the merged
    Research Pack's uncertainty and counter-evidence registers.
-5. Bind the merge to **this** dispatch — `track_id` only proves the track
-   name, so yesterday's structurally valid handoff for the same track would
-   otherwise pass. Prefer pre-assigning `handoff_id` at dispatch time and
-   merging with `--expected-handoff-id <id>`; when ids are not pre-assigned,
-   use `--expected-question "<track question>"`; bind downstream artifacts
-   with `--expected-artifact-id <id>` (requires the handoff's `artifact_ref`).
+5. Bind the merge to **this** dispatch and its assigned boundary:
+   - `track_id` only proves the track name, so yesterday's structurally valid
+     handoff for the same track would otherwise pass. Prefer pre-assigning
+     `handoff_id` at dispatch time and merging with
+     `--expected-handoff-id <id>`; when ids are not pre-assigned, use
+     `--expected-question "<track question>"`; bind downstream artifacts
+     with `--expected-artifact-id <id>` (requires the handoff's `artifact_ref`).
+   - Dispatch identity does not prove scope execution: record each track's
+     assigned scope in a dispatch file and merge with
+     `--expected-scope-file <dispatch-scope.json>` to catch geography /
+     timeframe / in-scope drift even when every identity binding matches.
 
 ## Merge step
 

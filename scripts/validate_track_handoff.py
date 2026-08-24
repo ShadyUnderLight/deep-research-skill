@@ -17,12 +17,15 @@ Exit codes:
 Usage:
     python3 scripts/validate_track_handoff.py <handoff.json> \\
         [--expected-track-id <id>] [--expected-handoff-id <id>] \\
-        [--expected-question <text>] [--expected-artifact-id <id>]
+        [--expected-question <text>] [--expected-artifact-id <id>] \\
+        [--expected-scope-file <dispatch-scope.json>]
 
 Identity bindings: track_id only proves the track name; pass
 --expected-handoff-id (dispatch/run identity) or --expected-question to
-reject stale or misrouted handoffs from a previous run, and
---expected-artifact-id to bind the handoff to the downstream artifact.
+reject stale or misrouted handoffs from a previous run,
+--expected-artifact-id to bind the handoff to the downstream artifact, and
+--expected-scope-file to verify the track executed within its assigned
+scope/timeframe boundary.
 """
 
 from __future__ import annotations
@@ -419,6 +422,55 @@ def validate_handoff_data(data: object) -> list[str]:
     return errors
 
 
+def _normalized_scope_value(value: object) -> object:
+    """Order-insensitive comparison key for string-list scope fields."""
+    if isinstance(value, list) and all(isinstance(item, str) for item in value):
+        return sorted(value)
+    return value
+
+
+def _scope_binding_problems(
+    actual_scope: object, expected_scope: object
+) -> list[str]:
+    """Compare a handoff's scope against the dispatched scope assignment.
+
+    The dispatch identity (handoff_id/track_id/question) proves *which run*
+    produced a handoff; only the scope binding proves the track executed
+    within the assigned boundary (issue #416: machine-checkable scope /
+    timeframe drift between tracks).
+    """
+    if not isinstance(expected_scope, dict) or set(expected_scope) != SCOPE_REQUIRED:
+        got = (
+            sorted(expected_scope)
+            if isinstance(expected_scope, dict)
+            else type(expected_scope).__name__
+        )
+        return [
+            "invalid expected_scope binding: must contain exactly "
+            f"{sorted(SCOPE_REQUIRED)}, got {got}"
+        ]
+    if not isinstance(actual_scope, dict):
+        return ["scope binding failed: handoff has no valid scope object"]
+    problems: list[str] = []
+    for field in ("timeframe", "geography"):
+        expected = expected_scope[field]
+        actual = actual_scope.get(field)
+        if actual != expected:
+            problems.append(
+                f"scope drift on '{field}': dispatch assigned {expected!r}, "
+                f"handoff reports {actual!r}"
+            )
+    for field in ("in_scope", "out_of_scope"):
+        expected = expected_scope[field]
+        actual = actual_scope.get(field)
+        if _normalized_scope_value(actual) != _normalized_scope_value(expected):
+            problems.append(
+                f"scope drift on '{field}': dispatch assigned {expected!r}, "
+                f"handoff reports {actual!r}"
+            )
+    return problems
+
+
 def load_handoff_for_merge(
     path: Path | str,
     *,
@@ -426,6 +478,7 @@ def load_handoff_for_merge(
     expected_handoff_id: str | None = None,
     expected_question: str | None = None,
     expected_artifact_id: str | None = None,
+    expected_scope: dict | None = None,
 ) -> dict:
     """Consumer-side loader: parse + validate, raising instead of guessing.
 
@@ -444,6 +497,11 @@ def load_handoff_for_merge(
       pre-assigned.
     - ``expected_artifact_id`` binds the handoff to the downstream artifact
       via its optional ``artifact_ref``; an absent artifact_ref fails.
+    - ``expected_scope`` verifies the track executed within its assigned
+      boundary (exact match on ``timeframe``/``geography``, order-insensitive
+      match on ``in_scope``/``out_of_scope``).  This is a different axis from
+      dispatch identity: a fresh handoff from the right run can still have
+      drifted outside its assigned scope.
     """
     path = Path(path)
     problems: list[str] = []
@@ -488,6 +546,8 @@ def load_handoff_for_merge(
                 f"{expected_artifact_id!r}, got {actual!r} (a handoff without "
                 "artifact_ref cannot satisfy an artifact-bound merge)"
             )
+    if expected_scope is not None:
+        problems.extend(_scope_binding_problems(data.get("scope"), expected_scope))
     if problems:
         detail = "\n".join(f"  - {problem}" for problem in problems)
         raise HandoffIncomplete(
@@ -527,7 +587,32 @@ def main(argv: list[str] | None = None) -> int:
         help="Consumer guard: reject unless artifact_ref.artifact_id matches; a handoff "
         "without artifact_ref cannot pass an artifact-bound merge",
     )
+    parser.add_argument(
+        "--expected-scope-file",
+        type=str,
+        default=None,
+        help="Consumer guard: path to a JSON file holding the dispatched scope object; "
+        "reject unless the handoff scope matches (timeframe/geography exact, "
+        "in_scope/out_of_scope order-insensitive)",
+    )
     args = parser.parse_args(argv)
+
+    expected_scope: dict | None = None
+    if args.expected_scope_file is not None:
+        try:
+            expected_scope = json.loads(
+                Path(args.expected_scope_file).read_text(encoding="utf-8")
+            )
+        except (OSError, json.JSONDecodeError) as exc:
+            print(
+                f"{HANDOFF_INCOMPLETE}: cannot read expected-scope file "
+                f"{args.expected_scope_file}: {exc}"
+            )
+            print(
+                "\nThis refusal is terminal: do not merge this handoff and do "
+                "not interpret it as empty findings."
+            )
+            return EXIT_FAIL_CLOSED
 
     try:
         load_handoff_for_merge(
@@ -536,6 +621,7 @@ def main(argv: list[str] | None = None) -> int:
             expected_handoff_id=args.expected_handoff_id,
             expected_question=args.expected_question,
             expected_artifact_id=args.expected_artifact_id,
+            expected_scope=expected_scope,
         )
     except HandoffIncomplete as exc:
         print(exc)
