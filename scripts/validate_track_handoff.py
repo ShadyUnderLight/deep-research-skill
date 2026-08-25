@@ -161,12 +161,16 @@ def validate_handoff_data(data: object) -> list[str]:
 
     # ── Status semantics ─────────────────────────────────────────────────
     status = data.get("status")
-    if status not in ALLOWED_STATUS:
+    # isinstance gate first: `in` on a set raises TypeError for unhashable
+    # values such as dicts/lists.
+    if not isinstance(status, str) or status not in ALLOWED_STATUS:
         errors.append(
             f"'status' must be one of {list(ALLOWED_STATUS)}, got {status!r}"
         )
-    if status in {"partial", "blocked"} and not _is_non_empty_str(
-        data.get("status_reason")
+    if (
+        isinstance(status, str)
+        and status in {"partial", "blocked"}
+        and not _is_non_empty_str(data.get("status_reason"))
     ):
         errors.append(f"'{status}' status requires a non-empty 'status_reason'")
     if status == "blocked" and not _is_non_empty_str(data.get("recovery_action")):
@@ -301,7 +305,9 @@ def validate_handoff_data(data: object) -> list[str]:
                                 "handoff's source_register"
                             )
                 role = finding.get("evidence_role")
-                if "evidence_role" in finding and role not in ALLOWED_EVIDENCE_ROLES:
+                if "evidence_role" in finding and (
+                    not isinstance(role, str) or role not in ALLOWED_EVIDENCE_ROLES
+                ):
                     errors.append(
                         f"finding {fid or '?'} 'evidence_role' must be one of "
                         f"{list(ALLOWED_EVIDENCE_ROLES)}, got {role!r}"
@@ -360,12 +366,22 @@ def validate_handoff_data(data: object) -> list[str]:
                                 "handoff's findings"
                             )
                 resolution_status = conflict.get("resolution_status")
-                if "resolution_status" in conflict and resolution_status not in (
-                    ALLOWED_RESOLUTION_STATUS
+                if "resolution_status" in conflict and (
+                    not isinstance(resolution_status, str)
+                    or resolution_status not in ALLOWED_RESOLUTION_STATUS
                 ):
                     errors.append(
                         "conflict 'resolution_status' must be one of "
                         f"{list(ALLOWED_RESOLUTION_STATUS)}, got {resolution_status!r}"
+                    )
+                # Type check applies whenever the field is present, regardless
+                # of resolution status; the requirement below is status-bound.
+                if "resolution_note" in conflict and not _is_non_empty_str(
+                    conflict.get("resolution_note")
+                ):
+                    errors.append(
+                        "conflict 'resolution_note' must be a non-empty string "
+                        "when present"
                     )
                 if resolution_status == "resolved" and not _is_non_empty_str(
                     conflict.get("resolution_note")

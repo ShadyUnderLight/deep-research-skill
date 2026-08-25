@@ -215,6 +215,122 @@ def test_resolved_conflict_requires_note(valid_complete):
     assert any("resolution_note" in err for err in vth.validate_handoff_data(data))
 
 
+@pytest.mark.parametrize(
+    "bad_note", [None, "", "   ", 42, [], ["note"]]
+)
+def test_unresolved_conflict_invalid_resolution_note_fails_closed(
+    valid_complete, bad_note
+):
+    """Schema: resolution_note is type string minLength 1 whenever present.
+    The resolved-only check must not exempt unresolved conflicts (R4)."""
+    data = copy.deepcopy(valid_complete)
+    data["conflicts"][0]["resolution_status"] = "unresolved"
+    data["conflicts"][0]["resolution_note"] = bad_note
+    errors = vth.validate_handoff_data(data)
+    assert errors != [], f"unresolved + resolution_note={bad_note!r} must be rejected"
+    assert any("resolution_note" in err for err in errors), (
+        f"rejection must name resolution_note: {errors}"
+    )
+
+
+def test_unresolved_conflict_invalid_resolution_note_rejected_at_command_level(
+    valid_complete, tmp_path
+):
+    data = copy.deepcopy(valid_complete)
+    data["conflicts"][0]["resolution_status"] = "unresolved"
+    data["conflicts"][0]["resolution_note"] = None
+    proc = cli_validates(data, tmp_path)
+    assert proc.returncode == 2
+    assert vth.HANDOFF_INCOMPLETE in proc.stdout
+
+
+def test_unresolved_conflict_without_note_remains_valid(valid_complete):
+    """Absence stays lawful for unresolved conflicts; only present-but-invalid
+    values are rejected."""
+    data = copy.deepcopy(valid_complete)
+    data["conflicts"][0]["resolution_status"] = "unresolved"
+    data["conflicts"][0].pop("resolution_note", None)
+    assert vth.validate_handoff_data(data) == []
+
+
+def test_resolved_conflict_with_valid_note_passes(valid_complete):
+    data = copy.deepcopy(valid_complete)
+    data["conflicts"][0]["resolution_status"] = "resolved"
+    data["conflicts"][0]["resolution_note"] = "Resolved against S02 primary source"
+    assert vth.validate_handoff_data(data) == []
+
+
+# ── Systematic leaf-field sweep (regression net for R3/R4 class) ──────────
+
+
+def _leaves(node, prefix=()):
+    """Yield every scalar leaf path of a JSON-like structure as tuples."""
+    if isinstance(node, dict):
+        for key, value in node.items():
+            yield from _leaves(value, prefix + (key,))
+    elif isinstance(node, list):
+        for index, value in enumerate(node):
+            yield from _leaves(value, prefix + (index,))
+    else:
+        yield prefix
+
+
+def _set_path(data, path, value):
+    node = data
+    for key in path[:-1]:
+        node = node[key]
+    node[path[-1]] = value
+
+
+# Arrays whose schema type permits an empty value.
+LAWFUL_EMPTY_PATHS = {
+    ("scope", "out_of_scope"),
+    ("findings",),   # only lawful because the fixture below uses partial/blocked variants
+    ("conflicts",),
+    ("unknowns",),
+    ("implications",),
+}
+
+
+def test_systematic_leaf_field_rejects_malformed_shapes(valid_complete):
+    """Every scalar leaf must reject null / empty string / number / object,
+    whatever its parent's conditional logic — the durable net against the
+    'present-but-invalid slips through' failure class."""
+    leaves = sorted(_leaves(valid_complete))
+    assert len(leaves) >= 20, "fixture unexpectedly has too few leaves to sweep"
+
+    for path in leaves:
+        for bad in (None, "", 42, {"smuggled": True}):
+            data = copy.deepcopy(valid_complete)
+            _set_path(data, path, bad)
+            errors = vth.validate_handoff_data(data)
+            assert errors, (
+                f"leaf {'.'.join(map(str, path))} accepted {bad!r}; "
+                "every present field must be validated regardless of "
+                "surrounding conditional state"
+            )
+
+
+def test_lawful_empty_arrays_remain_valid(valid_complete):
+    for path in (("scope", "out_of_scope"), ("conflicts",), ("unknowns",), ("implications",)):
+        data = copy.deepcopy(valid_complete)
+        _set_path(data, path, [])
+        assert vth.validate_handoff_data(data) == [], f"{path}=[] must stay lawful"
+
+    # complete + empty findings remains unlawful (status-conditional rule).
+    partial = load_valid("valid-partial.json")
+    partial["findings"] = []
+    assert vth.validate_handoff_data(partial) == [], "partial may have zero findings"
+    blocked = load_valid("valid-blocked.json")
+    blocked["findings"] = []
+    assert vth.validate_handoff_data(blocked) == [], "blocked may have zero findings"
+    complete_empty = load_valid("valid-complete.json")
+    complete_empty["findings"] = []
+    assert vth.validate_handoff_data(complete_empty), (
+        "complete with zero findings must stay rejected"
+    )
+
+
 # ── Fail-closed payload shapes (review round 1, findings 2/4/5) ───────────
 
 
