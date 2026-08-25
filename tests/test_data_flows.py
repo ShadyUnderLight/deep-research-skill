@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -31,15 +32,17 @@ def test_validate_data_flows_passes_on_repo() -> None:
 def test_registry_network_touchpoints_documented_in_data_flows() -> None:
     registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
     data_flows_text = DATA_FLOWS_PATH.read_text(encoding="utf-8")
-    for item in registry["network_touchpoints"]:
-        assert f"`{item['id']}`" in data_flows_text
+    failures = data_flows.check_data_flow_component_tables(data_flows_text, registry)
+    assert not failures, failures
 
 
 def test_registry_risk_ids_documented_in_risk_register() -> None:
     registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
     risk_register = (ROOT / "docs" / "RISK_REGISTER.md").read_text(encoding="utf-8")
-    for risk_id in registry["risk_ids"]:
-        assert risk_id in risk_register
+    failures = data_flows.check_risk_register_entries(
+        risk_register, registry["risk_ids"]
+    )
+    assert not failures, failures
 
 
 def test_undocumented_playwright_file_fails_drift_check(monkeypatch) -> None:
@@ -143,3 +146,51 @@ def test_removed_delivery_temp_dir_signal_fails_drift_check(monkeypatch) -> None
         "Registered signal `delivery_temp_dir` no longer present in" in msg
         for msg in failures
     )
+
+
+def test_removed_network_touchpoint_registry_entry_fails(monkeypatch) -> None:
+    """Removing an entire touchpoint from the registry should fail when signal remains."""
+
+    registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    registry["network_touchpoints"] = [
+        item
+        for item in registry["network_touchpoints"]
+        if item["id"] != "render-pdf-playwright"
+    ]
+    monkeypatch.setattr(data_flows, "load_registry", lambda: registry)
+    failures = data_flows.run_checks()
+    assert any(
+        "Network signal `async_playwright` is not assigned to any touchpoint" in msg
+        for msg in failures
+    )
+
+
+def test_stripped_data_flow_table_row_fails() -> None:
+    registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    broken = re.sub(
+        r"^\| `render-pdf-playwright`.*\n",
+        "",
+        DATA_FLOWS_PATH.read_text(encoding="utf-8"),
+        count=1,
+        flags=re.MULTILINE,
+    )
+    failures = data_flows.check_data_flow_component_tables(broken, registry)
+    assert any(
+        "DATA_FLOWS network table missing component rows" in msg
+        and "render-pdf-playwright" in msg
+        for msg in failures
+    )
+
+
+def test_stripped_risk_entry_fields_fail() -> None:
+    risk_register = (ROOT / "docs" / "RISK_REGISTER.md").read_text(encoding="utf-8")
+    broken = re.sub(
+        r"- \*\*description:\*\*.*\n",
+        "",
+        risk_register,
+        count=1,
+    )
+    failures = data_flows.check_risk_register_entries(
+        broken, ["RISK-001-retrieved-content-prompt-injection"]
+    )
+    assert any("missing field: description" in msg for msg in failures)

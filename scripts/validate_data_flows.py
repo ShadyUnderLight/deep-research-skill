@@ -3,8 +3,8 @@
 
 Checks:
   1. docs/DATA_FLOWS.md and docs/RISK_REGISTER.md exist with required sections
-  2. Every registry network touchpoint and local store appears in DATA_FLOWS.md
-  3. Every registry risk_id appears in RISK_REGISTER.md
+  2. Every registry network touchpoint and local store has a valid DATA_FLOWS table row
+  3. Every registry risk_id has a structured RISK_REGISTER entry with required fields
   4. Repo-owned network/write signal files match the registry (bidirectional drift detection)
   5. Cross-links from README, SKILL.md, and external-channel-preflight.md
 
@@ -87,6 +87,26 @@ CROSS_LINK_CHECKS: list[tuple[str, str, str]] = [
         "docs/RISK_REGISTER.md",
     ),
 ]
+
+RISK_REQUIRED_FIELDS = [
+    "description",
+    "affected_boundary",
+    "existing_controls",
+    "evidence_status",
+    "residual_gap",
+    "next_validation",
+    "owner_layer",
+]
+
+COMPONENT_ROW_ID_RE = re.compile(r"^\|\s*`([^`]+)`\s*\|", re.MULTILINE)
+RISK_ENTRY_RE = re.compile(
+    r"^## (RISK-[^\s]+)\s*$([\s\S]*?)(?=^## |\Z)",
+    re.MULTILINE,
+)
+RISK_FIELD_RE = re.compile(
+    r"^-\s+\*\*(description|affected_boundary|existing_controls|evidence_status|residual_gap|next_validation|owner_layer):\*\*\s*(.+)$",
+    re.MULTILINE,
+)
 
 SKIP_SCAN_FILES = {
     "scripts/validate_data_flows.py",
@@ -227,19 +247,110 @@ def check_signal_file_drift(
     return failures
 
 
+def extract_section(text: str, heading: str) -> str:
+    start = text.find(heading)
+    if start == -1:
+        return ""
+    rest = text[start + len(heading) :]
+    next_heading = re.search(r"\n## ", rest)
+    if next_heading:
+        return rest[: next_heading.start()]
+    return rest
+
+
+def parse_component_table_ids(section_text: str) -> set[str]:
+    return set(COMPONENT_ROW_ID_RE.findall(section_text))
+
+
+def check_data_flow_component_tables(data_flows_text: str, registry: dict) -> list[str]:
+    failures: list[str] = []
+    network_section = extract_section(data_flows_text, "## Network touchpoints")
+    store_section = extract_section(data_flows_text, "## Local stores")
+
+    network_table_ids = parse_component_table_ids(network_section)
+    store_table_ids = parse_component_table_ids(store_section)
+
+    expected_network = {item["id"] for item in registry.get("network_touchpoints", [])}
+    expected_stores = {item["id"] for item in registry.get("local_stores", [])}
+
+    missing_network = expected_network - network_table_ids
+    missing_stores = expected_stores - store_table_ids
+    if missing_network:
+        failures.append(
+            "DATA_FLOWS network table missing component rows: "
+            f"{sorted(missing_network)}"
+        )
+    if missing_stores:
+        failures.append(
+            "DATA_FLOWS local store table missing component rows: "
+            f"{sorted(missing_stores)}"
+        )
+
+    failures.extend(check_verification_status_tokens(data_flows_text))
+    return failures
+
+
+def parse_risk_entry_fields(risk_text: str) -> dict[str, str]:
+    fields: dict[str, str] = {}
+    for match in RISK_FIELD_RE.finditer(risk_text):
+        fields[match.group(1)] = match.group(2).strip()
+    return fields
+
+
+def check_risk_register_entries(risk_register: str, risk_ids: list[str]) -> list[str]:
+    failures: list[str] = []
+    for risk_id in risk_ids:
+        match = re.search(
+            rf"^## {re.escape(risk_id)}\s*$([\s\S]*?)(?=^## |\Z)",
+            risk_register,
+            re.MULTILINE,
+        )
+        if not match:
+            failures.append(f"RISK_REGISTER.md missing risk heading: {risk_id}")
+            continue
+        fields = parse_risk_entry_fields(match.group(1))
+        for field in RISK_REQUIRED_FIELDS:
+            if field not in fields or not fields[field]:
+                failures.append(f"RISK_REGISTER.md `{risk_id}` missing field: {field}")
+        status = fields.get("evidence_status", "").lower()
+        if status and status not in ALLOWED_VERIFICATION_STATUSES:
+            failures.append(
+                f"RISK_REGISTER.md `{risk_id}` invalid evidence_status: "
+                f"{fields.get('evidence_status')}"
+            )
+    return failures
+
+
+def registered_network_signals(registry: dict) -> set[str]:
+    registered: set[str] = set()
+    for touchpoint in registry.get("network_touchpoints", []):
+        if should_enforce_network_drift(touchpoint):
+            registered.update(touchpoint.get("network_signals", []))
+    return registered
+
+
+def check_unassigned_network_signals(registry: dict) -> list[str]:
+    failures: list[str] = []
+    registered = registered_network_signals(registry)
+    for signal in NETWORK_SIGNAL_PATTERNS:
+        if signal in registered:
+            continue
+        actual_files = collect_signal_files(
+            signal, NETWORK_SIGNAL_PATTERNS, include_tests=False
+        )
+        if actual_files:
+            failures.append(
+                f"Network signal `{signal}` is not assigned to any touchpoint but appears in: "
+                f"{sorted(actual_files)}"
+            )
+    return failures
+
+
 def check_required_sections(text: str, sections: list[str], label: str) -> list[str]:
     failures: list[str] = []
     for section in sections:
         if section not in text:
             failures.append(f"{label} missing section: {section}")
-    return failures
-
-
-def check_component_ids_present(text: str, component_ids: list[str], label: str) -> list[str]:
-    failures: list[str] = []
-    for component_id in component_ids:
-        if f"`{component_id}`" not in text:
-            failures.append(f"{label} missing component id: `{component_id}`")
     return failures
 
 
@@ -271,6 +382,7 @@ def check_network_signal_drift(registry: dict) -> list[str]:
                     tests_only=False,
                 )
             )
+    failures.extend(check_unassigned_network_signals(registry))
     return failures
 
 
@@ -378,18 +490,13 @@ def run_checks() -> list[str]:
             check_required_sections(risk_register, RISK_REGISTER_REQUIRED_SECTIONS, "RISK_REGISTER.md")
         )
 
-    network_ids = [item["id"] for item in registry.get("network_touchpoints", [])]
-    store_ids = [item["id"] for item in registry.get("local_stores", [])]
-    failures.extend(check_component_ids_present(data_flows, network_ids, "DATA_FLOWS network table"))
-    failures.extend(check_component_ids_present(data_flows, store_ids, "DATA_FLOWS local store table"))
+    failures.extend(check_data_flow_component_tables(data_flows, registry))
 
-    for risk_id in registry.get("risk_ids", []):
-        if risk_id not in risk_register:
-            failures.append(f"RISK_REGISTER.md missing risk_id: {risk_id}")
+    if risk_register:
+        failures.extend(check_risk_register_entries(risk_register, registry.get("risk_ids", [])))
 
     failures.extend(check_network_signal_drift(registry))
     failures.extend(check_local_store_write_drift(registry))
-    failures.extend(check_verification_status_tokens(data_flows))
 
     for rel_path, desc, needle in CROSS_LINK_CHECKS:
         path = REPO / rel_path
