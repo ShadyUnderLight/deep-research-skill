@@ -15,11 +15,14 @@ Exit codes:
 
 Usage:
     python3 scripts/validate_research_run_state.py <run-state.json> [--json]
-    python3 scripts/validate_research_run_state.py --from prev.json --to next.json [--json]
+    python3 scripts/validate_research_run_state.py --from prev.json --to next.json \\
+        [--audit-result audit.json] [--artifact pack.md] [--json]
+        # phase=delivered requires --audit-result and --artifact (fail closed)
     python3 scripts/validate_research_run_state.py <run-state.json> \\
         --resume --artifact <pack.md> [--activation-snapshot snap.json] [--json]
     python3 scripts/validate_research_run_state.py --chain \\
         --handoff h.json --run-state r.json --pack p.md [--audit-result a.json] [--json]
+        # --chain requires Pack ## Run state to name the same sidecar file
 """
 
 from __future__ import annotations
@@ -390,6 +393,7 @@ def validate_transition(before: object, after: object) -> list[str]:
             errors.append(
                 "only in_progress or blocked auditing may return to synthesizing"
             )
+        errors.extend(_pending_decision_must_be_consumed(before, after))
         return errors
 
     if to_idx != from_idx + 1:
@@ -417,8 +421,22 @@ def validate_transition(before: object, after: object) -> list[str]:
         )
     if to_phase == "delivered" and from_phase != "auditing":
         errors.append("delivered can only be entered from auditing")
+    errors.extend(_pending_decision_must_be_consumed(before, after))
 
     return errors
+
+
+def _pending_decision_must_be_consumed(before: dict, after: dict) -> list[str]:
+    """推进 phase 前必须消费未决 checkpoint，不能把 pending_decision 原样带走。"""
+    pending = before.get("pending_decision")
+    if pending is None:
+        return []
+    if after.get("pending_decision") is not None:
+        return [
+            f"pending_decision {pending!r} must be consumed (set to null) "
+            f"before advancing {before['phase']!r} -> {after['phase']!r}"
+        ]
+    return []
 
 
 def _allowed_same_phase_status(phase: str, from_status: str, to_status: str) -> bool:
@@ -458,11 +476,30 @@ def load_run_state_file(path: Path | str) -> tuple[dict | None, list[str]]:
     return data, []
 
 
-def check_audit_result_for_delivered(audit: object, run_state: dict) -> list[str]:
-    """delivered 不能由未执行或失败的审计支撑。"""
+def check_audit_result_for_delivered(
+    audit: object,
+    run_state: dict,
+    *,
+    expected_input_sha256: str | None = None,
+) -> list[str]:
+    """delivered 不能由未执行、空集、stale 或失败的审计支撑。"""
     if not isinstance(audit, dict):
         return ["audit result must be a JSON object"]
     errors: list[str] = []
+    try:
+        from run_forward_evals import (
+            EXPECTED_AUDIT_JSON_SCHEMA_VERSION,
+            _overall_consistency_details,
+        )
+    except ImportError:
+        EXPECTED_AUDIT_JSON_SCHEMA_VERSION = 1
+        _overall_consistency_details = None  # type: ignore[assignment]
+
+    if audit.get("schema_version") != EXPECTED_AUDIT_JSON_SCHEMA_VERSION:
+        errors.append(
+            f"audit result schema_version must be {EXPECTED_AUDIT_JSON_SCHEMA_VERSION}, "
+            f"got {audit.get('schema_version')!r}"
+        )
     overall = audit.get("overall")
     if overall == "fail":
         errors.append(
@@ -473,18 +510,87 @@ def check_audit_result_for_delivered(audit: object, run_state: dict) -> list[str
         errors.append(
             f"audit overall {overall!r} cannot support phase=delivered"
         )
+
+    if "exit_code" not in audit:
+        errors.append("audit result requires exit_code")
+    elif _overall_consistency_details is not None:
+        _ok, overall_errors = _overall_consistency_details(
+            audit, audit.get("exit_code")
+        )
+        errors.extend(overall_errors)
+    else:
+        expected_rc = {"pass": 0, "conditional-pass": 1, "fail": 2}.get(overall)
+        if expected_rc is not None and audit.get("exit_code") != expected_rc:
+            errors.append(
+                f"exit_code {audit.get('exit_code')!r} does not match overall "
+                f"{overall!r} (expected {expected_rc})"
+            )
+
     input_hash = audit.get("input_sha256")
+    declared = run_state["current_artifact_sha256"]
     if not isinstance(input_hash, str) or not SHA256_RE.fullmatch(input_hash):
         errors.append("audit result requires a valid input_sha256")
-    for entry in audit.get("audits") or []:
+    else:
+        if input_hash != declared:
+            errors.append(
+                "audit input_sha256 does not match run state "
+                f"current_artifact_sha256 ({input_hash} != {declared})"
+            )
+        if (
+            expected_input_sha256 is not None
+            and input_hash != expected_input_sha256
+        ):
+            errors.append(
+                "audit input_sha256 does not match the supplied artifact "
+                f"({input_hash} != {expected_input_sha256})"
+            )
+
+    audits = audit.get("audits")
+    if not isinstance(audits, list) or not audits:
+        errors.append("audit result requires a non-empty audits list")
+        return errors
+
+    forbidden = {"not_run", "skipped", "partial", "fail"}
+    for entry in audits:
         if not isinstance(entry, dict):
             errors.append("audit result audits entries must be objects")
             continue
-        if entry.get("status") == "not_run":
+        status = entry.get("status")
+        audit_id = entry.get("audit_id")
+        if status in forbidden:
             errors.append(
-                "audit not_run cannot support phase=delivered "
-                f"({entry.get('audit_id')!r})"
+                f"audit {audit_id!r} status {status!r} cannot support "
+                "phase=delivered"
             )
+        if status in {"pass", "conditional-pass"}:
+            provenance = entry.get("evidence_provenance")
+            verified = [
+                item
+                for item in provenance
+                if isinstance(item, dict) and item.get("verified") is True
+            ] if isinstance(provenance, list) else []
+            if not verified:
+                errors.append(
+                    f"audit {audit_id!r} {status} requires verified "
+                    "evidence_provenance"
+                )
+            else:
+                for record in verified:
+                    if not _is_non_empty_str(record.get("execution_source")):
+                        errors.append(
+                            f"audit {audit_id!r} provenance requires "
+                            "execution_source"
+                        )
+                    record_hash = record.get("input_sha256")
+                    if (
+                        isinstance(record_hash, str)
+                        and record_hash != declared
+                    ):
+                        errors.append(
+                            f"audit {audit_id!r} provenance input_sha256 "
+                            "does not match the current artifact"
+                        )
+
     if overall == "conditional-pass" and not _is_non_empty_str(
         run_state.get("last_transition_reason")
     ):
@@ -493,6 +599,36 @@ def check_audit_result_for_delivered(audit: object, run_state: dict) -> list[str
             "recording explicit confirmation"
         )
     return errors
+
+
+def require_delivered_audit(
+    state: dict,
+    audit_result_path: Path | str | None,
+    *,
+    artifact_path: Path | str | None = None,
+) -> list[str]:
+    """CLI 进入/保持 delivered 时必须提供可绑定的 audit-result。"""
+    if audit_result_path is None:
+        return [
+            "phase=delivered requires --audit-result; "
+            "unexecuted audit cannot enter delivered"
+        ]
+    if artifact_path is None:
+        return [
+            "phase=delivered requires --artifact so audit input_sha256 "
+            "binds to the actual process artifact"
+        ]
+    audit, errors = _load_json_object(audit_result_path, "audit result")
+    if errors:
+        return errors
+    try:
+        expected = sha256_file(artifact_path)
+    except OSError as exc:
+        return [f"cannot read artifact {artifact_path}: {exc}"]
+    assert audit is not None
+    return check_audit_result_for_delivered(
+        audit, state, expected_input_sha256=expected
+    )
 
 
 def _load_json_object(path: Path | str, label: str) -> tuple[dict | None, list[str]]:
@@ -576,6 +712,11 @@ def bind_handoff_to_run_state(
     handoff_path: Path | str | None = None,
 ) -> list[str]:
     """把 Track Handoff 绑到当前 Run State；不改 #416 无 --run-state 时的行为。"""
+    if run_state.get("enabled_reason") == "explicit_resume":
+        return [
+            "enabled_reason=explicit_resume cannot bind a Track Handoff; "
+            "single-track resume creates no handoffs"
+        ]
     errors: list[str] = []
     artifact_ref = handoff.get("artifact_ref")
     actual_id = (
@@ -660,6 +801,27 @@ def parse_pack_run_state_section(cleaned: str) -> tuple[dict | None, list[str]]:
     return parsed, []
 
 
+def resolve_declared_run_state_path(
+    pack_path: Path | str, cleaned: str | None = None
+) -> tuple[dict | None, Path | None, list[str]]:
+    """解析 Pack 声明的 sidecar 路径。缺节返回 (None, None, [])。"""
+    pack_path = Path(pack_path)
+    if cleaned is None:
+        try:
+            cleaned = pack_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            return None, None, [f"cannot read Research Pack {pack_path}: {exc}"]
+    ref, errors = parse_pack_run_state_section(cleaned)
+    if errors:
+        return None, None, errors
+    if ref is None:
+        return None, None, []
+    sidecar = Path(ref["path"])
+    if not sidecar.is_absolute():
+        sidecar = pack_path.parent / sidecar
+    return ref, sidecar, []
+
+
 def check_pack_run_state(pack_path: Path | str, cleaned: str | None = None) -> list[str]:
     """Pack 出现 ``## Run state`` 时 fail-closed；缺省节不增加负担。"""
     pack_path = Path(pack_path)
@@ -669,14 +831,11 @@ def check_pack_run_state(pack_path: Path | str, cleaned: str | None = None) -> l
         return [f"cannot read Research Pack {pack_path}: {exc}"]
     if cleaned is None:
         cleaned = text
-    ref, errors = parse_pack_run_state_section(cleaned)
+    ref, sidecar, errors = resolve_declared_run_state_path(pack_path, cleaned)
     if errors:
         return errors
-    if ref is None:
+    if ref is None or sidecar is None:
         return []
-    sidecar = Path(ref["path"])
-    if not sidecar.is_absolute():
-        sidecar = pack_path.parent / sidecar
     state, load_errors = load_run_state_file(sidecar)
     if load_errors:
         return load_errors
@@ -790,6 +949,33 @@ def validate_chain(
     except HandoffIncomplete as exc:
         errors.append(str(exc))
         handoff = None
+    ref, sidecar, ref_errors = resolve_declared_run_state_path(pack_path)
+    errors.extend(ref_errors)
+    if ref is None and not ref_errors:
+        errors.append(
+            "--chain requires the Research Pack to declare ## Run state"
+        )
+    elif sidecar is not None:
+        try:
+            declared = sidecar.resolve()
+            supplied = Path(run_state_path).resolve()
+        except OSError as exc:
+            errors.append(f"cannot resolve run-state paths: {exc}")
+        else:
+            if declared != supplied:
+                errors.append(
+                    "--chain run-state file is not the Pack-declared sidecar: "
+                    f"pack declares {declared}, CLI passed {supplied}"
+                )
+        if (
+            state is not None
+            and ref is not None
+            and state.get("run_id") != ref.get("run_id")
+        ):
+            errors.append(
+                f"--chain run_id mismatch: pack declares {ref.get('run_id')!r}, "
+                f"CLI run-state has {state.get('run_id')!r}"
+            )
     errors.extend(check_pack_run_state(pack_path))
     if state is not None and handoff is not None:
         errors.extend(
@@ -798,21 +984,13 @@ def validate_chain(
             )
         )
     if state is not None and state["phase"] == "delivered":
-        if audit_result_path is None:
-            errors.append(
-                "phase=delivered requires --audit-result; "
-                "unexecuted audit cannot enter delivered"
+        errors.extend(
+            require_delivered_audit(
+                state,
+                audit_result_path,
+                artifact_path=pack_path,
             )
-        else:
-            audit, audit_errors = _load_json_object(audit_result_path, "audit result")
-            errors.extend(audit_errors)
-            if audit is not None:
-                errors.extend(check_audit_result_for_delivered(audit, state))
-    elif audit_result_path is not None and state is not None:
-        audit, audit_errors = _load_json_object(audit_result_path, "audit result")
-        errors.extend(audit_errors)
-        if audit is not None and audit.get("overall") == "fail" and state["phase"] == "delivered":
-            errors.extend(check_audit_result_for_delivered(audit, state))
+        )
     return errors
 
 
@@ -884,13 +1062,14 @@ def main(argv: list[str] | None = None) -> int:
         errors = [*before_errors, *after_errors]
         if before is not None and after is not None:
             errors = validate_transition(before, after)
-            if args.audit_result and after["phase"] == "delivered":
-                audit, audit_errors = _load_json_object(
-                    args.audit_result, "audit result"
+            if after["phase"] == "delivered":
+                errors.extend(
+                    require_delivered_audit(
+                        after,
+                        args.audit_result,
+                        artifact_path=args.artifact,
+                    )
                 )
-                errors.extend(audit_errors)
-                if audit is not None:
-                    errors.extend(check_audit_result_for_delivered(audit, after))
         extra = None
         if before is not None and after is not None:
             extra = {
@@ -954,21 +1133,13 @@ def main(argv: list[str] | None = None) -> int:
             errors.append(str(exc))
 
     if state["phase"] == "delivered":
-        if args.audit_result is None:
-            errors.append(
-                "phase=delivered requires --audit-result; "
-                "unexecuted audit cannot enter delivered"
+        errors.extend(
+            require_delivered_audit(
+                state,
+                args.audit_result,
+                artifact_path=args.artifact,
             )
-        else:
-            audit, audit_errors = _load_json_object(args.audit_result, "audit result")
-            errors.extend(audit_errors)
-            if audit is not None:
-                errors.extend(check_audit_result_for_delivered(audit, state))
-    elif args.audit_result:
-        audit, audit_errors = _load_json_object(args.audit_result, "audit result")
-        errors.extend(audit_errors)
-        if audit is not None and audit.get("overall") == "fail" and state["phase"] == "delivered":
-            errors.extend(check_audit_result_for_delivered(audit, state))
+        )
 
     return _emit(not errors, errors, as_json=args.json, extra=extra)
 

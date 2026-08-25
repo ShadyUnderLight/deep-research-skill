@@ -138,6 +138,12 @@ python3 scripts/validate_research_run_state.py <run-state.json> \
     --artifact <pack.md> --audit-result <audit.json>
 ```
 
+Entering `delivered` is fail-closed: `--from/--to` and snapshot checks require
+`--audit-result` bound to the actual `--artifact` hash (not a replay of another
+file's Pass). `--chain` requires the Pack `## Run state` section and that the
+CLI `--run-state` file is that declared sidecar. `explicit_resume` cannot bind
+a Track Handoff.
+
 Resume means re-read the sidecar and artifacts, re-check hashes, and continue
 from the recorded phase — not replay of model context. A Run State
 `delivered` / `completed` overlay is not a content-quality Pass. Do not add a

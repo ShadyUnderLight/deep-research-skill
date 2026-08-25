@@ -27,6 +27,9 @@ This file is intentionally lightweight. Use concise entries that explain:
 ### Changed
 - `scripts/validate_figure_references.py` (#394): `_mermaid_spans` replaced by `_mermaid_fences` returning explicit per-block state; only closed blocks become figure entities; invalid block content is blanked before reference/caption collection.
 
+### Fixed
+- `scripts/validate_research_run_state.py` (#417): fail-closed the delivered / checkpoint / chain gates that previously opened — `--from/--to` into `delivered` now requires `--audit-result` and `--artifact`; `pending_decision` must be consumed before a phase advance; delivery audit reuses canonical overall/exit_code consistency, rejects empty/`skipped`/`partial` sets, and binds `input_sha256` to the hashed artifact; `--chain` requires the Pack-declared sidecar identity; `explicit_resume` rejects Track Handoff binding even when `artifact_id` aligns.
+
 ### Added
 - `schemas/audit-registry.json`, `scripts/registry_loader.py` (#393): register `markdown-delivery` and `research-pack` as first-class automated audits with `scope: "delivery"` and `checklist: null` (delivery-scope / virtual audits have no human checklist); `AuditRegistry.global_audit_ids()` derives the every-route audit set from the registry instead of code; a delivery-scope audit must be `execution_type: automated` (manual/process would degrade to global self-attestation and fails closed at registry load).
 - `scripts/audit_report.py` (#393): audit JSON verdict gains `schema_version` (currently 1) and a `validators[]` array listing every route-level validator result — canonical binding id, status, errors/warnings, evidence, execution source and validator version; a dispatched validator with no recorded result is flagged `incomplete` and blocks (never aggregated as a silent Pass); fields are additive-only so legacy consumers of `route`/`overall`/`exit_code`/`blocking`/`warnings`/`audits[]` keep working unchanged.

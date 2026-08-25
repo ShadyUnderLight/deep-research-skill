@@ -1,11 +1,18 @@
 {
   "schema_version": 1,
   "overall": "fail",
+  "exit_code": 2,
   "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "blocking": ["final-audit failed"],
   "audits": [
     {
       "audit_id": "final-audit",
-      "status": "fail"
+      "status": "fail",
+      "execution_type": "process",
+      "execution_source": "process_node_evidence",
+      "errors": ["source ids missing"],
+      "warnings": [],
+      "evidence": []
     }
   ]
 }
