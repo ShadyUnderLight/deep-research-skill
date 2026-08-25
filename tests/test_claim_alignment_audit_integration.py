@@ -105,37 +105,58 @@ def test_tampered_opt_in_reason_not_exempt_from_consumer_checks() -> None:
     )
 
 
-def test_aggregate_not_run_audit_has_no_evidence_or_provenance() -> None:
+def test_aggregate_not_run_audit_passes_overall_and_delivered_consumers() -> None:
     result = _run_audit(
         "--enable-claim-alignment",
         "--claim-alignment-bundle",
         str(FIXTURES / "claim-alignment" / "not-run-only.json"),
     )
-    assert result.returncode == 1, result.stdout + result.stderr
+    assert result.returncode == 0, result.stdout + result.stderr
     data = json.loads(result.stdout)
     audit = next(a for a in data["audits"] if a["audit_id"] == "claim-source-alignment")
     assert audit["status"] == "not_run"
     assert audit.get("reason")
     assert not audit.get("evidence")
     assert not audit.get("evidence_provenance")
+    assert data["overall"] == "pass"
     if str(SCRIPTS) not in sys.path:
         sys.path.insert(0, str(SCRIPTS))
-    from run_forward_evals import _audit_consistency_details, _expected_audit_set  # noqa: E402
+    import validate_research_run_state as vrs  # noqa: E402
+    from run_forward_evals import (  # noqa: E402
+        _audit_consistency_details,
+        _expected_audit_set,
+        _overall_consistency_details,
+    )
 
     report_path = FIXTURES / "audit" / "market-outlook-pos.md"
+    pack_path = FIXTURES / "audit" / "research-pack-pos.md"
     report_sha = __import__("hashlib").sha256(report_path.read_bytes()).hexdigest()
-    ok, errors = _audit_consistency_details(
+    pack_sha = __import__("hashlib").sha256(pack_path.read_bytes()).hexdigest()
+    ok_audit, audit_errors = _audit_consistency_details(
         data,
         _expected_audit_set("market-outlook", []),
         audited_path=str(report_path),
         expected_report_sha256=report_sha,
-        research_pack_path=str(FIXTURES / "audit" / "research-pack-pos.md"),
-        expected_pack_sha256=__import__("hashlib").sha256(
-            (FIXTURES / "audit" / "research-pack-pos.md").read_bytes()
-        ).hexdigest(),
+        research_pack_path=str(pack_path),
+        expected_pack_sha256=pack_sha,
         expected_route="market-outlook",
     )
-    assert ok, errors
+    assert ok_audit, audit_errors
+    ok_overall, overall_errors = _overall_consistency_details(data, data.get("exit_code"))
+    assert ok_overall, overall_errors
+    delivered = json.loads(
+        (FIXTURES / "research-run-state" / "valid-delivered.json").read_text()
+    )
+    delivered["current_artifact_sha256"] = pack_sha
+    delivered_errors = vrs.check_audit_result_for_delivered(
+        data,
+        delivered,
+        expected_report_sha256=report_sha,
+        expected_pack_sha256=pack_sha,
+        report_path=report_path,
+        pack_path=pack_path,
+    )
+    assert not delivered_errors, delivered_errors
 
 
 def test_route_mismatch_bundle_blocks_alignment_pass() -> None:

@@ -156,3 +156,21 @@ class TestClaimAlignmentCalibration:
             assert raised
         finally:
             tmp_path.unlink()
+
+    def test_bundle_missing_fixture_version_rejected(self) -> None:
+        bundle = json.loads((FIXTURES / "calibration-bundle.json").read_text())
+        bundle.pop("fixture_version", None)
+        import tempfile
+
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as tmp:
+            json.dump(bundle, tmp)
+            tmp_path = Path(tmp.name)
+        try:
+            try:
+                run_calibration(tmp_path, FIXTURES / "calibration-gold.json")
+                raised = False
+            except ValueError:
+                raised = True
+            assert raised
+        finally:
+            tmp_path.unlink()

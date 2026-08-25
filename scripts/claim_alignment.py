@@ -1218,12 +1218,16 @@ def run_calibration(
     if not isinstance(gold_fixture_version, str) or not gold_fixture_version.strip():
         raise ValueError(f"{gold_path}: gold file must contain fixture_version")
     bundle_fixture_version = bundle_data.get("fixture_version")
-    if isinstance(bundle_fixture_version, str) and bundle_fixture_version.strip():
-        if bundle_fixture_version != gold_fixture_version:
-            raise ValueError(
-                f"{gold_path}: fixture_version {gold_fixture_version!r} does not match "
-                f"bundle fixture_version {bundle_fixture_version!r}"
-            )
+    if not isinstance(bundle_fixture_version, str) or not bundle_fixture_version.strip():
+        raise ValueError(
+            f"{bundle_path}: bundle must contain fixture_version matching "
+            f"gold ({gold_fixture_version!r})"
+        )
+    if bundle_fixture_version != gold_fixture_version:
+        raise ValueError(
+            f"{gold_path}: fixture_version {gold_fixture_version!r} does not match "
+            f"bundle fixture_version {bundle_fixture_version!r}"
+        )
 
     label_errors: list[str] = []
     for claim_id, gold_entry in labels.items():

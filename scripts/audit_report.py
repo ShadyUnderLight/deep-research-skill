@@ -1773,7 +1773,8 @@ def _execute_opt_in_audits(
         reason=reason,
     ))
     blocking.extend(f"[{audit_id}] {e}" for e in check.errors)
-    warnings.extend(f"[{audit_id}] {w} (audit)" for w in check.warnings)
+    if status != "not_run":
+        warnings.extend(f"[{audit_id}] {w} (audit)" for w in check.warnings)
     return results, blocking, warnings
 
 
