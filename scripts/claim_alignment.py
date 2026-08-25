@@ -34,6 +34,9 @@ LOCATOR_KINDS = frozenset(
     {"page", "section", "paragraph", "quote", "url_fragment", "none"}
 )
 
+# Locator kinds without a resolver cannot produce support evidence (issue #419).
+UNRESOLVABLE_LOCATOR_KINDS = frozenset({"page", "paragraph", "url_fragment"})
+
 RETRIEVAL_STATUSES = frozenset({"fetched", "unavailable", "unreadable", "not_run"})
 
 EVIDENCE_ROLES = frozenset({"primary", "secondary", "inferred", "unknown"})
@@ -603,8 +606,13 @@ def _validate_evidence_record(record: dict[str, Any], prefix: str) -> list[str]:
         kind = locator.get("kind")
         if kind not in LOCATOR_KINDS:
             errors.append(f"{prefix}.evidence_record.locator.kind invalid: {kind!r}")
-        if not isinstance(locator.get("value"), str):
+        value = locator.get("value")
+        if not isinstance(value, str):
             errors.append(f"{prefix}.evidence_record.locator.value must be a string")
+        elif kind != "none" and not value.strip():
+            errors.append(
+                f"{prefix}.evidence_record.locator.value required when kind is {kind!r}"
+            )
     else:
         errors.append(f"{prefix}.evidence_record.locator must be an object")
     status = record.get("retrieval_status")
@@ -625,13 +633,115 @@ def _validate_evidence_record(record: dict[str, Any], prefix: str) -> list[str]:
 
 
 def _section_visible(artifact_text: str, heading: str) -> bool:
+    return _extract_section_text(artifact_text, heading) is not None
+
+
+def _extract_section_text(artifact_text: str, heading: str) -> str | None:
+    """Visible markdown body from heading until next same/higher-level heading."""
     visible = _visible_markdown(artifact_text)
     target = _normalise_heading(heading)
-    for line in visible.splitlines():
+    lines = visible.splitlines()
+    start_idx: int | None = None
+    start_level: int | None = None
+    for index, line in enumerate(lines):
         match = _HEADING_RE.match(line)
         if match and _normalise_heading(match.group(2)) == target:
-            return True
-    return False
+            start_idx = index + 1
+            start_level = len(match.group(1))
+            break
+    if start_idx is None or start_level is None:
+        return None
+    body_lines: list[str] = []
+    for line in lines[start_idx:]:
+        match = _HEADING_RE.match(line)
+        if match and len(match.group(1)) <= start_level:
+            break
+        body_lines.append(line)
+    body = "\n".join(body_lines).strip()
+    return body if body else None
+
+
+def _resolve_quote_scope(source_text: str, quote: str) -> str | None:
+    """Line scope in source artifact containing the quoted substring (exact match)."""
+    quote_stripped = quote.strip()
+    if not quote_stripped:
+        return None
+    idx = source_text.find(quote_stripped)
+    if idx < 0:
+        return None
+    line_start = source_text.rfind("\n", 0, idx) + 1
+    line_end = source_text.find("\n", idx)
+    if line_end < 0:
+        line_end = len(source_text)
+    return source_text[line_start:line_end]
+
+
+def resolve_locator(
+    source: ResolvedSource,
+    locator_kind: str,
+    locator_value: str,
+) -> str | None:
+    """Resolve locator to scope text within a source artifact, or None if unresolvable."""
+    value = locator_value.strip()
+    if locator_kind == "none" or not value:
+        return None
+    if locator_kind in UNRESOLVABLE_LOCATOR_KINDS:
+        return None
+    if locator_kind == "quote":
+        return _resolve_quote_scope(source.text, value)
+    if locator_kind == "section":
+        return _extract_section_text(source.text, value)
+    return None
+
+
+def _locator_scope_blocks_support(
+    claim_id: str,
+    excerpt: str,
+    locator_kind: str | None,
+    locator_value: str,
+    resolved_source: ResolvedSource | None,
+    errors: list[str],
+    warnings: list[str],
+) -> EntryJudgment | None:
+    """Return a terminal judgment when locator scope blocks support; else None."""
+    if locator_kind == "none":
+        return EntryJudgment(
+            claim_id=claim_id,
+            verdict="NOT_RUN",
+            warnings=["anchorless locator (kind=none) cannot produce support evidence"],
+        )
+    if locator_kind != "none" and not locator_value.strip():
+        errors.append(f"{claim_id}: locator value required when kind is {locator_kind!r}")
+        return EntryJudgment(claim_id=claim_id, verdict="NOT_RUN", errors=errors)
+
+    if resolved_source is None:
+        return None
+
+    if locator_kind in UNRESOLVABLE_LOCATOR_KINDS:
+        return EntryJudgment(
+            claim_id=claim_id,
+            verdict="NOT_RUN",
+            warnings=[
+                f"locator kind {locator_kind!r} cannot be resolved for support evidence"
+            ],
+        )
+
+    scope = resolve_locator(resolved_source, str(locator_kind), locator_value)
+    if scope is None:
+        errors.append(
+            f"locator {locator_kind}:{locator_value!r} did not resolve in source "
+            f"artifact {resolved_source.source_id!r}"
+        )
+        return EntryJudgment(claim_id=claim_id, verdict="UNSUPPORTED", errors=errors)
+
+    if excerpt and excerpt not in scope:
+        errors.append(
+            f"excerpt not within resolved locator scope for "
+            f"{locator_kind}:{locator_value!r}"
+        )
+        return EntryJudgment(claim_id=claim_id, verdict="UNSUPPORTED", errors=errors)
+
+    return None
 
 
 def _token_overlap(claim: str, excerpt: str) -> float:
@@ -658,7 +768,7 @@ def _judge_claim_text(
 ) -> str:
     if locator_kind == "quote":
         quote = locator_value.strip()
-        if quote and quote.casefold() not in excerpt.casefold():
+        if quote and quote not in excerpt:
             return "UNSUPPORTED"
     overlap = _token_overlap(claim_text, excerpt)
     if overlap >= 0.45:
@@ -719,13 +829,6 @@ def judge_entry(
     if retrieval_status in {"unavailable", "unreadable"}:
         return EntryJudgment(claim_id=claim_id, verdict="RETRIEVAL_FAILED")
 
-    if locator_kind == "none":
-        return EntryJudgment(
-            claim_id=claim_id,
-            verdict="NOT_RUN",
-            warnings=["anchorless locator (kind=none) cannot produce support evidence"],
-        )
-
     if retrieval_status == "fetched":
         expected_hash = record.get("excerpt_hash")
         actual_hash = excerpt_sha256(excerpt)
@@ -751,50 +854,17 @@ def judge_entry(
                     errors=errors,
                 )
 
-    if locator_kind == "quote" and locator_value.strip():
-        quote = locator_value.strip()
-        if quote.casefold() not in excerpt.casefold():
-            errors.append(f"quote locator {quote!r} not found in excerpt")
-            return EntryJudgment(
-                claim_id=claim_id,
-                verdict="UNSUPPORTED",
-                errors=errors,
-            )
-        if resolved_source is not None and quote.casefold() not in resolved_source.text.casefold():
-            errors.append(
-                f"quote locator {quote!r} not found in source artifact {source_id!r}"
-            )
-            return EntryJudgment(
-                claim_id=claim_id,
-                verdict="UNSUPPORTED",
-                errors=errors,
-            )
-
-    if locator_kind == "section":
-        section_text: str | None = None
-        if resolved_source is not None:
-            section_text = resolved_source.text
-        elif entry.get("artifact_text"):
-            section_text = str(entry["artifact_text"])
-        if section_text is not None:
-            if not _section_visible(section_text, locator_value):
-                errors.append(
-                    f"section locator {locator_value!r} not found in visible source text"
-                )
-                return EntryJudgment(
-                    claim_id=claim_id,
-                    verdict="UNSUPPORTED",
-                    errors=errors,
-                )
-        elif resolved_source is None and context is not None:
-            errors.append(
-                f"section locator requires resolved source artifact for {source_id!r}"
-            )
-            return EntryJudgment(
-                claim_id=claim_id,
-                verdict="UNSUPPORTED",
-                errors=errors,
-            )
+    blocked = _locator_scope_blocks_support(
+        claim_id,
+        excerpt,
+        str(locator_kind) if locator_kind is not None else None,
+        locator_value,
+        resolved_source,
+        errors,
+        warnings,
+    )
+    if blocked is not None:
+        return blocked
 
     if isinstance(candidates, list):
         if not candidates:

@@ -28,8 +28,8 @@
         "claim_id": "C02",
         "source_id": "S02",
         "locator": {
-          "kind": "paragraph",
-          "value": "p1"
+          "kind": "quote",
+          "value": "product launched in 2024"
         },
         "retrieval_status": "fetched",
         "excerpt_hash": "sha256:acdc73c8cb7e15f7b67131a95eb836fb8d5485243751f17caf6bd207ec4aa62e",

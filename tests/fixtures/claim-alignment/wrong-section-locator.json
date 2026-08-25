@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "bundle_id": "claim-alignment-wrong-section-locator",
+  "audited_population": "adversarial section locator scope",
+  "sampling_rule": "excerpt from Appendix while locator points to Results",
+  "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
+  "source_artifact_sha256": "742a6822a80cbf3fcf17353f2e2f78d4d89111d7040b3bcad097b9438f0993ba",
+  "route_id": "market-outlook",
+  "source_register": [
+    {
+      "source_id": "SWRONG",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/wrong-section-source.txt",
+      "source_artifact_sha256": "35caf3c92664ef04a9e269286ce563863a7a206e99761fc23ecb54b983e32029",
+      "title": "Multi-section source",
+      "url": "https://example.com/wrong-section"
+    }
+  ],
+  "entries": [
+    {
+      "claim_id": "C01",
+      "claim_text": "Revenue increased 15% in FY2025",
+      "evidence_record": {
+        "claim_id": "C01",
+        "source_id": "SWRONG",
+        "locator": {
+          "kind": "section",
+          "value": "Results"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:5b867cf347dc80116b54d8472c37c8698c8b3636a3103aeba64a3d62584bca44",
+        "evidence_role": "primary"
+      },
+      "excerpt": "Revenue increased 15% in FY2025."
+    }
+  ]
+}

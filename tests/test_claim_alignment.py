@@ -253,7 +253,48 @@ class TestAggregateVerdict:
         assert report.aggregate_verdict == "not_run"
 
 
-class TestGoldIsolation:
+class TestLocatorScopeBinding:
+    def test_empty_quote_locator_fails_structurally(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["entries"][0]["evidence_record"]["locator"]["value"] = ""
+        errors = validate_bundle_structure(data)
+        assert any("locator.value required" in err for err in errors)
+
+    def test_empty_quote_locator_does_not_support(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["entries"][0]["evidence_record"]["locator"]["value"] = ""
+        report = run_bundle(data)
+        assert report.structural_errors
+        judgment = report.judgments[0] if report.judgments else None
+        if judgment is not None:
+            assert judgment.verdict != "SUPPORTED"
+
+    def test_wrong_section_excerpt_not_in_locator_scope(self) -> None:
+        report = load_and_run_bundle(FIXTURES / "wrong-section-locator.json")
+        assert report.judgments[0].verdict == "UNSUPPORTED"
+        assert any("locator scope" in err for err in report.judgments[0].errors)
+
+    def test_bogus_paragraph_locator_is_not_run(self) -> None:
+        data = json.loads((FIXTURES / "calibration-bundle.json").read_text())
+        entry = next(e for e in data["entries"] if e["claim_id"] == "C02")
+        entry["evidence_record"]["locator"] = {
+            "kind": "paragraph",
+            "value": "THIS_PARAGRAPH_DOES_NOT_EXIST",
+        }
+        report = run_bundle(data)
+        c02 = next(j for j in report.judgments if j.claim_id == "C02")
+        assert c02.verdict == "NOT_RUN"
+        assert any("paragraph" in w for w in c02.warnings)
+
+    def test_bogus_page_locator_is_not_run(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["entries"][0]["evidence_record"]["locator"] = {
+            "kind": "page",
+            "value": "banana",
+        }
+        report = run_bundle(data)
+        assert report.judgments[0].verdict == "NOT_RUN"
+        assert report.judgments[0].verdict != "SUPPORTED"
     def test_judge_entry_never_reads_gold_labels(self) -> None:
         entry = json.loads((FIXTURES / "valid.json").read_text())["entries"][0]
         entry["gold_labels"] = {"verdict": "UNSUPPORTED"}
