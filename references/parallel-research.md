@@ -144,9 +144,11 @@ and `--report` (the final report / `audit_report --json` `input_sha256`). Those
 two hashes are distinct; a Pack hash must not stand in for a report hash.
 The audit result must contain the complete expected audit set derived from the
 route, contract, and audit registry — a single `final-audit` entry is not
-enough. `--chain` requires the Pack `## Run state` section, the same sidecar
-file, and `--report` when the run is delivered. `explicit_resume` cannot bind
-a Track Handoff.
+enough — plus the canonical `validators[]` set for that route bound to the
+report. `--chain` requires the Pack `## Run state` section, the same sidecar
+file, `--report` when the run is delivered, and a repeated `--handoff` for
+every listed `handoff_refs` entry. `explicit_resume` cannot bind a Track
+Handoff.
 
 Resume means re-read the sidecar and artifacts, re-check hashes, and continue
 from the recorded phase — not replay of model context. A Run State

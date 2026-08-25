@@ -1048,3 +1048,138 @@ def test_malformed_audit_entries_cannot_support_delivered():
     assert errors
     assert any("warning" in err for err in errors)
 
+
+def test_omitted_validators_cannot_support_delivered(tmp_path):
+    report, pack, audit_path = write_real_pass_audit(tmp_path)
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    assert isinstance(audit.get("validators"), list) and audit["validators"]
+    del audit["validators"]
+    stripped = write_json(tmp_path / "no-validators.json", audit)
+    state = load_valid("valid-delivered.json")
+    state["current_artifact_sha256"] = vrs.sha256_file(pack)
+    state_path = write_json(tmp_path / "delivered.json", state)
+    proc = run_cli(
+        str(state_path),
+        "--audit-result",
+        str(stripped),
+        "--artifact",
+        str(pack),
+        "--report",
+        str(report),
+        "--json",
+    )
+    payload = json.loads(proc.stdout)
+    assert proc.returncode == 2
+    assert payload["ok"] is False
+    assert any("validators" in err for err in payload["errors"])
+
+
+def test_omitted_audit_route_cannot_support_delivered(tmp_path):
+    report, pack, audit_path = write_real_pass_audit(tmp_path)
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    del audit["route"]
+    stripped = write_json(tmp_path / "no-route.json", audit)
+    state = load_valid("valid-delivered.json")
+    state["current_artifact_sha256"] = vrs.sha256_file(pack)
+    state_path = write_json(tmp_path / "delivered.json", state)
+    proc = run_cli(
+        str(state_path),
+        "--audit-result",
+        str(stripped),
+        "--artifact",
+        str(pack),
+        "--report",
+        str(report),
+        "--json",
+    )
+    payload = json.loads(proc.stdout)
+    assert proc.returncode == 2
+    assert payload["ok"] is False
+    assert any("route" in err for err in payload["errors"])
+
+
+def test_chain_rejects_unverified_second_handoff_ref(tmp_path):
+    report, pack, audit_path = write_real_pass_audit(
+        tmp_path, with_run_state=True
+    )
+    handoff = json.loads((HANDOFF_FIXTURES / "valid-complete.json").read_text())
+    handoff["artifact_ref"] = {"artifact_id": "fixture-market-outlook-pos"}
+    handoff_path = write_json(tmp_path / "handoff.json", handoff)
+    state = json.loads((tmp_path / "run-state.json").read_text(encoding="utf-8"))
+    state["handoff_refs"] = [
+        {
+            "handoff_id": handoff["handoff_id"],
+            "sha256": vrs.sha256_file(handoff_path),
+        },
+        {
+            "handoff_id": "track-ghost-unverified",
+            "sha256": EMPTY_SHA,
+        },
+    ]
+    state_path = write_json(tmp_path / "run-state.json", state)
+    proc = run_cli(
+        "--chain",
+        "--handoff",
+        str(handoff_path),
+        "--run-state",
+        str(state_path),
+        "--pack",
+        str(pack),
+        "--report",
+        str(report),
+        "--audit-result",
+        str(audit_path),
+        "--json",
+    )
+    payload = json.loads(proc.stdout)
+    assert proc.returncode == 2
+    assert payload["ok"] is False
+    assert any(
+        "track-ghost-unverified" in err or "not supplied" in err
+        for err in payload["errors"]
+    )
+
+
+def test_chain_accepts_every_listed_handoff(tmp_path):
+    report, pack, audit_path = write_real_pass_audit(
+        tmp_path, with_run_state=True
+    )
+    first = json.loads((HANDOFF_FIXTURES / "valid-complete.json").read_text())
+    first["artifact_ref"] = {"artifact_id": "fixture-market-outlook-pos"}
+    first_path = write_json(tmp_path / "handoff-a.json", first)
+    second = copy.deepcopy(first)
+    second["handoff_id"] = "track-2026-08-24-customers"
+    second_path = write_json(tmp_path / "handoff-b.json", second)
+    state = json.loads((tmp_path / "run-state.json").read_text(encoding="utf-8"))
+    state["handoff_refs"] = [
+        {
+            "handoff_id": first["handoff_id"],
+            "sha256": vrs.sha256_file(first_path),
+        },
+        {
+            "handoff_id": second["handoff_id"],
+            "sha256": vrs.sha256_file(second_path),
+        },
+    ]
+    state_path = write_json(tmp_path / "run-state.json", state)
+    proc = run_cli(
+        "--chain",
+        "--handoff",
+        str(first_path),
+        "--handoff",
+        str(second_path),
+        "--run-state",
+        str(state_path),
+        "--pack",
+        str(pack),
+        "--report",
+        str(report),
+        "--audit-result",
+        str(audit_path),
+        "--json",
+    )
+    payload = json.loads(proc.stdout)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert payload["ok"] is True
+    assert payload["errors"] == []
+

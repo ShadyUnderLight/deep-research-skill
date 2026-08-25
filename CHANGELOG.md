@@ -29,6 +29,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 
 ### Fixed
 - `scripts/validate_research_run_state.py` / `scripts/audit_report.py` (#417): delivered now derives the complete expected audit set from route + contract + registry (not from the payload's own `audits[]`); `audit_report` writes `input_sha256` on manual/process provenance so a real `--json` Pass can bind `--report` / `--artifact` hashes separately; malformed entries and incomplete audit sets still fail closed.
+- `scripts/validate_research_run_state.py` (#417): delivered now consumes canonical `validators[]` via `_validators_ok`, requiring the audit JSON's top-level `route` and the full route-level validator set (including contract-check) bound to the report hash; `--chain` / repeatable `--handoff` must load and hash-check every listed `handoff_refs` entry so a ghost second ref cannot skip verification.
 
 ### Added
 - `schemas/audit-registry.json`, `scripts/registry_loader.py` (#393): register `markdown-delivery` and `research-pack` as first-class automated audits with `scope: "delivery"` and `checklist: null` (delivery-scope / virtual audits have no human checklist); `AuditRegistry.global_audit_ids()` derives the every-route audit set from the registry instead of code; a delivery-scope audit must be `execution_type: automated` (manual/process would degrade to global self-attestation and fails closed at registry load).

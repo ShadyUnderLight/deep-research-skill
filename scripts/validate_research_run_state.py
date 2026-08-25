@@ -21,9 +21,10 @@ Usage:
     python3 scripts/validate_research_run_state.py <run-state.json> \\
         --resume --artifact <pack.md> [--activation-snapshot snap.json] [--json]
     python3 scripts/validate_research_run_state.py --chain \\
-        --handoff h.json --run-state r.json --pack p.md [--report report.md] \\
-        [--audit-result a.json] [--json]
-        # --chain requires Pack ## Run state to name the same sidecar file
+        --handoff h1.json [--handoff h2.json ...] --run-state r.json --pack p.md \\
+        [--report report.md] [--audit-result a.json] [--json]
+        # --chain requires Pack ## Run state to name the same sidecar file;
+        # every listed handoff_refs entry must be supplied via --handoff
 """
 
 from __future__ import annotations
@@ -494,14 +495,16 @@ def _canonical_audit_helpers():
             _audit_consistency_details,
             _expected_audit_set,
             _overall_consistency_details,
+            _validators_ok,
         )
     except ImportError:
-        return 1, None, None, None
+        return 1, None, None, None, None
     return (
         EXPECTED_AUDIT_JSON_SCHEMA_VERSION,
         _overall_consistency_details,
         _audit_consistency_details,
         _expected_audit_set,
+        _validators_ok,
     )
 
 
@@ -546,10 +549,11 @@ def _derive_expected_audit_ids(
     report_path: Path | str | None,
     pack_path: Path | str | None,
     expected_set_fn,
-) -> tuple[list[str] | None, list[str]]:
+) -> tuple[list[str] | None, str | None, list[str]]:
     """从 route / contract / registry 外算完整 expected audit set。
 
-    不信任 payload 自己的 audits[] 列表。
+    不信任 payload 自己的 audits[] 列表。顶层 ``route`` 必须存在并与
+    报告 contract / Pack 一致，这样删掉 JSON 里的 route 不能蒙混过关。
     """
     errors: list[str] = []
     contract = _report_contract(report_path)
@@ -569,9 +573,16 @@ def _derive_expected_audit_ids(
             if isinstance(item, str) and item.strip()
         ]
     pack_route = _quiet_pack_primary_route(pack_path)
-    audit_route = _quiet_resolve_route(audit.get("route")) if isinstance(
-        audit.get("route"), str
-    ) else None
+    raw_audit_route = audit.get("route")
+    if not isinstance(raw_audit_route, str) or not raw_audit_route.strip():
+        errors.append("audit result requires top-level route")
+        audit_route = None
+    else:
+        audit_route = _quiet_resolve_route(raw_audit_route)
+        if audit_route is None:
+            errors.append(
+                f"audit result route {raw_audit_route!r} is not a canonical route"
+            )
 
     route = contract_route or pack_route or audit_route
     if route is None:
@@ -579,7 +590,7 @@ def _derive_expected_audit_ids(
             "phase=delivered cannot derive the expected audit set: "
             "need a primary route from the report contract or Research Pack"
         )
-        return None, errors
+        return None, None, errors
 
     for label, other in (
         ("report contract", contract_route),
@@ -594,15 +605,66 @@ def _derive_expected_audit_ids(
 
     if expected_set_fn is None:
         errors.append("cannot load canonical expected audit set helper")
-        return None, errors
+        return None, route, errors
     expected = expected_set_fn(route, secondaries)
     if expected is None:
         errors.append(
             f"cannot derive expected audit set for route {route!r} "
             "(registry drift)"
         )
-        return None, errors
-    return expected, errors
+        return None, route, errors
+    return expected, route, errors
+
+
+def _delivered_validator_errors(
+    audit: dict,
+    *,
+    route: str | None,
+    report_path: Path | str | None,
+    expected_report_sha256: str | None,
+    validators_ok_fn,
+) -> list[str]:
+    """复用 canonical ``_validators_ok``，用外部 route / 报告 hash 绑定。"""
+    errors: list[str] = []
+    validators = audit.get("validators")
+    if not isinstance(validators, list) or not validators:
+        return ["audit result requires a non-empty validators list"]
+    if route is None:
+        return ["cannot bind validators[] without a resolved route"]
+    try:
+        from registry_loader import UnknownRouteError, load_route_registry
+
+        expected = load_route_registry().validators_for(route)
+    except (UnknownRouteError, OSError, ImportError) as exc:
+        return [f"cannot load canonical validator set for route {route!r}: {exc}"]
+
+    audited_path = str(report_path) if report_path is not None else None
+    recorded = [
+        str(item.get("validator_id"))
+        for item in validators
+        if isinstance(item, dict)
+    ]
+    if recorded != expected:
+        errors.append(
+            f"validators[] does not match the canonical set for route {route!r}: "
+            f"got {recorded}, expected {expected}"
+        )
+    if validators_ok_fn is None:
+        if not errors:
+            errors.append("cannot load canonical validators[] helper")
+        return errors
+    if not validators_ok_fn(
+        audit,
+        expected,
+        audited_path=audited_path,
+        expected_input_sha256=expected_report_sha256,
+    ):
+        if not errors:
+            errors.append(
+                "validators[] failed canonical binding (status, provenance, "
+                "report hash, or validator_version)"
+            )
+    return errors
 
 
 def _provenance_input_sha256_errors(
@@ -697,9 +759,13 @@ def check_audit_result_for_delivered(
     if not isinstance(audit, dict):
         return ["audit result must be a JSON object"]
     errors: list[str] = []
-    schema_version, overall_details, audit_details, expected_set_fn = (
-        _canonical_audit_helpers()
-    )
+    (
+        schema_version,
+        overall_details,
+        audit_details,
+        expected_set_fn,
+        validators_ok_fn,
+    ) = _canonical_audit_helpers()
 
     if audit.get("schema_version") != schema_version:
         errors.append(
@@ -756,14 +822,14 @@ def check_audit_result_for_delivered(
     audits = audit.get("audits")
     if not isinstance(audits, list) or not audits:
         errors.append("audit result requires a non-empty audits list")
-        return errors
+        audits = []
 
     present_ids = [
         str(item.get("audit_id"))
         for item in audits
         if isinstance(item, dict) and item.get("audit_id")
     ]
-    expected_ids, expected_errors = _derive_expected_audit_ids(
+    expected_ids, route, expected_errors = _derive_expected_audit_ids(
         audit,
         report_path=report_path,
         pack_path=pack_path,
@@ -796,6 +862,16 @@ def check_audit_result_for_delivered(
     else:
         for entry in audits:
             errors.extend(_malformed_audit_entry_errors(entry))
+
+    errors.extend(
+        _delivered_validator_errors(
+            audit,
+            route=route,
+            report_path=report_path,
+            expected_report_sha256=expected_report_sha256,
+            validators_ok_fn=validators_ok_fn,
+        )
+    )
 
     for entry in audits:
         if not isinstance(entry, dict):
@@ -1003,6 +1079,56 @@ def bind_handoff_to_run_state(
     return errors
 
 
+def bind_listed_handoffs(
+    run_state: dict,
+    handoff_paths: list[Path | str],
+) -> list[str]:
+    """校验 Run State 列出的每一条 handoff，而不是只绑命令行上的第一个文件。"""
+    if run_state.get("enabled_reason") == "explicit_resume":
+        if handoff_paths:
+            return [
+                "enabled_reason=explicit_resume cannot bind a Track Handoff; "
+                "single-track resume creates no handoffs"
+            ]
+        return []
+
+    from validate_track_handoff import HandoffIncomplete, load_handoff_for_merge
+
+    errors: list[str] = []
+    supplied_ids: set[str] = set()
+    for raw in handoff_paths:
+        path = Path(raw)
+        try:
+            handoff = load_handoff_for_merge(path)
+        except HandoffIncomplete as exc:
+            errors.append(str(exc))
+            continue
+        hid = handoff.get("handoff_id")
+        if isinstance(hid, str) and hid.strip():
+            if hid in supplied_ids:
+                errors.append(f"duplicate --handoff for handoff_id {hid!r}")
+            supplied_ids.add(hid)
+        errors.extend(
+            bind_handoff_to_run_state(handoff, run_state, handoff_path=path)
+        )
+
+    if (
+        run_state.get("enabled_reason") == "parallel"
+        and run_state.get("phase") in HANDOFF_REQUIRED_PHASES
+    ):
+        listed = [
+            item.get("handoff_id")
+            for item in (run_state.get("handoff_refs") or [])
+            if isinstance(item, dict) and _is_non_empty_str(item.get("handoff_id"))
+        ]
+        for hid in listed:
+            if hid not in supplied_ids:
+                errors.append(
+                    f"listed handoff_id {hid!r} was not supplied via --handoff"
+                )
+    return errors
+
+
 def parse_pack_run_state_section(cleaned: str) -> tuple[dict | None, list[str]]:
     """解析 Pack 的可选 ``## Run state``。缺省节返回 (None, [])。"""
     heading_re = re.compile(r"^## Run state\s*$", re.MULTILINE)
@@ -1178,23 +1304,16 @@ def _check_status_mapping(state: dict, *, research_status: str | None) -> list[s
 
 def validate_chain(
     *,
-    handoff_path: Path | str,
+    handoff_paths: list[Path | str],
     run_state_path: Path | str,
     pack_path: Path | str,
     audit_result_path: Path | str | None = None,
     report_path: Path | str | None = None,
 ) -> list[str]:
-    """端到端：Handoff → Run State → Pack → 可选 audit result。"""
-    from validate_track_handoff import load_handoff_for_merge, HandoffIncomplete
-
+    """端到端：列出的全部 Handoff → Run State → Pack → 可选 audit result。"""
     errors: list[str] = []
     state, state_errors = load_run_state_file(run_state_path)
     errors.extend(state_errors)
-    try:
-        handoff = load_handoff_for_merge(handoff_path)
-    except HandoffIncomplete as exc:
-        errors.append(str(exc))
-        handoff = None
     ref, sidecar, ref_errors = resolve_declared_run_state_path(pack_path)
     errors.extend(ref_errors)
     if ref is None and not ref_errors:
@@ -1223,12 +1342,8 @@ def validate_chain(
                 f"CLI run-state has {state.get('run_id')!r}"
             )
     errors.extend(check_pack_run_state(pack_path))
-    if state is not None and handoff is not None:
-        errors.extend(
-            bind_handoff_to_run_state(
-                handoff, state, handoff_path=handoff_path
-            )
-        )
+    if state is not None:
+        errors.extend(bind_listed_handoffs(state, handoff_paths))
     if state is not None and state["phase"] == "delivered":
         errors.extend(
             require_delivered_audit(
@@ -1278,7 +1393,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--audit-result", default=None, help="audit_report --json payload")
     parser.add_argument("--chain", action="store_true", help="Validate the e2e artifact chain")
-    parser.add_argument("--handoff", default=None, help="Track Handoff JSON for --chain / bind")
+    parser.add_argument(
+        "--handoff",
+        action="append",
+        default=None,
+        help="Track Handoff JSON; repeat for every listed handoff_refs entry",
+    )
     parser.add_argument("--run-state", dest="chain_run_state", default=None)
     parser.add_argument("--pack", default=None, help="Research Pack markdown for --chain")
     parser.add_argument("--json", action="store_true", help="Machine-readable JSON output")
@@ -1293,7 +1413,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         run_state_path = args.chain_run_state or args.run_state_file
         errors = validate_chain(
-            handoff_path=args.handoff,
+            handoff_paths=args.handoff,
             run_state_path=run_state_path,
             pack_path=args.pack,
             audit_result_path=args.audit_result,
@@ -1374,17 +1494,7 @@ def main(argv: list[str] | None = None) -> int:
         )
 
     if args.handoff:
-        from validate_track_handoff import load_handoff_for_merge, HandoffIncomplete
-
-        try:
-            handoff = load_handoff_for_merge(args.handoff)
-            errors.extend(
-                bind_handoff_to_run_state(
-                    handoff, state, handoff_path=args.handoff
-                )
-            )
-        except HandoffIncomplete as exc:
-            errors.append(str(exc))
+        errors.extend(bind_listed_handoffs(state, args.handoff))
 
     if state["phase"] == "delivered":
         errors.extend(
