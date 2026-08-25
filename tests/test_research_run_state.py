@@ -1182,4 +1182,3 @@ def test_chain_accepts_every_listed_handoff(tmp_path):
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert payload["ok"] is True
     assert payload["errors"] == []
-
