@@ -1,0 +1,5 @@
+Normal visible line without the quoted phrase.
+
+```markdown
+revenue increased 15%
+```

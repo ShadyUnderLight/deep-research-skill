@@ -28,7 +28,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 # ── Import existing validators ──────────────────────────────────────────────
 
@@ -98,6 +98,7 @@ from activation_snapshot import (
 # bindings come from schemas/audit-registry.json (issue #378).
 import registry_loader
 from registry_loader import RegistryError, UnknownRouteError
+from opt_in_audit_contract import OPT_IN_AGGREGATE_NOT_RUN_REASON, OPT_IN_DEFAULT_OFF_REASON
 
 _ROUTE_REGISTRY = registry_loader.load_route_registry()
 _AUDIT_REGISTRY = registry_loader.load_audit_registry()
@@ -772,6 +773,43 @@ def _run_forward_looking(path: Path, **kwargs: bool) -> CheckResult:
     return CheckResult(name="forward-looking-claims", errors=list(hits), warnings=[])
 
 
+def _run_claim_alignment(path: Path, **kwargs: object) -> CheckResult:
+    """Run offline claim–source alignment on a bundle (issue #419)."""
+    bundle_arg = kwargs.get("claim_alignment_bundle")
+    expected_route = kwargs.get("expected_route")
+    if bundle_arg is None:
+        return CheckResult(
+            name="claim-source-alignment",
+            errors=["claim-alignment bundle path not provided"],
+        )
+    from claim_alignment import BindingContext, load_and_run_bundle
+
+    bundle_path = Path(str(bundle_arg))
+    binding = BindingContext(
+        artifact_path=path,
+        expected_route=str(expected_route) if expected_route else None,
+        require_production_bindings=True,
+    )
+    try:
+        report = load_and_run_bundle(bundle_path, binding=binding)
+    except ValueError as exc:
+        return CheckResult(
+            name="claim-source-alignment",
+            errors=[str(exc)],
+        )
+    errors = list(report.blocking_errors)
+    warnings = list(report.advisory_warnings)
+    if report.aggregate_verdict == "not_run":
+        warnings.append(
+            "claim-source-alignment aggregate status is NOT_RUN — cannot mark Pass"
+        )
+    return CheckResult(
+        name="claim-source-alignment",
+        errors=errors,
+        warnings=warnings,
+    )
+
+
 def _run_research_pack(pack_path: Path | None, **kwargs: bool) -> CheckResult:
     """Validate a Research Pack file (issue #378).
 
@@ -853,6 +891,7 @@ _AUDIT_VALIDATOR_REGISTRY: dict[str, ValidatorFn] = {
     "markdown-delivery": _run_markdown_delivery,
     "research-pack": _run_research_pack,
     "forward-looking-claims": _run_forward_looking,
+    "claim-alignment": _run_claim_alignment,
 }
 
 _missing_audit_fns = registry_loader.AUDIT_VALIDATOR_IDS - set(_AUDIT_VALIDATOR_REGISTRY)
@@ -1617,6 +1656,134 @@ def _execute_required_audits(
     return results, blocking, warnings
 
 
+def _execute_opt_in_audits(
+    path: Path,
+    strict: bool,
+    resolved_route: str,
+    enable_claim_alignment: bool,
+    claim_alignment_bundle: Path | None,
+) -> tuple[list[AuditResult], list[str], list[str]]:
+    """Record opt-in audits; default off emits explicit not_run (issue #419)."""
+    results: list[AuditResult] = []
+    blocking: list[str] = []
+    warnings: list[str] = []
+
+    audit_id = "claim-source-alignment"
+    audit = _AUDIT_REGISTRY.get_audit(audit_id)
+    if audit is None:
+        blocking.append(
+            f"Opt-in audit '{audit_id}' has no entry in "
+            f"schemas/audit-registry.json"
+        )
+        return results, blocking, warnings
+
+    binding = audit.validator_binding
+
+    if not enable_claim_alignment:
+        results.append(AuditResult(
+            audit_id=audit_id,
+            execution_type="automated",
+            status="not_run",
+            execution_source="automated_validator",
+            validator_binding=binding,
+            reason=OPT_IN_DEFAULT_OFF_REASON,
+        ))
+        return results, blocking, warnings
+
+    if claim_alignment_bundle is None:
+        results.append(AuditResult(
+            audit_id=audit_id,
+            execution_type="automated",
+            status="not_run",
+            execution_source="automated_validator",
+            validator_binding=binding,
+            reason="opt-in audit enabled but no --claim-alignment-bundle provided",
+        ))
+        blocking.append(
+            f"[{audit_id}] not_run — no --claim-alignment-bundle provided"
+        )
+        return results, blocking, warnings
+
+    fn = _audit_validator_fn(binding)
+    if fn is None:
+        blocking.append(
+            f"Opt-in audit '{audit_id}' binds unknown validator '{binding}'"
+        )
+        return results, blocking, warnings
+
+    try:
+        check = fn(
+            path,
+            claim_alignment_bundle=str(claim_alignment_bundle),
+            expected_route=resolved_route,
+            strict=strict,
+        )
+    except Exception as exc:
+        check = CheckResult(
+            name=audit_id,
+            errors=[f"{audit_id} validator crashed: {exc}"],
+        )
+
+    if check.errors:
+        status = "fail"
+    elif report_aggregate_not_run(check):
+        status = "not_run"
+    elif check.warnings:
+        status = "conditional-pass"
+    else:
+        status = "pass"
+
+    evidence: list[str] = []
+    evidence_provenance: list[dict[str, Any]] = []
+    reason: str | None = None
+
+    if status == "not_run":
+        reason = OPT_IN_AGGREGATE_NOT_RUN_REASON
+    elif status == "fail":
+        evidence = [str(e)[:200] for e in check.errors[:5]]
+    else:
+        evidence = [
+            f"{path}: claim-alignment bundle {claim_alignment_bundle} "
+            f"validated by {binding}"
+        ]
+        report_hash = _sha256(path)
+        evidence_provenance = [{
+            "kind": "automated_validator",
+            "audit_id": audit_id,
+            "locator": binding,
+            "validator_binding": binding,
+            "execution_source": "automated_validator",
+            "target": str(path),
+            "input_sha256": report_hash,
+            "validator_version": _registry_version(),
+            "verified": True,
+            "claim_alignment_bundle": str(claim_alignment_bundle),
+            "claim_alignment_bundle_sha256": _sha256(claim_alignment_bundle),
+        }]
+    results.append(AuditResult(
+        audit_id=audit_id,
+        execution_type="automated",
+        status=status,
+        execution_source="automated_validator",
+        errors=[] if status == "not_run" else list(check.errors),
+        warnings=[] if status == "not_run" else list(check.warnings),
+        validator_binding=binding,
+        evidence=evidence,
+        evidence_provenance=evidence_provenance,
+        reason=reason,
+    ))
+    blocking.extend(f"[{audit_id}] {e}" for e in check.errors)
+    if status != "not_run":
+        warnings.extend(f"[{audit_id}] {w} (audit)" for w in check.warnings)
+    return results, blocking, warnings
+
+
+def report_aggregate_not_run(check: CheckResult) -> bool:
+    return any(
+        "aggregate status is NOT_RUN" in w for w in check.warnings
+    )
+
+
 def _compute_verdict(
     route: str | None,
     results: list[CheckResult],
@@ -1827,6 +1994,8 @@ def _audit_report_impl(
     research_pack: Path | None = None,
     activation_snapshot: Path | None = None,
     delivery_result: Path | None = None,
+    enable_claim_alignment: bool = False,
+    claim_alignment_bundle: Path | None = None,
 ) -> AuditVerdict:
     """Run route-aware audit on a report and return the consolidated verdict.
 
@@ -1952,6 +2121,16 @@ def _audit_report_impl(
     audit_results, audit_blocking, audit_warnings = _execute_required_audits(
         path, resolved_route, strict=strict, research_pack=research_pack
     )
+    opt_in_results, opt_in_blocking, opt_in_warnings = _execute_opt_in_audits(
+        path,
+        strict=strict,
+        resolved_route=resolved_route,
+        enable_claim_alignment=enable_claim_alignment,
+        claim_alignment_bundle=claim_alignment_bundle,
+    )
+    audit_results.extend(opt_in_results)
+    audit_blocking.extend(opt_in_blocking)
+    audit_warnings.extend(opt_in_warnings)
 
     verdict = _compute_verdict(
         resolved_route,
@@ -2019,6 +2198,8 @@ def audit_report(
     research_pack: Path | None = None,
     activation_snapshot: Path | None = None,
     delivery_result: Path | None = None,
+    enable_claim_alignment: bool = False,
+    claim_alignment_bundle: Path | None = None,
 ) -> AuditVerdict:
     """Public entry point: run the audit and attach provenance to the verdict.
 
@@ -2033,6 +2214,8 @@ def audit_report(
         research_pack=research_pack,
         activation_snapshot=activation_snapshot,
         delivery_result=delivery_result,
+        enable_claim_alignment=enable_claim_alignment,
+        claim_alignment_bundle=claim_alignment_bundle,
     )
     return _finalize_verdict(verdict, path)
 
@@ -2108,6 +2291,21 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--enable-claim-alignment",
+        action="store_true",
+        default=False,
+        help=(
+            "Opt-in: run the claim-source-alignment audit (issue #419). "
+            "Requires --claim-alignment-bundle. Default off."
+        ),
+    )
+    parser.add_argument(
+        "--claim-alignment-bundle",
+        type=str,
+        default=None,
+        help="Path to a claim-alignment evidence bundle JSON for opt-in audit.",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         default=False,
@@ -2131,6 +2329,10 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.activation_snapshot) if args.activation_snapshot else None
         ),
         delivery_result=Path(args.delivery_result) if args.delivery_result else None,
+        enable_claim_alignment=args.enable_claim_alignment,
+        claim_alignment_bundle=(
+            Path(args.claim_alignment_bundle) if args.claim_alignment_bundle else None
+        ),
     )
 
     if args.json:

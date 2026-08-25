@@ -1,0 +1,8 @@
+# Report
+
+```markdown
+## Monitoring signals
+Hidden locator text inside fence.
+```
+
+Route-specific excerpt about cloud revenue.

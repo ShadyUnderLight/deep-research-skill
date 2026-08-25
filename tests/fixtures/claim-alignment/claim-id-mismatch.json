@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "bundle_id": "claim-alignment-claim-id-mismatch",
+  "audited_population": "claim id binding adversarial fixture",
+  "sampling_rule": "single entry",
+  "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
+  "source_artifact_sha256": "742a6822a80cbf3fcf17353f2e2f78d4d89111d7040b3bcad097b9438f0993ba",
+  "route_id": "market-outlook",
+  "source_register": [
+    {
+      "source_id": "S01",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s01-excerpt.txt",
+      "source_artifact_sha256": "b3f5167afbadbcd1f5f9cfe15b6e8ef5c68faafa623fc7abe331941c728abc3a",
+      "title": "Source S01",
+      "url": "https://example.com/s01"
+    }
+  ],
+  "entries": [
+    {
+      "claim_id": "C12",
+      "claim_text": "Vendor claim repeated as fact",
+      "evidence_record": {
+        "claim_id": "C13",
+        "source_id": "S01",
+        "locator": {
+          "kind": "quote",
+          "value": "vendor claim"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "evidence_role": "primary"
+      },
+      "excerpt": ""
+    }
+  ]
+}

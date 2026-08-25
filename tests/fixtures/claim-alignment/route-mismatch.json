@@ -1,0 +1,37 @@
+{
+  "schema_version": "1",
+  "bundle_id": "claim-alignment-route-mismatch",
+  "fixture_version": "claim-alignment-calibration-v1",
+  "audited_population": "route binding adversarial fixture",
+  "sampling_rule": "single entry",
+  "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
+  "source_artifact_sha256": "742a6822a80cbf3fcf17353f2e2f78d4d89111d7040b3bcad097b9438f0993ba",
+  "route_id": "technical-deep-dive",
+  "source_register": [
+    {
+      "source_id": "S11",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s11-excerpt.txt",
+      "source_artifact_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "title": "Source S11",
+      "url": "https://example.com/s11"
+    }
+  ],
+  "entries": [
+    {
+      "claim_id": "C11",
+      "claim_text": "Scenario weights are calibrated",
+      "evidence_record": {
+        "claim_id": "C11",
+        "source_id": "S11",
+        "locator": {
+          "kind": "quote",
+          "value": "scenario weights"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "evidence_role": "secondary"
+      },
+      "excerpt": ""
+    }
+  ]
+}

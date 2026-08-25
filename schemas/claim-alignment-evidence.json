@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deep-research-skill/schemas/claim-alignment-evidence.json",
+  "title": "Claim-Source Alignment Evidence Bundle",
+  "description": "Machine-readable evidence records and offline alignment audit inputs (issue #419). Production bundles must bind report artifact path/hash and route_id. Gold labels are calibration-only.",
+  "version": 2,
+  "schema_version": "1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "audited_population",
+    "sampling_rule",
+    "source_artifact_path",
+    "source_artifact_sha256",
+    "route_id",
+    "source_register",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1"
+    },
+    "bundle_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fixture_version": {
+      "type": "string",
+      "minLength": 1
+    },
+    "audited_population": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sampling_rule": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_artifact_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_artifact_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "route_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_register": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/source_register_entry"
+      }
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/alignment_entry"
+      }
+    },
+    "gold_labels": {
+      "type": "object",
+      "additionalProperties": {
+        "$ref": "#/$defs/gold_label"
+      }
+    }
+  },
+  "$defs": {
+    "source_register_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_id", "source_artifact_path", "source_artifact_sha256"],
+      "properties": {
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_artifact_path": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_artifact_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1
+        },
+        "url": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "page",
+            "section",
+            "paragraph",
+            "quote",
+            "url_fragment",
+            "none"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "evidence_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "source_id",
+        "locator",
+        "retrieval_status",
+        "excerpt_hash",
+        "evidence_role"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "locator": {
+          "$ref": "#/$defs/locator"
+        },
+        "retrieval_status": {
+          "type": "string",
+          "enum": ["fetched", "unavailable", "unreadable", "not_run"]
+        },
+        "excerpt_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "evidence_role": {
+          "type": "string",
+          "enum": ["primary", "secondary", "inferred", "unknown"]
+        }
+      }
+    },
+    "subclaim_candidate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "subclaim_judgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "verdict"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "SUPPORTED",
+            "PARTIAL",
+            "UNSUPPORTED",
+            "AMBIGUOUS",
+            "RETRIEVAL_FAILED",
+            "NOT_RUN"
+          ]
+        }
+      }
+    },
+    "alignment_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "claim_text",
+        "evidence_record",
+        "excerpt"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "claim_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_record": {
+          "$ref": "#/$defs/evidence_record"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "subclaim_candidates": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/subclaim_candidate"
+          }
+        },
+        "artifact_text": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "gold_label": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict"],
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "SUPPORTED",
+            "PARTIAL",
+            "UNSUPPORTED",
+            "AMBIGUOUS",
+            "RETRIEVAL_FAILED",
+            "NOT_RUN"
+          ]
+        },
+        "subclaims": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/subclaim_judgment"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "bundle_id": "claim-alignment-valid-supported",
+  "audited_population": "load-bearing claim in market-outlook positive fixture",
+  "sampling_rule": "explicit positive integration fixture",
+  "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
+  "source_artifact_sha256": "742a6822a80cbf3fcf17353f2e2f78d4d89111d7040b3bcad097b9438f0993ba",
+  "route_id": "market-outlook",
+  "source_register": [
+    {
+      "source_id": "S01",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s01-excerpt.txt",
+      "source_artifact_sha256": "5d09c917aedf10633d7bc83b18afaf53dd548659aae27fb50211dc073fbc4b66",
+      "title": "FY2025 filing excerpt",
+      "url": "https://example.com/filing"
+    }
+  ],
+  "entries": [
+    {
+      "claim_id": "C01",
+      "claim_text": "Revenue grew 15% in FY2025",
+      "evidence_record": {
+        "claim_id": "C01",
+        "source_id": "S01",
+        "locator": {
+          "kind": "quote",
+          "value": "revenue increased 15%"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:5d09c917aedf10633d7bc83b18afaf53dd548659aae27fb50211dc073fbc4b66",
+        "evidence_role": "primary"
+      },
+      "excerpt": "Full year revenue increased 15% compared to the prior fiscal year."
+    }
+  ]
+}
