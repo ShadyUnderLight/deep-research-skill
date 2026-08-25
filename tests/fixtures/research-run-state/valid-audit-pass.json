@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "route": "market-outlook",
   "overall": "pass",
   "exit_code": 0,
   "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",

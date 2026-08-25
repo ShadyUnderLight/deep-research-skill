@@ -54,6 +54,7 @@ def test_strict_json_distinguishes_manual_and_automated_provenance() -> None:
     assert manual["execution_source"] == "manual_checklist_attestation"
     assert manual["evidence_provenance"][0]["kind"] == "report_section"
     assert manual["evidence_provenance"][0]["verified"] is True
+    assert manual["evidence_provenance"][0]["input_sha256"] == data["input_sha256"]
     assert automated["execution_source"] == "automated_validator"
     assert automated["evidence_provenance"][0]["validator_binding"] == (
         "forward-looking-claims"

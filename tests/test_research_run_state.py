@@ -18,6 +18,8 @@ import pytest
 ROOT = Path(__file__).resolve().parent.parent
 SCRIPTS = ROOT / "scripts"
 FIXTURES = ROOT / "tests" / "fixtures" / "research-run-state"
+AUDIT_POS_REPORT = ROOT / "tests" / "fixtures" / "audit" / "market-outlook-pos.md"
+AUDIT_POS_PACK = ROOT / "tests" / "fixtures" / "audit" / "research-pack-pos.md"
 HANDOFF_FIXTURES = ROOT / "tests" / "fixtures" / "track-handoff"
 SCHEMA_DOC = ROOT / "schemas" / "research-run-state.json"
 EXAMPLE_PACK = ROOT / "examples" / "research-pack-example.md"
@@ -101,33 +103,45 @@ def empty_artifact(tmp_path: Path, name: str = "artifact.bin") -> Path:
     return path
 
 
-def write_pass_audit(
-    path: Path, report_sha: str, pack_sha: str | None = None
-) -> Path:
-    if pack_sha is None:
-        pack_sha = report_sha
-    audit = json.loads((FIXTURES / "valid-audit-pass.json").read_text(encoding="utf-8"))
-    audit["input_sha256"] = report_sha
-    for entry in audit.get("audits") or []:
-        for rec in entry.get("evidence_provenance") or []:
-            kind = rec.get("kind")
-            if entry.get("audit_id") == "research-pack" or kind in {
-                "pack_section",
-                "pack_table",
-            }:
-                rec["input_sha256"] = pack_sha
-            else:
-                rec["input_sha256"] = report_sha
-    return write_json(path, audit)
-
-
-def delivered_bind_args(tmp_path: Path, audit: Path | str | None = None) -> list[str]:
-    pack = empty_artifact(tmp_path, "pack.bin")
-    report = empty_artifact(tmp_path, "report.md")
-    args = ["--artifact", str(pack), "--report", str(report)]
-    if audit is not None:
-        args = ["--audit-result", str(audit), *args]
-    return args
+def write_real_pass_audit(
+    tmp_path: Path,
+    *,
+    with_run_state: bool = False,
+    run_id: str = "research-run-2026-08-25-001",
+) -> tuple[Path, Path, Path]:
+    """Generate a real audit_report --json Pass bound to copied report/pack files."""
+    report = tmp_path / "report.md"
+    report.write_text(AUDIT_POS_REPORT.read_text(encoding="utf-8"), encoding="utf-8")
+    pack_text = AUDIT_POS_PACK.read_text(encoding="utf-8")
+    if with_run_state:
+        pack_text += (
+            f"\n## Run state\nrun_id: {run_id}\npath: run-state.json\n"
+        )
+    pack = tmp_path / "pack.md"
+    pack.write_text(pack_text, encoding="utf-8")
+    if with_run_state:
+        state = load_valid("valid-delivered.json")
+        state["run_id"] = run_id
+        state["artifact_id"] = "fixture-market-outlook-pos"
+        state["current_artifact_sha256"] = vrs.sha256_file(pack)
+        write_json(tmp_path / "run-state.json", state)
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "audit_report.py"),
+            str(report),
+            "--research-pack",
+            str(pack),
+            "--strict",
+            "--require-contract",
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    audit_path = write_json(tmp_path / "audit.json", json.loads(proc.stdout))
+    return report, pack, audit_path
 
 
 def run_cli(*args: str) -> subprocess.CompletedProcess:
@@ -204,12 +218,15 @@ def test_valid_delivered_requires_audit_result_on_cli(tmp_path):
     assert payload["ok"] is False
     assert any("audit-result" in err for err in payload["errors"])
 
-    artifact = empty_artifact(tmp_path, "pack.bin")
-    report = empty_artifact(tmp_path, "report.md")
+    report, pack, audit_path = write_real_pass_audit(tmp_path)
+    state = load_valid("valid-delivered.json")
+    state["current_artifact_sha256"] = vrs.sha256_file(pack)
+    state_path = write_json(tmp_path / "delivered.json", state)
+
     no_artifact = run_cli(
-        str(FIXTURES / "valid-delivered.json"),
+        str(state_path),
         "--audit-result",
-        str(FIXTURES / "valid-audit-pass.json"),
+        str(audit_path),
         "--report",
         str(report),
         "--json",
@@ -219,11 +236,11 @@ def test_valid_delivered_requires_audit_result_on_cli(tmp_path):
     assert any("artifact" in err for err in payload["errors"])
 
     no_report = run_cli(
-        str(FIXTURES / "valid-delivered.json"),
+        str(state_path),
         "--audit-result",
-        str(FIXTURES / "valid-audit-pass.json"),
+        str(audit_path),
         "--artifact",
-        str(artifact),
+        str(pack),
         "--json",
     )
     payload = json.loads(no_report.stdout)
@@ -231,11 +248,11 @@ def test_valid_delivered_requires_audit_result_on_cli(tmp_path):
     assert any("report" in err for err in payload["errors"])
 
     ok = run_cli(
-        str(FIXTURES / "valid-delivered.json"),
+        str(state_path),
         "--audit-result",
-        str(FIXTURES / "valid-audit-pass.json"),
+        str(audit_path),
         "--artifact",
-        str(artifact),
+        str(pack),
         "--report",
         str(report),
         "--json",
@@ -281,11 +298,23 @@ def test_normal_path_transitions_are_legal():
 
 def test_normal_path_transitions_pass_cli(tmp_path):
     states = _walk_states()
-    audit = str(FIXTURES / "valid-audit-pass.json")
+    report, pack, audit_path = write_real_pass_audit(tmp_path)
+    pack_sha = vrs.sha256_file(pack)
     for before, after in zip(states, states[1:]):
+        extra: list[str] = []
+        if after["phase"] == "delivered":
+            before = mutate(before, {"current_artifact_sha256": pack_sha})
+            after = mutate(after, {"current_artifact_sha256": pack_sha})
+            extra = [
+                "--audit-result",
+                str(audit_path),
+                "--artifact",
+                str(pack),
+                "--report",
+                str(report),
+            ]
         prev = write_json(tmp_path / "from.json", before)
         nxt = write_json(tmp_path / "to.json", after)
-        extra = delivered_bind_args(tmp_path, audit) if after["phase"] == "delivered" else []
         proc = run_cli("--from", str(prev), "--to", str(nxt), "--json", *extra)
         payload = json.loads(proc.stdout)
         assert proc.returncode == 0, (before["phase"], after["phase"], proc.stdout)
@@ -674,17 +703,13 @@ def test_handoff_run_state_binding_accepts_matching_hash(tmp_path):
 
 
 def test_e2e_chain_tamper_cannot_deliver(tmp_path):
-    pack = _write_pack(
-        tmp_path,
-        "\n## Run state\n"
-        "run_id: research-run-2026-08-25-001\n"
-        "path: run-state.json\n",
+    report, pack, audit_path = write_real_pass_audit(
+        tmp_path, with_run_state=True
     )
     handoff = json.loads((HANDOFF_FIXTURES / "valid-complete.json").read_text())
-    handoff["artifact_ref"] = {"artifact_id": "research-2026-08-25-001"}
+    handoff["artifact_ref"] = {"artifact_id": "fixture-market-outlook-pos"}
     handoff_path = write_json(tmp_path / "handoff.json", handoff)
-    state = load_valid("valid-delivered.json")
-    state["current_artifact_sha256"] = vrs.sha256_file(pack)
+    state = json.loads((tmp_path / "run-state.json").read_text(encoding="utf-8"))
     state["handoff_refs"] = [
         {
             "handoff_id": handoff["handoff_id"],
@@ -692,13 +717,6 @@ def test_e2e_chain_tamper_cannot_deliver(tmp_path):
         }
     ]
     state_path = write_json(tmp_path / "run-state.json", state)
-    report = tmp_path / "report.md"
-    report.write_text("# Delivered report\n", encoding="utf-8")
-    audit_path = write_pass_audit(
-        tmp_path / "audit-pass.json",
-        vrs.sha256_file(report),
-        state["current_artifact_sha256"],
-    )
     chain_base = [
         "--chain",
         "--handoff",
@@ -727,15 +745,6 @@ def test_e2e_chain_tamper_cannot_deliver(tmp_path):
     stale_pack = run_cli(*chain_base, "--audit-result", str(audit_path))
     assert stale_pack.returncode == 2
 
-    pack.write_text(
-        PACK_BASELINE
-        + "\n## Run state\n"
-        "run_id: research-run-2026-08-25-001\n"
-        "path: run-state.json\n",
-        encoding="utf-8",
-    )
-    state["current_artifact_sha256"] = vrs.sha256_file(pack)
-    write_json(state_path, state)
     fail_audit = run_cli(
         *chain_base,
         "--audit-result",
@@ -928,17 +937,13 @@ def test_explicit_resume_rejects_aligned_handoff_bind(tmp_path):
 
 
 def test_delivered_keeps_report_and_pack_hashes_distinct(tmp_path):
-    pack = tmp_path / "pack.md"
-    pack.write_text("research-pack-bytes", encoding="utf-8")
-    report = tmp_path / "report.md"
-    report.write_text("final-report-bytes", encoding="utf-8")
+    report, pack, audit_path = write_real_pass_audit(tmp_path)
     pack_sha = vrs.sha256_file(pack)
     report_sha = vrs.sha256_file(report)
     assert pack_sha != report_sha
     state = load_valid("valid-delivered.json")
     state["current_artifact_sha256"] = pack_sha
     state_path = write_json(tmp_path / "run-state.json", state)
-    audit_path = write_pass_audit(tmp_path / "audit.json", report_sha, pack_sha)
     ok = run_cli(
         str(state_path),
         "--audit-result",
@@ -953,10 +958,12 @@ def test_delivered_keeps_report_and_pack_hashes_distinct(tmp_path):
     assert ok.returncode == 0, ok.stdout + ok.stderr
     assert payload["ok"] is True
 
+    forged = json.loads(audit_path.read_text(encoding="utf-8"))
+    forged["input_sha256"] = pack_sha
     pack_as_report = run_cli(
         str(state_path),
         "--audit-result",
-        str(write_pass_audit(tmp_path / "pack-as-report.json", pack_sha, pack_sha)),
+        str(write_json(tmp_path / "pack-as-report.json", forged)),
         "--artifact",
         str(pack),
         "--report",
@@ -966,6 +973,20 @@ def test_delivered_keeps_report_and_pack_hashes_distinct(tmp_path):
     payload = json.loads(pack_as_report.stdout)
     assert pack_as_report.returncode == 2
     assert any("input_sha256" in err or "report" in err for err in payload["errors"])
+
+
+def test_incomplete_audit_set_cannot_support_delivered():
+    delivered = load_valid("valid-delivered.json")
+    audit = json.loads((FIXTURES / "valid-audit-pass.json").read_text())
+    assert [item["audit_id"] for item in audit["audits"]] == ["final-audit"]
+    errors = vrs.check_audit_result_for_delivered(
+        audit,
+        delivered,
+        expected_report_sha256=EMPTY_SHA,
+        expected_pack_sha256=EMPTY_SHA,
+    )
+    assert errors
+    assert any("missing required audit" in err for err in errors)
 
 
 def test_malformed_audit_entries_cannot_support_delivered():

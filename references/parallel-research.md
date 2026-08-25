@@ -142,9 +142,11 @@ Entering `delivered` is fail-closed: `--from/--to` and snapshot checks require
 `--audit-result`, `--artifact` (the Research Pack / `current_artifact_sha256`),
 and `--report` (the final report / `audit_report --json` `input_sha256`). Those
 two hashes are distinct; a Pack hash must not stand in for a report hash.
-`--chain` requires the Pack `## Run state` section, the same sidecar file, and
-`--report` when the run is delivered. `explicit_resume` cannot bind a Track
-Handoff.
+The audit result must contain the complete expected audit set derived from the
+route, contract, and audit registry — a single `final-audit` entry is not
+enough. `--chain` requires the Pack `## Run state` section, the same sidecar
+file, and `--report` when the run is delivered. `explicit_resume` cannot bind
+a Track Handoff.
 
 Resume means re-read the sidecar and artifacts, re-check hashes, and continue
 from the recorded phase — not replay of model context. A Run State

@@ -492,15 +492,117 @@ def _canonical_audit_helpers():
         from run_forward_evals import (
             EXPECTED_AUDIT_JSON_SCHEMA_VERSION,
             _audit_consistency_details,
+            _expected_audit_set,
             _overall_consistency_details,
         )
     except ImportError:
-        return 1, None, None
+        return 1, None, None, None
     return (
         EXPECTED_AUDIT_JSON_SCHEMA_VERSION,
         _overall_consistency_details,
         _audit_consistency_details,
+        _expected_audit_set,
     )
+
+
+def _quiet_resolve_route(name: str | None) -> str | None:
+    if not isinstance(name, str) or not name.strip():
+        return None
+    try:
+        from registry_loader import UnknownRouteError, load_route_registry
+
+        return load_route_registry().resolve_route(name.strip())
+    except (UnknownRouteError, OSError, ImportError):
+        return None
+
+
+def _quiet_pack_primary_route(pack_path: Path | str | None) -> str | None:
+    if pack_path is None:
+        return None
+    try:
+        cleaned = Path(pack_path).read_text(encoding="utf-8")
+    except OSError:
+        return None
+    line = _first_pack_section_line(cleaned, "Primary route")
+    return _quiet_resolve_route(line)
+
+
+def _report_contract(report_path: Path | str | None) -> dict | None:
+    if report_path is None:
+        return None
+    try:
+        from validate_contract import extract_contract_from_markdown
+
+        return extract_contract_from_markdown(
+            Path(report_path).read_text(encoding="utf-8")
+        )
+    except (OSError, UnicodeError, ImportError):
+        return None
+
+
+def _derive_expected_audit_ids(
+    audit: dict,
+    *,
+    report_path: Path | str | None,
+    pack_path: Path | str | None,
+    expected_set_fn,
+) -> tuple[list[str] | None, list[str]]:
+    """从 route / contract / registry 外算完整 expected audit set。
+
+    不信任 payload 自己的 audits[] 列表。
+    """
+    errors: list[str] = []
+    contract = _report_contract(report_path)
+    if report_path is not None and contract is None:
+        errors.append(
+            "phase=delivered requires a route activation contract in --report"
+        )
+    contract_route = None
+    secondaries: list[str] = []
+    if isinstance(contract, dict):
+        raw = contract.get("primary_route")
+        if isinstance(raw, str) and raw.strip():
+            contract_route = _quiet_resolve_route(raw) or raw.strip()
+        secondaries = [
+            str(item).strip()
+            for item in (contract.get("secondary_routes") or [])
+            if isinstance(item, str) and item.strip()
+        ]
+    pack_route = _quiet_pack_primary_route(pack_path)
+    audit_route = _quiet_resolve_route(audit.get("route")) if isinstance(
+        audit.get("route"), str
+    ) else None
+
+    route = contract_route or pack_route or audit_route
+    if route is None:
+        errors.append(
+            "phase=delivered cannot derive the expected audit set: "
+            "need a primary route from the report contract or Research Pack"
+        )
+        return None, errors
+
+    for label, other in (
+        ("report contract", contract_route),
+        ("Research Pack", pack_route),
+        ("audit result", audit_route),
+    ):
+        if other is not None and other != route:
+            errors.append(
+                f"delivered route mismatch: using {route!r} but {label} "
+                f"declares {other!r}"
+            )
+
+    if expected_set_fn is None:
+        errors.append("cannot load canonical expected audit set helper")
+        return None, errors
+    expected = expected_set_fn(route, secondaries)
+    if expected is None:
+        errors.append(
+            f"cannot derive expected audit set for route {route!r} "
+            "(registry drift)"
+        )
+        return None, errors
+    return expected, errors
 
 
 def _provenance_input_sha256_errors(
@@ -595,7 +697,9 @@ def check_audit_result_for_delivered(
     if not isinstance(audit, dict):
         return ["audit result must be a JSON object"]
     errors: list[str] = []
-    schema_version, overall_details, audit_details = _canonical_audit_helpers()
+    schema_version, overall_details, audit_details, expected_set_fn = (
+        _canonical_audit_helpers()
+    )
 
     if audit.get("schema_version") != schema_version:
         errors.append(
@@ -659,10 +763,30 @@ def check_audit_result_for_delivered(
         for item in audits
         if isinstance(item, dict) and item.get("audit_id")
     ]
+    expected_ids, expected_errors = _derive_expected_audit_ids(
+        audit,
+        report_path=report_path,
+        pack_path=pack_path,
+        expected_set_fn=expected_set_fn,
+    )
+    errors.extend(expected_errors)
+    if expected_ids is None:
+        expected_ids = []
+        if not expected_errors:
+            errors.append(
+                "phase=delivered cannot derive the expected audit set"
+            )
+    elif set(present_ids) != set(expected_ids) and audit_details is None:
+        missing = sorted(set(expected_ids) - set(present_ids))
+        extra = sorted(set(present_ids) - set(expected_ids))
+        if missing:
+            errors.append(f"missing required audit(s): {', '.join(missing)}")
+        if extra:
+            errors.append(f"unknown/forged audit(s): {', '.join(extra)}")
     if audit_details is not None:
         _ok, entry_errors = audit_details(
             audit,
-            present_ids,
+            expected_ids,
             audited_path=str(report_path) if report_path is not None else None,
             expected_report_sha256=expected_report_sha256,
             research_pack_path=str(pack_path) if pack_path is not None else None,

@@ -990,6 +990,39 @@ def _sha256(path: Path) -> str | None:
         return None
 
 
+PACK_PROVENANCE_KINDS = frozenset({"pack_section", "pack_table"})
+
+
+def _bind_manual_process_provenance(
+    provenance: dict[str, object],
+    *,
+    execution_source: str,
+    report_path: Path,
+    report_sha: str | None,
+    pack_path: Path | None,
+    pack_sha: str | None,
+) -> dict[str, object]:
+    """Attach the audited report/Pack hash to manual/process provenance.
+
+    Automated provenance already carries ``input_sha256``. Manual/process
+    ``report_section`` records previously omitted it, so a real
+    ``audit_report --json`` Pass could not bind to Run State delivered.
+    """
+    record = {**provenance, "execution_source": execution_source}
+    kind = record.get("kind")
+    binds_pack = kind in PACK_PROVENANCE_KINDS
+    if binds_pack:
+        if pack_path is not None:
+            record.setdefault("target", str(pack_path))
+        if pack_sha:
+            record["input_sha256"] = pack_sha
+    else:
+        record.setdefault("target", str(report_path))
+        if report_sha:
+            record["input_sha256"] = report_sha
+    return record
+
+
 def _load_delivery_result(
     path: Path | None,
     audited_path: Path,
@@ -1254,6 +1287,11 @@ def _execute_required_audits(
     # input hash once and extract the contract's stable artifact_id up front
     # so validation can fail closed on mismatched bindings.
     expected_artifact_sha256 = _sha256(path) if path.is_file() else None
+    expected_pack_sha256 = (
+        _sha256(research_pack)
+        if research_pack is not None and research_pack.is_file()
+        else None
+    )
     contract_data_for_binding: dict | None = None
     try:
         contract_data_for_binding = extract_contract_from_markdown(
@@ -1349,10 +1387,14 @@ def _execute_required_audits(
                         execution_source = "unknown"
                 if evidence_result.provenance:
                     evidence_provenance.append(
-                        {
-                            **evidence_result.provenance,
-                            "execution_source": execution_source,
-                        }
+                        _bind_manual_process_provenance(
+                            evidence_result.provenance,
+                            execution_source=execution_source,
+                            report_path=path,
+                            report_sha=expected_artifact_sha256,
+                            pack_path=research_pack,
+                            pack_sha=expected_pack_sha256,
+                        )
                     )
                 if evidence_result.errors:
                     status = "partial"
@@ -1544,10 +1586,14 @@ def _execute_required_audits(
                     execution_source = "unknown"
             if evidence_result.provenance:
                 evidence_provenance.append(
-                    {
-                        **evidence_result.provenance,
-                        "execution_source": execution_source,
-                    }
+                    _bind_manual_process_provenance(
+                        evidence_result.provenance,
+                        execution_source=execution_source,
+                        report_path=path,
+                        report_sha=expected_artifact_sha256,
+                        pack_path=research_pack,
+                        pack_sha=expected_pack_sha256,
+                    )
                 )
             if evidence_result.errors:
                 status = "partial"
