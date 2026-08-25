@@ -81,4 +81,4 @@ As of commit `fb5bac2` on `main`, **no repository-owned research script performs
 - `references/external-channel-preflight.md` — Agent-Reach preflight and source intake log
 - `references/search-provider-fallback.md` — degraded-search policy
 - `references/delivery-operator-note.md` — PDF pipeline operator notes
-- `schemas/data-flow-registry.json` — machine-readable component registry for network/write-signal drift checks (local-store path coverage is registry-enforced where `write_signals` / `path_signals` are declared; `user_workspace` stores are documentation-only)
+- `schemas/data-flow-registry.json` — machine-readable component registry for network/write-signal drift checks (`signal_files` is the bidirectional source of truth; `source_files` may include indirect participants). Automatic scanning is limited to `scripts/**/*.py`.

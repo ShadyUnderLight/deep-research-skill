@@ -54,7 +54,7 @@ def test_undocumented_playwright_file_fails_drift_check(monkeypatch) -> None:
 
     monkeypatch.setattr(data_flows, "collect_signal_files", fake_collect)
     failures = data_flows.run_checks()
-    assert any("Undocumented network signal `async_playwright`" in msg for msg in failures)
+    assert any("Undocumented signal `async_playwright`" in msg for msg in failures)
 
 
 def test_undocumented_gh_cli_file_fails_drift_check(monkeypatch) -> None:
@@ -69,7 +69,7 @@ def test_undocumented_gh_cli_file_fails_drift_check(monkeypatch) -> None:
 
     monkeypatch.setattr(data_flows, "collect_signal_files", fake_collect)
     failures = data_flows.run_checks()
-    assert any("Undocumented network signal `gh_cli`" in msg for msg in failures)
+    assert any("Undocumented signal `gh_cli`" in msg for msg in failures)
 
 
 def test_verification_status_must_be_last_column() -> None:
@@ -107,4 +107,39 @@ def test_undocumented_delivery_temp_dir_fails_drift_check(monkeypatch) -> None:
 
     monkeypatch.setattr(data_flows, "collect_signal_files", fake_collect)
     failures = data_flows.run_checks()
-    assert any("Undocumented write signal `delivery_temp_dir`" in msg for msg in failures)
+    assert any("Undocumented signal `delivery_temp_dir`" in msg for msg in failures)
+
+
+def test_removed_gh_cli_signal_fails_drift_check(monkeypatch) -> None:
+    """Removing gh calls from a registered file should fail validation."""
+
+    def fake_collect(signal: str, patterns, *, include_tests: bool, tests_only: bool = False) -> set[str]:
+        if signal == "gh_cli":
+            return set()
+        return _ORIGINAL_COLLECT(
+            signal, patterns, include_tests=include_tests, tests_only=tests_only
+        )
+
+    monkeypatch.setattr(data_flows, "collect_signal_files", fake_collect)
+    failures = data_flows.run_checks()
+    assert any(
+        "Registered signal `gh_cli` no longer present in" in msg for msg in failures
+    )
+
+
+def test_removed_delivery_temp_dir_signal_fails_drift_check(monkeypatch) -> None:
+    """Removing delivery temp-dir writes from a registered file should fail validation."""
+
+    def fake_collect(signal: str, patterns, *, include_tests: bool, tests_only: bool = False) -> set[str]:
+        if signal == "delivery_temp_dir":
+            return set()
+        return _ORIGINAL_COLLECT(
+            signal, patterns, include_tests=include_tests, tests_only=tests_only
+        )
+
+    monkeypatch.setattr(data_flows, "collect_signal_files", fake_collect)
+    failures = data_flows.run_checks()
+    assert any(
+        "Registered signal `delivery_temp_dir` no longer present in" in msg
+        for msg in failures
+    )

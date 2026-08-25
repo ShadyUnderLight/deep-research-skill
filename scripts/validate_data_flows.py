@@ -5,8 +5,11 @@ Checks:
   1. docs/DATA_FLOWS.md and docs/RISK_REGISTER.md exist with required sections
   2. Every registry network touchpoint and local store appears in DATA_FLOWS.md
   3. Every registry risk_id appears in RISK_REGISTER.md
-  4. Repo-owned network/write signal files match the registry (drift detection)
+  4. Repo-owned network/write signal files match the registry (bidirectional drift detection)
   5. Cross-links from README, SKILL.md, and external-channel-preflight.md
+
+Automatic drift scanning is limited to `scripts/**/*.py` (excluding `scripts/validate_data_flows.py`
+and, for production-network checks, `scripts/test_*.py`). It does not scan the whole repository.
 
 Exit codes:
   0 = all checks pass
@@ -151,6 +154,79 @@ def collect_signal_files(
     return matches
 
 
+def expand_glob_patterns(patterns: list[str]) -> set[str]:
+    files: set[str] = set()
+    for pattern in patterns:
+        for path in REPO.glob(pattern):
+            if path.is_file():
+                files.add(path.relative_to(REPO).as_posix())
+    return files
+
+
+def expected_signal_files(entry: dict, signal: str) -> set[str]:
+    signal_files = entry.get("signal_files", {})
+    if signal in signal_files:
+        return set(signal_files[signal])
+    return set()
+
+
+def allowed_signal_files(entry: dict, signal: str) -> set[str]:
+    allowed = expected_signal_files(entry, signal)
+    scan_globs = entry.get("signal_scan_globs", {})
+    if signal in scan_globs:
+        allowed |= expand_glob_patterns(scan_globs[signal])
+    return allowed
+
+
+def check_signal_file_drift(
+    *,
+    label: str,
+    signal: str,
+    patterns: dict[str, re.Pattern[str]],
+    expected_files: set[str],
+    allowed_files: set[str],
+    include_tests: bool,
+    tests_only: bool,
+) -> list[str]:
+    failures: list[str] = []
+    if signal not in patterns:
+        failures.append(f"{label} references unknown signal: {signal}")
+        return failures
+
+    actual_files = collect_signal_files(
+        signal,
+        patterns,
+        include_tests=include_tests,
+        tests_only=tests_only,
+    )
+    extra = actual_files - allowed_files
+    missing = expected_files - actual_files
+
+    if extra:
+        failures.append(
+            f"Undocumented signal `{signal}` in: {sorted(extra)} "
+            f"(allowed only {sorted(allowed_files)} for {label})"
+        )
+    if missing:
+        failures.append(
+            f"Registered signal `{signal}` no longer present in: {sorted(missing)} "
+            f"(still declared for {label})"
+        )
+
+    for path in sorted(expected_files):
+        full = REPO / path
+        if not full.exists():
+            failures.append(f"{label} lists missing registered file: {path}")
+            continue
+        content = full.read_text(encoding="utf-8", errors="replace")
+        if not patterns[signal].search(content):
+            failures.append(
+                f"Registered signal `{signal}` pattern missing from {path} ({label})"
+            )
+
+    return failures
+
+
 def check_required_sections(text: str, sections: list[str], label: str) -> list[str]:
     failures: list[str] = []
     for section in sections:
@@ -179,34 +255,28 @@ def check_network_signal_drift(registry: dict) -> list[str]:
         if not should_enforce_network_drift(touchpoint):
             continue
         component_id = touchpoint["id"]
-        declared_files = set(touchpoint.get("source_files", []))
+        label = f"network touchpoint `{component_id}`"
+        for path in touchpoint.get("source_files", []):
+            if not (REPO / path).exists():
+                failures.append(f"Registry component `{component_id}` lists missing file: {path}")
         for signal in touchpoint.get("network_signals", []):
-            if signal not in NETWORK_SIGNAL_PATTERNS:
-                failures.append(
-                    f"Registry component `{component_id}` references unknown network signal: {signal}"
+            failures.extend(
+                check_signal_file_drift(
+                    label=label,
+                    signal=signal,
+                    patterns=NETWORK_SIGNAL_PATTERNS,
+                    expected_files=expected_signal_files(touchpoint, signal),
+                    allowed_files=allowed_signal_files(touchpoint, signal),
+                    include_tests=False,
+                    tests_only=False,
                 )
-                continue
-            actual_files = collect_signal_files(
-                signal, NETWORK_SIGNAL_PATTERNS, include_tests=False
             )
-            extra = actual_files - declared_files
-            for path in declared_files:
-                full = REPO / path
-                if not full.exists():
-                    failures.append(
-                        f"Registry component `{component_id}` lists missing file: {path}"
-                    )
-            if extra:
-                failures.append(
-                    f"Undocumented network signal `{signal}` in: {sorted(extra)} "
-                    f"(expected only {sorted(declared_files)} for `{component_id}`)"
-                )
     return failures
 
 
 def check_local_store_write_drift(registry: dict) -> list[str]:
     failures: list[str] = []
-    signal_owners: dict[str, tuple[str, set[str], bool, bool]] = {}
+    assigned_write_signals: set[str] = set()
 
     for store in registry.get("local_stores", []):
         enforcement = store.get("enforcement", "registry_enforced")
@@ -214,17 +284,16 @@ def check_local_store_write_drift(registry: dict) -> list[str]:
             continue
 
         store_id = store["id"]
+        label = f"local store `{store_id}`"
         declared_files = expand_source_files(store)
         include_tests = store.get("kind") == "test_only"
 
         for path in declared_files:
             if not (REPO / path).exists():
-                failures.append(
-                    f"Registry local store `{store_id}` lists missing file: {path}"
-                )
+                failures.append(f"Registry local store `{store_id}` lists missing file: {path}")
 
         for path_signal in store.get("path_signals", []):
-            for path in declared_files:
+            for path in store.get("source_files", []):
                 content = (REPO / path).read_text(encoding="utf-8", errors="replace")
                 if path_signal not in content:
                     failures.append(
@@ -233,30 +302,21 @@ def check_local_store_write_drift(registry: dict) -> list[str]:
                     )
 
         for signal in store.get("write_signals", []):
-            if signal not in WRITE_SIGNAL_PATTERNS:
-                failures.append(
-                    f"Registry local store `{store_id}` references unknown write signal: {signal}"
+            assigned_write_signals.add(signal)
+            failures.extend(
+                check_signal_file_drift(
+                    label=label,
+                    signal=signal,
+                    patterns=WRITE_SIGNAL_PATTERNS,
+                    expected_files=expected_signal_files(store, signal),
+                    allowed_files=allowed_signal_files(store, signal),
+                    include_tests=include_tests,
+                    tests_only=signal == "test_tempfile",
                 )
-                continue
-            tests_only = signal == "test_tempfile"
-            signal_owners[signal] = (store_id, declared_files, include_tests, tests_only)
-
-    for signal, (store_id, declared_files, include_tests, tests_only) in signal_owners.items():
-        actual_files = collect_signal_files(
-            signal,
-            WRITE_SIGNAL_PATTERNS,
-            include_tests=include_tests,
-            tests_only=tests_only,
-        )
-        extra = actual_files - declared_files
-        if extra:
-            failures.append(
-                f"Undocumented write signal `{signal}` in: {sorted(extra)} "
-                f"(expected only {sorted(declared_files)} for local store `{store_id}`)"
             )
 
     for signal in WRITE_SIGNAL_PATTERNS:
-        if signal in signal_owners:
+        if signal in assigned_write_signals:
             continue
         actual_files = collect_signal_files(
             signal, WRITE_SIGNAL_PATTERNS, include_tests=False
