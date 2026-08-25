@@ -1,0 +1,37 @@
+{
+  "schema_version": "1",
+  "handoff_id": "track-2026-08-24-market-size-partial",
+  "track_id": "track-market-size",
+  "question": "What is the 2025 mid-market analytics market size and CAGR?",
+  "scope": {
+    "in_scope": [
+      "mid-market analytics software TAM estimates from public analyst summaries"
+    ],
+    "out_of_scope": [],
+    "timeframe": "2023-2025 estimates",
+    "geography": "global"
+  },
+  "source_register": [
+    {
+      "source_id": "S01",
+      "title": "Analyst summary of 2025 mid-market analytics TAM",
+      "url": "https://example.com/analyst/mid-market-tam-2025"
+    }
+  ],
+  "findings": [
+    {
+      "finding_id": "F01",
+      "claim": "Public analyst summaries place the 2025 mid-market analytics TAM between $8B and $11B",
+      "evidence_refs": ["S01"],
+      "evidence_role": "secondary",
+      "confidence": 0.6,
+      "limitations": "Single secondary source; methodology not published"
+    }
+  ],
+  "conflicts": [],
+  "unknowns": [],
+  "implications": [],
+  "status": "partial",
+  "status_reason": "Only one secondary estimate was retrievable; vendor-reported segment splits could not be verified",
+  "generated_at": "2026-08-24"
+}

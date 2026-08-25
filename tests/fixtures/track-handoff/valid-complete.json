@@ -1,0 +1,61 @@
+{
+  "schema_version": "1",
+  "handoff_id": "track-2026-08-24-competitors",
+  "track_id": "track-competitors",
+  "question": "Who are the closest alternatives to Acme Analytics and how do they differ?",
+  "scope": {
+    "in_scope": [
+      "direct competitors offering analytics dashboards to mid-market SaaS teams",
+      "public pricing pages and official product documentation"
+    ],
+    "out_of_scope": [
+      "enterprise BI platforms with self-hosted data warehouses"
+    ],
+    "timeframe": "products generally available as of 2026-08",
+    "geography": "global, English-language sources"
+  },
+  "source_register": [
+    {
+      "source_id": "S01",
+      "title": "Competitor A official pricing page",
+      "url": "https://example.com/competitor-a/pricing"
+    },
+    {
+      "source_id": "S02",
+      "title": "Competitor B product changelog",
+      "url": "https://example.com/competitor-b/changelog"
+    }
+  ],
+  "findings": [
+    {
+      "finding_id": "F01",
+      "claim": "Competitor A prices its entry tier at $49/mo per workspace",
+      "evidence_refs": ["S01"],
+      "evidence_role": "primary",
+      "confidence": 0.9
+    },
+    {
+      "finding_id": "F02",
+      "claim": "Competitor B is converging on per-workspace pricing, suggesting competitive pressure from Competitor A",
+      "evidence_refs": ["S02", "S01"],
+      "evidence_role": "inferred",
+      "confidence": 0.55,
+      "limitations": "Changelog does not state motivation for the pricing change"
+    }
+  ],
+  "conflicts": [
+    {
+      "topic": "entry-tier price of Competitor B",
+      "finding_refs": ["F01", "F02"],
+      "resolution_status": "unresolved",
+      "affects_overall_question": false,
+      "resolution_note": "Changelog shows a migration notice only; final pricing page not yet published"
+    }
+  ],
+  "unknowns": [],
+  "implications": [
+    "Per-workspace pricing appears to be the emerging mid-market norm and should anchor the overall comparison"
+  ],
+  "status": "complete",
+  "generated_at": "2026-08-24T09:30:00Z"
+}

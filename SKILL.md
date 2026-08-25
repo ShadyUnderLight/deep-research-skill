@@ -396,12 +396,12 @@ When parallelizing:
 
 - split into 2–4 tracks
 - keep each track narrow
-- require structured findings, not polished prose
-- require explicit source URLs
+- require structured findings with explicit source URLs, not polished prose
+- require each track to return a schema-valid Track Handoff (`schemas/track-handoff.json`)
 - require separation of confirmed facts vs inference
 - reserve final synthesis for the parent agent
 
-Read `references/parallel-research.md` when the task clearly benefits from multi-track work. Keep rate-limit risk in mind and prefer small batches over naive full parallelism.
+Read `references/parallel-research.md` when the task clearly benefits from multi-track work. Keep rate-limit risk in mind and prefer small batches over naive full parallelism; when `parallelization_decision` is `parallel`, validate every Track Handoff before merge with `python3 scripts/validate_track_handoff.py <handoff>.json` and bind it to this dispatch (`--expected-handoff-id` or `--expected-question`, plus `--expected-scope-file` for the assigned scope/timeframe — `--expected-track-id` alone only proves the track name). A failure is `HANDOFF_INCOMPLETE`: refuse to merge, never read it as "no evidence". Single-track research creates no handoffs.
 
 ## Final discipline
 

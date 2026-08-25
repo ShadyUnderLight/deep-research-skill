@@ -1,0 +1,267 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deep-research-skill/schemas/track-handoff.json",
+  "title": "Track Handoff Contract",
+  "description": "Typed, verifiable handoff from one parallel research track to the parent synthesizer (issue #416). Producer validates before handing off; parent re-validates before merging and must refuse schema-invalid handoffs instead of treating them as empty findings. Runtime enforcement lives in scripts/validate_track_handoff.py; this document is the canonical field vocabulary. Single-track research does not create Track Handoffs.",
+  "version": 1,
+  "schema_version": "1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "handoff_id",
+    "track_id",
+    "question",
+    "scope",
+    "source_register",
+    "findings",
+    "conflicts",
+    "unknowns",
+    "implications",
+    "status",
+    "generated_at"
+  ],
+  "allOf": [
+    {
+      "if": {
+        "properties": {"status": {"const": "complete"}},
+        "required": ["status"]
+      },
+      "then": {
+        "properties": {"findings": {"minItems": 1}},
+        "description": "A complete track must carry at least one finding; empty arrays are reserved for partial/blocked with reasons."
+      }
+    },
+    {
+      "if": {
+        "properties": {"status": {"enum": ["partial", "blocked"]}},
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["status_reason"],
+        "description": "partial and blocked tracks must explain why."
+      }
+    },
+    {
+      "if": {
+        "properties": {"status": {"const": "blocked"}},
+        "required": ["status"]
+      },
+      "then": {
+        "required": ["recovery_action"],
+        "description": "blocked tracks must state how the track can be retried."
+      }
+    }
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1",
+      "description": "Contract version this handoff was produced against. Consumers reject unknown versions instead of guessing."
+    },
+    "handoff_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Stable identifier for this handoff artifact, e.g. track-2026-08-24-competitors. Reserved for the future Run State checkpoint work."
+    },
+    "track_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifier of the track that produced this handoff; consumers verify it against the track they dispatched."
+    },
+    "question": {
+      "type": "string",
+      "minLength": 1,
+      "description": "The exact track question from the track design."
+    },
+    "scope": {
+      "type": "object",
+      "description": "Machine-checkable boundary of what this track covered. All four fields are required so parents can detect scope drift between tracks.",
+      "additionalProperties": false,
+      "required": ["in_scope", "out_of_scope", "timeframe", "geography"],
+      "properties": {
+        "in_scope": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1},
+          "minItems": 1
+        },
+        "out_of_scope": {
+          "type": "array",
+          "items": {"type": "string", "minLength": 1}
+        },
+        "timeframe": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Explicit period statement; use a plain phrase such as 'not time-bound' rather than omitting the field."
+        },
+        "geography": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Explicit geography statement; use 'global' or 'not geographic' rather than omitting the field."
+        }
+      }
+    },
+    "source_register": {
+      "type": "array",
+      "description": "Sources this track actually used. Every evidence_ref in findings must resolve here.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["source_id", "title", "url"],
+        "properties": {
+          "source_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable local id, e.g. S01. Unique within this handoff."
+          },
+          "title": {
+            "type": "string",
+            "minLength": 1
+          },
+          "url": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Required: every track source must be explicitly traceable (SKILL.md requires explicit source URLs)."
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "Load-bearing findings. An empty findings array is only lawful for partial or blocked tracks; a complete track with no findings fails validation.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["finding_id", "claim", "evidence_refs", "evidence_role", "confidence"],
+        "properties": {
+          "finding_id": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Stable id, e.g. F01. Unique within this handoff; conflict finding_refs point here."
+          },
+          "claim": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_refs": {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "description": "Non-empty source_ids that must exist in this handoff's source_register."
+          },
+          "evidence_role": {
+            "type": "string",
+            "enum": ["observed", "primary", "secondary", "inferred", "unknown"]
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "limitations": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    },
+    "conflicts": {
+      "type": "array",
+      "description": "Overlapping claims that disagree. Empty array means the producer explicitly attests there are none.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "topic",
+          "finding_refs",
+          "resolution_status",
+          "affects_overall_question"
+        ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {"resolution_status": {"const": "resolved"}},
+              "required": ["resolution_status"]
+            },
+            "then": {
+              "required": ["resolution_note"],
+              "description": "A resolved conflict must state how it was resolved."
+            }
+          }
+        ],
+        "properties": {
+          "topic": {"type": "string", "minLength": 1},
+          "finding_refs": {
+            "type": "array",
+            "items": {"type": "string"},
+            "minItems": 1,
+            "description": "finding_ids involved in the conflict; must resolve within this handoff."
+          },
+          "resolution_status": {
+            "type": "string",
+            "enum": ["resolved", "unresolved"]
+          },
+          "resolution_note": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Required when resolution_status is resolved."
+          },
+          "affects_overall_question": {"type": "boolean"}
+        }
+      }
+    },
+    "unknowns": {
+      "type": "array",
+      "description": "Open questions with reason, impact, and next verification action. Never use an empty array to mean 'not executed'; use status partial/blocked with reasons instead.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["description", "reason", "impact", "next_action"],
+        "properties": {
+          "description": {"type": "string", "minLength": 1},
+          "reason": {"type": "string", "minLength": 1},
+          "impact": {"type": "string", "minLength": 1},
+          "next_action": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "implications": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1},
+      "description": "What this track implies for the overall research question; may be empty for tracks without decision relevance."
+    },
+    "status": {
+      "type": "string",
+      "enum": ["complete", "partial", "blocked"],
+      "description": "Execution status of the track. partial requires status_reason; blocked requires status_reason and recovery_action."
+    },
+    "status_reason": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Required for partial and blocked tracks."
+    },
+    "recovery_action": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Required for blocked tracks: what should be retried and how."
+    },
+    "generated_at": {
+      "type": "string",
+      "description": "ISO-8601 date (2026-08-24) or timezone-aware RFC 3339 timestamp (2026-08-24T09:30:00Z). Impossible calendar values (2026-02-31) and naive datetimes without a zone offset fail validation."
+    },
+    "artifact_ref": {
+      "type": "object",
+      "description": "Optional forward-reference reserved for the Run State issue (#417). Not interpreted by the current validator beyond shape checking.",
+      "additionalProperties": false,
+      "required": ["artifact_id"],
+      "properties": {
+        "artifact_id": {"type": "string", "minLength": 1}
+      }
+    }
+  },
+  "examples": [
+    "tests/fixtures/track-handoff/valid-complete.json",
+    "tests/fixtures/track-handoff/valid-partial.json",
+    "tests/fixtures/track-handoff/valid-blocked.json"
+  ]
+}
