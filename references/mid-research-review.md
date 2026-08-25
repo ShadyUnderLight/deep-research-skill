@@ -83,3 +83,9 @@ A compact internal mid-review may use this shape:
 - Missing decision-relevant evidence:
 - Branches to cut or downgrade:
 - Search decision: continue / narrow / pivot / stop
+
+When a Run State sidecar exists for this task, record the search decision as
+`pending_decision` (`continue` / `narrow` / `pivot` / `stop-and-synthesize`)
+and do not advance phase until that checkpoint is consumed. Ordinary
+single-track tasks have no Run State and keep this review as an internal
+decision only.

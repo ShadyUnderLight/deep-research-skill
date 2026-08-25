@@ -398,6 +398,7 @@ def run_strict_checks(
     evidence_base_dir: Path | None = None,
     report_text: str | None = None,
     known_validator_bindings: Collection[str] | None = None,
+    pack_path: Path | None = None,
 ) -> list[str]:
     errors: list[str] = []
     warnings: list[str] = []
@@ -521,6 +522,22 @@ def run_strict_checks(
     # Delivery status validation (conditional: only validated when present)
     delivery_issues = _check_delivery_status(cleaned)
     errors.extend(delivery_issues)
+
+    # Optional Run State sidecar (issue #417): absent section keeps the light path.
+    if pack_path is not None:
+        from validate_research_run_state import check_pack_run_state
+
+        errors.extend(check_pack_run_state(pack_path, cleaned=cleaned))
+    else:
+        from validate_research_run_state import parse_pack_run_state_section
+
+        ref, run_state_issues = parse_pack_run_state_section(cleaned)
+        errors.extend(run_state_issues)
+        if ref is not None:
+            errors.append(
+                "Run state section is present but cannot be hashed without "
+                "a pack file path"
+            )
 
     result: list[str] = []
     for e in errors:
@@ -1077,6 +1094,7 @@ def main() -> int:
             cleaned,
             artifact_text=cleaned,
             evidence_base_dir=Path(__file__).resolve().parent.parent,
+            pack_path=path,
         )
         if strict_issues:
             print("Strict mode issues:")

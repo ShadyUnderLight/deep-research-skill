@@ -36,6 +36,12 @@ Include when the pack is part of a tracked delivery (issue #376):
 - `## Activation snapshot` — required for `activation-record-integration` evals;
   records the shared `activation_id`, `snapshot_sha256`, `snapshot_version`,
   and `decision_tree_version` reference used by the report contract.
+- `## Run state` — only when `parallelization_decision` is `parallel` or the
+  user explicitly resumes a previous `run_id`. Point to the sidecar JSON
+  (`schemas/research-run-state.json`) with `run_id` and `path`. Do not add
+  this section for ordinary single-track packs. Check with
+  `python3 scripts/validate_research_run_state.py <run-state.json>` and
+  `python3 scripts/validate_research_pack.py pack.md --strict`.
 
 ## Conditional sections
 
@@ -177,6 +183,22 @@ Set the delivery status after rendering. One of:
 This field separates delivery concerns from content quality. A `pdf_failed`
 result does not imply the Markdown content is invalid — the two statuses
 are independent.
+
+Do not use Pack status fields to record process phase. If a Run State
+sidecar exists, keep these meanings distinct:
+
+| Kind | Where it lives | Meaning |
+|---|---|---|
+| Process incomplete | Run State `phase` other than `delivered`, `status` `in_progress` / `paused` | The run has not finished. Not a content or delivery verdict. |
+| Research gap | Pack `research_status` = `partial`, or Run State `status` = `partial` | Collection finished with a documented gap. |
+| Research blocked | Pack `research_status` = `blocked`, or Run State `status` = `blocked` | A channel/provider block stopped confirmation. |
+| Content audit failure | Pack `Final audit status` = `Fail` | Delivered content failed quality checks. |
+| Delivery failure | Pack `delivery_status` = `pdf_failed` | Rendering failed; Markdown may still be valid. |
+| Process delivered | Run State `phase` = `delivered`, `status` = `completed` | Process closed after audits ran. Not a proof that the content is correct. |
+
+`paused` / `in_progress` / `phase` must not be written as Pack `research_status`.
+A Pack `blocked` + Final audit `Pass` pair remains lawful: research process
+and content quality stay independent.
 
 ## Minimal example shape
 

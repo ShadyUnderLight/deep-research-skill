@@ -26,6 +26,9 @@ reject stale or misrouted handoffs from a previous run,
 --expected-artifact-id to bind the handoff to the downstream artifact, and
 --expected-scope-file to verify the track executed within its assigned
 scope/timeframe boundary.
+When --run-state is supplied, the handoff must bind to that Run State's
+artifact_id and listed handoff hash (issue #417). Omitting --run-state
+preserves the #416 single-handoff path.
 """
 
 from __future__ import annotations
@@ -60,8 +63,8 @@ REQUIRED_TOP_LEVEL = frozenset(
         "generated_at",
     }
 )
-# Optional top-level fields: conditional status explanations plus the Run
-# State forward-reference reserved by issue #417.
+# Optional top-level fields: conditional status explanations plus the
+# Run State artifact_ref used when merging with --run-state (issue #417).
 OPTIONAL_TOP_LEVEL = frozenset({"status_reason", "recovery_action", "artifact_ref"})
 KNOWN_TOP_LEVEL = REQUIRED_TOP_LEVEL | OPTIONAL_TOP_LEVEL
 
@@ -628,6 +631,14 @@ def main(argv: list[str] | None = None) -> int:
         "reject unless the handoff scope matches (timeframe/geography exact, "
         "in_scope/out_of_scope order-insensitive)",
     )
+    parser.add_argument(
+        "--run-state",
+        type=str,
+        default=None,
+        help="Optional issue #417 binding: reject unless this handoff matches the "
+        "Run State's artifact_id and listed handoff_refs sha256. Omitting this "
+        "flag leaves the #416 path unchanged.",
+    )
     args = parser.parse_args(argv)
 
     expected_scope: dict | None = None
@@ -648,7 +659,7 @@ def main(argv: list[str] | None = None) -> int:
             return EXIT_FAIL_CLOSED
 
     try:
-        load_handoff_for_merge(
+        data = load_handoff_for_merge(
             args.handoff_file,
             expected_track_id=args.expected_track_id,
             expected_handoff_id=args.expected_handoff_id,
@@ -663,6 +674,32 @@ def main(argv: list[str] | None = None) -> int:
             "interpret it as empty findings."
         )
         return EXIT_FAIL_CLOSED
+
+    if args.run_state:
+        from validate_research_run_state import (
+            bind_handoff_to_run_state,
+            load_run_state_file,
+        )
+
+        state, run_errors = load_run_state_file(args.run_state)
+        bind_errors = list(run_errors)
+        if state is not None:
+            bind_errors.extend(
+                bind_handoff_to_run_state(
+                    data, state, handoff_path=args.handoff_file
+                )
+            )
+        if bind_errors:
+            detail = "\n".join(f"  - {item}" for item in bind_errors)
+            print(
+                f"{HANDOFF_INCOMPLETE}: {args.handoff_file} failed Run State "
+                f"binding:\n{detail}"
+            )
+            print(
+                "\nThis refusal is terminal: do not merge this handoff and do "
+                "not interpret it as empty findings."
+            )
+            return EXIT_FAIL_CLOSED
 
     print("OK — Track Handoff is schema-valid")
     return EXIT_OK

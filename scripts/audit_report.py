@@ -806,6 +806,7 @@ def _run_research_pack(pack_path: Path | None, **kwargs: bool) -> CheckResult:
                 evidence_base_dir=Path(__file__).resolve().parent.parent,
                 report_text=report_text,
                 known_validator_bindings=_registered_validator_bindings(),
+                pack_path=pack_path,
             )
         )
     except Exception as exc:
@@ -987,6 +988,39 @@ def _sha256(path: Path) -> str | None:
         return hashlib.sha256(path.read_bytes()).hexdigest()
     except OSError:
         return None
+
+
+PACK_PROVENANCE_KINDS = frozenset({"pack_section", "pack_table"})
+
+
+def _bind_manual_process_provenance(
+    provenance: dict[str, object],
+    *,
+    execution_source: str,
+    report_path: Path,
+    report_sha: str | None,
+    pack_path: Path | None,
+    pack_sha: str | None,
+) -> dict[str, object]:
+    """Attach the audited report/Pack hash to manual/process provenance.
+
+    Automated provenance already carries ``input_sha256``. Manual/process
+    ``report_section`` records previously omitted it, so a real
+    ``audit_report --json`` Pass could not bind to Run State delivered.
+    """
+    record = {**provenance, "execution_source": execution_source}
+    kind = record.get("kind")
+    binds_pack = kind in PACK_PROVENANCE_KINDS
+    if binds_pack:
+        if pack_path is not None:
+            record.setdefault("target", str(pack_path))
+        if pack_sha:
+            record["input_sha256"] = pack_sha
+    else:
+        record.setdefault("target", str(report_path))
+        if report_sha:
+            record["input_sha256"] = report_sha
+    return record
 
 
 def _load_delivery_result(
@@ -1253,6 +1287,11 @@ def _execute_required_audits(
     # input hash once and extract the contract's stable artifact_id up front
     # so validation can fail closed on mismatched bindings.
     expected_artifact_sha256 = _sha256(path) if path.is_file() else None
+    expected_pack_sha256 = (
+        _sha256(research_pack)
+        if research_pack is not None and research_pack.is_file()
+        else None
+    )
     contract_data_for_binding: dict | None = None
     try:
         contract_data_for_binding = extract_contract_from_markdown(
@@ -1348,10 +1387,14 @@ def _execute_required_audits(
                         execution_source = "unknown"
                 if evidence_result.provenance:
                     evidence_provenance.append(
-                        {
-                            **evidence_result.provenance,
-                            "execution_source": execution_source,
-                        }
+                        _bind_manual_process_provenance(
+                            evidence_result.provenance,
+                            execution_source=execution_source,
+                            report_path=path,
+                            report_sha=expected_artifact_sha256,
+                            pack_path=research_pack,
+                            pack_sha=expected_pack_sha256,
+                        )
                     )
                 if evidence_result.errors:
                     status = "partial"
@@ -1543,10 +1586,14 @@ def _execute_required_audits(
                     execution_source = "unknown"
             if evidence_result.provenance:
                 evidence_provenance.append(
-                    {
-                        **evidence_result.provenance,
-                        "execution_source": execution_source,
-                    }
+                    _bind_manual_process_provenance(
+                        evidence_result.provenance,
+                        execution_source=execution_source,
+                        report_path=path,
+                        report_sha=expected_artifact_sha256,
+                        pack_path=research_pack,
+                        pack_sha=expected_pack_sha256,
+                    )
                 )
             if evidence_result.errors:
                 status = "partial"
@@ -1916,6 +1963,26 @@ def _audit_report_impl(
         expected_validators=_ROUTE_REGISTRY.validators_for(resolved_route),
         source_path=str(path),
     )
+    return _apply_run_state_delivery_guard(verdict, research_pack)
+
+
+def _apply_run_state_delivery_guard(
+    verdict: AuditVerdict, research_pack: Path | None
+) -> AuditVerdict:
+    """delivered/completed Run State cannot masquerade after a failing audit."""
+    if research_pack is None:
+        return verdict
+    from validate_research_run_state import load_declared_run_state
+
+    state = load_declared_run_state(research_pack)
+    if state is None:
+        return verdict
+    if state.get("phase") == "delivered" or state.get("status") == "completed":
+        if verdict.overall == "fail":
+            verdict.blocking.append(
+                "run state claims delivered/completed but audit overall is fail; "
+                "content-audit failure cannot masquerade as delivered"
+            )
     return verdict
 
 

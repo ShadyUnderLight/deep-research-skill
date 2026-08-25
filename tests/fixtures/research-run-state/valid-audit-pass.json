@@ -1,0 +1,28 @@
+{
+  "schema_version": 1,
+  "route": "market-outlook",
+  "overall": "pass",
+  "exit_code": 0,
+  "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "blocking": [],
+  "audits": [
+    {
+      "audit_id": "final-audit",
+      "status": "pass",
+      "execution_type": "manual",
+      "execution_source": "manual_checklist_attestation",
+      "errors": [],
+      "warnings": [],
+      "evidence": ["pack-section:Artifact contract"],
+      "evidence_provenance": [
+        {
+          "verified": true,
+          "kind": "pack_section",
+          "locator": "Artifact contract",
+          "execution_source": "manual_checklist_attestation",
+          "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ]
+    }
+  ]
+}
