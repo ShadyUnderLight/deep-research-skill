@@ -57,7 +57,11 @@ def validate_bundle(path: Path, *, json_output: bool = False) -> int:
 
 
 def calibrate(bundle_path: Path, gold_path: Path, threshold: float, json_output: bool) -> int:
-    result = run_calibration(bundle_path, gold_path, threshold=threshold)
+    try:
+        result = run_calibration(bundle_path, gold_path, threshold=threshold)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
     payload = {
         "fixture_version": result.fixture_version,
         "threshold": result.threshold,

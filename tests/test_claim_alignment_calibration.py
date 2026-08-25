@@ -79,3 +79,24 @@ class TestClaimAlignmentCalibration:
     def test_gold_keys_not_required_in_bundle(self) -> None:
         bundle_text = (FIXTURES / "calibration-bundle.json").read_text()
         assert "gold_labels" not in bundle_text
+
+    def test_extra_gold_label_rejected(self) -> None:
+        gold = json.loads((FIXTURES / "calibration-gold.json").read_text())
+        gold["labels"]["NOT_IN_BUNDLE"] = {"verdict": "NOT_RUN"}
+        import tempfile
+
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as tmp:
+            json.dump(gold, tmp)
+            tmp_path = Path(tmp.name)
+        try:
+            try:
+                run_calibration(
+                    FIXTURES / "calibration-bundle.json",
+                    tmp_path,
+                )
+                raised = False
+            except ValueError:
+                raised = True
+            assert raised
+        finally:
+            tmp_path.unlink()

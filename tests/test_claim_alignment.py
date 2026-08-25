@@ -295,6 +295,68 @@ class TestLocatorScopeBinding:
         report = run_bundle(data)
         assert report.judgments[0].verdict == "NOT_RUN"
         assert report.judgments[0].verdict != "SUPPORTED"
+
+
+class TestLexicalJudgeAndProductionBundle:
+    def test_production_bundle_rejects_embedded_gold_labels(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["gold_labels"] = {"C01": {"verdict": "UNSUPPORTED"}}
+        errors = validate_bundle_structure(data)
+        assert any("gold_labels" in err for err in errors)
+        report = run_bundle(data)
+        assert report.structural_errors
+
+    def test_direction_conflict_not_supported(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["entries"][0]["claim_text"] = "Revenue declined 15% in FY2025"
+        report = run_bundle(data)
+        assert report.judgments[0].verdict == "UNSUPPORTED"
+
+    def test_year_mismatch_not_supported(self) -> None:
+        import hashlib
+
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        src = ROOT / "tests/fixtures/claim-alignment/sources/year-mismatch-source.txt"
+        data["source_register"] = [
+            {
+                "source_id": "S01",
+                "source_artifact_path": (
+                    "tests/fixtures/claim-alignment/sources/year-mismatch-source.txt"
+                ),
+                "source_artifact_sha256": hashlib.sha256(src.read_bytes()).hexdigest(),
+            }
+        ]
+        excerpt = "Revenue grew 15% in FY2025."
+        data["entries"][0]["claim_text"] = "Revenue grew 15% in FY2024"
+        data["entries"][0]["excerpt"] = excerpt
+        data["entries"][0]["evidence_record"]["excerpt_hash"] = (
+            f"sha256:{hashlib.sha256(excerpt.encode()).hexdigest()}"
+        )
+        report = run_bundle(data)
+        assert report.judgments[0].verdict == "UNSUPPORTED"
+
+    def test_hidden_quote_in_fence_not_supported(self) -> None:
+        import hashlib
+
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        src = ROOT / "tests/fixtures/claim-alignment/sources/hidden-quote-source.txt"
+        data["source_register"] = [
+            {
+                "source_id": "S01",
+                "source_artifact_path": (
+                    "tests/fixtures/claim-alignment/sources/hidden-quote-source.txt"
+                ),
+                "source_artifact_sha256": hashlib.sha256(src.read_bytes()).hexdigest(),
+            }
+        ]
+        excerpt = "revenue increased 15%"
+        data["entries"][0]["excerpt"] = excerpt
+        data["entries"][0]["evidence_record"]["excerpt_hash"] = (
+            f"sha256:{hashlib.sha256(excerpt.encode()).hexdigest()}"
+        )
+        report = run_bundle(data)
+        assert report.judgments[0].verdict == "UNSUPPORTED"
+
     def test_judge_entry_never_reads_gold_labels(self) -> None:
         entry = json.loads((FIXTURES / "valid.json").read_text())["entries"][0]
         entry["gold_labels"] = {"verdict": "UNSUPPORTED"}

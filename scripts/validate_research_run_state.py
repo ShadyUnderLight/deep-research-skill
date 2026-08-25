@@ -478,15 +478,23 @@ def load_run_state_file(path: Path | str) -> tuple[dict | None, list[str]]:
     return data, []
 
 
-def _delivered_forbidden_audit_status(audit_id: str, status: str) -> bool:
-    """Whether an audit status blocks phase=delivered (#419 opt-in not_run exempt)."""
+def _delivered_forbidden_audit_status(
+    audit_id: str,
+    status: str,
+    reason: str | None = None,
+) -> bool:
+    """Whether an audit status blocks phase=delivered (#419 default-off exempt only)."""
     if status not in DELIVERED_FORBIDDEN_AUDIT_STATUSES:
         return False
     if status == "not_run":
         try:
+            from opt_in_audit_contract import audit_not_run_is_consumer_exempt
             from registry_loader import load_audit_registry
 
-            if audit_id in load_audit_registry().opt_in_audit_ids():
+            if audit_not_run_is_consumer_exempt(
+                {"audit_id": audit_id, "status": status, "reason": reason},
+                load_audit_registry().opt_in_audit_ids(),
+            ):
                 return False
         except Exception:
             return True
@@ -897,7 +905,11 @@ def check_audit_result_for_delivered(
         audit_id = entry.get("audit_id")
         if not _is_non_empty_str(audit_id) and audit_details is not None:
             errors.append("audit entry requires audit_id")
-        if _delivered_forbidden_audit_status(str(audit_id), str(status)):
+        if _delivered_forbidden_audit_status(
+            str(audit_id),
+            str(status),
+            entry.get("reason") if isinstance(entry.get("reason"), str) else None,
+        ):
             errors.append(
                 f"audit {audit_id!r} status {status!r} cannot support "
                 "phase=delivered"

@@ -432,6 +432,8 @@ def validate_bundle_structure(
     repo_root: Path | None = None,
 ) -> list[str]:
     errors = validate_against_json_schema(data)
+    if "gold_labels" in data:
+        errors.append("production bundle must not embed gold_labels")
     missing = BUNDLE_REQUIRED - set(data)
     if missing:
         errors.append(f"missing required bundle fields: {sorted(missing)}")
@@ -662,18 +664,64 @@ def _extract_section_text(artifact_text: str, heading: str) -> str | None:
 
 
 def _resolve_quote_scope(source_text: str, quote: str) -> str | None:
-    """Line scope in source artifact containing the quoted substring (exact match)."""
+    """Line scope in visible source text containing the quoted substring."""
+    visible = _visible_markdown(source_text)
     quote_stripped = quote.strip()
     if not quote_stripped:
         return None
-    idx = source_text.find(quote_stripped)
+    idx = visible.find(quote_stripped)
     if idx < 0:
         return None
-    line_start = source_text.rfind("\n", 0, idx) + 1
-    line_end = source_text.find("\n", idx)
+    line_start = visible.rfind("\n", 0, idx) + 1
+    line_end = visible.find("\n", idx)
     if line_end < 0:
-        line_end = len(source_text)
-    return source_text[line_start:line_end]
+        line_end = len(visible)
+    return visible[line_start:line_end]
+
+
+_NEGATIVE_DIRECTION = frozenset({
+    "decline", "declined", "decrease", "decreased", "fell", "fall", "fallen",
+    "drop", "dropped", "down", "loss", "losses", "shrink", "contracted",
+    "下降", "减少", "下跌", "降低", "萎缩", "回落", "下滑",
+})
+_POSITIVE_DIRECTION = frozenset({
+    "grow", "grew", "growth", "increase", "increased", "rose", "rise", "risen",
+    "up", "gain", "gains", "expand", "expanded", "surge", "surged",
+    "增长", "增加", "上涨", "提高", "上升", "回升", "上升",
+})
+
+
+def _contains_direction_word(text: str, words: frozenset[str]) -> bool:
+    text_cf = text.casefold()
+    return any(word.casefold() in text_cf for word in words)
+
+
+def _direction_conflict(claim: str, excerpt: str) -> bool:
+    claim_neg = _contains_direction_word(claim, _NEGATIVE_DIRECTION)
+    claim_pos = _contains_direction_word(claim, _POSITIVE_DIRECTION)
+    excerpt_neg = _contains_direction_word(excerpt, _NEGATIVE_DIRECTION)
+    excerpt_pos = _contains_direction_word(excerpt, _POSITIVE_DIRECTION)
+    return (claim_neg and excerpt_pos) or (claim_pos and excerpt_neg)
+
+
+def _year_mismatch(claim: str, excerpt: str) -> bool:
+    claim_years = set(re.findall(r"(?:FY)?20\d{2}", claim, flags=re.IGNORECASE))
+    excerpt_years = set(re.findall(r"(?:FY)?20\d{2}", excerpt, flags=re.IGNORECASE))
+    if claim_years and excerpt_years and not (claim_years & excerpt_years):
+        return True
+    return False
+
+
+def _cjk_char_overlap(claim: str, excerpt: str) -> float:
+    claim_chars = {ch for ch in claim if "\u4e00" <= ch <= "\u9fff"}
+    excerpt_chars = {ch for ch in excerpt if "\u4e00" <= ch <= "\u9fff"}
+    if not claim_chars:
+        return 0.0
+    return len(claim_chars & excerpt_chars) / len(claim_chars)
+
+
+def _lexical_overlap(claim: str, excerpt: str) -> float:
+    return max(_token_overlap(claim, excerpt), _cjk_char_overlap(claim, excerpt))
 
 
 def resolve_locator(
@@ -770,7 +818,11 @@ def _judge_claim_text(
         quote = locator_value.strip()
         if quote and quote not in excerpt:
             return "UNSUPPORTED"
-    overlap = _token_overlap(claim_text, excerpt)
+    if _direction_conflict(claim_text, excerpt):
+        return "UNSUPPORTED"
+    if _year_mismatch(claim_text, excerpt):
+        return "UNSUPPORTED"
+    overlap = _lexical_overlap(claim_text, excerpt)
     if overlap >= 0.45:
         return "SUPPORTED"
     if overlap >= 0.2:
@@ -1083,7 +1135,27 @@ def run_calibration(
         or "unknown"
     )
     report = run_bundle(bundle_data)
+    if report.structural_errors:
+        raise ValueError(
+            f"{bundle_path}: bundle has structural errors: {report.structural_errors}"
+        )
     predicted = {j.claim_id: j for j in report.judgments}
+    bundle_claim_ids = {
+        str(entry.get("claim_id"))
+        for entry in bundle_data.get("entries", [])
+        if isinstance(entry, dict) and entry.get("claim_id")
+    }
+    label_claim_ids = {str(key) for key in labels.keys()}
+    missing_labels = sorted(bundle_claim_ids - label_claim_ids)
+    extra_labels = sorted(label_claim_ids - bundle_claim_ids)
+    if missing_labels:
+        raise ValueError(
+            f"{gold_path}: gold labels missing bundle entries: {missing_labels}"
+        )
+    if extra_labels:
+        raise ValueError(
+            f"{gold_path}: gold labels reference claims not in bundle: {extra_labels}"
+        )
     per_class = compute_per_class_one_vs_rest(labels, predicted)
 
     mismatches: list[str] = []
@@ -1097,6 +1169,8 @@ def run_calibration(
             continue
         expected = gold_entry.get("verdict")
         if expected not in VERDICTS:
+            continue
+        if claim_id not in bundle_claim_ids:
             continue
         actual = predicted.get(claim_id)
         actual_verdict = actual.verdict if actual else "NOT_RUN"
@@ -1118,6 +1192,9 @@ def run_calibration(
                 )
             elif not subclaims_ok:
                 mismatches.append(f"{claim_id}: subclaim decomposition mismatch")
+
+    if total == 0:
+        raise ValueError(f"{gold_path}: gold labels contain no valid verdict entries")
 
     accuracy = correct / total if total else 0.0
     return CalibrationReport(

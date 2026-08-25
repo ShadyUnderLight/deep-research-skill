@@ -98,6 +98,7 @@ from activation_snapshot import (
 # bindings come from schemas/audit-registry.json (issue #378).
 import registry_loader
 from registry_loader import RegistryError, UnknownRouteError
+from opt_in_audit_contract import OPT_IN_DEFAULT_OFF_REASON
 
 _ROUTE_REGISTRY = registry_loader.load_route_registry()
 _AUDIT_REGISTRY = registry_loader.load_audit_registry()
@@ -1685,7 +1686,7 @@ def _execute_opt_in_audits(
             status="not_run",
             execution_source="automated_validator",
             validator_binding=binding,
-            reason="opt-in audit not enabled (default off)",
+            reason=OPT_IN_DEFAULT_OFF_REASON,
         ))
         return results, blocking, warnings
 
@@ -1736,18 +1737,22 @@ def _execute_opt_in_audits(
         evidence = [str(e)[:200] for e in check.errors[:5]]
     else:
         evidence = [
-            f"{claim_alignment_bundle}: alignment audit completed by {binding}"
+            f"{path}: claim-alignment bundle {claim_alignment_bundle} "
+            f"validated by {binding}"
         ]
+    report_hash = _sha256(path)
     evidence_provenance = [{
         "kind": "automated_validator",
         "audit_id": audit_id,
         "locator": binding,
         "validator_binding": binding,
         "execution_source": "automated_validator",
-        "target": str(claim_alignment_bundle),
-        "input_sha256": _sha256(claim_alignment_bundle),
+        "target": str(path),
+        "input_sha256": report_hash,
         "validator_version": _registry_version(),
         "verified": True,
+        "claim_alignment_bundle": str(claim_alignment_bundle),
+        "claim_alignment_bundle_sha256": _sha256(claim_alignment_bundle),
     }]
     results.append(AuditResult(
         audit_id=audit_id,

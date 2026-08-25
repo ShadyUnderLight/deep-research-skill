@@ -44,6 +44,7 @@ from activation_snapshot import (
 )
 import registry_loader  # noqa: E402
 from audit_evidence import validate_evidence_reference  # noqa: E402 — re-validate manual/process evidence against real artifact (issue #403 re-review)
+from opt_in_audit_contract import audit_not_run_is_consumer_exempt  # noqa: E402
 
 # Canonical route → validator binding set.  The runner uses it to verify the
 # audit JSON validators[] is a complete, un-forged binding set (issue #393).
@@ -663,10 +664,11 @@ def _audit_consistency_details(
         ]
         if overall == "pass":
             offending = [
-                f"{aid}:{status}"
-                for aid, status in audit_statuses
-                if status != "pass"
-                and not (aid in opt_in_ids and status == "not_run")
+                f"{a.get('audit_id')}:{a.get('status')}"
+                for a in audits
+                if isinstance(a, dict)
+                and a.get("status") != "pass"
+                and not audit_not_run_is_consumer_exempt(a, opt_in_ids)
             ]
             if offending:
                 errors.append(
@@ -674,10 +676,11 @@ def _audit_consistency_details(
                 )
         if overall == "conditional-pass":
             offending = [
-                f"{aid}:{status}"
-                for aid, status in audit_statuses
-                if status in {"fail", "partial", "not_run", "skipped"}
-                and not (aid in opt_in_ids and status == "not_run")
+                f"{a.get('audit_id')}:{a.get('status')}"
+                for a in audits
+                if isinstance(a, dict)
+                and a.get("status") in {"fail", "partial", "not_run", "skipped"}
+                and not audit_not_run_is_consumer_exempt(a, opt_in_ids)
             ]
             if offending:
                 errors.append(
@@ -867,12 +870,18 @@ def _audit_provenance_ok(
     return ok
 
 
-def _audit_status_is_fail_like(audit_id: str, status: str) -> bool:
+def _audit_status_is_fail_like(audit_id: str, status: str, reason: str | None = None) -> bool:
     """Fail-like audit statuses, excluding default-off opt-in not_run (#419)."""
     if status in {"fail", "partial", "skipped"}:
         return True
     if status == "not_run":
-        return audit_id not in _AUDIT_REGISTRY.opt_in_audit_ids()
+        opt_in_ids = set(_AUDIT_REGISTRY.opt_in_audit_ids())
+        if audit_not_run_is_consumer_exempt(
+            {"audit_id": audit_id, "status": status, "reason": reason},
+            opt_in_ids,
+        ):
+            return False
+        return True
     return False
 
 
@@ -907,7 +916,11 @@ def _overall_consistency_details(
         if isinstance(v, dict) and v.get("status")
     ]
     has_fail_like = any(
-        _audit_status_is_fail_like(str(a.get("audit_id") or ""), str(a.get("status")))
+        _audit_status_is_fail_like(
+            str(a.get("audit_id") or ""),
+            str(a.get("status") or ""),
+            a.get("reason") if isinstance(a.get("reason"), str) else None,
+        )
         for a in audits
         if isinstance(a, dict) and a.get("status")
     )
@@ -921,7 +934,9 @@ def _overall_consistency_details(
                 for a in audits
                 if isinstance(a, dict)
                 and _audit_status_is_fail_like(
-                    str(a.get("audit_id") or ""), str(a.get("status") or "")
+                    str(a.get("audit_id") or ""),
+                    str(a.get("status") or ""),
+                    a.get("reason") if isinstance(a.get("reason"), str) else None,
                 )
             ]
             errors.append(f"overall pass aggregates fail-like audit(s): {', '.join(offending)}")
@@ -943,7 +958,9 @@ def _overall_consistency_details(
                 for a in audits
                 if isinstance(a, dict)
                 and _audit_status_is_fail_like(
-                    str(a.get("audit_id") or ""), str(a.get("status") or "")
+                    str(a.get("audit_id") or ""),
+                    str(a.get("status") or ""),
+                    a.get("reason") if isinstance(a.get("reason"), str) else None,
                 )
             ]
             errors.append(f"overall conditional-pass aggregates fail-like audit(s): {', '.join(offending)}")
@@ -1022,9 +1039,16 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
         checks["statuses_match"],
     ]
     statuses = _audit_statuses(actual)
+    audit_reasons = {
+        str(item.get("audit_id")): item.get("reason")
+        for item in actual.get("audits", [])
+        if isinstance(item, dict) and item.get("audit_id")
+    }
 
     def _is_fail_like(audit_id: str, status: str) -> bool:
-        return _audit_status_is_fail_like(audit_id, status)
+        reason = audit_reasons.get(audit_id)
+        reason_str = reason if isinstance(reason, str) else None
+        return _audit_status_is_fail_like(audit_id, status, reason_str)
 
     expected_audits = set(case["expected"].get("required_audits", []))
     if family == "secondary-route-not-verified":
