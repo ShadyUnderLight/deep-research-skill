@@ -136,12 +136,19 @@ python3 scripts/validate_research_run_state.py <run-state.json>
 python3 scripts/validate_track_handoff.py <handoff>.json --run-state <run-state.json>
 python3 scripts/validate_research_run_state.py <run-state.json> \
     --artifact <pack.md> --report <report.md> --audit-result <audit.json>
+python3 scripts/validate_research_run_state.py <run-state.json> \
+    --resume --artifact <pack.md> --activation-snapshot <activation.json>
 ```
 
 Entering `delivered` is fail-closed: `--from/--to` and snapshot checks require
 `--audit-result`, `--artifact` (the Research Pack / `current_artifact_sha256`),
 and `--report` (the final report / `audit_report --json` `input_sha256`). Those
 two hashes are distinct; a Pack hash must not stand in for a report hash.
+When the audit result contains an enabled Claim-Source Alignment Pass or
+conditional Pass, also pass the exact `--claim-alignment-bundle` used to
+produce it so the consumer can re-hash that separate input. An enabled
+all-`NOT_RUN` alignment audit is conditional, not a clean Pass, and cannot
+support `delivered`.
 The audit result must contain the complete expected audit set derived from the
 route, contract, and audit registry — a single `final-audit` entry is not
 enough — plus the canonical `validators[]` set for that route bound to the

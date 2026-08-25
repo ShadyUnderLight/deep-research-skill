@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -1204,6 +1205,13 @@ def run_calibration(
     threshold: float = 0.85,
 ) -> CalibrationReport:
     """Compare judge output against an isolated gold-key file."""
+    if (
+        isinstance(threshold, bool)
+        or not isinstance(threshold, (int, float))
+        or not math.isfinite(float(threshold))
+        or not 0 <= float(threshold) <= 1
+    ):
+        raise ValueError("threshold must be a finite number between 0 and 1")
     bundle_data = _load_json(bundle_path)
     gold_data = _load_json(gold_path)
     if bundle_data.get("gold_labels"):

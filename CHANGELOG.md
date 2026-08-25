@@ -28,6 +28,8 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `scripts/validate_figure_references.py` (#394): `_mermaid_spans` replaced by `_mermaid_fences` returning explicit per-block state; only closed blocks become figure entities; invalid block content is blanked before reference/caption collection.
 
 ### Fixed
+- `scripts/validate_research_run_state.py` / `scripts/run_forward_evals.py` (#417/#419): resume now requires artifact and activation re-check inputs; explicitly enabled all-`NOT_RUN` Claim-Source Alignment audits become conditional instead of an outer Pass, and delivered/forward consumers re-hash the exact alignment bundle before accepting its provenance.
+- `scripts/claim_alignment.py` (#419): calibration rejects non-finite thresholds outside the closed interval `[0, 1]`.
 - `scripts/validate_research_run_state.py` / `scripts/audit_report.py` (#417): delivered now derives the complete expected audit set from route + contract + registry (not from the payload's own `audits[]`); `audit_report` writes `input_sha256` on manual/process provenance so a real `--json` Pass can bind `--report` / `--artifact` hashes separately; malformed entries and incomplete audit sets still fail closed.
 - `scripts/validate_research_run_state.py` (#417): delivered now consumes canonical `validators[]` via `_validators_ok`, requiring the audit JSON's top-level `route` and the full route-level validator set (including contract-check) bound to the report hash; `--chain` / repeatable `--handoff` must load and hash-check every listed `handoff_refs` entry so a ghost second ref cannot skip verification.
 

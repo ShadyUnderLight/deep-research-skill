@@ -44,7 +44,11 @@ from activation_snapshot import (
 )
 import registry_loader  # noqa: E402
 from audit_evidence import validate_evidence_reference  # noqa: E402 — re-validate manual/process evidence against real artifact (issue #403 re-review)
-from opt_in_audit_contract import audit_not_run_is_consumer_exempt  # noqa: E402
+from opt_in_audit_contract import (  # noqa: E402
+    OPT_IN_AGGREGATE_NOT_RUN_REASON,
+    audit_not_run_is_conditional_consumer_exempt,
+    audit_not_run_is_consumer_exempt,
+)
 
 # Canonical route → validator binding set.  The runner uses it to verify the
 # audit JSON validators[] is a complete, un-forged binding set (issue #393).
@@ -377,6 +381,63 @@ def _sha256(path: object) -> str | None:
         return None
 
 
+def _claim_alignment_bundle_binding_errors(
+    item: dict[str, Any],
+    expected_path: str | None,
+) -> list[str]:
+    """Verify the opt-in alignment bundle used by an automated audit.
+
+    The report hash alone is insufficient: the alignment bundle is a separate
+    input and may change while the report and Research Pack remain identical.
+    Delivered/forward consumers therefore require the caller to supply the
+    exact bundle path and re-hash it.
+    """
+    if expected_path is None:
+        return [
+            "claim-source-alignment requires the exact "
+            "--claim-alignment-bundle path for consumer verification"
+        ]
+    expected = Path(expected_path).resolve()
+    actual_hash = _sha256(expected)
+    if actual_hash is None:
+        return [f"cannot read claim-alignment bundle {expected}"]
+
+    provenance = item.get("evidence_provenance")
+    verified = [
+        record
+        for record in provenance or []
+        if isinstance(record, dict) and record.get("verified") is True
+    ]
+    if not verified:
+        return ["claim-source-alignment has no verified provenance record"]
+
+    errors: list[str] = []
+    for record in verified:
+        declared_path = record.get("claim_alignment_bundle")
+        if not isinstance(declared_path, str) or not declared_path.strip():
+            errors.append(
+                "verified provenance is missing claim_alignment_bundle"
+            )
+        else:
+            try:
+                declared = Path(declared_path).resolve()
+            except OSError as exc:
+                errors.append(f"claim_alignment_bundle path cannot resolve: {exc}")
+            else:
+                if declared != expected:
+                    errors.append(
+                        "claim_alignment_bundle path does not match the supplied "
+                        f"path ({declared} != {expected})"
+                    )
+        declared_hash = record.get("claim_alignment_bundle_sha256")
+        if declared_hash != actual_hash:
+            errors.append(
+                "claim_alignment_bundle_sha256 does not match the supplied "
+                f"bundle ({declared_hash!r} != {actual_hash})"
+            )
+    return errors
+
+
 def _audit_consistency_details(
     actual: dict[str, Any],
     expected_audit_ids: list[str],
@@ -387,6 +448,7 @@ def _audit_consistency_details(
     report_text: str | None = None,
     pack_text: str | None = None,
     expected_route: str | None = None,
+    claim_alignment_bundle_path: str | None = None,
 ) -> tuple[bool, list[str]]:
     """Detailed audit-set validation that returns locatable errors (issue #408).
 
@@ -653,6 +715,17 @@ def _audit_consistency_details(
             errors.append(f"{prefix} unknown status '{status}'")
             continue
 
+        if (
+            audit_id == "claim-source-alignment"
+            and status in {"pass", "conditional-pass"}
+        ):
+            errors.extend(
+                f"{prefix} claim-alignment bundle binding failed: {error}"
+                for error in _claim_alignment_bundle_binding_errors(
+                    item, claim_alignment_bundle_path
+                )
+            )
+
     # Top-level overall aggregation check
     overall = actual.get("overall")
     if isinstance(overall, str):
@@ -680,7 +753,7 @@ def _audit_consistency_details(
                 for a in audits
                 if isinstance(a, dict)
                 and a.get("status") in {"fail", "partial", "not_run", "skipped"}
-                and not audit_not_run_is_consumer_exempt(a, opt_in_ids)
+                and not audit_not_run_is_conditional_consumer_exempt(a, opt_in_ids)
             ]
             if offending:
                 errors.append(
@@ -700,6 +773,7 @@ def _audits_ok(
     report_text: str | None = None,
     pack_text: str | None = None,
     expected_route: str | None = None,
+    claim_alignment_bundle_path: str | None = None,
 ) -> bool:
     """Boolean wrapper around :func:`_audit_consistency_details` for backwards compat.
 
@@ -708,7 +782,8 @@ def _audits_ok(
     """
     ok, _ = _audit_consistency_details(
         actual, expected_audit_ids, audited_path, expected_report_sha256,
-        research_pack_path, expected_pack_sha256, report_text, pack_text, expected_route,
+        research_pack_path, expected_pack_sha256, report_text, pack_text,
+        expected_route, claim_alignment_bundle_path,
     )
     return ok
 
@@ -876,7 +951,7 @@ def _audit_status_is_fail_like(audit_id: str, status: str, reason: str | None = 
         return True
     if status == "not_run":
         opt_in_ids = set(_AUDIT_REGISTRY.opt_in_audit_ids())
-        if audit_not_run_is_consumer_exempt(
+        if audit_not_run_is_conditional_consumer_exempt(
             {"audit_id": audit_id, "status": status, "reason": reason},
             opt_in_ids,
         ):
@@ -925,6 +1000,13 @@ def _overall_consistency_details(
         if isinstance(a, dict) and a.get("status")
     )
     has_conditional = any(s == "conditional-pass" for s in audit_statuses)
+    has_conditional_not_run = any(
+        isinstance(a, dict)
+        and a.get("status") == "not_run"
+        and isinstance(a.get("reason"), str)
+        and a.get("reason") == OPT_IN_AGGREGATE_NOT_RUN_REASON
+        for a in audits
+    )
     has_validator_fail = any(s in {"fail", "incomplete"} for s in validator_statuses)
     has_validator_conditional = any(s == "conditional-pass" for s in validator_statuses)
     if overall == "pass":
@@ -940,6 +1022,20 @@ def _overall_consistency_details(
                 )
             ]
             errors.append(f"overall pass aggregates fail-like audit(s): {', '.join(offending)}")
+        non_exempt_not_run = [
+            f"{a.get('audit_id')}:{a.get('status')}"
+            for a in audits
+            if isinstance(a, dict)
+            and a.get("status") == "not_run"
+            and not audit_not_run_is_consumer_exempt(
+                a, set(_AUDIT_REGISTRY.opt_in_audit_ids())
+            )
+        ]
+        if non_exempt_not_run:
+            errors.append(
+                "overall pass aggregates NOT_RUN audit(s): "
+                f"{', '.join(non_exempt_not_run)}"
+            )
         if has_conditional:
             offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") == "conditional-pass"]
             errors.append(f"overall pass aggregates conditional-pass audit(s): {', '.join(offending)}")
@@ -967,7 +1063,11 @@ def _overall_consistency_details(
         if has_validator_fail:
             offending = [f"{v.get('validator_id')}:{v.get('status')}" for v in validators if isinstance(v, dict) and v.get("status") in {"fail", "incomplete"}]
             errors.append(f"overall conditional-pass aggregates validator fail(s): {', '.join(offending)}")
-        if not (has_conditional or has_validator_conditional):
+        if not (
+            has_conditional
+            or has_conditional_not_run
+            or has_validator_conditional
+        ):
             errors.append("overall conditional-pass requires at least one conditional-pass audit or validator")
         if blocking:
             errors.append(f"overall conditional-pass must have no blocking (got {blocking[:2]!r})")

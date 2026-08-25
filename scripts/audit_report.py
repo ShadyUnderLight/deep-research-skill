@@ -1739,6 +1739,11 @@ def _execute_opt_in_audits(
 
     if status == "not_run":
         reason = OPT_IN_AGGREGATE_NOT_RUN_REASON
+        # An explicitly enabled audit with no executed claims is not a clean
+        # Pass. Keep the per-audit state as NOT_RUN, but surface it at the
+        # outer verdict layer as conditional-pass rather than silently
+        # exempting it like the default-off path.
+        warnings.append(f"[{audit_id}] {reason} (audit)")
     elif status == "fail":
         evidence = [str(e)[:200] for e in check.errors[:5]]
     else:
@@ -1757,7 +1762,7 @@ def _execute_opt_in_audits(
             "input_sha256": report_hash,
             "validator_version": _registry_version(),
             "verified": True,
-            "claim_alignment_bundle": str(claim_alignment_bundle),
+            "claim_alignment_bundle": str(Path(claim_alignment_bundle).resolve()),
             "claim_alignment_bundle_sha256": _sha256(claim_alignment_bundle),
         }]
     results.append(AuditResult(
