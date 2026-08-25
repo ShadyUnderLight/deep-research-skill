@@ -8,8 +8,8 @@
     {
       "audit_id": "final-audit",
       "status": "fail",
-      "execution_type": "process",
-      "execution_source": "process_node_evidence",
+      "execution_type": "manual",
+      "execution_source": "manual_checklist_attestation",
       "errors": ["source ids missing"],
       "warnings": [],
       "evidence": []

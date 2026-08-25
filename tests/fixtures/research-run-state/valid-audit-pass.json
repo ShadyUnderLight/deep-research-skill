@@ -8,8 +8,8 @@
     {
       "audit_id": "final-audit",
       "status": "pass",
-      "execution_type": "process",
-      "execution_source": "process_node_evidence",
+      "execution_type": "manual",
+      "execution_source": "manual_checklist_attestation",
       "errors": [],
       "warnings": [],
       "evidence": ["pack-section:Artifact contract"],
@@ -18,7 +18,7 @@
           "verified": true,
           "kind": "pack_section",
           "locator": "Artifact contract",
-          "execution_source": "process_node_evidence",
+          "execution_source": "manual_checklist_attestation",
           "input_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         }
       ]

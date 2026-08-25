@@ -16,12 +16,13 @@ Exit codes:
 Usage:
     python3 scripts/validate_research_run_state.py <run-state.json> [--json]
     python3 scripts/validate_research_run_state.py --from prev.json --to next.json \\
-        [--audit-result audit.json] [--artifact pack.md] [--json]
-        # phase=delivered requires --audit-result and --artifact (fail closed)
+        [--audit-result audit.json] [--artifact pack.md] [--report report.md] [--json]
+        # phase=delivered requires --audit-result, --artifact (Pack), and --report
     python3 scripts/validate_research_run_state.py <run-state.json> \\
         --resume --artifact <pack.md> [--activation-snapshot snap.json] [--json]
     python3 scripts/validate_research_run_state.py --chain \\
-        --handoff h.json --run-state r.json --pack p.md [--audit-result a.json] [--json]
+        --handoff h.json --run-state r.json --pack p.md [--report report.md] \\
+        [--audit-result a.json] [--json]
         # --chain requires Pack ## Run state to name the same sidecar file
 """
 
@@ -476,28 +477,129 @@ def load_run_state_file(path: Path | str) -> tuple[dict | None, list[str]]:
     return data, []
 
 
+PACK_PROVENANCE_KINDS = frozenset({"pack_section", "pack_table"})
+DELIVERED_FORBIDDEN_AUDIT_STATUSES = frozenset(
+    {"not_run", "skipped", "partial", "fail"}
+)
+KNOWN_AUDIT_STATUSES = frozenset(
+    {"pass", "conditional-pass", "fail", "not_run", "skipped", "partial"}
+)
+
+
+def _canonical_audit_helpers():
+    """Lazy-import canonical audit JSON checks; None on ImportError."""
+    try:
+        from run_forward_evals import (
+            EXPECTED_AUDIT_JSON_SCHEMA_VERSION,
+            _audit_consistency_details,
+            _overall_consistency_details,
+        )
+    except ImportError:
+        return 1, None, None
+    return (
+        EXPECTED_AUDIT_JSON_SCHEMA_VERSION,
+        _overall_consistency_details,
+        _audit_consistency_details,
+    )
+
+
+def _provenance_input_sha256_errors(
+    entry: dict,
+    *,
+    report_sha: str | None,
+    pack_sha: str | None,
+) -> list[str]:
+    """pass / conditional-pass 的 verified provenance 必须绑定报告或 Pack hash。"""
+    status = entry.get("status")
+    if status not in {"pass", "conditional-pass"}:
+        return []
+    audit_id = entry.get("audit_id")
+    provenance = entry.get("evidence_provenance")
+    if not isinstance(provenance, list) or not provenance:
+        return [
+            f"audit {audit_id!r} {status} requires verified evidence_provenance"
+        ]
+    verified = [
+        item
+        for item in provenance
+        if isinstance(item, dict) and item.get("verified") is True
+    ]
+    if not verified:
+        return [
+            f"audit {audit_id!r} {status} requires verified evidence_provenance"
+        ]
+    errors: list[str] = []
+    for record in verified:
+        if not _is_non_empty_str(record.get("execution_source")):
+            errors.append(
+                f"audit {audit_id!r} provenance requires execution_source"
+            )
+        record_hash = record.get("input_sha256")
+        if not isinstance(record_hash, str) or not SHA256_RE.fullmatch(record_hash):
+            errors.append(
+                f"audit {audit_id!r} provenance requires input_sha256"
+            )
+            continue
+        binds_pack = (
+            audit_id == "research-pack"
+            or record.get("kind") in PACK_PROVENANCE_KINDS
+        )
+        expected = pack_sha if binds_pack else report_sha
+        label = "pack" if binds_pack else "report"
+        if expected is not None and record_hash != expected:
+            errors.append(
+                f"audit {audit_id!r} provenance input_sha256 does not match "
+                f"the {label} hash"
+            )
+    return errors
+
+
+def _malformed_audit_entry_errors(entry: object) -> list[str]:
+    """Fallback 结构校验：在无法导入 canonical helper 时仍 fail closed。"""
+    if not isinstance(entry, dict):
+        return ["audit result audits entries must be objects"]
+    errors: list[str] = []
+    audit_id = entry.get("audit_id")
+    if not _is_non_empty_str(audit_id):
+        errors.append("audit entry requires audit_id")
+    status = entry.get("status")
+    if not isinstance(status, str) or status not in KNOWN_AUDIT_STATUSES:
+        errors.append(
+            f"audit {audit_id!r} unknown or missing status {status!r}"
+        )
+        return errors
+    if status == "conditional-pass":
+        warnings = entry.get("warnings")
+        if not isinstance(warnings, list) or not warnings:
+            errors.append(
+                f"audit {audit_id!r} conditional-pass requires warnings"
+            )
+    return errors
+
+
 def check_audit_result_for_delivered(
     audit: object,
     run_state: dict,
     *,
-    expected_input_sha256: str | None = None,
+    expected_report_sha256: str | None = None,
+    expected_pack_sha256: str | None = None,
+    report_path: Path | str | None = None,
+    pack_path: Path | str | None = None,
 ) -> list[str]:
-    """delivered 不能由未执行、空集、stale 或失败的审计支撑。"""
+    """delivered 不能由未执行、空集、stale、畸形或失败的审计支撑。
+
+    ``audit_report --json`` 的 ``input_sha256`` 是报告 hash；Run State
+    ``current_artifact_sha256`` 是 Research Pack hash。两者必须分别校验，
+    不能互相冒充。
+    """
     if not isinstance(audit, dict):
         return ["audit result must be a JSON object"]
     errors: list[str] = []
-    try:
-        from run_forward_evals import (
-            EXPECTED_AUDIT_JSON_SCHEMA_VERSION,
-            _overall_consistency_details,
-        )
-    except ImportError:
-        EXPECTED_AUDIT_JSON_SCHEMA_VERSION = 1
-        _overall_consistency_details = None  # type: ignore[assignment]
+    schema_version, overall_details, audit_details = _canonical_audit_helpers()
 
-    if audit.get("schema_version") != EXPECTED_AUDIT_JSON_SCHEMA_VERSION:
+    if audit.get("schema_version") != schema_version:
         errors.append(
-            f"audit result schema_version must be {EXPECTED_AUDIT_JSON_SCHEMA_VERSION}, "
+            f"audit result schema_version must be {schema_version}, "
             f"got {audit.get('schema_version')!r}"
         )
     overall = audit.get("overall")
@@ -513,10 +615,8 @@ def check_audit_result_for_delivered(
 
     if "exit_code" not in audit:
         errors.append("audit result requires exit_code")
-    elif _overall_consistency_details is not None:
-        _ok, overall_errors = _overall_consistency_details(
-            audit, audit.get("exit_code")
-        )
+    elif overall_details is not None:
+        _ok, overall_errors = overall_details(audit, audit.get("exit_code"))
         errors.extend(overall_errors)
     else:
         expected_rc = {"pass": 0, "conditional-pass": 1, "fail": 2}.get(overall)
@@ -527,69 +627,75 @@ def check_audit_result_for_delivered(
             )
 
     input_hash = audit.get("input_sha256")
-    declared = run_state["current_artifact_sha256"]
     if not isinstance(input_hash, str) or not SHA256_RE.fullmatch(input_hash):
         errors.append("audit result requires a valid input_sha256")
-    else:
-        if input_hash != declared:
-            errors.append(
-                "audit input_sha256 does not match run state "
-                f"current_artifact_sha256 ({input_hash} != {declared})"
-            )
-        if (
-            expected_input_sha256 is not None
-            and input_hash != expected_input_sha256
-        ):
-            errors.append(
-                "audit input_sha256 does not match the supplied artifact "
-                f"({input_hash} != {expected_input_sha256})"
-            )
+    elif (
+        expected_report_sha256 is not None
+        and input_hash != expected_report_sha256
+    ):
+        errors.append(
+            "audit input_sha256 does not match the supplied report "
+            f"({input_hash} != {expected_report_sha256})"
+        )
+
+    pack_sha = expected_pack_sha256 or run_state.get("current_artifact_sha256")
+    if (
+        expected_pack_sha256 is not None
+        and expected_pack_sha256 != run_state.get("current_artifact_sha256")
+    ):
+        errors.append(
+            "Research Pack hash does not match run state "
+            f"current_artifact_sha256 ({expected_pack_sha256} != "
+            f"{run_state.get('current_artifact_sha256')})"
+        )
 
     audits = audit.get("audits")
     if not isinstance(audits, list) or not audits:
         errors.append("audit result requires a non-empty audits list")
         return errors
 
-    forbidden = {"not_run", "skipped", "partial", "fail"}
+    present_ids = [
+        str(item.get("audit_id"))
+        for item in audits
+        if isinstance(item, dict) and item.get("audit_id")
+    ]
+    if audit_details is not None:
+        _ok, entry_errors = audit_details(
+            audit,
+            present_ids,
+            audited_path=str(report_path) if report_path is not None else None,
+            expected_report_sha256=expected_report_sha256,
+            research_pack_path=str(pack_path) if pack_path is not None else None,
+            expected_pack_sha256=pack_sha if isinstance(pack_sha, str) else None,
+        )
+        errors.extend(entry_errors)
+    else:
+        for entry in audits:
+            errors.extend(_malformed_audit_entry_errors(entry))
+
     for entry in audits:
         if not isinstance(entry, dict):
-            errors.append("audit result audits entries must be objects")
+            if audit_details is None:
+                errors.append("audit result audits entries must be objects")
             continue
         status = entry.get("status")
         audit_id = entry.get("audit_id")
-        if status in forbidden:
+        if not _is_non_empty_str(audit_id) and audit_details is not None:
+            errors.append("audit entry requires audit_id")
+        if status in DELIVERED_FORBIDDEN_AUDIT_STATUSES:
             errors.append(
                 f"audit {audit_id!r} status {status!r} cannot support "
                 "phase=delivered"
             )
-        if status in {"pass", "conditional-pass"}:
-            provenance = entry.get("evidence_provenance")
-            verified = [
-                item
-                for item in provenance
-                if isinstance(item, dict) and item.get("verified") is True
-            ] if isinstance(provenance, list) else []
-            if not verified:
-                errors.append(
-                    f"audit {audit_id!r} {status} requires verified "
-                    "evidence_provenance"
-                )
-            else:
-                for record in verified:
-                    if not _is_non_empty_str(record.get("execution_source")):
-                        errors.append(
-                            f"audit {audit_id!r} provenance requires "
-                            "execution_source"
-                        )
-                    record_hash = record.get("input_sha256")
-                    if (
-                        isinstance(record_hash, str)
-                        and record_hash != declared
-                    ):
-                        errors.append(
-                            f"audit {audit_id!r} provenance input_sha256 "
-                            "does not match the current artifact"
-                        )
+        errors.extend(
+            _provenance_input_sha256_errors(
+                entry,
+                report_sha=expected_report_sha256 or (
+                    input_hash if isinstance(input_hash, str) else None
+                ),
+                pack_sha=pack_sha if isinstance(pack_sha, str) else None,
+            )
+        )
 
     if overall == "conditional-pass" and not _is_non_empty_str(
         run_state.get("last_transition_reason")
@@ -606,8 +712,9 @@ def require_delivered_audit(
     audit_result_path: Path | str | None,
     *,
     artifact_path: Path | str | None = None,
+    report_path: Path | str | None = None,
 ) -> list[str]:
-    """CLI 进入/保持 delivered 时必须提供可绑定的 audit-result。"""
+    """CLI 进入/保持 delivered 时必须绑定报告审计与 Pack 过程工件。"""
     if audit_result_path is None:
         return [
             "phase=delivered requires --audit-result; "
@@ -615,19 +722,33 @@ def require_delivered_audit(
         ]
     if artifact_path is None:
         return [
-            "phase=delivered requires --artifact so audit input_sha256 "
-            "binds to the actual process artifact"
+            "phase=delivered requires --artifact (Research Pack) so "
+            "current_artifact_sha256 binds to the process artifact"
+        ]
+    if report_path is None:
+        return [
+            "phase=delivered requires --report so audit input_sha256 "
+            "binds to the actual report, not the Pack"
         ]
     audit, errors = _load_json_object(audit_result_path, "audit result")
     if errors:
         return errors
     try:
-        expected = sha256_file(artifact_path)
+        pack_sha = sha256_file(artifact_path)
     except OSError as exc:
         return [f"cannot read artifact {artifact_path}: {exc}"]
+    try:
+        report_sha = sha256_file(report_path)
+    except OSError as exc:
+        return [f"cannot read report {report_path}: {exc}"]
     assert audit is not None
     return check_audit_result_for_delivered(
-        audit, state, expected_input_sha256=expected
+        audit,
+        state,
+        expected_report_sha256=report_sha,
+        expected_pack_sha256=pack_sha,
+        report_path=report_path,
+        pack_path=artifact_path,
     )
 
 
@@ -937,6 +1058,7 @@ def validate_chain(
     run_state_path: Path | str,
     pack_path: Path | str,
     audit_result_path: Path | str | None = None,
+    report_path: Path | str | None = None,
 ) -> list[str]:
     """端到端：Handoff → Run State → Pack → 可选 audit result。"""
     from validate_track_handoff import load_handoff_for_merge, HandoffIncomplete
@@ -989,6 +1111,7 @@ def validate_chain(
                 state,
                 audit_result_path,
                 artifact_path=pack_path,
+                report_path=report_path,
             )
         )
     return errors
@@ -1018,7 +1141,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--from", dest="from_file", default=None, help="Previous snapshot")
     parser.add_argument("--to", dest="to_file", default=None, help="Next snapshot")
     parser.add_argument("--resume", action="store_true", help="Re-validate for resume")
-    parser.add_argument("--artifact", default=None, help="Current process artifact to hash")
+    parser.add_argument("--artifact", default=None, help="Research Pack process artifact to hash")
+    parser.add_argument(
+        "--report",
+        default=None,
+        help="Final report file; binds audit_report input_sha256 (distinct from the Pack)",
+    )
     parser.add_argument(
         "--activation-snapshot",
         default=None,
@@ -1045,6 +1173,7 @@ def main(argv: list[str] | None = None) -> int:
             run_state_path=run_state_path,
             pack_path=args.pack,
             audit_result_path=args.audit_result,
+            report_path=args.report,
         )
         return _emit(not errors, errors, as_json=args.json)
 
@@ -1068,6 +1197,7 @@ def main(argv: list[str] | None = None) -> int:
                         after,
                         args.audit_result,
                         artifact_path=args.artifact,
+                        report_path=args.report,
                     )
                 )
         extra = None
@@ -1138,6 +1268,7 @@ def main(argv: list[str] | None = None) -> int:
                 state,
                 args.audit_result,
                 artifact_path=args.artifact,
+                report_path=args.report,
             )
         )
 
