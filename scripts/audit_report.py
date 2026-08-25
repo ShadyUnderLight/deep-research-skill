@@ -1744,6 +1744,23 @@ def _execute_opt_in_audits(
         # outer verdict layer as conditional-pass rather than silently
         # exempting it like the default-off path.
         warnings.append(f"[{audit_id}] {reason} (audit)")
+        report_hash = _sha256(path)
+        evidence_provenance = [{
+            "kind": "automated_validator",
+            "audit_id": audit_id,
+            "locator": binding,
+            "validator_binding": binding,
+            "execution_source": "automated_validator",
+            "target": str(path),
+            "input_sha256": report_hash,
+            "validator_version": _registry_version(),
+            # The bundle was structurally inspected, but no claim produced
+            # executable support evidence, so this binding is not a Pass
+            # attestation. Consumers still need the binding to re-hash it.
+            "verified": False,
+            "claim_alignment_bundle": str(Path(claim_alignment_bundle).resolve()),
+            "claim_alignment_bundle_sha256": _sha256(claim_alignment_bundle),
+        }]
     elif status == "fail":
         evidence = [str(e)[:200] for e in check.errors[:5]]
     else:

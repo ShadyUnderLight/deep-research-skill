@@ -144,6 +144,7 @@ def _run_audit(
     report: Path,
     research_pack: Path,
     activation_snapshot: Path | None = None,
+    claim_alignment_bundle: Path | None = None,
 ) -> tuple[dict[str, Any] | None, str | None, int]:
     command = [
         sys.executable,
@@ -157,6 +158,12 @@ def _run_audit(
     ]
     if activation_snapshot is not None:
         command.extend(["--activation-snapshot", str(activation_snapshot)])
+    if claim_alignment_bundle is not None:
+        command.extend([
+            "--enable-claim-alignment",
+            "--claim-alignment-bundle",
+            str(claim_alignment_bundle),
+        ])
     completed = subprocess.run(command, capture_output=True, text=True, cwd=ROOT)
     try:
         data = json.loads(completed.stdout)
@@ -384,6 +391,8 @@ def _sha256(path: object) -> str | None:
 def _claim_alignment_bundle_binding_errors(
     item: dict[str, Any],
     expected_path: str | None,
+    *,
+    require_verified: bool = True,
 ) -> list[str]:
     """Verify the opt-in alignment bundle used by an automated audit.
 
@@ -403,16 +412,25 @@ def _claim_alignment_bundle_binding_errors(
         return [f"cannot read claim-alignment bundle {expected}"]
 
     provenance = item.get("evidence_provenance")
-    verified = [
+    records = [
         record
         for record in provenance or []
-        if isinstance(record, dict) and record.get("verified") is True
+        if isinstance(record, dict)
     ]
-    if not verified:
-        return ["claim-source-alignment has no verified provenance record"]
+    if require_verified:
+        records = [record for record in records if record.get("verified") is True]
+        if not records:
+            return ["claim-source-alignment has no verified provenance record"]
+    else:
+        records = [record for record in records if record.get("verified") is not True]
+        if not records:
+            return [
+                "aggregate NOT_RUN claim-source-alignment requires a "
+                "non-verified bundle binding"
+            ]
 
     errors: list[str] = []
-    for record in verified:
+    for record in records:
         declared_path = record.get("claim_alignment_bundle")
         if not isinstance(declared_path, str) or not declared_path.strip():
             errors.append(
@@ -705,7 +723,26 @@ def _audit_consistency_details(
             if errs or warns:
                 errors.append(f"{prefix} {status} must not carry errors/warnings (got errors={errs!r} warnings={warns!r})")
                 continue
-            if isinstance(raw_provenance, list) and raw_provenance:
+            aggregate_not_run_binding = (
+                audit_id == "claim-source-alignment"
+                and status == "not_run"
+                and reason == OPT_IN_AGGREGATE_NOT_RUN_REASON
+            )
+            if aggregate_not_run_binding:
+                if not isinstance(raw_provenance, list) or not raw_provenance:
+                    errors.append(
+                        f"{prefix} aggregate NOT_RUN requires non-empty "
+                        "bundle provenance"
+                    )
+                elif any(
+                    isinstance(p, dict) and p.get("verified") is True
+                    for p in raw_provenance
+                ):
+                    errors.append(
+                        f"{prefix} aggregate NOT_RUN must not carry verified "
+                        "claim evidence"
+                    )
+            elif isinstance(raw_provenance, list) and raw_provenance:
                 if any(isinstance(p, dict) and p.get("verified") is True for p in raw_provenance):
                     errors.append(f"{prefix} {status} must not carry verified provenance")
                     continue
@@ -715,14 +752,21 @@ def _audit_consistency_details(
             errors.append(f"{prefix} unknown status '{status}'")
             continue
 
+        aggregate_not_run_binding = (
+            audit_id == "claim-source-alignment"
+            and status == "not_run"
+            and reason == OPT_IN_AGGREGATE_NOT_RUN_REASON
+        )
         if (
             audit_id == "claim-source-alignment"
-            and status in {"pass", "conditional-pass"}
+            and (status in {"pass", "conditional-pass"} or aggregate_not_run_binding)
         ):
             errors.extend(
                 f"{prefix} claim-alignment bundle binding failed: {error}"
                 for error in _claim_alignment_bundle_binding_errors(
-                    item, claim_alignment_bundle_path
+                    item,
+                    claim_alignment_bundle_path,
+                    require_verified=not aggregate_not_run_binding,
                 )
             )
 
@@ -1204,6 +1248,11 @@ def _evaluate_case(
     evaluation_mode = case.get("evaluation_mode", "structured-decision-replay")
     report = ROOT / fixtures["report"]
     research_pack = ROOT / fixtures["research_pack"]
+    claim_alignment_bundle = (
+        ROOT / fixtures["claim_alignment_bundle"]
+        if fixtures.get("claim_alignment_bundle")
+        else None
+    )
     pack = _pack_observation(research_pack)
     # External trust anchor: compute the artifact hashes ourselves rather than
     # trusting any hash embedded in the audit JSON (issue #403 P1).  A None here
@@ -1265,10 +1314,15 @@ def _evaluate_case(
         except (ActivationSnapshotError, OSError, KeyError) as exc:
             activation_snapshot_error = str(exc)
 
+    audit_kwargs: dict[str, object] = {
+        "activation_snapshot": activation_snapshot_path,
+    }
+    if claim_alignment_bundle is not None:
+        audit_kwargs["claim_alignment_bundle"] = claim_alignment_bundle
     audit_data, runner_error, returncode = _run_audit(
         report,
         research_pack,
-        activation_snapshot=activation_snapshot_path,
+        **audit_kwargs,
     )
 
     contract: dict[str, Any] = {}
@@ -1339,6 +1393,9 @@ def _evaluate_case(
         "returncode": returncode,
         "runner_error": runner_error,
         "expected_route": expected["primary_route"],
+        "claim_alignment_bundle": (
+            str(claim_alignment_bundle) if claim_alignment_bundle is not None else None
+        ),
     }
     actual["failure_family"] = _detect_failure_family(case, actual)
     actual["gap_class"] = gap_class_for_failure_family(actual["failure_family"])
@@ -1398,6 +1455,11 @@ def _evaluate_case(
             report_text=report_text_for_provenance,
             pack_text=pack_text_for_provenance,
             expected_route=audit_expected_route,
+            claim_alignment_bundle_path=(
+                str(claim_alignment_bundle)
+                if claim_alignment_bundle is not None
+                else None
+            ),
         )
         # Duplicate audit_ids are already reported via _audit_consistency_details,
         # but audit_set_exact gives a fast pre-check for the common truncation case.
@@ -1557,6 +1619,7 @@ def _evaluate_case(
             "contract_activation_snapshot": actual["contract_activation_snapshot"],
             "pack_activation_snapshot": actual["pack_activation_snapshot"],
             "pack_missing_required_fields": actual["pack_missing_required_fields"],
+            "claim_alignment_bundle": actual["claim_alignment_bundle"],
             "returncode": returncode,
             "runner_error": runner_error,
         },

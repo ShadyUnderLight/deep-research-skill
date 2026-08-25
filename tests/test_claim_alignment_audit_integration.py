@@ -119,7 +119,11 @@ def test_aggregate_not_run_audit_is_conditional_and_cannot_deliver() -> None:
     assert audit["status"] == "not_run"
     assert audit.get("reason")
     assert not audit.get("evidence")
-    assert not audit.get("evidence_provenance")
+    provenance = audit.get("evidence_provenance")
+    assert isinstance(provenance, list) and provenance
+    assert provenance[0]["verified"] is False
+    bundle_path = FIXTURES / "claim-alignment" / "not-run-only.json"
+    assert provenance[0]["claim_alignment_bundle"] == str(bundle_path.resolve())
     assert data["overall"] == "conditional-pass"
     if str(SCRIPTS) not in sys.path:
         sys.path.insert(0, str(SCRIPTS))
@@ -142,6 +146,7 @@ def test_aggregate_not_run_audit_is_conditional_and_cannot_deliver() -> None:
         research_pack_path=str(pack_path),
         expected_pack_sha256=pack_sha,
         expected_route="market-outlook",
+        claim_alignment_bundle_path=str(bundle_path),
     )
     assert ok_audit, audit_errors
     ok_overall, overall_errors = _overall_consistency_details(data, data.get("exit_code"))
@@ -157,8 +162,40 @@ def test_aggregate_not_run_audit_is_conditional_and_cannot_deliver() -> None:
         expected_pack_sha256=pack_sha,
         report_path=report_path,
         pack_path=pack_path,
+        claim_alignment_bundle_path=bundle_path,
     )
     assert any("not_run" in error for error in delivered_errors), delivered_errors
+
+
+def test_aggregate_not_run_requires_live_bundle_path(tmp_path) -> None:
+    bundle_path = FIXTURES / "claim-alignment" / "not-run-only.json"
+    result = _run_audit(
+        "--enable-claim-alignment",
+        "--claim-alignment-bundle",
+        str(bundle_path),
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    data = json.loads(result.stdout)
+    report_path = FIXTURES / "audit" / "market-outlook-pos.md"
+    pack_path = FIXTURES / "audit" / "research-pack-pos.md"
+    if str(SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS))
+    from run_forward_evals import _audit_consistency_details, _expected_audit_set  # noqa: E402
+
+    import hashlib
+
+    ok, errors = _audit_consistency_details(
+        data,
+        _expected_audit_set("market-outlook", []),
+        audited_path=str(report_path),
+        expected_report_sha256=hashlib.sha256(report_path.read_bytes()).hexdigest(),
+        research_pack_path=str(pack_path),
+        expected_pack_sha256=hashlib.sha256(pack_path.read_bytes()).hexdigest(),
+        expected_route="market-outlook",
+        claim_alignment_bundle_path=str(tmp_path / "deleted-bundle.json"),
+    )
+    assert not ok
+    assert any("cannot read claim-alignment bundle" in error for error in errors), errors
 
 
 def test_tampered_alignment_bundle_fails_consumer_binding(tmp_path) -> None:
