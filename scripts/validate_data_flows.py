@@ -309,8 +309,27 @@ def parse_risk_entry_fields(risk_text: str) -> dict[str, str]:
     return fields
 
 
+def parse_risk_headings(risk_register: str) -> set[str]:
+    return {match.group(1) for match in RISK_ENTRY_RE.finditer(risk_register)}
+
+
 def check_risk_register_entries(risk_register: str, risk_ids: list[str]) -> list[str]:
     failures: list[str] = []
+    expected_risk_ids = set(risk_ids)
+    actual_risk_ids = parse_risk_headings(risk_register)
+
+    missing_risk_ids = expected_risk_ids - actual_risk_ids
+    extra_risk_ids = actual_risk_ids - expected_risk_ids
+    if missing_risk_ids:
+        failures.append(
+            "RISK_REGISTER.md missing risk headings: " f"{sorted(missing_risk_ids)}"
+        )
+    if extra_risk_ids:
+        failures.append(
+            "RISK_REGISTER.md has undeclared risk headings: "
+            f"{sorted(extra_risk_ids)}"
+        )
+
     for risk_id in risk_ids:
         match = re.search(
             rf"^## {re.escape(risk_id)}\s*$([\s\S]*?)(?=^## |\Z)",
@@ -318,7 +337,6 @@ def check_risk_register_entries(risk_register: str, risk_ids: list[str]) -> list
             re.MULTILINE,
         )
         if not match:
-            failures.append(f"RISK_REGISTER.md missing risk heading: {risk_id}")
             continue
         fields = parse_risk_entry_fields(match.group(1))
         for field in RISK_REQUIRED_FIELDS:

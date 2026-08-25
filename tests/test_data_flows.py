@@ -253,3 +253,41 @@ def test_empty_risk_register_fails(monkeypatch) -> None:
     monkeypatch.setattr(data_flows, "read_text", fake_read)
     failures = data_flows.run_checks()
     assert any("RISK_REGISTER.md is empty" in msg for msg in failures)
+
+
+def test_stale_risk_heading_not_in_registry_fails() -> None:
+    registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    risk_register = (ROOT / "docs" / "RISK_REGISTER.md").read_text(encoding="utf-8")
+    trimmed_ids = [
+        risk_id
+        for risk_id in registry["risk_ids"]
+        if risk_id != "RISK-001-retrieved-content-prompt-injection"
+    ]
+    failures = data_flows.check_risk_register_entries(risk_register, trimmed_ids)
+    assert any(
+        "undeclared risk headings" in msg
+        and "RISK-001-retrieved-content-prompt-injection" in msg
+        for msg in failures
+    )
+
+
+def test_rogue_risk_heading_fails() -> None:
+    registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    risk_register = (ROOT / "docs" / "RISK_REGISTER.md").read_text(encoding="utf-8")
+    risk_register += (
+        "\n## RISK-999-rogue-risk\n\n"
+        "- **description:** rogue\n"
+        "- **affected_boundary:** rogue\n"
+        "- **existing_controls:** rogue\n"
+        "- **evidence_status:** unknown\n"
+        "- **residual_gap:** rogue\n"
+        "- **next_validation:** rogue\n"
+        "- **owner_layer:** workflow\n"
+    )
+    failures = data_flows.check_risk_register_entries(
+        risk_register, registry["risk_ids"]
+    )
+    assert any(
+        "undeclared risk headings" in msg and "RISK-999-rogue-risk" in msg
+        for msg in failures
+    )
