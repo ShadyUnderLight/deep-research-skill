@@ -177,6 +177,18 @@
           "resolution_status",
           "affects_overall_question"
         ],
+        "allOf": [
+          {
+            "if": {
+              "properties": {"resolution_status": {"const": "resolved"}},
+              "required": ["resolution_status"]
+            },
+            "then": {
+              "required": ["resolution_note"],
+              "description": "A resolved conflict must state how it was resolved."
+            }
+          }
+        ],
         "properties": {
           "topic": {"type": "string", "minLength": 1},
           "finding_refs": {

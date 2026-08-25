@@ -644,6 +644,24 @@ def test_schema_doc_encodes_status_conditionals():
     )
 
 
+def test_schema_conflicts_items_encodes_resolved_requires_note():
+    """Standalone JSON Schema consumers must also reject resolved conflicts
+    without a note; the rule cannot live only in the Python validator."""
+    doc = json.loads(SCHEMA_DOC.read_text(encoding="utf-8"))
+    items = doc["properties"]["conflicts"]["items"]
+    matches = [
+        rule
+        for rule in items.get("allOf", [])
+        if '"const": "resolved"' in json.dumps(rule.get("if", {}))
+        and "resolution_note"
+        in json.dumps(rule.get("then", {}).get("required", []))
+    ]
+    assert matches, (
+        "conflicts.items must carry an if(resolved)/then(require "
+        "resolution_note) conditional so schema-only consumers fail closed"
+    )
+
+
 # ── Field formats and enums ───────────────────────────────────────────────
 
 
