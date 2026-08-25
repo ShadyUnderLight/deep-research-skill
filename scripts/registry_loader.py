@@ -63,6 +63,7 @@ AUDIT_VALIDATOR_IDS: frozenset[str] = frozenset({
     "markdown-delivery",
     "research-pack",
     "forward-looking-claims",
+    "claim-alignment",
 })
 
 # All ids an audit's validator_binding may reference.
@@ -89,7 +90,7 @@ AUDIT_REQUIRED_FIELDS = {
 AUDIT_OPTIONAL_FIELDS = {"scope"}
 
 # Valid values for an audit entry's ``scope`` field.
-VALID_AUDIT_SCOPES = {"checklist", "delivery"}
+VALID_AUDIT_SCOPES = {"checklist", "delivery", "opt-in"}
 
 
 class RegistryError(Exception):
@@ -446,6 +447,10 @@ class AuditRegistry:
         """
         return [a.id for a in self.audits if a.scope == "delivery"]
 
+    def opt_in_audit_ids(self) -> list[str]:
+        """Opt-in audits that run only when explicitly enabled (issue #419)."""
+        return [a.id for a in self.audits if a.scope == "opt-in"]
+
 
 def load_route_registry(path: Path | None = None) -> RouteRegistry:
     """Load and validate the route manifest."""
@@ -581,6 +586,12 @@ def load_audit_registry(path: Path | None = None) -> AuditRegistry:
                     f"not a human/process self-attestation (issue #393)"
                 )
             checklist: str | None = None
+        elif scope == "opt-in":
+            checklist = _require_str(entry, "checklist", f"Audit registry audits[{i}]")
+            if not (ROOT / checklist).is_file():
+                raise RegistryError(
+                    f"Opt-in audit '{aid}' checklist missing: {checklist}"
+                )
         else:
             checklist = _require_str(entry, "checklist", f"Audit registry audits[{i}]")
             if not (ROOT / checklist).is_file():

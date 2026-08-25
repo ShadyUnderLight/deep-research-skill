@@ -1,7 +1,7 @@
 {
   "version": 2,
   "description": "Single source of truth for audit identity, file path and execution type. Loaded at runtime via scripts/registry_loader.py. execution_type: automated = executed by a validator script, manual = human checklist at delivery time, process = research-process node audit. validator_binding: canonical validator id that executes an automated audit (must be null for manual/process); issue #378. scope: checklist (default) = audit backed by a human checklist file, delivery = delivery-scope/virtual pipeline audit with checklist: null executed by a validator (issue #393).",
-  "last_reviewed": "2026-08-19",
+  "last_reviewed": "2026-08-25",
   "audits": [
     {
       "id": "academic-analysis-audit",
@@ -10,6 +10,15 @@
       "description": "Academic route delivery audit: evidence hierarchy, venue labeling, publication-bias handling.",
       "automation_reference": null,
       "validator_binding": null
+    },
+    {
+      "id": "claim-source-alignment",
+      "checklist": "checklists/claim-source-alignment.md",
+      "scope": "opt-in",
+      "execution_type": "automated",
+      "description": "Opt-in claim–source alignment audit: bounded verdicts over locator-bound excerpts; default off until calibration and explicit enablement (issue #419).",
+      "automation_reference": "scripts/validate_claim_alignment.py",
+      "validator_binding": "claim-alignment"
     },
     {
       "id": "final-audit",

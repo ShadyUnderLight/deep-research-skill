@@ -1,0 +1,45 @@
+{
+  "fixture_version": "claim-alignment-calibration-v1",
+  "labels": {
+    "C01": {
+      "verdict": "SUPPORTED"
+    },
+    "C02": {
+      "verdict": "PARTIAL",
+      "subclaims": [
+        {
+          "text": "Product adoption was strong",
+          "verdict": "UNSUPPORTED"
+        },
+        {
+          "text": "the product launched in 2024",
+          "verdict": "SUPPORTED"
+        }
+      ]
+    },
+    "C03": {
+      "verdict": "UNSUPPORTED"
+    },
+    "C04": {
+      "verdict": "AMBIGUOUS"
+    },
+    "C05": {
+      "verdict": "RETRIEVAL_FAILED"
+    },
+    "C06": {
+      "verdict": "NOT_RUN"
+    },
+    "C07": {
+      "verdict": "NOT_RUN"
+    },
+    "C08": {
+      "verdict": "UNSUPPORTED"
+    },
+    "C09": {
+      "verdict": "UNSUPPORTED"
+    },
+    "C10": {
+      "verdict": "UNSUPPORTED"
+    }
+  }
+}

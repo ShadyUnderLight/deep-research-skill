@@ -772,6 +772,59 @@ def _run_forward_looking(path: Path, **kwargs: bool) -> CheckResult:
     return CheckResult(name="forward-looking-claims", errors=list(hits), warnings=[])
 
 
+def _run_claim_alignment(path: Path, **kwargs: object) -> CheckResult:
+    """Run offline claim–source alignment on a bundle (issue #419)."""
+    bundle_arg = kwargs.get("claim_alignment_bundle")
+    if bundle_arg is None:
+        return CheckResult(
+            name="claim-source-alignment",
+            errors=["claim-alignment bundle path not provided"],
+        )
+    from claim_alignment import load_and_run_bundle
+
+    bundle_path = Path(str(bundle_arg))
+    try:
+        report = load_and_run_bundle(bundle_path, artifact_path=path)
+    except ValueError as exc:
+        return CheckResult(
+            name="claim-source-alignment",
+            errors=[str(exc)],
+        )
+    errors: list[str] = []
+    warnings: list[str] = []
+    if report.structural_errors:
+        errors.extend(report.structural_errors)
+    for judgment in report.judgments:
+        for err in judgment.errors:
+            errors.append(f"{judgment.claim_id}: {err}")
+        if judgment.verdict == "UNSUPPORTED":
+            errors.append(f"{judgment.claim_id}: verdict UNSUPPORTED")
+        elif judgment.verdict == "AMBIGUOUS":
+            errors.append(f"{judgment.claim_id}: verdict AMBIGUOUS")
+        elif judgment.verdict == "PARTIAL":
+            warnings.append(
+                f"{judgment.claim_id}: verdict PARTIAL — review subclaim decomposition"
+            )
+        elif judgment.verdict == "RETRIEVAL_FAILED":
+            warnings.append(
+                f"{judgment.claim_id}: verdict RETRIEVAL_FAILED — "
+                "tool/access failure, not content unsupported"
+            )
+        elif judgment.verdict == "NOT_RUN":
+            warnings.append(
+                f"{judgment.claim_id}: verdict NOT_RUN — audit did not produce support evidence"
+            )
+    if report.aggregate_verdict == "not_run":
+        warnings.append(
+            "claim-source-alignment aggregate status is NOT_RUN — cannot mark Pass"
+        )
+    return CheckResult(
+        name="claim-source-alignment",
+        errors=errors,
+        warnings=warnings,
+    )
+
+
 def _run_research_pack(pack_path: Path | None, **kwargs: bool) -> CheckResult:
     """Validate a Research Pack file (issue #378).
 
@@ -853,6 +906,7 @@ _AUDIT_VALIDATOR_REGISTRY: dict[str, ValidatorFn] = {
     "markdown-delivery": _run_markdown_delivery,
     "research-pack": _run_research_pack,
     "forward-looking-claims": _run_forward_looking,
+    "claim-alignment": _run_claim_alignment,
 }
 
 _missing_audit_fns = registry_loader.AUDIT_VALIDATOR_IDS - set(_AUDIT_VALIDATOR_REGISTRY)
@@ -1617,6 +1671,101 @@ def _execute_required_audits(
     return results, blocking, warnings
 
 
+def _execute_opt_in_audits(
+    path: Path,
+    strict: bool,
+    enable_claim_alignment: bool,
+    claim_alignment_bundle: Path | None,
+) -> tuple[list[AuditResult], list[str], list[str]]:
+    """Run opt-in audits only when explicitly enabled (issue #419)."""
+    results: list[AuditResult] = []
+    blocking: list[str] = []
+    warnings: list[str] = []
+    if not enable_claim_alignment:
+        return results, blocking, warnings
+
+    audit_id = "claim-source-alignment"
+    audit = _AUDIT_REGISTRY.get_audit(audit_id)
+    if audit is None:
+        blocking.append(
+            f"Opt-in audit '{audit_id}' has no entry in "
+            f"schemas/audit-registry.json"
+        )
+        return results, blocking, warnings
+
+    binding = audit.validator_binding
+    if claim_alignment_bundle is None:
+        results.append(AuditResult(
+            audit_id=audit_id,
+            execution_type="automated",
+            status="not_run",
+            execution_source="automated_validator",
+            validator_binding=binding,
+            reason="opt-in audit enabled but no --claim-alignment-bundle provided",
+        ))
+        if strict:
+            blocking.append(
+                f"[{audit_id}] not_run — no --claim-alignment-bundle provided"
+            )
+        return results, blocking, warnings
+
+    fn = _audit_validator_fn(binding)
+    if fn is None:
+        blocking.append(
+            f"Opt-in audit '{audit_id}' binds unknown validator '{binding}'"
+        )
+        return results, blocking, warnings
+
+    try:
+        check = fn(
+            path,
+            claim_alignment_bundle=str(claim_alignment_bundle),
+            strict=strict,
+        )
+    except Exception as exc:
+        check = CheckResult(
+            name=audit_id,
+            errors=[f"{audit_id} validator crashed: {exc}"],
+        )
+
+    status = (
+        "fail" if check.errors
+        else "conditional-pass" if check.warnings
+        else "pass"
+    )
+    if check.errors:
+        evidence = [str(e)[:200] for e in check.errors[:5]]
+    else:
+        evidence = [
+            f"{claim_alignment_bundle}: no blocking alignment violations by {binding}"
+        ]
+    evidence_provenance = [{
+        "kind": "automated_validator",
+        "audit_id": audit_id,
+        "locator": binding,
+        "validator_binding": binding,
+        "execution_source": "automated_validator",
+        "target": str(claim_alignment_bundle),
+        "input_sha256": _sha256(claim_alignment_bundle),
+        "validator_version": _registry_version(),
+        "verified": True,
+    }]
+    results.append(AuditResult(
+        audit_id=audit_id,
+        execution_type="automated",
+        status=status,
+        execution_source="automated_validator",
+        errors=list(check.errors),
+        warnings=list(check.warnings),
+        validator_binding=binding,
+        evidence=evidence,
+        evidence_provenance=evidence_provenance,
+    ))
+    blocking.extend(f"[{audit_id}] {e}" for e in check.errors)
+    warnings.extend(f"[{audit_id}] {w} (audit)" for w in check.warnings)
+    return results, blocking, warnings
+
+
 def _compute_verdict(
     route: str | None,
     results: list[CheckResult],
@@ -1827,6 +1976,8 @@ def _audit_report_impl(
     research_pack: Path | None = None,
     activation_snapshot: Path | None = None,
     delivery_result: Path | None = None,
+    enable_claim_alignment: bool = False,
+    claim_alignment_bundle: Path | None = None,
 ) -> AuditVerdict:
     """Run route-aware audit on a report and return the consolidated verdict.
 
@@ -1952,6 +2103,15 @@ def _audit_report_impl(
     audit_results, audit_blocking, audit_warnings = _execute_required_audits(
         path, resolved_route, strict=strict, research_pack=research_pack
     )
+    opt_in_results, opt_in_blocking, opt_in_warnings = _execute_opt_in_audits(
+        path,
+        strict=strict,
+        enable_claim_alignment=enable_claim_alignment,
+        claim_alignment_bundle=claim_alignment_bundle,
+    )
+    audit_results.extend(opt_in_results)
+    audit_blocking.extend(opt_in_blocking)
+    audit_warnings.extend(opt_in_warnings)
 
     verdict = _compute_verdict(
         resolved_route,
@@ -2019,6 +2179,8 @@ def audit_report(
     research_pack: Path | None = None,
     activation_snapshot: Path | None = None,
     delivery_result: Path | None = None,
+    enable_claim_alignment: bool = False,
+    claim_alignment_bundle: Path | None = None,
 ) -> AuditVerdict:
     """Public entry point: run the audit and attach provenance to the verdict.
 
@@ -2033,6 +2195,8 @@ def audit_report(
         research_pack=research_pack,
         activation_snapshot=activation_snapshot,
         delivery_result=delivery_result,
+        enable_claim_alignment=enable_claim_alignment,
+        claim_alignment_bundle=claim_alignment_bundle,
     )
     return _finalize_verdict(verdict, path)
 
@@ -2108,6 +2272,21 @@ def main(argv: list[str] | None = None) -> int:
         ),
     )
     parser.add_argument(
+        "--enable-claim-alignment",
+        action="store_true",
+        default=False,
+        help=(
+            "Opt-in: run the claim-source-alignment audit (issue #419). "
+            "Requires --claim-alignment-bundle. Default off."
+        ),
+    )
+    parser.add_argument(
+        "--claim-alignment-bundle",
+        type=str,
+        default=None,
+        help="Path to a claim-alignment evidence bundle JSON for opt-in audit.",
+    )
+    parser.add_argument(
         "--json",
         action="store_true",
         default=False,
@@ -2131,6 +2310,10 @@ def main(argv: list[str] | None = None) -> int:
             Path(args.activation_snapshot) if args.activation_snapshot else None
         ),
         delivery_result=Path(args.delivery_result) if args.delivery_result else None,
+        enable_claim_alignment=args.enable_claim_alignment,
+        claim_alignment_bundle=(
+            Path(args.claim_alignment_bundle) if args.claim_alignment_bundle else None
+        ),
     )
 
     if args.json:

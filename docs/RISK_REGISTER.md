@@ -67,8 +67,8 @@ For where data goes and how to turn channels off, see `docs/DATA_FLOWS.md`.
 - **affected_boundary:** repo validators + user artifacts
 - **existing_controls:** `scripts/audit_evidence.py`; `scripts/validate_research_pack.py`; track handoff validator; CommonMark/evidence provenance tests (issues #403/#408/#409)
 - **evidence_status:** measured
-- **residual_gap:** claim-source alignment audit (#419) not yet implemented
-- **next_validation:** land #419 scoped locator audit with calibration set
+- **residual_gap:** scoped claim–source alignment audit landed as opt-in (#419); production enablement still requires explicit bundle + calibration review
+- **next_validation:** run opt-in audit on a real report bundle after next multi-claim delivery; refresh gold set when new failure modes appear
 - **owner_layer:** audit
 
 ## RISK-006-validator-fail-open

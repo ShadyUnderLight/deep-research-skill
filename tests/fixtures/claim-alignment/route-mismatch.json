@@ -1,0 +1,26 @@
+{
+  "schema_version": "1",
+  "bundle_id": "claim-alignment-route-mismatch",
+  "fixture_version": "claim-alignment-calibration-v1",
+  "audited_population": "route binding adversarial fixture",
+  "sampling_rule": "single entry",
+  "route_id": "market-outlook",
+  "entries": [
+    {
+      "claim_id": "C11",
+      "claim_text": "Scenario weights are calibrated",
+      "evidence_record": {
+        "claim_id": "C11",
+        "source_id": "S11",
+        "locator": {
+          "kind": "quote",
+          "value": "scenario weights"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "evidence_role": "secondary"
+      },
+      "excerpt": ""
+    }
+  ]
+}

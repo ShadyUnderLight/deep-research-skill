@@ -1,0 +1,180 @@
+{
+  "schema_version": "1",
+  "bundle_id": "claim-alignment-calibration-bundle",
+  "fixture_version": "claim-alignment-calibration-v1",
+  "audited_population": "load-bearing claims in calibration gold set",
+  "sampling_rule": "all fixture entries",
+  "entries": [
+    {
+      "claim_id": "C01",
+      "claim_text": "Revenue grew 15% in FY2025",
+      "evidence_record": {
+        "claim_id": "C01",
+        "source_id": "S01",
+        "locator": {
+          "kind": "quote",
+          "value": "revenue increased 15%"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:5d09c917aedf10633d7bc83b18afaf53dd548659aae27fb50211dc073fbc4b66",
+        "evidence_role": "primary"
+      },
+      "excerpt": "Full year revenue increased 15% compared to the prior fiscal year."
+    },
+    {
+      "claim_id": "C02",
+      "claim_text": "Product adoption was strong and the product launched in 2024",
+      "evidence_record": {
+        "claim_id": "C02",
+        "source_id": "S02",
+        "locator": {
+          "kind": "paragraph",
+          "value": "p1"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:acdc73c8cb7e15f7b67131a95eb836fb8d5485243751f17caf6bd207ec4aa62e",
+        "evidence_role": "secondary"
+      },
+      "excerpt": "The product launched in 2024 with moderate adoption.",
+      "subclaims": [
+        {
+          "text": "Product adoption was strong",
+          "verdict": "UNSUPPORTED"
+        },
+        {
+          "text": "the product launched in 2024",
+          "verdict": "SUPPORTED"
+        }
+      ]
+    },
+    {
+      "claim_id": "C03",
+      "claim_text": "Market share surged to 20% in the quarter",
+      "evidence_record": {
+        "claim_id": "C03",
+        "source_id": "S03",
+        "locator": {
+          "kind": "quote",
+          "value": "surged to 20%"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:d190156f20d781889a00e750955c6949de2269f4b952e97cda77bc260bc3596e",
+        "evidence_role": "primary"
+      },
+      "excerpt": "Market share remained flat at 12% in the quarter."
+    },
+    {
+      "claim_id": "C04",
+      "claim_text": "Cloud margins expanded faster than peers",
+      "evidence_record": {
+        "claim_id": "C04",
+        "source_id": "S04",
+        "locator": {
+          "kind": "section",
+          "value": "Results"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:fa7fff10760deedf0a277364038aafaea138fe9daba6814f6245dae24a670878",
+        "evidence_role": "secondary"
+      },
+      "excerpt": "Cloud revenue grew slower than hardware revenue."
+    },
+    {
+      "claim_id": "C05",
+      "claim_text": "Paywalled filing shows 30% growth",
+      "evidence_record": {
+        "claim_id": "C05",
+        "source_id": "S05",
+        "locator": {
+          "kind": "url_fragment",
+          "value": "#financials"
+        },
+        "retrieval_status": "unavailable",
+        "excerpt_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "evidence_role": "primary"
+      },
+      "excerpt": ""
+    },
+    {
+      "claim_id": "C06",
+      "claim_text": "Revenue grew 8% year over year",
+      "evidence_record": {
+        "claim_id": "C06",
+        "source_id": "S06",
+        "locator": {
+          "kind": "quote",
+          "value": "Revenue grew 8%"
+        },
+        "retrieval_status": "not_run",
+        "excerpt_hash": "sha256:16d997d8ba5f88ab92b58399d841d4177fde56d9d511499f3cc9dff12d8010bb",
+        "evidence_role": "unknown"
+      },
+      "excerpt": "Revenue grew 8% year over year."
+    },
+    {
+      "claim_id": "C07",
+      "claim_text": "Margins expanded materially",
+      "evidence_record": {
+        "claim_id": "C07",
+        "source_id": "S07",
+        "locator": {
+          "kind": "none",
+          "value": ""
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:7bef1ea50cb43cbebe36bae3adc5207881dbe790582da5d2b085f7e75d4a7ab1",
+        "evidence_role": "inferred"
+      },
+      "excerpt": "Hidden section content about margins."
+    },
+    {
+      "claim_id": "C08",
+      "claim_text": "Cloud revenue doubled",
+      "evidence_record": {
+        "claim_id": "C08",
+        "source_id": "S08",
+        "locator": {
+          "kind": "quote",
+          "value": "cloud revenue"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+        "evidence_role": "primary"
+      },
+      "excerpt": "Wrong artifact excerpt for hash binding test."
+    },
+    {
+      "claim_id": "C09",
+      "claim_text": "Monitoring signals improved",
+      "evidence_record": {
+        "claim_id": "C09",
+        "source_id": "S09",
+        "locator": {
+          "kind": "section",
+          "value": "Monitoring signals"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:96caf67acd71def5ca153f83d5678b57ad383fd1004bbcb521fd45e3d792aaf9",
+        "evidence_role": "secondary"
+      },
+      "excerpt": "Route-specific excerpt about cloud revenue.",
+      "artifact_text": "# Report\n\n```markdown\n## Monitoring signals\nHidden locator text inside fence.\n```\n"
+    },
+    {
+      "claim_id": "C10",
+      "claim_text": "Uncited assertion without locator",
+      "evidence_record": {
+        "claim_id": "C10",
+        "source_id": "S99",
+        "locator": {
+          "kind": "quote",
+          "value": "missing source"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "evidence_role": "unknown"
+      },
+      "excerpt": ""
+    }
+  ]
+}

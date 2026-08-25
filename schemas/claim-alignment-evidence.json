@@ -1,0 +1,208 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://deep-research-skill/schemas/claim-alignment-evidence.json",
+  "title": "Claim-Source Alignment Evidence Bundle",
+  "description": "Machine-readable evidence records and offline alignment audit inputs (issue #419). Bundles bind claims to source artifacts, locators, retrieval status, and excerpt hashes. Gold labels are calibration-only and must not be read by production judges.",
+  "version": 1,
+  "schema_version": "1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "audited_population",
+    "sampling_rule",
+    "entries"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "1"
+    },
+    "bundle_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "fixture_version": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Calibration fixture version string; required for gold-set runs."
+    },
+    "audited_population": {
+      "type": "string",
+      "minLength": 1
+    },
+    "sampling_rule": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_artifact_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "source_artifact_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "route_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "entries": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/alignment_entry"
+      }
+    },
+    "gold_labels": {
+      "type": "object",
+      "description": "Calibration-only answer keys keyed by claim_id. Production judges must not read this object.",
+      "additionalProperties": {
+        "$ref": "#/$defs/gold_label"
+      }
+    }
+  },
+  "$defs": {
+    "locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "value"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "page",
+            "section",
+            "paragraph",
+            "quote",
+            "url_fragment",
+            "none"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "evidence_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "source_id",
+        "locator",
+        "retrieval_status",
+        "excerpt_hash",
+        "evidence_role"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "locator": {
+          "$ref": "#/$defs/locator"
+        },
+        "retrieval_status": {
+          "type": "string",
+          "enum": ["fetched", "unavailable", "unreadable", "not_run"]
+        },
+        "excerpt_hash": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        },
+        "evidence_role": {
+          "type": "string",
+          "enum": ["primary", "secondary", "inferred", "unknown"]
+        }
+      }
+    },
+    "subclaim_judgment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text", "verdict"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "SUPPORTED",
+            "PARTIAL",
+            "UNSUPPORTED",
+            "AMBIGUOUS",
+            "RETRIEVAL_FAILED",
+            "NOT_RUN"
+          ]
+        }
+      }
+    },
+    "alignment_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "claim_id",
+        "claim_text",
+        "evidence_record",
+        "excerpt"
+      ],
+      "properties": {
+        "claim_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "claim_text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "evidence_record": {
+          "$ref": "#/$defs/evidence_record"
+        },
+        "excerpt": {
+          "type": "string"
+        },
+        "subclaims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/subclaim_judgment"
+          }
+        },
+        "artifact_text": {
+          "type": "string",
+          "description": "Optional source artifact body used to verify section locators against visible Markdown."
+        }
+      }
+    },
+    "gold_label": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["verdict"],
+      "properties": {
+        "verdict": {
+          "type": "string",
+          "enum": [
+            "SUPPORTED",
+            "PARTIAL",
+            "UNSUPPORTED",
+            "AMBIGUOUS",
+            "RETRIEVAL_FAILED",
+            "NOT_RUN"
+          ]
+        },
+        "subclaims": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/subclaim_judgment"
+          }
+        }
+      }
+    }
+  }
+}

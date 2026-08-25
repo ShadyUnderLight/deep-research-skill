@@ -1,0 +1,24 @@
+{
+  "schema_version": "1",
+  "bundle_id": "claim-alignment-source-mismatch",
+  "audited_population": "source id binding adversarial fixture",
+  "sampling_rule": "single entry",
+  "entries": [
+    {
+      "claim_id": "C12",
+      "claim_text": "Vendor claim repeated as fact",
+      "evidence_record": {
+        "claim_id": "C13",
+        "source_id": "S01",
+        "locator": {
+          "kind": "quote",
+          "value": "vendor claim"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "evidence_role": "primary"
+      },
+      "excerpt": ""
+    }
+  ]
+}

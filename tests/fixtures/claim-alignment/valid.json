@@ -1,0 +1,24 @@
+{
+  "schema_version": "1",
+  "bundle_id": "claim-alignment-valid-supported",
+  "audited_population": "single load-bearing claim",
+  "sampling_rule": "explicit positive fixture",
+  "entries": [
+    {
+      "claim_id": "C01",
+      "claim_text": "Revenue grew 15% in FY2025",
+      "evidence_record": {
+        "claim_id": "C01",
+        "source_id": "S01",
+        "locator": {
+          "kind": "quote",
+          "value": "revenue increased 15%"
+        },
+        "retrieval_status": "fetched",
+        "excerpt_hash": "sha256:5d09c917aedf10633d7bc83b18afaf53dd548659aae27fb50211dc073fbc4b66",
+        "evidence_role": "primary"
+      },
+      "excerpt": "Full year revenue increased 15% compared to the prior fiscal year."
+    }
+  ]
+}
