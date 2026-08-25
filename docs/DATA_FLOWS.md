@@ -58,10 +58,11 @@ As of commit `fb5bac2` on `main`, **no repository-owned research script performs
 | component | trigger | data_class | destination | credential_role | persistence | off_switch | degraded_state | verification_status |
 |---|---|---|---|---|---|---|---|---|
 | `user-research-artifacts` | operator or Agent writes Research Pack, report, handoff, or run-state files | prompts, source metadata, claim/evidence registers, reports | user workspace paths (e.g. `research-output/`, `report/`, `*-research-pack.md`) | none | until operator deletes; not managed by repo | do not write artifacts; keep research in-session only | missing artifact blocks strict audit / handoff validation | asserted |
-| `md-to-pdf-temp-html` | `scripts/md_to_pdf.py` without `--keep-html` | intermediate HTML | temp directory beside output PDF | none | deleted after PDF render unless `--keep-html` | skip PDF pipeline | `pdf_failed` with error in JSON status | asserted |
+| `md-to-pdf-temp-html` | `scripts/md_to_pdf.py` without `--keep-html` | intermediate HTML | system temp dir (`tempfile.TemporaryDirectory`); with `--keep-html`, retained next to output PDF | none | deleted after PDF render unless `--keep-html` | skip PDF pipeline | `pdf_failed` with error in JSON status | asserted |
 | `delivery-status-writeback` | explicit `--write-status PATH` on delivery CLI | delivery status markdown snippet | operator-specified file | none | until operator deletes | omit `--write-status` | `not_run` delivery fields in pack | asserted |
 | `generated-route-cards` | maintainer runs `scripts/generate_route_cards.py` | route metadata view | `references/routes/*.md`, `references/route-index.md` | none | committed or regenerated on demand | use manifest JSON directly | `generate_route_cards.py --check` fails when drifted | measured |
-| `forward-eval-offline-fixtures` | `scripts/run_forward_evals.py --offline` | fixture reports/packs, activation snapshots | `tests/fixtures/forward/`, `evals/` inputs | none | versioned in repo | do not run forward eval | offline runner never calls network (`verification_status: measured` in module docstring) | measured |
+| `forward-eval-offline-fixtures` | `scripts/run_forward_evals.py --offline` | fixture reports/packs, activation snapshots | `evals/` registry cases and `tests/fixtures/forward/` snapshot inputs | none | versioned in repo | do not run forward eval | offline runner never calls network (module docstring) | measured |
+| `validator-temp-artifacts` | validator subprocess fixtures (e.g. channel preflight behavior checks) | synthetic Research Pack markdown | ephemeral temp file via `tempfile.NamedTemporaryFile` | none | deleted when validator exits | do not run the validator | validator exits non-zero on failure | asserted |
 | `ci-test-temp-dirs` | pytest / validator regression tests | synthetic markdown/json fixtures | `tempfile` / `/tmp` during CI | none | ephemeral per test run | N/A (test-only) | test failure if cleanup breaks | measured |
 
 ## Off-switch and degraded-state summary
@@ -80,4 +81,4 @@ As of commit `fb5bac2` on `main`, **no repository-owned research script performs
 - `references/external-channel-preflight.md` — Agent-Reach preflight and source intake log
 - `references/search-provider-fallback.md` — degraded-search policy
 - `references/delivery-operator-note.md` — PDF pipeline operator notes
-- `schemas/data-flow-registry.json` — machine-readable component registry for drift checks
+- `schemas/data-flow-registry.json` — machine-readable component registry for network/write-signal drift checks (local-store path coverage is registry-enforced where `write_signals` / `path_signals` are declared; `user_workspace` stores are documentation-only)

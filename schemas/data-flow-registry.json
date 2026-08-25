@@ -6,12 +6,14 @@
     {
       "id": "agent-reach-local-api",
       "kind": "agent_runtime",
+      "enforcement": "out_of_repo",
       "source_files": [],
       "network_signals": []
     },
     {
       "id": "host-agent-search-fetch-browser",
       "kind": "agent_runtime",
+      "enforcement": "out_of_repo",
       "source_files": [],
       "network_signals": []
     },
@@ -36,27 +38,52 @@
   "local_stores": [
     {
       "id": "user-research-artifacts",
-      "kind": "user_workspace"
+      "kind": "user_workspace",
+      "enforcement": "documentation_only"
     },
     {
       "id": "md-to-pdf-temp-html",
-      "kind": "repo_script"
+      "kind": "repo_script",
+      "source_files": [
+        "scripts/delivery/pipeline.py",
+        "scripts/markdown_to_html.py"
+      ],
+      "write_signals": ["delivery_temp_dir", "markdown_html_write"]
     },
     {
       "id": "delivery-status-writeback",
-      "kind": "repo_script"
+      "kind": "repo_script",
+      "source_files": [
+        "scripts/delivery/status.py",
+        "scripts/delivery/pipeline.py",
+        "scripts/md_to_pdf.py"
+      ],
+      "write_signals": ["delivery_status_write"]
     },
     {
       "id": "generated-route-cards",
-      "kind": "repo_script"
+      "kind": "repo_script",
+      "source_files": ["scripts/generate_route_cards.py"],
+      "write_signals": ["route_cards_write"]
     },
     {
       "id": "forward-eval-offline-fixtures",
-      "kind": "repo_script"
+      "kind": "repo_script",
+      "source_files": ["scripts/run_forward_evals.py"],
+      "path_signals": ["fixtures"]
+    },
+    {
+      "id": "validator-temp-artifacts",
+      "kind": "repo_script",
+      "source_files": ["scripts/validate_channel_preflight.py"],
+      "write_signals": ["validator_named_tempfile"]
     },
     {
       "id": "ci-test-temp-dirs",
-      "kind": "test_only"
+      "kind": "test_only",
+      "source_globs": ["scripts/test_*.py"],
+      "source_files": ["scripts/check_pdf_regression.py"],
+      "write_signals": ["test_tempfile", "pdf_regression_temp"]
     }
   ],
   "risk_ids": [
