@@ -65,6 +65,21 @@ class TestSchemaConformance:
         errors = validate_against_json_schema(data)
         assert not errors, errors
 
+    def test_malformed_register_source_id_type_fails_schema(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["source_register"][0]["source_id"] = 123
+        errors = validate_against_json_schema(data)
+        assert errors
+        struct_errors = validate_bundle_structure(data)
+        assert any("source_id" in err for err in struct_errors)
+
+    def test_unknown_source_id_with_empty_register_ids_fails(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["source_register"][0]["source_id"] = 123
+        data["entries"][0]["evidence_record"]["source_id"] = "TOTALLY_FAKE"
+        errors = validate_bundle_structure(data)
+        assert any("not found in source_register" in err for err in errors)
+
 
 class TestProductionBindingFailClosed:
     def test_missing_report_binding_fields_fail(self) -> None:
@@ -109,6 +124,14 @@ class TestProductionBindingFailClosed:
         data = json.loads((FIXTURES / "source-id-mismatch.json").read_text())
         errors = validate_bundle_structure(data)
         assert any("not found in source_register" in err for err in errors)
+
+    def test_excerpt_not_from_source_artifact_fails(self) -> None:
+        data = json.loads((FIXTURES / "excerpt-not-from-source.json").read_text())
+        errors = validate_bundle_structure(data)
+        assert any("excerpt not bound to source artifact" in err for err in errors)
+        report = run_bundle(data)
+        assert report.structural_errors
+        assert report.aggregate_verdict == "fail"
 
     def test_claim_id_mismatch_fails(self) -> None:
         data = json.loads((FIXTURES / "claim-id-mismatch.json").read_text())
@@ -178,22 +201,10 @@ class TestVerdictSemantics:
         assert partial.subclaims[1]["verdict"] == "SUPPORTED"
 
     def test_ambiguous_is_not_blocking_aggregate(self) -> None:
-        data = json.loads((FIXTURES / "valid.json").read_text())
-        data["entries"] = [data["entries"][0]]
-        data["entries"][0]["claim_id"] = "C04"
-        data["entries"][0]["claim_text"] = "Cloud margins expanded faster than peers"
-        data["entries"][0]["evidence_record"]["claim_id"] = "C04"
-        data["entries"][0]["evidence_record"]["source_id"] = "S01"
-        data["entries"][0]["evidence_record"]["locator"] = {
-            "kind": "paragraph",
-            "value": "p1",
-        }
-        data["entries"][0]["excerpt"] = "Cloud revenue grew slower than hardware revenue."
-        import hashlib
-        excerpt = data["entries"][0]["excerpt"]
-        data["entries"][0]["evidence_record"]["excerpt_hash"] = (
-            f"sha256:{hashlib.sha256(excerpt.encode()).hexdigest()}"
-        )
+        data = json.loads((FIXTURES / "calibration-bundle.json").read_text())
+        data["entries"] = [
+            entry for entry in data["entries"] if entry["claim_id"] == "C04"
+        ]
         report = run_bundle(data)
         assert report.judgments[0].verdict == "AMBIGUOUS"
         assert report.aggregate_verdict == "conditional-pass"
@@ -209,6 +220,15 @@ class TestVerdictSemantics:
         hidden = next(j for j in report.judgments if j.claim_id == "C09")
         assert hidden.verdict == "UNSUPPORTED"
         assert hidden.errors
+
+    def test_quote_locator_does_not_short_circuit_contradictory_claim(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        entry = data["entries"][0]
+        entry["claim_text"] = "Revenue collapsed 90% in FY2025"
+        report = run_bundle(data)
+        judgment = report.judgments[0]
+        assert judgment.verdict != "SUPPORTED"
+        assert judgment.verdict in {"UNSUPPORTED", "AMBIGUOUS"}
 
 
 class TestAggregateVerdict:

@@ -78,6 +78,23 @@ _HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*$")
 
 
 @dataclass(frozen=True)
+class ResolvedSource:
+    """Resolved source_register entry: artifact bytes and text on disk."""
+
+    source_id: str
+    path: Path
+    text: str
+    sha256_hex: str
+
+
+@dataclass(frozen=True)
+class JudgmentContext:
+    """Resolved sources for locator/excerpt binding during judging."""
+
+    sources: dict[str, ResolvedSource]
+
+
+@dataclass(frozen=True)
 class BindingContext:
     """When provided, bundle must bind to the audited report artifact and route."""
 
@@ -192,9 +209,14 @@ def _resolve_repo_path(path_value: str, base_dir: Path) -> Path | None:
     return resolved
 
 
-def _paths_equal(declared: str, actual: Path) -> bool:
+def _paths_equal(declared: str, actual: Path, base_dir: Path | None = None) -> bool:
     try:
-        return Path(declared).resolve() == actual.resolve()
+        declared_path = Path(declared)
+        if not declared_path.is_absolute() and base_dir is not None:
+            declared_resolved = (base_dir / declared_path).resolve()
+        else:
+            declared_resolved = declared_path.resolve()
+        return declared_resolved == actual.resolve()
     except OSError:
         return str(declared) == str(actual)
 
@@ -234,12 +256,36 @@ def validate_against_json_schema(data: dict[str, Any]) -> list[str]:
     return _validate_json_schema_instance(data, schema, path="$")
 
 
+def _resolve_schema_ref(ref: str, root_schema: dict[str, Any]) -> dict[str, Any]:
+    if not ref.startswith("#/"):
+        raise ValueError(f"unsupported $ref (only local refs): {ref!r}")
+    node: Any = root_schema
+    for part in ref[2:].split("/"):
+        if not isinstance(node, dict) or part not in node:
+            raise ValueError(f"invalid $ref {ref!r}")
+        node = node[part]
+    if not isinstance(node, dict):
+        raise ValueError(f"$ref {ref!r} did not resolve to a schema object")
+    return node
+
+
 def _validate_json_schema_instance(
     value: Any,
     schema: dict[str, Any],
     *,
     path: str,
+    root_schema: dict[str, Any] | None = None,
 ) -> list[str]:
+    if root_schema is None:
+        root_schema = schema
+    if "$ref" in schema:
+        try:
+            resolved = _resolve_schema_ref(schema["$ref"], root_schema)
+        except ValueError as exc:
+            return [f"{path}: {exc}"]
+        return _validate_json_schema_instance(
+            value, resolved, path=path, root_schema=root_schema
+        )
     errors: list[str] = []
     schema_type = schema.get("type")
     if schema_type == "object":
@@ -253,7 +299,9 @@ def _validate_json_schema_instance(
         for key, subschema in schema.get("properties", {}).items():
             if key in value:
                 errors.extend(
-                    _validate_json_schema_instance(value[key], subschema, path=f"{path}.{key}")
+                    _validate_json_schema_instance(
+                        value[key], subschema, path=f"{path}.{key}", root_schema=root_schema
+                    )
                 )
         required = schema.get("required", [])
         missing = [k for k in required if k not in value]
@@ -269,7 +317,9 @@ def _validate_json_schema_instance(
         if isinstance(item_schema, dict):
             for index, item in enumerate(value):
                 errors.extend(
-                    _validate_json_schema_instance(item, item_schema, path=f"{path}[{index}]")
+                    _validate_json_schema_instance(
+                        item, item_schema, path=f"{path}[{index}]", root_schema=root_schema
+                    )
                 )
     elif schema_type == "string":
         if not isinstance(value, str):
@@ -283,7 +333,93 @@ def _validate_json_schema_instance(
         pattern = schema.get("pattern")
         if pattern and not re.fullmatch(pattern, value):
             errors.append(f"{path}: string does not match pattern {pattern}")
+        enum = schema.get("enum")
+        if isinstance(enum, list) and value not in enum:
+            errors.append(f"{path}: value {value!r} not in enum {enum}")
     return errors
+
+
+def build_resolved_source_register(
+    register: list[Any],
+    root: Path,
+) -> tuple[dict[str, ResolvedSource], list[str]]:
+    """Resolve source_register paths and load artifact text from disk."""
+    resolved: dict[str, ResolvedSource] = {}
+    errors: list[str] = []
+    if not isinstance(register, list):
+        return resolved, errors
+    for index, source in enumerate(register):
+        prefix = f"source_register[{index}]"
+        if not isinstance(source, dict):
+            continue
+        source_id = source.get("source_id")
+        if not isinstance(source_id, str) or not source_id.strip():
+            continue
+        src_path = source.get("source_artifact_path")
+        src_hash = source.get("source_artifact_sha256")
+        if not isinstance(src_path, str) or not src_path.strip():
+            continue
+        path = _resolve_repo_path(src_path, root)
+        if path is None:
+            continue
+        if not isinstance(src_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", src_hash):
+            continue
+        actual_hash = artifact_sha256(path)
+        if src_hash != actual_hash:
+            continue
+        try:
+            text = path.read_text(encoding="utf-8", errors="replace")
+        except OSError as exc:
+            errors.append(f"{prefix}: cannot read source artifact: {exc}")
+            continue
+        resolved[source_id] = ResolvedSource(
+            source_id=source_id,
+            path=path,
+            text=text,
+            sha256_hex=actual_hash,
+        )
+    return resolved, errors
+
+
+def _excerpt_digest_hex(excerpt_hash: str | None) -> str | None:
+    if not isinstance(excerpt_hash, str):
+        return None
+    if excerpt_hash.startswith("sha256:"):
+        digest = excerpt_hash[7:]
+    else:
+        digest = excerpt_hash
+    if not re.fullmatch(r"[0-9a-f]{64}", digest):
+        return None
+    return digest
+
+
+def _excerpt_bound_to_source(
+    excerpt: str,
+    excerpt_hash: str | None,
+    source: ResolvedSource,
+) -> bool:
+    excerpt_digest = _excerpt_digest_hex(excerpt_hash)
+    if excerpt_digest is None:
+        return False
+    if excerpt_digest == source.sha256_hex:
+        return True
+    if not excerpt.strip():
+        return excerpt_digest == source.sha256_hex
+    return excerpt in source.text or excerpt.casefold() in source.text.casefold()
+
+
+def _validate_excerpt_source_binding(
+    excerpt: str,
+    excerpt_hash: str | None,
+    source: ResolvedSource,
+    prefix: str,
+) -> list[str]:
+    if _excerpt_bound_to_source(excerpt, excerpt_hash, source):
+        return []
+    return [
+        f"{prefix}: excerpt not bound to source artifact {source.source_id!r} "
+        f"({source.path})"
+    ]
 
 
 def validate_bundle_structure(
@@ -317,7 +453,7 @@ def validate_bundle_structure(
         declared_path = data.get("source_artifact_path")
         if not isinstance(declared_path, str) or not declared_path.strip():
             errors.append("source_artifact_path required for report-bound validation")
-        elif not _paths_equal(declared_path, artifact_path):
+        elif not _paths_equal(declared_path, artifact_path, base_dir=root):
             errors.append(
                 f"source_artifact_path mismatch: bundle declares {declared_path!r}, "
                 f"expected {artifact_path!r}"
@@ -356,7 +492,9 @@ def validate_bundle_structure(
         if src_missing:
             errors.append(f"{prefix}: missing fields {sorted(src_missing)}")
         source_id = source.get("source_id")
-        if isinstance(source_id, str) and source_id:
+        if not isinstance(source_id, str) or not source_id.strip():
+            errors.append(f"{prefix}: source_id must be a non-empty string")
+        else:
             if source_id in register_ids:
                 errors.append(f"{prefix}: duplicate source_id {source_id}")
             register_ids.add(source_id)
@@ -372,6 +510,11 @@ def validate_bundle_structure(
                     errors.append(
                         f"{prefix}: source_artifact_sha256 mismatch for {src_path}"
                     )
+
+    resolved_sources, resolve_errors = build_resolved_source_register(
+        register if isinstance(register, list) else [], root
+    )
+    errors.extend(resolve_errors)
 
     entries = data.get("entries")
     if not isinstance(entries, list) or not entries:
@@ -408,10 +551,26 @@ def validate_bundle_structure(
                     f"does not match entry claim_id {claim_id!r}"
                 )
             source_id = record.get("source_id")
-            if isinstance(source_id, str) and register_ids and source_id not in register_ids:
+            if not isinstance(source_id, str) or not source_id.strip():
+                errors.append(
+                    f"{prefix}: evidence_record.source_id must be a non-empty string"
+                )
+            elif source_id not in register_ids:
                 errors.append(
                     f"{prefix}: evidence_record.source_id {source_id!r} "
                     f"not found in source_register"
+                )
+            elif source_id in resolved_sources and record.get("retrieval_status") == "fetched":
+                excerpt = entry.get("excerpt")
+                if not isinstance(excerpt, str):
+                    excerpt = ""
+                errors.extend(
+                    _validate_excerpt_source_binding(
+                        excerpt,
+                        record.get("excerpt_hash"),
+                        resolved_sources[source_id],
+                        prefix,
+                    )
                 )
         else:
             errors.append(f"{prefix}: evidence_record must be an object")
@@ -460,8 +619,8 @@ def _validate_evidence_record(record: dict[str, Any], prefix: str) -> list[str]:
     ):
         errors.append(f"{prefix}.evidence_record.excerpt_hash must match sha256:<hex>")
     source_id = record.get("source_id")
-    if isinstance(source_id, str) and not source_id.strip():
-        errors.append(f"{prefix}.evidence_record.source_id must be non-empty")
+    if not isinstance(source_id, str) or not source_id.strip():
+        errors.append(f"{prefix}.evidence_record.source_id must be a non-empty string")
     return errors
 
 
@@ -502,8 +661,6 @@ def _judge_claim_text(
         if quote and quote.casefold() not in excerpt.casefold():
             return "UNSUPPORTED"
     overlap = _token_overlap(claim_text, excerpt)
-    if locator_kind == "quote" and locator_value.strip().casefold() in excerpt.casefold():
-        return "SUPPORTED"
     if overlap >= 0.45:
         return "SUPPORTED"
     if overlap >= 0.2:
@@ -525,7 +682,11 @@ def _aggregate_subclaim_verdicts(sub_verdicts: set[str]) -> str:
     return "PARTIAL"
 
 
-def judge_entry(entry: dict[str, Any]) -> EntryJudgment:
+def judge_entry(
+    entry: dict[str, Any],
+    *,
+    context: JudgmentContext | None = None,
+) -> EntryJudgment:
     """Rule-based alignment verdict for one bundle entry (no gold labels)."""
     claim_id = str(entry.get("claim_id", ""))
     claim_text = str(entry.get("claim_text", ""))
@@ -541,6 +702,11 @@ def judge_entry(entry: dict[str, Any]) -> EntryJudgment:
             verdict="NOT_RUN",
             errors=["evidence_record missing"],
         )
+
+    source_id = str(record.get("source_id", ""))
+    resolved_source = (
+        context.sources.get(source_id) if context and source_id else None
+    )
 
     retrieval_status = record.get("retrieval_status")
     locator = record.get("locator") if isinstance(record.get("locator"), dict) else {}
@@ -573,12 +739,56 @@ def judge_entry(entry: dict[str, Any]) -> EntryJudgment:
                 verdict="UNSUPPORTED",
                 errors=errors,
             )
+        if resolved_source is not None:
+            if not _excerpt_bound_to_source(excerpt, expected_hash, resolved_source):
+                errors.append(
+                    f"excerpt not bound to source artifact {source_id!r} "
+                    f"({resolved_source.path})"
+                )
+                return EntryJudgment(
+                    claim_id=claim_id,
+                    verdict="UNSUPPORTED",
+                    errors=errors,
+                )
 
-    if locator_kind == "section" and entry.get("artifact_text"):
-        artifact_text = str(entry["artifact_text"])
-        if not _section_visible(artifact_text, locator_value):
+    if locator_kind == "quote" and locator_value.strip():
+        quote = locator_value.strip()
+        if quote.casefold() not in excerpt.casefold():
+            errors.append(f"quote locator {quote!r} not found in excerpt")
+            return EntryJudgment(
+                claim_id=claim_id,
+                verdict="UNSUPPORTED",
+                errors=errors,
+            )
+        if resolved_source is not None and quote.casefold() not in resolved_source.text.casefold():
             errors.append(
-                f"section locator {locator_value!r} not found in visible artifact text"
+                f"quote locator {quote!r} not found in source artifact {source_id!r}"
+            )
+            return EntryJudgment(
+                claim_id=claim_id,
+                verdict="UNSUPPORTED",
+                errors=errors,
+            )
+
+    if locator_kind == "section":
+        section_text: str | None = None
+        if resolved_source is not None:
+            section_text = resolved_source.text
+        elif entry.get("artifact_text"):
+            section_text = str(entry["artifact_text"])
+        if section_text is not None:
+            if not _section_visible(section_text, locator_value):
+                errors.append(
+                    f"section locator {locator_value!r} not found in visible source text"
+                )
+                return EntryJudgment(
+                    claim_id=claim_id,
+                    verdict="UNSUPPORTED",
+                    errors=errors,
+                )
+        elif resolved_source is None and context is not None:
+            errors.append(
+                f"section locator requires resolved source artifact for {source_id!r}"
             )
             return EntryJudgment(
                 claim_id=claim_id,
@@ -650,12 +860,22 @@ def run_bundle(
     if structural:
         return report
 
+    root = repo_root or Path(__file__).resolve().parents[1]
+    resolved_sources, resolve_errors = build_resolved_source_register(
+        data.get("source_register", []) if isinstance(data.get("source_register"), list) else [],
+        root,
+    )
+    if resolve_errors:
+        report.structural_errors.extend(resolve_errors)
+        return report
+    context = JudgmentContext(sources=resolved_sources)
+
     entries = data.get("entries", [])
     counts: dict[str, int] = {v: 0 for v in VERDICTS}
     for entry in entries:
         if not isinstance(entry, dict):
             continue
-        judgment = judge_entry(entry)
+        judgment = judge_entry(entry, context=context)
         report.judgments.append(judgment)
         counts[judgment.verdict] = counts.get(judgment.verdict, 0) + 1
         if judgment.verdict == "NOT_RUN":

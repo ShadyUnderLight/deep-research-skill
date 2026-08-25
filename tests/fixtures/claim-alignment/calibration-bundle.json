@@ -155,8 +155,7 @@
         "excerpt_hash": "sha256:96caf67acd71def5ca153f83d5678b57ad383fd1004bbcb521fd45e3d792aaf9",
         "evidence_role": "secondary"
       },
-      "excerpt": "Route-specific excerpt about cloud revenue.",
-      "artifact_text": "# Report\n\n```markdown\n## Monitoring signals\nHidden locator text inside fence.\n```\n"
+      "excerpt": "Route-specific excerpt about cloud revenue."
     },
     {
       "claim_id": "C10",
@@ -200,7 +199,7 @@
     {
       "source_id": "S04",
       "source_artifact_path": "tests/fixtures/claim-alignment/sources/s04-excerpt.txt",
-      "source_artifact_sha256": "fa7fff10760deedf0a277364038aafaea138fe9daba6814f6245dae24a670878",
+      "source_artifact_sha256": "1af0f4a8e92587bd8c8f314f9c6c999bbc94b81f09076aab5278e273544adfd3",
       "title": "Source S04",
       "url": "https://example.com/s04"
     },
@@ -235,7 +234,7 @@
     {
       "source_id": "S09",
       "source_artifact_path": "tests/fixtures/claim-alignment/sources/s09-excerpt.txt",
-      "source_artifact_sha256": "96caf67acd71def5ca153f83d5678b57ad383fd1004bbcb521fd45e3d792aaf9",
+      "source_artifact_sha256": "9bd1410f66d2a645a4b28eadbf809b7cb5d4b643083df15fbcaa6ab950e6cd8d",
       "title": "Source S09",
       "url": "https://example.com/s09"
     },
