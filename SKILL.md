@@ -25,7 +25,7 @@ Always distinguish:
 2. classify the task
 3. produce a compact research plan
 4. define evidence standards and stop conditions
-5. if live search, source fetching, browser access, or parallel agents may be needed, run tooling preflight to confirm what is available; if a needed capability is missing, note it and adjust the search strategy before starting collection. When the environment has a local Research API (e.g. Agent-Reach), read `references/external-channel-preflight.md` for channel-specific preflight rules.
+5. if live search, source fetching, browser access, or parallel agents may be needed, run tooling preflight to confirm what is available; if a needed capability is missing, note it and adjust the search strategy before starting collection. When the environment has a local Research API (e.g. Agent-Reach), read `references/external-channel-preflight.md` for channel-specific preflight rules. For where data goes, what persists locally, and how channels degrade, read `docs/DATA_FLOWS.md` and `docs/RISK_REGISTER.md`.
 6. collect and compare sources
 7. run a mid-research review
    - read `references/mid-research-review.md` once the first meaningful evidence batch is in hand

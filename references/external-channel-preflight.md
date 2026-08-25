@@ -1,5 +1,7 @@
 # External Channel Preflight
 
+> **Data boundary map:** For the full picture of network touchpoints, local stores, off-switches, and degraded states, read `docs/DATA_FLOWS.md`. For risk → control → evidence status, read `docs/RISK_REGISTER.md`.
+
 ## Purpose
 
 When a research task depends on external information channels — live search, content fetch, current-state verification, weak-signal scan, or RSS monitoring — the agent should verify channel availability before committing to a search strategy that assumes those channels exist.

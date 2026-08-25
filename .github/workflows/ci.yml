@@ -108,6 +108,7 @@ jobs:
       # are covered by the full pytest gate above; running them again here
       # would be redundant.
       - run: bash scripts/validate-docs-structure.sh
+      - run: python3 scripts/validate_data_flows.py
       - run: python3 scripts/validate_route_manifest.py
       - run: python3 tests/test_route_manifest.py
       # ── Issue #380: route cards must stay in sync with the manifest ────────

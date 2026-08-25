@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "description": "Machine-readable registry of data-flow touchpoints and local stores documented in docs/DATA_FLOWS.md. Update this file whenever a repo-owned network path, maintainer tool, agent-runtime boundary, or persistent store changes.",
+  "last_reviewed": "2026-08-25",
+  "network_touchpoints": [
+    {
+      "id": "agent-reach-local-api",
+      "kind": "agent_runtime",
+      "enforcement": "out_of_repo",
+      "source_files": [],
+      "network_signals": []
+    },
+    {
+      "id": "host-agent-search-fetch-browser",
+      "kind": "agent_runtime",
+      "enforcement": "out_of_repo",
+      "source_files": [],
+      "network_signals": []
+    },
+    {
+      "id": "render-pdf-playwright",
+      "kind": "repo_script",
+      "source_files": [
+        "scripts/render_pdf.py",
+        "scripts/check_pdf_regression.py",
+        "scripts/md_to_pdf.py",
+        "scripts/delivery/pipeline.py"
+      ],
+      "network_signals": ["async_playwright"],
+      "signal_files": {
+        "async_playwright": [
+          "scripts/render_pdf.py",
+          "scripts/check_pdf_regression.py"
+        ]
+      }
+    },
+    {
+      "id": "gh-issue-pr-acceptance",
+      "kind": "maintainer_tool",
+      "source_files": ["scripts/validate_issue_pr_acceptance.py"],
+      "network_signals": ["gh_cli"],
+      "signal_files": {
+        "gh_cli": ["scripts/validate_issue_pr_acceptance.py"]
+      }
+    }
+  ],
+  "local_stores": [
+    {
+      "id": "user-research-artifacts",
+      "kind": "user_workspace",
+      "enforcement": "documentation_only"
+    },
+    {
+      "id": "md-to-pdf-temp-html",
+      "kind": "repo_script",
+      "source_files": [
+        "scripts/delivery/pipeline.py",
+        "scripts/markdown_to_html.py"
+      ],
+      "write_signals": ["delivery_temp_dir", "markdown_html_write"],
+      "signal_files": {
+        "delivery_temp_dir": ["scripts/delivery/pipeline.py"],
+        "markdown_html_write": ["scripts/markdown_to_html.py"]
+      }
+    },
+    {
+      "id": "delivery-status-writeback",
+      "kind": "repo_script",
+      "source_files": [
+        "scripts/delivery/status.py",
+        "scripts/delivery/pipeline.py",
+        "scripts/md_to_pdf.py"
+      ],
+      "write_signals": ["delivery_status_write"],
+      "signal_files": {
+        "delivery_status_write": [
+          "scripts/delivery/status.py",
+          "scripts/delivery/pipeline.py"
+        ]
+      }
+    },
+    {
+      "id": "generated-route-cards",
+      "kind": "repo_script",
+      "source_files": ["scripts/generate_route_cards.py"],
+      "write_signals": ["route_cards_write"],
+      "signal_files": {
+        "route_cards_write": ["scripts/generate_route_cards.py"]
+      }
+    },
+    {
+      "id": "forward-eval-offline-fixtures",
+      "kind": "repo_script",
+      "source_files": ["scripts/run_forward_evals.py"],
+      "path_signals": ["fixtures"]
+    },
+    {
+      "id": "validator-temp-artifacts",
+      "kind": "repo_script",
+      "source_files": ["scripts/validate_channel_preflight.py"],
+      "write_signals": ["validator_named_tempfile"],
+      "signal_files": {
+        "validator_named_tempfile": ["scripts/validate_channel_preflight.py"]
+      }
+    },
+    {
+      "id": "ci-test-temp-dirs",
+      "kind": "test_only",
+      "source_globs": ["scripts/test_*.py"],
+      "source_files": ["scripts/check_pdf_regression.py"],
+      "write_signals": ["test_tempfile", "pdf_regression_temp"],
+      "signal_files": {
+        "pdf_regression_temp": ["scripts/check_pdf_regression.py"]
+      },
+      "signal_scan_globs": {
+        "test_tempfile": ["scripts/test_*.py"]
+      }
+    }
+  ],
+  "risk_ids": [
+    "RISK-001-retrieved-content-prompt-injection",
+    "RISK-002-sensitive-query-external-channel",
+    "RISK-003-provider-outage-quota-fetch-failure",
+    "RISK-004-stale-source-cache-current-state",
+    "RISK-005-locator-forgery-cross-artifact",
+    "RISK-006-validator-fail-open",
+    "RISK-007-model-tool-version-drift",
+    "RISK-008-partial-not-run-misread-as-pass",
+    "RISK-009-host-platform-transport",
+    "RISK-010-pdf-remote-resource-fetch"
+  ]
+}
