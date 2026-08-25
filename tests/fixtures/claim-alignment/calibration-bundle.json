@@ -36,14 +36,12 @@
         "evidence_role": "secondary"
       },
       "excerpt": "The product launched in 2024 with moderate adoption.",
-      "subclaims": [
+      "subclaim_candidates": [
         {
-          "text": "Product adoption was strong",
-          "verdict": "UNSUPPORTED"
+          "text": "Revenue doubled year over year"
         },
         {
-          "text": "the product launched in 2024",
-          "verdict": "SUPPORTED"
+          "text": "the product launched in 2024"
         }
       ]
     },
@@ -176,5 +174,80 @@
       },
       "excerpt": ""
     }
-  ]
+  ],
+  "source_register": [
+    {
+      "source_id": "S01",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s01-excerpt.txt",
+      "source_artifact_sha256": "5d09c917aedf10633d7bc83b18afaf53dd548659aae27fb50211dc073fbc4b66",
+      "title": "Source S01",
+      "url": "https://example.com/s01"
+    },
+    {
+      "source_id": "S02",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s02-excerpt.txt",
+      "source_artifact_sha256": "acdc73c8cb7e15f7b67131a95eb836fb8d5485243751f17caf6bd207ec4aa62e",
+      "title": "Source S02",
+      "url": "https://example.com/s02"
+    },
+    {
+      "source_id": "S03",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s03-excerpt.txt",
+      "source_artifact_sha256": "d190156f20d781889a00e750955c6949de2269f4b952e97cda77bc260bc3596e",
+      "title": "Source S03",
+      "url": "https://example.com/s03"
+    },
+    {
+      "source_id": "S04",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s04-excerpt.txt",
+      "source_artifact_sha256": "fa7fff10760deedf0a277364038aafaea138fe9daba6814f6245dae24a670878",
+      "title": "Source S04",
+      "url": "https://example.com/s04"
+    },
+    {
+      "source_id": "S05",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s05-excerpt.txt",
+      "source_artifact_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "title": "Source S05",
+      "url": "https://example.com/s05"
+    },
+    {
+      "source_id": "S06",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s06-excerpt.txt",
+      "source_artifact_sha256": "16d997d8ba5f88ab92b58399d841d4177fde56d9d511499f3cc9dff12d8010bb",
+      "title": "Source S06",
+      "url": "https://example.com/s06"
+    },
+    {
+      "source_id": "S07",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s07-excerpt.txt",
+      "source_artifact_sha256": "7bef1ea50cb43cbebe36bae3adc5207881dbe790582da5d2b085f7e75d4a7ab1",
+      "title": "Source S07",
+      "url": "https://example.com/s07"
+    },
+    {
+      "source_id": "S08",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s08-excerpt.txt",
+      "source_artifact_sha256": "36808ecc97f24671564f0ef074e0e42e8473c45313b1f046535e7ae99a0d8b54",
+      "title": "Source S08",
+      "url": "https://example.com/s08"
+    },
+    {
+      "source_id": "S09",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s09-excerpt.txt",
+      "source_artifact_sha256": "96caf67acd71def5ca153f83d5678b57ad383fd1004bbcb521fd45e3d792aaf9",
+      "title": "Source S09",
+      "url": "https://example.com/s09"
+    },
+    {
+      "source_id": "S99",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s99-excerpt.txt",
+      "source_artifact_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "title": "Source S99",
+      "url": "https://example.com/s99"
+    }
+  ],
+  "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
+  "source_artifact_sha256": "742a6822a80cbf3fcf17353f2e2f78d4d89111d7040b3bcad097b9438f0993ba",
+  "route_id": "market-outlook"
 }

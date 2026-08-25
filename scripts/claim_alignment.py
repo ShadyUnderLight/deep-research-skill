@@ -16,7 +16,8 @@ from pathlib import Path
 from typing import Any
 
 SCHEMA_VERSION = "1"
-VALIDATOR_VERSION = "claim-alignment-v1"
+VALIDATOR_VERSION = "claim-alignment-v2"
+SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "claim-alignment-evidence.json"
 
 VERDICTS = frozenset(
     {
@@ -43,11 +44,20 @@ BUNDLE_REQUIRED = frozenset(
         "bundle_id",
         "audited_population",
         "sampling_rule",
+        "source_register",
         "entries",
     }
 )
 
-ENTRY_REQUIRED = frozenset({"claim_id", "claim_text", "evidence_record", "excerpt"})
+PRODUCTION_BINDING_FIELDS = frozenset(
+    {"source_artifact_path", "source_artifact_sha256", "route_id"}
+)
+
+ENTRY_REQUIRED = frozenset(
+    {"claim_id", "claim_text", "evidence_record", "excerpt"}
+)
+
+ENTRY_OPTIONAL = frozenset({"subclaim_candidates", "artifact_text"})
 
 RECORD_REQUIRED = frozenset(
     {
@@ -60,16 +70,20 @@ RECORD_REQUIRED = frozenset(
     }
 )
 
+SOURCE_REGISTER_REQUIRED = frozenset(
+    {"source_id", "source_artifact_path", "source_artifact_sha256"}
+)
+
 _HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*$")
 
 
-def excerpt_sha256(text: str) -> str:
-    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    return f"sha256:{digest}"
+@dataclass(frozen=True)
+class BindingContext:
+    """When provided, bundle must bind to the audited report artifact and route."""
 
-
-def artifact_sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
+    artifact_path: Path | None = None
+    expected_route: str | None = None
+    require_production_bindings: bool = False
 
 
 @dataclass
@@ -99,22 +113,90 @@ class BundleReport:
         errors = list(self.structural_errors)
         for j in self.judgments:
             errors.extend(j.errors)
+            if j.verdict == "UNSUPPORTED":
+                errors.append(f"{j.claim_id}: verdict UNSUPPORTED")
         return errors
 
     @property
+    def advisory_warnings(self) -> list[str]:
+        warnings: list[str] = []
+        for j in self.judgments:
+            warnings.extend(j.warnings)
+            if j.verdict == "PARTIAL":
+                warnings.append(
+                    f"{j.claim_id}: verdict PARTIAL — review subclaim decomposition"
+                )
+            elif j.verdict == "AMBIGUOUS":
+                warnings.append(f"{j.claim_id}: verdict AMBIGUOUS")
+            elif j.verdict == "RETRIEVAL_FAILED":
+                warnings.append(
+                    f"{j.claim_id}: verdict RETRIEVAL_FAILED — "
+                    "tool/access failure, not content unsupported"
+                )
+            elif j.verdict == "NOT_RUN":
+                warnings.append(
+                    f"{j.claim_id}: verdict NOT_RUN — audit did not produce support evidence"
+                )
+        return warnings
+
+    @property
     def aggregate_verdict(self) -> str:
+        """Frozen aggregation table (issue #419 review)."""
         if self.structural_errors:
             return "fail"
         verdicts = {j.verdict for j in self.judgments}
-        if any(v in {"UNSUPPORTED", "AMBIGUOUS"} for v in verdicts):
-            return "fail"
-        if any(v == "PARTIAL" for v in verdicts):
-            return "conditional-pass"
-        if verdicts <= {"SUPPORTED"}:
-            return "pass"
-        if verdicts <= {"NOT_RUN", "RETRIEVAL_FAILED"}:
+        if not verdicts:
             return "not_run"
-        return "fail"
+        if "UNSUPPORTED" in verdicts:
+            return "fail"
+        if verdicts == {"SUPPORTED"}:
+            return "pass"
+        if verdicts <= {"NOT_RUN"}:
+            return "not_run"
+        if "PARTIAL" in verdicts:
+            return "conditional-pass"
+        if verdicts <= {"AMBIGUOUS"}:
+            return "conditional-pass"
+        if verdicts <= {"RETRIEVAL_FAILED"}:
+            return "conditional-pass"
+        if verdicts <= {"AMBIGUOUS", "RETRIEVAL_FAILED"}:
+            return "conditional-pass"
+        if verdicts <= {"SUPPORTED", "RETRIEVAL_FAILED"}:
+            return "conditional-pass"
+        if verdicts <= {"SUPPORTED", "AMBIGUOUS"}:
+            return "conditional-pass"
+        if verdicts <= {"SUPPORTED", "AMBIGUOUS", "RETRIEVAL_FAILED"}:
+            return "conditional-pass"
+        if "NOT_RUN" in verdicts:
+            return "not_run"
+        return "conditional-pass"
+
+
+def excerpt_sha256(text: str) -> str:
+    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
+    return f"sha256:{digest}"
+
+
+def artifact_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def _resolve_repo_path(path_value: str, base_dir: Path) -> Path | None:
+    candidate = Path(path_value)
+    if candidate.is_absolute():
+        resolved = candidate.resolve()
+    else:
+        resolved = (base_dir / candidate).resolve()
+    if not resolved.is_file():
+        return None
+    return resolved
+
+
+def _paths_equal(declared: str, actual: Path) -> bool:
+    try:
+        return Path(declared).resolve() == actual.resolve()
+    except OSError:
+        return str(declared) == str(actual)
 
 
 def _normalise_heading(value: str) -> str:
@@ -141,13 +223,76 @@ def _load_json(path: Path) -> dict[str, Any]:
     return data
 
 
+def validate_against_json_schema(data: dict[str, Any]) -> list[str]:
+    """Validate bundle JSON against schemas/claim-alignment-evidence.json."""
+    if not SCHEMA_PATH.is_file():
+        return [f"schema file missing: {SCHEMA_PATH}"]
+    try:
+        schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        return [f"cannot load claim-alignment schema: {exc}"]
+    return _validate_json_schema_instance(data, schema, path="$")
+
+
+def _validate_json_schema_instance(
+    value: Any,
+    schema: dict[str, Any],
+    *,
+    path: str,
+) -> list[str]:
+    errors: list[str] = []
+    schema_type = schema.get("type")
+    if schema_type == "object":
+        if not isinstance(value, dict):
+            return [f"{path}: expected object"]
+        if schema.get("additionalProperties") is False:
+            allowed = set(schema.get("properties", {}))
+            extra = set(value) - allowed
+            if extra:
+                errors.append(f"{path}: unknown fields {sorted(extra)}")
+        for key, subschema in schema.get("properties", {}).items():
+            if key in value:
+                errors.extend(
+                    _validate_json_schema_instance(value[key], subschema, path=f"{path}.{key}")
+                )
+        required = schema.get("required", [])
+        missing = [k for k in required if k not in value]
+        if missing:
+            errors.append(f"{path}: missing required fields {missing}")
+    elif schema_type == "array":
+        if not isinstance(value, list):
+            return [f"{path}: expected array"]
+        min_items = schema.get("minItems")
+        if isinstance(min_items, int) and len(value) < min_items:
+            errors.append(f"{path}: array shorter than minItems {min_items}")
+        item_schema = schema.get("items")
+        if isinstance(item_schema, dict):
+            for index, item in enumerate(value):
+                errors.extend(
+                    _validate_json_schema_instance(item, item_schema, path=f"{path}[{index}]")
+                )
+    elif schema_type == "string":
+        if not isinstance(value, str):
+            return [f"{path}: expected string"]
+        min_len = schema.get("minLength")
+        if isinstance(min_len, int) and len(value) < min_len:
+            errors.append(f"{path}: string shorter than minLength {min_len}")
+        const = schema.get("const")
+        if const is not None and value != const:
+            errors.append(f"{path}: expected const {const!r}, got {value!r}")
+        pattern = schema.get("pattern")
+        if pattern and not re.fullmatch(pattern, value):
+            errors.append(f"{path}: string does not match pattern {pattern}")
+    return errors
+
+
 def validate_bundle_structure(
     data: dict[str, Any],
     *,
-    artifact_path: Path | None = None,
-    expected_route: str | None = None,
+    binding: BindingContext | None = None,
+    repo_root: Path | None = None,
 ) -> list[str]:
-    errors: list[str] = []
+    errors = validate_against_json_schema(data)
     missing = BUNDLE_REQUIRED - set(data)
     if missing:
         errors.append(f"missing required bundle fields: {sorted(missing)}")
@@ -155,36 +300,78 @@ def validate_bundle_structure(
         errors.append(
             f"schema_version must be '{SCHEMA_VERSION}', got {data.get('schema_version')!r}"
         )
-    unknown_top = set(data) - BUNDLE_REQUIRED - {
-        "fixture_version",
-        "source_artifact_path",
-        "source_artifact_sha256",
-        "route_id",
-        "gold_labels",
-    }
-    if unknown_top:
-        errors.append(f"unknown bundle fields: {sorted(unknown_top)}")
 
-    if artifact_path is not None and data.get("source_artifact_path"):
-        declared = str(data["source_artifact_path"])
-        if declared != str(artifact_path):
+    require_bindings = bool(binding and (
+        binding.require_production_bindings or binding.artifact_path is not None
+    ))
+    if require_bindings:
+        missing_binding = PRODUCTION_BINDING_FIELDS - set(data)
+        if missing_binding:
             errors.append(
-                f"source_artifact_path mismatch: bundle declares {declared!r}, "
+                f"production binding requires fields: {sorted(missing_binding)}"
+            )
+
+    root = repo_root or Path(__file__).resolve().parents[1]
+    if binding and binding.artifact_path is not None:
+        artifact_path = binding.artifact_path
+        declared_path = data.get("source_artifact_path")
+        if not isinstance(declared_path, str) or not declared_path.strip():
+            errors.append("source_artifact_path required for report-bound validation")
+        elif not _paths_equal(declared_path, artifact_path):
+            errors.append(
+                f"source_artifact_path mismatch: bundle declares {declared_path!r}, "
                 f"expected {artifact_path!r}"
             )
-    if artifact_path is not None and data.get("source_artifact_sha256"):
-        actual_hash = artifact_sha256(artifact_path)
-        declared_hash = str(data["source_artifact_sha256"])
-        if declared_hash != actual_hash:
-            errors.append(
-                f"source_artifact_sha256 mismatch: bundle declares {declared_hash}, "
-                f"artifact bytes hash {actual_hash}"
-            )
-    if expected_route and data.get("route_id") and data["route_id"] != expected_route:
-        errors.append(
-            f"route_id mismatch: bundle declares {data['route_id']!r}, "
-            f"expected {expected_route!r}"
-        )
+        declared_hash = data.get("source_artifact_sha256")
+        if not isinstance(declared_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", declared_hash):
+            errors.append("source_artifact_sha256 must be a 64-char hex digest")
+        else:
+            actual_hash = artifact_sha256(artifact_path)
+            if declared_hash != actual_hash:
+                errors.append(
+                    f"source_artifact_sha256 mismatch: bundle declares {declared_hash}, "
+                    f"artifact bytes hash {actual_hash}"
+                )
+        if binding.expected_route:
+            route_id = data.get("route_id")
+            if not isinstance(route_id, str) or not route_id.strip():
+                errors.append("route_id required for route-bound validation")
+            elif route_id != binding.expected_route:
+                errors.append(
+                    f"route_id mismatch: bundle declares {route_id!r}, "
+                    f"expected {binding.expected_route!r}"
+                )
+
+    register = data.get("source_register")
+    register_ids: set[str] = set()
+    if not isinstance(register, list) or not register:
+        errors.append("source_register must be a non-empty array")
+        register = []
+    for index, source in enumerate(register):
+        prefix = f"source_register[{index}]"
+        if not isinstance(source, dict):
+            errors.append(f"{prefix}: must be an object")
+            continue
+        src_missing = SOURCE_REGISTER_REQUIRED - set(source)
+        if src_missing:
+            errors.append(f"{prefix}: missing fields {sorted(src_missing)}")
+        source_id = source.get("source_id")
+        if isinstance(source_id, str) and source_id:
+            if source_id in register_ids:
+                errors.append(f"{prefix}: duplicate source_id {source_id}")
+            register_ids.add(source_id)
+        src_path = source.get("source_artifact_path")
+        src_hash = source.get("source_artifact_sha256")
+        if isinstance(src_path, str) and src_path.strip():
+            resolved = _resolve_repo_path(src_path, root)
+            if resolved is None:
+                errors.append(f"{prefix}: source artifact not found: {src_path}")
+            elif isinstance(src_hash, str) and re.fullmatch(r"[0-9a-f]{64}", src_hash):
+                actual = artifact_sha256(resolved)
+                if src_hash != actual:
+                    errors.append(
+                        f"{prefix}: source_artifact_sha256 mismatch for {src_path}"
+                    )
 
     entries = data.get("entries")
     if not isinstance(entries, list) or not entries:
@@ -200,22 +387,47 @@ def validate_bundle_structure(
         entry_missing = ENTRY_REQUIRED - set(entry)
         if entry_missing:
             errors.append(f"{prefix}: missing fields {sorted(entry_missing)}")
+        unknown_entry = set(entry) - ENTRY_REQUIRED - ENTRY_OPTIONAL
+        if unknown_entry:
+            errors.append(f"{prefix}: unknown fields {sorted(unknown_entry)}")
         claim_id = entry.get("claim_id")
         if isinstance(claim_id, str) and claim_id:
             if claim_id in seen_ids:
                 errors.append(f"{prefix}: duplicate claim_id {claim_id}")
             seen_ids.add(claim_id)
+        if not isinstance(entry.get("claim_text"), str) or not str(entry.get("claim_text")).strip():
+            errors.append(f"{prefix}: claim_text must be a non-empty string")
+        if not isinstance(entry.get("excerpt"), str):
+            errors.append(f"{prefix}: excerpt must be a string")
         record = entry.get("evidence_record")
         if isinstance(record, dict):
-            record_errors = _validate_evidence_record(record, prefix)
-            errors.extend(record_errors)
+            errors.extend(_validate_evidence_record(record, prefix))
             if isinstance(claim_id, str) and record.get("claim_id") != claim_id:
                 errors.append(
                     f"{prefix}: evidence_record.claim_id {record.get('claim_id')!r} "
                     f"does not match entry claim_id {claim_id!r}"
                 )
+            source_id = record.get("source_id")
+            if isinstance(source_id, str) and register_ids and source_id not in register_ids:
+                errors.append(
+                    f"{prefix}: evidence_record.source_id {source_id!r} "
+                    f"not found in source_register"
+                )
         else:
             errors.append(f"{prefix}: evidence_record must be an object")
+        candidates = entry.get("subclaim_candidates")
+        if candidates is not None:
+            if not isinstance(candidates, list):
+                errors.append(f"{prefix}: subclaim_candidates must be an array")
+            elif candidates and any(
+                not isinstance(item, dict)
+                or not isinstance(item.get("text"), str)
+                or not item.get("text", "").strip()
+                for item in candidates
+            ):
+                errors.append(f"{prefix}: subclaim_candidates require non-empty text")
+            if "subclaims" in entry:
+                errors.append(f"{prefix}: production entries must use subclaim_candidates, not subclaims")
     return errors
 
 
@@ -243,8 +455,13 @@ def _validate_evidence_record(record: dict[str, Any], prefix: str) -> list[str]:
     if role not in EVIDENCE_ROLES:
         errors.append(f"{prefix}.evidence_record.evidence_role invalid: {role!r}")
     excerpt_hash = record.get("excerpt_hash")
-    if isinstance(excerpt_hash, str) and not excerpt_hash.startswith("sha256:"):
-        errors.append(f"{prefix}.evidence_record.excerpt_hash must start with sha256:")
+    if isinstance(excerpt_hash, str) and not re.fullmatch(
+        r"sha256:[0-9a-f]{64}", excerpt_hash
+    ):
+        errors.append(f"{prefix}.evidence_record.excerpt_hash must match sha256:<hex>")
+    source_id = record.get("source_id")
+    if isinstance(source_id, str) and not source_id.strip():
+        errors.append(f"{prefix}.evidence_record.source_id must be non-empty")
     return errors
 
 
@@ -274,13 +491,47 @@ def _token_overlap(claim: str, excerpt: str) -> float:
     return len(claim_tokens & excerpt_tokens) / len(claim_tokens)
 
 
+def _judge_claim_text(
+    claim_text: str,
+    excerpt: str,
+    locator_kind: str | None,
+    locator_value: str,
+) -> str:
+    if locator_kind == "quote":
+        quote = locator_value.strip()
+        if quote and quote.casefold() not in excerpt.casefold():
+            return "UNSUPPORTED"
+    overlap = _token_overlap(claim_text, excerpt)
+    if locator_kind == "quote" and locator_value.strip().casefold() in excerpt.casefold():
+        return "SUPPORTED"
+    if overlap >= 0.45:
+        return "SUPPORTED"
+    if overlap >= 0.2:
+        return "AMBIGUOUS"
+    return "UNSUPPORTED"
+
+
+def _aggregate_subclaim_verdicts(sub_verdicts: set[str]) -> str:
+    if not sub_verdicts:
+        return "PARTIAL"
+    if sub_verdicts == {"SUPPORTED"}:
+        return "SUPPORTED"
+    if "UNSUPPORTED" in sub_verdicts and "SUPPORTED" in sub_verdicts:
+        return "PARTIAL"
+    if sub_verdicts <= {"UNSUPPORTED"}:
+        return "UNSUPPORTED"
+    if "AMBIGUOUS" in sub_verdicts:
+        return "AMBIGUOUS"
+    return "PARTIAL"
+
+
 def judge_entry(entry: dict[str, Any]) -> EntryJudgment:
     """Rule-based alignment verdict for one bundle entry (no gold labels)."""
     claim_id = str(entry.get("claim_id", ""))
     claim_text = str(entry.get("claim_text", ""))
     excerpt = str(entry.get("excerpt", ""))
     record = entry.get("evidence_record")
-    subclaims = entry.get("subclaims")
+    candidates = entry.get("subclaim_candidates")
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -335,80 +586,57 @@ def judge_entry(entry: dict[str, Any]) -> EntryJudgment:
                 errors=errors,
             )
 
-    if locator_kind == "quote":
-        quote = locator_value.strip()
-        if quote and quote.casefold() not in excerpt.casefold():
-            return EntryJudgment(claim_id=claim_id, verdict="UNSUPPORTED")
-
-    if "subclaims" in entry and isinstance(entry.get("subclaims"), list) and not entry.get("subclaims"):
-        errors.append(f"{claim_id}: PARTIAL requires non-empty subclaim decomposition")
-        return EntryJudgment(
-            claim_id=claim_id,
-            verdict="PARTIAL",
-            errors=errors,
-        )
-
-    if isinstance(subclaims, list) and subclaims:
-        normalised: list[dict[str, str]] = []
-        for item in subclaims:
-            if not isinstance(item, dict):
-                errors.append(f"{claim_id}: subclaim entry must be an object")
-                continue
-            text = item.get("text")
-            verdict = item.get("verdict")
-            if not isinstance(text, str) or not text.strip():
-                errors.append(f"{claim_id}: subclaim text required")
-                continue
-            if verdict not in VERDICTS:
-                errors.append(f"{claim_id}: invalid subclaim verdict {verdict!r}")
-                continue
-            normalised.append({"text": text.strip(), "verdict": str(verdict)})
-        if not normalised:
+    if isinstance(candidates, list):
+        if not candidates:
             errors.append(f"{claim_id}: PARTIAL requires non-empty subclaim decomposition")
             return EntryJudgment(
                 claim_id=claim_id,
                 verdict="PARTIAL",
                 errors=errors,
             )
-        sub_verdicts = {s["verdict"] for s in normalised}
-        if sub_verdicts == {"SUPPORTED"}:
-            verdict = "SUPPORTED"
-        elif "UNSUPPORTED" in sub_verdicts and "SUPPORTED" in sub_verdicts:
-            verdict = "PARTIAL"
-        elif sub_verdicts <= {"UNSUPPORTED"}:
-            verdict = "UNSUPPORTED"
-        elif "AMBIGUOUS" in sub_verdicts:
-            verdict = "AMBIGUOUS"
-        else:
-            verdict = "PARTIAL"
+        judged: list[dict[str, str]] = []
+        for item in candidates:
+            if not isinstance(item, dict):
+                errors.append(f"{claim_id}: subclaim candidate must be an object")
+                continue
+            text = item.get("text")
+            if not isinstance(text, str) or not text.strip():
+                errors.append(f"{claim_id}: subclaim candidate text required")
+                continue
+            sub_verdict = _judge_claim_text(
+                text.strip(), excerpt, locator_kind, locator_value
+            )
+            judged.append({"text": text.strip(), "verdict": sub_verdict})
+        if not judged:
+            errors.append(f"{claim_id}: PARTIAL requires non-empty subclaim decomposition")
+            return EntryJudgment(
+                claim_id=claim_id,
+                verdict="PARTIAL",
+                errors=errors,
+            )
+        verdict = _aggregate_subclaim_verdicts({j["verdict"] for j in judged})
         return EntryJudgment(
             claim_id=claim_id,
             verdict=verdict,
-            subclaims=normalised,
+            subclaims=judged,
             errors=errors,
             warnings=warnings,
         )
 
-    overlap = _token_overlap(claim_text, excerpt)
-    if locator_kind == "quote" and locator_value.strip().casefold() in excerpt.casefold():
-        return EntryJudgment(claim_id=claim_id, verdict="SUPPORTED", warnings=warnings)
-    if overlap >= 0.45:
-        return EntryJudgment(claim_id=claim_id, verdict="SUPPORTED", warnings=warnings)
-    if overlap >= 0.2:
-        return EntryJudgment(claim_id=claim_id, verdict="AMBIGUOUS", warnings=warnings)
-    return EntryJudgment(claim_id=claim_id, verdict="UNSUPPORTED", warnings=warnings)
+    verdict = _judge_claim_text(claim_text, excerpt, locator_kind, locator_value)
+    return EntryJudgment(claim_id=claim_id, verdict=verdict, warnings=warnings)
 
 
 def run_bundle(
     data: dict[str, Any],
     *,
-    artifact_path: Path | None = None,
-    expected_route: str | None = None,
+    binding: BindingContext | None = None,
+    repo_root: Path | None = None,
 ) -> BundleReport:
     structural = validate_bundle_structure(
         data,
-        artifact_path=artifact_path,
-        expected_route=expected_route,
+        binding=binding,
+        repo_root=repo_root,
     )
     report = BundleReport(
         bundle_id=str(data.get("bundle_id", "")),
@@ -444,15 +672,11 @@ def run_bundle(
 def load_and_run_bundle(
     path: Path,
     *,
-    artifact_path: Path | None = None,
-    expected_route: str | None = None,
+    binding: BindingContext | None = None,
+    repo_root: Path | None = None,
 ) -> BundleReport:
     data = _load_json(path)
-    return run_bundle(
-        data,
-        artifact_path=artifact_path,
-        expected_route=expected_route,
-    )
+    return run_bundle(data, binding=binding, repo_root=repo_root)
 
 
 def report_to_dict(report: BundleReport) -> dict[str, Any]:
@@ -478,6 +702,61 @@ def report_to_dict(report: BundleReport) -> dict[str, Any]:
             for j in report.judgments
         ],
     }
+
+
+def compute_per_class_one_vs_rest(
+    labels: dict[str, dict[str, Any]],
+    predicted: dict[str, EntryJudgment],
+) -> dict[str, dict[str, float | int]]:
+    per_class: dict[str, dict[str, float | int]] = {
+        cls: {"tp": 0, "fp": 0, "fn": 0, "tn": 0, "support": 0}
+        for cls in VERDICTS
+    }
+    for claim_id, gold_entry in labels.items():
+        if not isinstance(gold_entry, dict):
+            continue
+        gold_verdict = gold_entry.get("verdict")
+        if gold_verdict not in VERDICTS:
+            continue
+        actual = predicted.get(claim_id)
+        pred_verdict = actual.verdict if actual else "NOT_RUN"
+        for cls in VERDICTS:
+            if gold_verdict == cls:
+                per_class[cls]["support"] = int(per_class[cls]["support"]) + 1
+            if gold_verdict == cls and pred_verdict == cls:
+                per_class[cls]["tp"] = int(per_class[cls]["tp"]) + 1
+            elif gold_verdict != cls and pred_verdict == cls:
+                per_class[cls]["fp"] = int(per_class[cls]["fp"]) + 1
+            elif gold_verdict == cls and pred_verdict != cls:
+                per_class[cls]["fn"] = int(per_class[cls]["fn"]) + 1
+            else:
+                per_class[cls]["tn"] = int(per_class[cls]["tn"]) + 1
+    for cls, bucket in per_class.items():
+        tp = int(bucket["tp"])
+        fp = int(bucket["fp"])
+        fn = int(bucket["fn"])
+        tn = int(bucket["tn"])
+        bucket["fnr"] = fn / (tp + fn) if (tp + fn) else 0.0
+        bucket["fpr"] = fp / (fp + tn) if (fp + tn) else 0.0
+    return per_class
+
+
+def _subclaims_match(
+    expected: list[dict[str, Any]] | None,
+    actual: list[dict[str, str]],
+) -> bool:
+    if not expected:
+        return True
+    if len(expected) != len(actual):
+        return False
+    for exp, act in zip(expected, actual, strict=True):
+        if not isinstance(exp, dict):
+            return False
+        if str(exp.get("text", "")).strip() != act.get("text", ""):
+            return False
+        if str(exp.get("verdict", "")) != act.get("verdict", ""):
+            return False
+    return True
 
 
 @dataclass
@@ -515,8 +794,8 @@ def run_calibration(
     )
     report = run_bundle(bundle_data)
     predicted = {j.claim_id: j for j in report.judgments}
+    per_class = compute_per_class_one_vs_rest(labels, predicted)
 
-    per_class: dict[str, dict[str, float | int]] = {}
     mismatches: list[str] = []
     correct = 0
     total = 0
@@ -536,34 +815,19 @@ def run_calibration(
             positives += 1
         else:
             negatives += 1
-        if actual_verdict == expected:
+        subclaims_ok = _subclaims_match(
+            gold_entry.get("subclaims") if expected == "PARTIAL" else None,
+            actual.subclaims if actual else [],
+        )
+        if actual_verdict == expected and subclaims_ok:
             correct += 1
         else:
-            mismatches.append(
-                f"{claim_id}: expected {expected}, got {actual_verdict}"
-            )
-        bucket = per_class.setdefault(
-            expected,
-            {"tp": 0, "fp": 0, "fn": 0, "tn": 0, "support": 0},
-        )
-        bucket["support"] = int(bucket["support"]) + 1
-        if actual_verdict == expected:
-            if expected in {"SUPPORTED", "PARTIAL"}:
-                bucket["tp"] = int(bucket["tp"]) + 1
-            else:
-                bucket["tn"] = int(bucket["tn"]) + 1
-        else:
-            if expected in {"SUPPORTED", "PARTIAL"}:
-                bucket["fn"] = int(bucket["fn"]) + 1
-            else:
-                bucket["fp"] = int(bucket["fp"]) + 1
-
-    for verdict, bucket in per_class.items():
-        tp = int(bucket["tp"])
-        fp = int(bucket["fp"])
-        fn = int(bucket["fn"])
-        bucket["fnr"] = fn / (tp + fn) if (tp + fn) else 0.0
-        bucket["fpr"] = fp / (fp + int(bucket["tn"])) if (fp + int(bucket["tn"])) else 0.0
+            if actual_verdict != expected:
+                mismatches.append(
+                    f"{claim_id}: expected {expected}, got {actual_verdict}"
+                )
+            elif not subclaims_ok:
+                mismatches.append(f"{claim_id}: subclaim decomposition mismatch")
 
     accuracy = correct / total if total else 0.0
     return CalibrationReport(

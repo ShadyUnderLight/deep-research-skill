@@ -13,17 +13,24 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 FIXTURES = ROOT / "tests" / "fixtures" / "claim-alignment"
+AUDIT_FIXTURES = ROOT / "tests" / "fixtures" / "audit"
 VALIDATE_CLI = [sys.executable, str(SCRIPTS / "validate_claim_alignment.py")]
 
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
 from claim_alignment import (  # noqa: E402
+    BindingContext,
+    compute_per_class_one_vs_rest,
     judge_entry,
     load_and_run_bundle,
     run_bundle,
+    validate_against_json_schema,
     validate_bundle_structure,
+    EntryJudgment,
 )
+
+REPORT_PATH = AUDIT_FIXTURES / "market-outlook-pos.md"
 
 
 def _run_cli(*args: str) -> subprocess.CompletedProcess:
@@ -45,6 +52,86 @@ class TestValidateClaimAlignmentCli:
         data = json.loads(result.stdout)
         assert data["aggregate_verdict"] == "pass"
         assert data["judgments"][0]["verdict"] == "SUPPORTED"
+
+
+class TestSchemaConformance:
+    def test_valid_fixture_matches_json_schema(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        errors = validate_against_json_schema(data)
+        assert not errors, errors
+
+    def test_calibration_bundle_matches_json_schema(self) -> None:
+        data = json.loads((FIXTURES / "calibration-bundle.json").read_text())
+        errors = validate_against_json_schema(data)
+        assert not errors, errors
+
+
+class TestProductionBindingFailClosed:
+    def test_missing_report_binding_fields_fail(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data.pop("source_artifact_path")
+        errors = validate_bundle_structure(
+            data,
+            binding=BindingContext(
+                artifact_path=REPORT_PATH,
+                expected_route="market-outlook",
+                require_production_bindings=True,
+            ),
+        )
+        assert any("source_artifact_path" in err for err in errors)
+
+    def test_report_hash_mismatch_fails(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["source_artifact_sha256"] = "0000000000000000000000000000000000000000000000000000000000000000"
+        errors = validate_bundle_structure(
+            data,
+            binding=BindingContext(
+                artifact_path=REPORT_PATH,
+                expected_route="market-outlook",
+                require_production_bindings=True,
+            ),
+        )
+        assert any("source_artifact_sha256 mismatch" in err for err in errors)
+
+    def test_route_mismatch_fails_in_production_path(self) -> None:
+        data = json.loads((FIXTURES / "route-mismatch.json").read_text())
+        errors = validate_bundle_structure(
+            data,
+            binding=BindingContext(
+                artifact_path=REPORT_PATH,
+                expected_route="market-outlook",
+                require_production_bindings=True,
+            ),
+        )
+        assert any("route_id mismatch" in err for err in errors)
+
+    def test_source_id_not_in_register_fails(self) -> None:
+        data = json.loads((FIXTURES / "source-id-mismatch.json").read_text())
+        errors = validate_bundle_structure(data)
+        assert any("not found in source_register" in err for err in errors)
+
+    def test_claim_id_mismatch_fails(self) -> None:
+        data = json.loads((FIXTURES / "claim-id-mismatch.json").read_text())
+        errors = validate_bundle_structure(data)
+        assert any("claim_id" in err for err in errors)
+
+    def test_unbound_bundle_fails_against_report(self) -> None:
+        bare = {
+            "schema_version": "1",
+            "bundle_id": "bare",
+            "audited_population": "x",
+            "sampling_rule": "x",
+            "entries": json.loads((FIXTURES / "valid.json").read_text())["entries"],
+        }
+        errors = validate_bundle_structure(
+            bare,
+            binding=BindingContext(
+                artifact_path=REPORT_PATH,
+                expected_route="market-outlook",
+                require_production_bindings=True,
+            ),
+        )
+        assert any("production binding requires" in err for err in errors)
 
 
 class TestVerdictSemantics:
@@ -76,17 +163,40 @@ class TestVerdictSemantics:
                 "evidence_role": "primary",
             },
             "excerpt": "A only",
-            "subclaims": [],
+            "subclaim_candidates": [],
         }
         judgment = judge_entry(entry)
         assert judgment.verdict == "PARTIAL"
         assert any("non-empty subclaim" in err for err in judgment.errors)
 
-    def test_partial_fixture_has_decomposition(self) -> None:
+    def test_partial_judges_subclaim_candidates_not_self_labels(self) -> None:
         report = load_and_run_bundle(FIXTURES / "calibration-bundle.json")
         partial = next(j for j in report.judgments if j.claim_id == "C02")
         assert partial.verdict == "PARTIAL"
         assert len(partial.subclaims) == 2
+        assert partial.subclaims[0]["verdict"] == "UNSUPPORTED"
+        assert partial.subclaims[1]["verdict"] == "SUPPORTED"
+
+    def test_ambiguous_is_not_blocking_aggregate(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["entries"] = [data["entries"][0]]
+        data["entries"][0]["claim_id"] = "C04"
+        data["entries"][0]["claim_text"] = "Cloud margins expanded faster than peers"
+        data["entries"][0]["evidence_record"]["claim_id"] = "C04"
+        data["entries"][0]["evidence_record"]["source_id"] = "S01"
+        data["entries"][0]["evidence_record"]["locator"] = {
+            "kind": "paragraph",
+            "value": "p1",
+        }
+        data["entries"][0]["excerpt"] = "Cloud revenue grew slower than hardware revenue."
+        import hashlib
+        excerpt = data["entries"][0]["excerpt"]
+        data["entries"][0]["evidence_record"]["excerpt_hash"] = (
+            f"sha256:{hashlib.sha256(excerpt.encode()).hexdigest()}"
+        )
+        report = run_bundle(data)
+        assert report.judgments[0].verdict == "AMBIGUOUS"
+        assert report.aggregate_verdict == "conditional-pass"
 
     def test_hash_mismatch_fail_closed(self) -> None:
         report = load_and_run_bundle(FIXTURES / "calibration-bundle.json")
@@ -100,43 +210,25 @@ class TestVerdictSemantics:
         assert hidden.verdict == "UNSUPPORTED"
         assert hidden.errors
 
-    def test_claim_id_mismatch_is_structural_error(self) -> None:
-        data = json.loads((FIXTURES / "source-id-mismatch.json").read_text())
-        errors = validate_bundle_structure(data)
-        assert any("claim_id" in err for err in errors)
-
-    def test_route_mismatch_when_expected_route_given(self) -> None:
-        data = json.loads((FIXTURES / "route-mismatch.json").read_text())
-        errors = validate_bundle_structure(
-            data,
-            expected_route="technical-deep-dive",
-        )
-        assert any("route_id mismatch" in err for err in errors)
-
 
 class TestAggregateVerdict:
     def test_not_run_does_not_aggregate_as_pass(self) -> None:
-        data = {
-            "schema_version": "1",
-            "bundle_id": "only-not-run",
-            "audited_population": "x",
-            "sampling_rule": "x",
-            "entries": [
-                {
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["entries"] = [
+            {
+                "claim_id": "N1",
+                "claim_text": "pending verification",
+                "evidence_record": {
                     "claim_id": "N1",
-                    "claim_text": "pending",
-                    "evidence_record": {
-                        "claim_id": "N1",
-                        "source_id": "S01",
-                        "locator": {"kind": "quote", "value": "pending"},
-                        "retrieval_status": "not_run",
-                        "excerpt_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-                        "evidence_role": "unknown",
-                    },
-                    "excerpt": "",
-                }
-            ],
-        }
+                    "source_id": "S01",
+                    "locator": {"kind": "quote", "value": "pending"},
+                    "retrieval_status": "not_run",
+                    "excerpt_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+                    "evidence_role": "unknown",
+                },
+                "excerpt": "",
+            }
+        ]
         report = run_bundle(data)
         assert report.aggregate_verdict == "not_run"
 
@@ -147,3 +239,17 @@ class TestGoldIsolation:
         entry["gold_labels"] = {"verdict": "UNSUPPORTED"}
         judgment = judge_entry(entry)
         assert judgment.verdict == "SUPPORTED"
+
+
+class TestPerClassMetrics:
+    def test_supported_fpr_counts_misclassification(self) -> None:
+        labels = {
+            "X1": {"verdict": "UNSUPPORTED"},
+        }
+        predicted = {
+            "X1": EntryJudgment(claim_id="X1", verdict="SUPPORTED"),
+        }
+        per_class = compute_per_class_one_vs_rest(labels, predicted)
+        assert per_class["SUPPORTED"]["fp"] == 1
+        assert per_class["SUPPORTED"]["fpr"] == 1.0
+        assert per_class["UNSUPPORTED"]["fn"] == 1

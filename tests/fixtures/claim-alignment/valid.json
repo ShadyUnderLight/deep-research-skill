@@ -1,8 +1,20 @@
 {
   "schema_version": "1",
   "bundle_id": "claim-alignment-valid-supported",
-  "audited_population": "single load-bearing claim",
-  "sampling_rule": "explicit positive fixture",
+  "audited_population": "load-bearing claim in market-outlook positive fixture",
+  "sampling_rule": "explicit positive integration fixture",
+  "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
+  "source_artifact_sha256": "742a6822a80cbf3fcf17353f2e2f78d4d89111d7040b3bcad097b9438f0993ba",
+  "route_id": "market-outlook",
+  "source_register": [
+    {
+      "source_id": "S01",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s01-excerpt.txt",
+      "source_artifact_sha256": "5d09c917aedf10633d7bc83b18afaf53dd548659aae27fb50211dc073fbc4b66",
+      "title": "FY2025 filing excerpt",
+      "url": "https://example.com/filing"
+    }
+  ],
   "entries": [
     {
       "claim_id": "C01",

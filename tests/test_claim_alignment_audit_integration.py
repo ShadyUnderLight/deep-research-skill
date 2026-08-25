@@ -28,15 +28,16 @@ def _run_audit(*extra: str) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True)
 
 
-def test_default_audit_report_omits_claim_alignment() -> None:
+def test_default_audit_report_records_claim_alignment_not_run() -> None:
     result = _run_audit()
     assert result.returncode == 0, result.stdout + result.stderr
     data = json.loads(result.stdout)
-    audit_ids = {a["audit_id"] for a in data["audits"]}
-    assert "claim-source-alignment" not in audit_ids
+    by_id = {a["audit_id"]: a for a in data["audits"]}
+    assert by_id["claim-source-alignment"]["status"] == "not_run"
+    assert by_id["claim-source-alignment"]["reason"]
 
 
-def test_enable_claim_alignment_with_valid_bundle() -> None:
+def test_enable_claim_alignment_with_bound_valid_bundle() -> None:
     result = _run_audit(
         "--enable-claim-alignment",
         "--claim-alignment-bundle",
@@ -48,9 +49,21 @@ def test_enable_claim_alignment_with_valid_bundle() -> None:
     assert by_id["claim-source-alignment"]["status"] == "pass"
 
 
-def test_enable_without_bundle_is_not_run() -> None:
+def test_enable_without_bundle_blocks() -> None:
     result = _run_audit("--enable-claim-alignment")
     assert result.returncode == 2, result.stdout + result.stderr
     data = json.loads(result.stdout)
     by_id = {a["audit_id"]: a for a in data["audits"]}
     assert by_id["claim-source-alignment"]["status"] == "not_run"
+
+
+def test_route_mismatch_bundle_blocks_alignment_pass() -> None:
+    result = _run_audit(
+        "--enable-claim-alignment",
+        "--claim-alignment-bundle",
+        str(FIXTURES / "claim-alignment" / "route-mismatch.json"),
+    )
+    assert result.returncode == 2, result.stdout + result.stderr
+    data = json.loads(result.stdout)
+    by_id = {a["audit_id"]: a for a in data["audits"]}
+    assert by_id["claim-source-alignment"]["status"] == "fail"

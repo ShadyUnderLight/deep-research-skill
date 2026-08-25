@@ -30,8 +30,16 @@ class TestClaimAlignmentCalibration:
         assert result.fixture_version == "claim-alignment-calibration-v1"
         assert result.positive_samples > 0
         assert result.negative_samples > 0
-        for verdict in ("SUPPORTED", "UNSUPPORTED", "RETRIEVAL_FAILED", "NOT_RUN"):
-            assert verdict in result.per_class
+        supported = result.per_class["SUPPORTED"]
+        assert supported["support"] == 1
+        assert isinstance(supported["fpr"], float)
+
+    def test_calibration_checks_partial_subclaims(self) -> None:
+        result = run_calibration(
+            FIXTURES / "calibration-bundle.json",
+            FIXTURES / "calibration-gold.json",
+        )
+        assert not any("C02: subclaim" in m for m in result.mismatches)
 
     def test_calibration_cli_json(self) -> None:
         proc = subprocess.run(
@@ -48,8 +56,7 @@ class TestClaimAlignmentCalibration:
         assert proc.returncode == 0, proc.stdout + proc.stderr
         data = json.loads(proc.stdout)
         assert data["aggregate_accuracy"] >= 0.85
-        assert "per_class" in data
-        assert data["fixture_version"] == "claim-alignment-calibration-v1"
+        assert data["per_class"]["SUPPORTED"]["fp"] == 0
 
     def test_bundle_with_embedded_gold_rejected(self) -> None:
         bundle = json.loads((FIXTURES / "calibration-bundle.json").read_text())

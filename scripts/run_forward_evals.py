@@ -352,7 +352,8 @@ def _expected_audit_set(
         if _AUDIT_REGISTRY.get_audit(audit_id) is None:
             return None
     secondary_ids = [f"{sr}-secondary-hard-fail" for sr in secondary_routes]
-    all_ids = required_and_global + secondary_ids
+    opt_in_ids = list(_AUDIT_REGISTRY.opt_in_audit_ids())
+    all_ids = required_and_global + secondary_ids + opt_in_ids
     seen: set[str] = set()
     ordered: list[str] = []
     for audit_id in all_ids:
@@ -654,13 +655,34 @@ def _audit_consistency_details(
     # Top-level overall aggregation check
     overall = actual.get("overall")
     if isinstance(overall, str):
-        audit_statuses = [str(a.get("status")) for a in audits if isinstance(a, dict) and a.get("status")]
-        if overall == "pass" and any(s != "pass" for s in audit_statuses):
-            offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") != "pass"]
-            errors.append(f"overall pass aggregates non-pass audit(s): {', '.join(offending)}")
-        if overall == "conditional-pass" and any(s in {"fail", "partial", "not_run", "skipped"} for s in audit_statuses):
-            offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") in {"fail", "partial", "not_run", "skipped"}]
-            errors.append(f"overall conditional-pass aggregates fail-like audit(s): {', '.join(offending)}")
+        opt_in_ids = set(_AUDIT_REGISTRY.opt_in_audit_ids())
+        audit_statuses = [
+            (str(a.get("audit_id")), str(a.get("status")))
+            for a in audits
+            if isinstance(a, dict) and a.get("status")
+        ]
+        if overall == "pass":
+            offending = [
+                f"{aid}:{status}"
+                for aid, status in audit_statuses
+                if status != "pass"
+                and not (aid in opt_in_ids and status == "not_run")
+            ]
+            if offending:
+                errors.append(
+                    f"overall pass aggregates non-pass audit(s): {', '.join(offending)}"
+                )
+        if overall == "conditional-pass":
+            offending = [
+                f"{aid}:{status}"
+                for aid, status in audit_statuses
+                if status in {"fail", "partial", "not_run", "skipped"}
+                and not (aid in opt_in_ids and status == "not_run")
+            ]
+            if offending:
+                errors.append(
+                    f"overall conditional-pass aggregates fail-like audit(s): {', '.join(offending)}"
+                )
 
     return (len(errors) == 0, errors)
 
@@ -845,6 +867,15 @@ def _audit_provenance_ok(
     return ok
 
 
+def _audit_status_is_fail_like(audit_id: str, status: str) -> bool:
+    """Fail-like audit statuses, excluding default-off opt-in not_run (#419)."""
+    if status in {"fail", "partial", "skipped"}:
+        return True
+    if status == "not_run":
+        return audit_id not in _AUDIT_REGISTRY.opt_in_audit_ids()
+    return False
+
+
 def _overall_consistency_details(
     actual: dict[str, Any], returncode: int | None
 ) -> tuple[bool, list[str]]:
@@ -875,13 +906,24 @@ def _overall_consistency_details(
         for v in validators
         if isinstance(v, dict) and v.get("status")
     ]
-    has_fail_like = any(s in {"fail", "partial", "not_run", "skipped"} for s in audit_statuses)
+    has_fail_like = any(
+        _audit_status_is_fail_like(str(a.get("audit_id") or ""), str(a.get("status")))
+        for a in audits
+        if isinstance(a, dict) and a.get("status")
+    )
     has_conditional = any(s == "conditional-pass" for s in audit_statuses)
     has_validator_fail = any(s in {"fail", "incomplete"} for s in validator_statuses)
     has_validator_conditional = any(s == "conditional-pass" for s in validator_statuses)
     if overall == "pass":
         if has_fail_like:
-            offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") in {"fail", "partial", "not_run", "skipped"}]
+            offending = [
+                f"{a.get('audit_id')}:{a.get('status')}"
+                for a in audits
+                if isinstance(a, dict)
+                and _audit_status_is_fail_like(
+                    str(a.get("audit_id") or ""), str(a.get("status") or "")
+                )
+            ]
             errors.append(f"overall pass aggregates fail-like audit(s): {', '.join(offending)}")
         if has_conditional:
             offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") == "conditional-pass"]
@@ -896,7 +938,14 @@ def _overall_consistency_details(
             errors.append(f"overall pass must have no blocking (got {blocking[:2]!r})")
     elif overall == "conditional-pass":
         if has_fail_like:
-            offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") in {"fail", "partial", "not_run", "skipped"}]
+            offending = [
+                f"{a.get('audit_id')}:{a.get('status')}"
+                for a in audits
+                if isinstance(a, dict)
+                and _audit_status_is_fail_like(
+                    str(a.get("audit_id") or ""), str(a.get("status") or "")
+                )
+            ]
             errors.append(f"overall conditional-pass aggregates fail-like audit(s): {', '.join(offending)}")
         if has_validator_fail:
             offending = [f"{v.get('validator_id')}:{v.get('status')}" for v in validators if isinstance(v, dict) and v.get("status") in {"fail", "incomplete"}]
@@ -973,6 +1022,10 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
         checks["statuses_match"],
     ]
     statuses = _audit_statuses(actual)
+
+    def _is_fail_like(audit_id: str, status: str) -> bool:
+        return _audit_status_is_fail_like(audit_id, status)
+
     expected_audits = set(case["expected"].get("required_audits", []))
     if family == "secondary-route-not-verified":
         secondary_targets = {
@@ -980,11 +1033,14 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
             for route in case["expected"].get("secondary_routes", [])
         }
         target_present_and_failed = any(
-            audit_id in secondary_targets and statuses.get(audit_id) != "pass"
+            audit_id in secondary_targets and _is_fail_like(audit_id, statuses.get(audit_id, ""))
             for audit_id in secondary_targets
         )
         primary_ids = expected_audits - secondary_targets
-        failed_ids = {audit_id for audit_id, status in statuses.items() if status != "pass"}
+        failed_ids = {
+            audit_id for audit_id, status in statuses.items()
+            if _is_fail_like(audit_id, status)
+        }
         return (
             all(common)
             and all(audit_id in statuses and statuses[audit_id] == "pass" for audit_id in primary_ids)
@@ -997,7 +1053,10 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
             audit_id in expected_audits and statuses.get(audit_id) in {"not_run", "partial", "skipped"}
             for audit_id in expected_audits
         )
-        failed_ids = {audit_id for audit_id, status in statuses.items() if status != "pass"}
+        failed_ids = {
+            audit_id for audit_id, status in statuses.items()
+            if _is_fail_like(audit_id, status)
+        }
         allowed_targets = {
             audit_id
             for audit_id in expected_audits
