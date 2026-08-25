@@ -1,0 +1,19 @@
+{
+  "schema_version": "1",
+  "run_id": "research-run-2026-08-25-001",
+  "artifact_id": "research-2026-08-25-001",
+  "phase": "collecting",
+  "status": "in_progress",
+  "current_artifact_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "activation_reference": {
+    "activation_id": "run-state-fixture",
+    "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "snapshot_version": 1,
+    "decision_tree_version": 1
+  },
+  "pending_decision": null,
+  "last_transition_reason": "route locked; started evidence collection",
+  "updated_at": "2026-08-25T02:00:00Z",
+  "enabled_reason": "parallel",
+  "next_action": "finish competitor and pricing tracks"
+}

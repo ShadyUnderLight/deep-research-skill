@@ -121,6 +121,27 @@ Minimum shape every track must produce:
      assigned scope in a dispatch file and merge with
      `--expected-scope-file <dispatch-scope.json>` to catch geography /
      timeframe / in-scope drift even when every identity binding matches.
+   - When a Run State exists, merge with `--run-state <run-state.json>` so
+     the handoff's `artifact_ref.artifact_id` and listed `handoff_refs`
+     hash must match. Omitting `--run-state` keeps the #416 path unchanged.
+
+## Run State (parallel or explicit resume only)
+
+Create `schemas/research-run-state.json` when `parallelization_decision` is
+`parallel`, or when the user explicitly resumes a previous `run_id`. Ordinary
+single-track research creates no Run State.
+
+```bash
+python3 scripts/validate_research_run_state.py <run-state.json>
+python3 scripts/validate_track_handoff.py <handoff>.json --run-state <run-state.json>
+python3 scripts/validate_research_run_state.py <run-state.json> \
+    --artifact <pack.md> --audit-result <audit.json>
+```
+
+Resume means re-read the sidecar and artifacts, re-check hashes, and continue
+from the recorded phase — not replay of model context. A Run State
+`delivered` / `completed` overlay is not a content-quality Pass. Do not add a
+user confirmation on every search action.
 
 ## Merge step
 

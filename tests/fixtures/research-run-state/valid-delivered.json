@@ -1,0 +1,24 @@
+{
+  "schema_version": "1",
+  "run_id": "research-run-2026-08-25-001",
+  "artifact_id": "research-2026-08-25-001",
+  "phase": "delivered",
+  "status": "completed",
+  "current_artifact_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "activation_reference": {
+    "activation_id": "run-state-fixture",
+    "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "snapshot_version": 1,
+    "decision_tree_version": 1
+  },
+  "pending_decision": null,
+  "last_transition_reason": "required audits executed; user confirmed delivery",
+  "updated_at": "2026-08-25T06:00:00Z",
+  "enabled_reason": "parallel",
+  "handoff_refs": [
+    {
+      "handoff_id": "track-2026-08-24-competitors",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ]
+}

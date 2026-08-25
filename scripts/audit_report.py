@@ -806,6 +806,7 @@ def _run_research_pack(pack_path: Path | None, **kwargs: bool) -> CheckResult:
                 evidence_base_dir=Path(__file__).resolve().parent.parent,
                 report_text=report_text,
                 known_validator_bindings=_registered_validator_bindings(),
+                pack_path=pack_path,
             )
         )
     except Exception as exc:
@@ -1916,6 +1917,26 @@ def _audit_report_impl(
         expected_validators=_ROUTE_REGISTRY.validators_for(resolved_route),
         source_path=str(path),
     )
+    return _apply_run_state_delivery_guard(verdict, research_pack)
+
+
+def _apply_run_state_delivery_guard(
+    verdict: AuditVerdict, research_pack: Path | None
+) -> AuditVerdict:
+    """delivered/completed Run State cannot masquerade after a failing audit."""
+    if research_pack is None:
+        return verdict
+    from validate_research_run_state import load_declared_run_state
+
+    state = load_declared_run_state(research_pack)
+    if state is None:
+        return verdict
+    if state.get("phase") == "delivered" or state.get("status") == "completed":
+        if verdict.overall == "fail":
+            verdict.blocking.append(
+                "run state claims delivered/completed but audit overall is fail; "
+                "content-audit failure cannot masquerade as delivered"
+            )
     return verdict
 
 

@@ -1116,6 +1116,13 @@ def main(argv: list[str] | None = None) -> int:
             for err in activation_errors:
                 print(f"Error: {err}", file=sys.stderr)
             return 2
+        from validate_research_run_state import check_pack_run_state
+
+        run_state_errors = check_pack_run_state(args.research_pack)
+        if run_state_errors:
+            for err in run_state_errors:
+                print(f"Error: {err}", file=sys.stderr)
+            return 2
 
     activation_snapshot: dict | None = None
     if args.activation_snapshot:
