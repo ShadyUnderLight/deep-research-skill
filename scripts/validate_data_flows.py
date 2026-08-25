@@ -275,6 +275,8 @@ def check_data_flow_component_tables(data_flows_text: str, registry: dict) -> li
 
     missing_network = expected_network - network_table_ids
     missing_stores = expected_stores - store_table_ids
+    extra_network = network_table_ids - expected_network
+    extra_stores = store_table_ids - expected_stores
     if missing_network:
         failures.append(
             "DATA_FLOWS network table missing component rows: "
@@ -284,6 +286,16 @@ def check_data_flow_component_tables(data_flows_text: str, registry: dict) -> li
         failures.append(
             "DATA_FLOWS local store table missing component rows: "
             f"{sorted(missing_stores)}"
+        )
+    if extra_network:
+        failures.append(
+            "DATA_FLOWS network table has undeclared component rows: "
+            f"{sorted(extra_network)}"
+        )
+    if extra_stores:
+        failures.append(
+            "DATA_FLOWS local store table has undeclared component rows: "
+            f"{sorted(extra_stores)}"
         )
 
     failures.extend(check_verification_status_tokens(data_flows_text))
@@ -485,15 +497,19 @@ def run_checks() -> list[str]:
 
     failures.extend(check_required_sections(data_flows, DATA_FLOWS_REQUIRED_SECTIONS, "DATA_FLOWS.md"))
 
-    if risk_register:
+    if not risk_register.strip():
+        failures.append("RISK_REGISTER.md is empty")
+    else:
         failures.extend(
-            check_required_sections(risk_register, RISK_REGISTER_REQUIRED_SECTIONS, "RISK_REGISTER.md")
+            check_required_sections(
+                risk_register, RISK_REGISTER_REQUIRED_SECTIONS, "RISK_REGISTER.md"
+            )
+        )
+        failures.extend(
+            check_risk_register_entries(risk_register, registry.get("risk_ids", []))
         )
 
     failures.extend(check_data_flow_component_tables(data_flows, registry))
-
-    if risk_register:
-        failures.extend(check_risk_register_entries(risk_register, registry.get("risk_ids", [])))
 
     failures.extend(check_network_signal_drift(registry))
     failures.extend(check_local_store_write_drift(registry))

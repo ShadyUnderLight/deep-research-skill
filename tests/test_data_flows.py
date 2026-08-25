@@ -194,3 +194,62 @@ def test_stripped_risk_entry_fields_fail() -> None:
         broken, ["RISK-001-retrieved-content-prompt-injection"]
     )
     assert any("missing field: description" in msg for msg in failures)
+
+
+def test_rogue_data_flow_table_row_fails() -> None:
+    registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    rogue_row = (
+        "| `rogue-component` | trigger | data | dest | none | temp | off | degraded | asserted |\n"
+    )
+    broken = DATA_FLOWS_PATH.read_text(encoding="utf-8").replace(
+        "## Local stores",
+        rogue_row + "## Local stores",
+        1,
+    )
+    failures = data_flows.check_data_flow_component_tables(broken, registry)
+    assert any(
+        "undeclared component rows" in msg and "rogue-component" in msg for msg in failures
+    )
+
+
+def test_stale_data_flow_table_row_not_in_registry_fails() -> None:
+    registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    registry["network_touchpoints"] = [
+        item
+        for item in registry["network_touchpoints"]
+        if item["id"] != "agent-reach-local-api"
+    ]
+    failures = data_flows.check_data_flow_component_tables(
+        DATA_FLOWS_PATH.read_text(encoding="utf-8"), registry
+    )
+    assert any(
+        "undeclared component rows" in msg and "agent-reach-local-api" in msg
+        for msg in failures
+    )
+
+
+def test_stale_documentation_only_store_row_not_in_registry_fails() -> None:
+    registry = json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    registry["local_stores"] = [
+        item for item in registry["local_stores"] if item["id"] != "user-research-artifacts"
+    ]
+    failures = data_flows.check_data_flow_component_tables(
+        DATA_FLOWS_PATH.read_text(encoding="utf-8"), registry
+    )
+    assert any(
+        "undeclared component rows" in msg and "user-research-artifacts" in msg
+        for msg in failures
+    )
+
+
+def test_empty_risk_register_fails(monkeypatch) -> None:
+    original_read = data_flows.read_text
+
+    def fake_read(rel_path: str) -> str:
+        if rel_path == "docs/RISK_REGISTER.md":
+            return ""
+        return original_read(rel_path)
+
+    monkeypatch.setattr(data_flows, "read_text", fake_read)
+    failures = data_flows.run_checks()
+    assert any("RISK_REGISTER.md is empty" in msg for msg in failures)
