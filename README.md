@@ -131,13 +131,14 @@ python -m playwright install chromium
 如果你是第一次看这个仓库，建议按这个顺序：
 
 1. **`README.md`**：看清仓库目标与结构
-2. **`SKILL.md`**：看 Agent 实际执行时的工作流脊柱
-3. **`references/route-index.md`**：紧凑路由选择索引（一屏读完，快速定位候选路由）
-4. **`references/routes/`**：候选 route 的短卡片（trigger、边界、reads、audits、artifact contract）
-5. **`ROUTING-MATRIX.md` / `SKILL.md#routing-rule`**：specialized route 读矩阵完整合约；shared-workflow 读 SKILL fallback contract
-6. **`ARCHITECTURE.md`**：看仓库分层与职责边界
-7. **`SYSTEM-MAP.md`**：看问题域、失败族和干预路径
-8. 按任务需要再进入 `references/`、`checklists/`、`evals/`、`scripts/`
+2. **`docs/DATA_FLOWS.md`** / **`docs/RISK_REGISTER.md`**：数据流、本地存储、关闭方式与风险登记（单一入口）
+3. **`SKILL.md`**：看 Agent 实际执行时的工作流脊柱
+4. **`references/route-index.md`**：紧凑路由选择索引（一屏读完，快速定位候选路由）
+5. **`references/routes/`**：候选 route 的短卡片（trigger、边界、reads、audits、artifact contract）
+6. **`ROUTING-MATRIX.md` / `SKILL.md#routing-rule`**：specialized route 读矩阵完整合约；shared-workflow 读 SKILL fallback contract
+7. **`ARCHITECTURE.md`**：看仓库分层与职责边界
+8. **`SYSTEM-MAP.md`**：看问题域、失败族和干预路径
+9. 按任务需要再进入 `references/`、`checklists/`、`evals/`、`scripts/`
 
 ---
 

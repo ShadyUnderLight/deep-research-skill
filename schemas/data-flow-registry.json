@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "description": "Machine-readable registry of data-flow touchpoints and local stores documented in docs/DATA_FLOWS.md. Update this file whenever a repo-owned network path, maintainer tool, agent-runtime boundary, or persistent store changes.",
+  "last_reviewed": "2026-08-25",
+  "network_touchpoints": [
+    {
+      "id": "agent-reach-local-api",
+      "kind": "agent_runtime",
+      "source_files": [],
+      "network_signals": []
+    },
+    {
+      "id": "host-agent-search-fetch-browser",
+      "kind": "agent_runtime",
+      "source_files": [],
+      "network_signals": []
+    },
+    {
+      "id": "render-pdf-playwright",
+      "kind": "repo_script",
+      "source_files": [
+        "scripts/render_pdf.py",
+        "scripts/check_pdf_regression.py",
+        "scripts/md_to_pdf.py",
+        "scripts/delivery/pipeline.py"
+      ],
+      "network_signals": ["async_playwright"]
+    },
+    {
+      "id": "gh-issue-pr-acceptance",
+      "kind": "maintainer_tool",
+      "source_files": ["scripts/validate_issue_pr_acceptance.py"],
+      "network_signals": ["gh_cli"]
+    }
+  ],
+  "local_stores": [
+    {
+      "id": "user-research-artifacts",
+      "kind": "user_workspace"
+    },
+    {
+      "id": "md-to-pdf-temp-html",
+      "kind": "repo_script"
+    },
+    {
+      "id": "delivery-status-writeback",
+      "kind": "repo_script"
+    },
+    {
+      "id": "generated-route-cards",
+      "kind": "repo_script"
+    },
+    {
+      "id": "forward-eval-offline-fixtures",
+      "kind": "repo_script"
+    },
+    {
+      "id": "ci-test-temp-dirs",
+      "kind": "test_only"
+    }
+  ],
+  "risk_ids": [
+    "RISK-001-retrieved-content-prompt-injection",
+    "RISK-002-sensitive-query-external-channel",
+    "RISK-003-provider-outage-quota-fetch-failure",
+    "RISK-004-stale-source-cache-current-state",
+    "RISK-005-locator-forgery-cross-artifact",
+    "RISK-006-validator-fail-open",
+    "RISK-007-model-tool-version-drift",
+    "RISK-008-partial-not-run-misread-as-pass",
+    "RISK-009-host-platform-transport",
+    "RISK-010-pdf-remote-resource-fetch"
+  ]
+}
