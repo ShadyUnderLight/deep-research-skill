@@ -100,3 +100,59 @@ class TestClaimAlignmentCalibration:
             assert raised
         finally:
             tmp_path.unlink()
+
+    def test_bogus_gold_verdict_rejected(self) -> None:
+        gold = json.loads((FIXTURES / "calibration-gold.json").read_text())
+        gold["labels"]["C01"]["verdict"] = "BOGUS"
+        import tempfile
+
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as tmp:
+            json.dump(gold, tmp)
+            tmp_path = Path(tmp.name)
+        try:
+            try:
+                run_calibration(FIXTURES / "calibration-bundle.json", tmp_path)
+                raised = False
+            except ValueError:
+                raised = True
+            assert raised
+        finally:
+            tmp_path.unlink()
+
+    def test_degenerate_all_not_run_gold_rejected(self) -> None:
+        gold = json.loads((FIXTURES / "calibration-gold.json").read_text())
+        for entry in gold["labels"].values():
+            entry["verdict"] = "NOT_RUN"
+            entry.pop("subclaims", None)
+        import tempfile
+
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as tmp:
+            json.dump(gold, tmp)
+            tmp_path = Path(tmp.name)
+        try:
+            try:
+                run_calibration(FIXTURES / "calibration-bundle.json", tmp_path)
+                raised = False
+            except ValueError:
+                raised = True
+            assert raised
+        finally:
+            tmp_path.unlink()
+
+    def test_partial_gold_requires_subclaims(self) -> None:
+        gold = json.loads((FIXTURES / "calibration-gold.json").read_text())
+        gold["labels"]["C02"] = {"verdict": "PARTIAL"}
+        import tempfile
+
+        with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as tmp:
+            json.dump(gold, tmp)
+            tmp_path = Path(tmp.name)
+        try:
+            try:
+                run_calibration(FIXTURES / "calibration-bundle.json", tmp_path)
+                raised = False
+            except ValueError:
+                raised = True
+            assert raised
+        finally:
+            tmp_path.unlink()

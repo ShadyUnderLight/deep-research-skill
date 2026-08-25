@@ -105,6 +105,39 @@ def test_tampered_opt_in_reason_not_exempt_from_consumer_checks() -> None:
     )
 
 
+def test_aggregate_not_run_audit_has_no_evidence_or_provenance() -> None:
+    result = _run_audit(
+        "--enable-claim-alignment",
+        "--claim-alignment-bundle",
+        str(FIXTURES / "claim-alignment" / "not-run-only.json"),
+    )
+    assert result.returncode == 1, result.stdout + result.stderr
+    data = json.loads(result.stdout)
+    audit = next(a for a in data["audits"] if a["audit_id"] == "claim-source-alignment")
+    assert audit["status"] == "not_run"
+    assert audit.get("reason")
+    assert not audit.get("evidence")
+    assert not audit.get("evidence_provenance")
+    if str(SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS))
+    from run_forward_evals import _audit_consistency_details, _expected_audit_set  # noqa: E402
+
+    report_path = FIXTURES / "audit" / "market-outlook-pos.md"
+    report_sha = __import__("hashlib").sha256(report_path.read_bytes()).hexdigest()
+    ok, errors = _audit_consistency_details(
+        data,
+        _expected_audit_set("market-outlook", []),
+        audited_path=str(report_path),
+        expected_report_sha256=report_sha,
+        research_pack_path=str(FIXTURES / "audit" / "research-pack-pos.md"),
+        expected_pack_sha256=__import__("hashlib").sha256(
+            (FIXTURES / "audit" / "research-pack-pos.md").read_bytes()
+        ).hexdigest(),
+        expected_route="market-outlook",
+    )
+    assert ok, errors
+
+
 def test_route_mismatch_bundle_blocks_alignment_pass() -> None:
     result = _run_audit(
         "--enable-claim-alignment",

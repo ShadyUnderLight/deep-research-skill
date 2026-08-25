@@ -312,6 +312,49 @@ class TestLexicalJudgeAndProductionBundle:
         report = run_bundle(data)
         assert report.judgments[0].verdict == "UNSUPPORTED"
 
+    def test_negation_conflict_not_supported(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["entries"][0]["claim_text"] = (
+            "Revenue did not increase compared to the prior fiscal year"
+        )
+        report = run_bundle(data)
+        assert report.judgments[0].verdict == "UNSUPPORTED"
+
+    def test_numeric_percent_conflict_not_supported(self) -> None:
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["entries"][0]["claim_text"] = "Revenue increased 50% in FY2025"
+        report = run_bundle(data)
+        assert report.judgments[0].verdict == "UNSUPPORTED"
+
+    def test_cjk_negation_conflict_not_supported(self) -> None:
+        import hashlib
+
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        src = ROOT / "tests/fixtures/claim-alignment/sources/cjk-growth-source.txt"
+        excerpt = "收入增长"
+        data["source_register"] = [
+            {
+                "source_id": "S01",
+                "source_artifact_path": (
+                    "tests/fixtures/claim-alignment/sources/cjk-growth-source.txt"
+                ),
+                "source_artifact_sha256": hashlib.sha256(src.read_bytes()).hexdigest(),
+            }
+        ]
+        data["entries"][0]["claim_text"] = "收入没有增长"
+        data["entries"][0]["claim_id"] = "CJK1"
+        data["entries"][0]["evidence_record"]["claim_id"] = "CJK1"
+        data["entries"][0]["evidence_record"]["locator"] = {
+            "kind": "quote",
+            "value": "收入增长",
+        }
+        data["entries"][0]["excerpt"] = excerpt
+        data["entries"][0]["evidence_record"]["excerpt_hash"] = (
+            f"sha256:{hashlib.sha256(excerpt.encode()).hexdigest()}"
+        )
+        report = run_bundle(data)
+        assert report.judgments[0].verdict == "UNSUPPORTED"
+
     def test_year_mismatch_not_supported(self) -> None:
         import hashlib
 

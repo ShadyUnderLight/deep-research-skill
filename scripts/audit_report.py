@@ -28,7 +28,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
+from typing import Any, Callable
 
 # ── Import existing validators ──────────────────────────────────────────────
 
@@ -98,7 +98,7 @@ from activation_snapshot import (
 # bindings come from schemas/audit-registry.json (issue #378).
 import registry_loader
 from registry_loader import RegistryError, UnknownRouteError
-from opt_in_audit_contract import OPT_IN_DEFAULT_OFF_REASON
+from opt_in_audit_contract import OPT_IN_AGGREGATE_NOT_RUN_REASON, OPT_IN_DEFAULT_OFF_REASON
 
 _ROUTE_REGISTRY = registry_loader.load_route_registry()
 _AUDIT_REGISTRY = registry_loader.load_audit_registry()
@@ -1733,42 +1733,44 @@ def _execute_opt_in_audits(
     else:
         status = "pass"
 
-    if check.errors:
+    evidence: list[str] = []
+    evidence_provenance: list[dict[str, Any]] = []
+    reason: str | None = None
+
+    if status == "not_run":
+        reason = OPT_IN_AGGREGATE_NOT_RUN_REASON
+    elif status == "fail":
         evidence = [str(e)[:200] for e in check.errors[:5]]
     else:
         evidence = [
             f"{path}: claim-alignment bundle {claim_alignment_bundle} "
             f"validated by {binding}"
         ]
-    report_hash = _sha256(path)
-    evidence_provenance = [{
-        "kind": "automated_validator",
-        "audit_id": audit_id,
-        "locator": binding,
-        "validator_binding": binding,
-        "execution_source": "automated_validator",
-        "target": str(path),
-        "input_sha256": report_hash,
-        "validator_version": _registry_version(),
-        "verified": True,
-        "claim_alignment_bundle": str(claim_alignment_bundle),
-        "claim_alignment_bundle_sha256": _sha256(claim_alignment_bundle),
-    }]
+        report_hash = _sha256(path)
+        evidence_provenance = [{
+            "kind": "automated_validator",
+            "audit_id": audit_id,
+            "locator": binding,
+            "validator_binding": binding,
+            "execution_source": "automated_validator",
+            "target": str(path),
+            "input_sha256": report_hash,
+            "validator_version": _registry_version(),
+            "verified": True,
+            "claim_alignment_bundle": str(claim_alignment_bundle),
+            "claim_alignment_bundle_sha256": _sha256(claim_alignment_bundle),
+        }]
     results.append(AuditResult(
         audit_id=audit_id,
         execution_type="automated",
         status=status,
         execution_source="automated_validator",
-        errors=list(check.errors),
-        warnings=list(check.warnings),
+        errors=[] if status == "not_run" else list(check.errors),
+        warnings=[] if status == "not_run" else list(check.warnings),
         validator_binding=binding,
         evidence=evidence,
         evidence_provenance=evidence_provenance,
-        reason=(
-            "aggregate NOT_RUN"
-            if status == "not_run"
-            else None
-        ),
+        reason=reason,
     ))
     blocking.extend(f"[{audit_id}] {e}" for e in check.errors)
     warnings.extend(f"[{audit_id}] {w} (audit)" for w in check.warnings)

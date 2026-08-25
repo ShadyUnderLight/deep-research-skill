@@ -696,6 +696,53 @@ def _contains_direction_word(text: str, words: frozenset[str]) -> bool:
     return any(word.casefold() in text_cf for word in words)
 
 
+_NEGATION_PATTERNS_EN = (
+    re.compile(r"\bnot\b", re.IGNORECASE),
+    re.compile(r"\bno\b", re.IGNORECASE),
+    re.compile(r"\bnever\b", re.IGNORECASE),
+    re.compile(r"\bwithout\b", re.IGNORECASE),
+    re.compile(r"\bdidn't\b", re.IGNORECASE),
+    re.compile(r"\bdid not\b", re.IGNORECASE),
+)
+_NEGATION_MARKERS_CJK = ("没有", "未", "不再", "并非", "无")
+
+
+def _has_negation(text: str) -> bool:
+    if any(marker in text for marker in _NEGATION_MARKERS_CJK):
+        return True
+    return any(pattern.search(text) for pattern in _NEGATION_PATTERNS_EN)
+
+
+def _direction_polarity_present(text: str) -> bool:
+    return (
+        _contains_direction_word(text, _NEGATIVE_DIRECTION)
+        or _contains_direction_word(text, _POSITIVE_DIRECTION)
+    )
+
+
+def _negation_conflict(claim: str, excerpt: str) -> bool:
+    claim_negated = _has_negation(claim)
+    excerpt_negated = _has_negation(excerpt)
+    if claim_negated == excerpt_negated:
+        return False
+    return _direction_polarity_present(claim) or _direction_polarity_present(excerpt)
+
+
+def _extract_percentages(text: str) -> list[float]:
+    return [float(value) for value in re.findall(r"(\d+(?:\.\d+)?)\s*%", text)]
+
+
+def _numeric_percent_conflict(claim: str, excerpt: str) -> bool:
+    claim_pcts = _extract_percentages(claim)
+    excerpt_pcts = _extract_percentages(excerpt)
+    if not claim_pcts or not excerpt_pcts:
+        return False
+    for claim_pct in claim_pcts:
+        if not any(abs(claim_pct - excerpt_pct) < 0.01 for excerpt_pct in excerpt_pcts):
+            return True
+    return False
+
+
 def _direction_conflict(claim: str, excerpt: str) -> bool:
     claim_neg = _contains_direction_word(claim, _NEGATIVE_DIRECTION)
     claim_pos = _contains_direction_word(claim, _POSITIVE_DIRECTION)
@@ -819,6 +866,10 @@ def _judge_claim_text(
         if quote and quote not in excerpt:
             return "UNSUPPORTED"
     if _direction_conflict(claim_text, excerpt):
+        return "UNSUPPORTED"
+    if _negation_conflict(claim_text, excerpt):
+        return "UNSUPPORTED"
+    if _numeric_percent_conflict(claim_text, excerpt):
         return "UNSUPPORTED"
     if _year_mismatch(claim_text, excerpt):
         return "UNSUPPORTED"
@@ -1083,12 +1134,46 @@ def compute_per_class_one_vs_rest(
     return per_class
 
 
+def _validate_gold_label_entry(
+    claim_id: str,
+    gold_entry: Any,
+    *,
+    path_prefix: str,
+) -> list[str]:
+    errors: list[str] = []
+    prefix = f"{path_prefix}[{claim_id}]"
+    if not isinstance(gold_entry, dict):
+        return [f"{prefix}: gold entry must be an object"]
+    expected = gold_entry.get("verdict")
+    if expected not in VERDICTS:
+        errors.append(f"{prefix}: invalid verdict {expected!r}")
+        return errors
+    if expected == "PARTIAL":
+        subclaims = gold_entry.get("subclaims")
+        if not isinstance(subclaims, list) or not subclaims:
+            errors.append(f"{prefix}: PARTIAL requires non-empty subclaims")
+        else:
+            for index, subclaim in enumerate(subclaims):
+                sub_prefix = f"{prefix}.subclaims[{index}]"
+                if not isinstance(subclaim, dict):
+                    errors.append(f"{sub_prefix}: must be an object")
+                    continue
+                if not isinstance(subclaim.get("text"), str) or not str(subclaim.get("text")).strip():
+                    errors.append(f"{sub_prefix}: text must be a non-empty string")
+                sub_verdict = subclaim.get("verdict")
+                if sub_verdict not in VERDICTS:
+                    errors.append(f"{sub_prefix}: invalid verdict {sub_verdict!r}")
+    return errors
+
+
 def _subclaims_match(
     expected: list[dict[str, Any]] | None,
     actual: list[dict[str, str]],
 ) -> bool:
+    if expected is None:
+        return not actual
     if not expected:
-        return True
+        return False
     if len(expected) != len(actual):
         return False
     for exp, act in zip(expected, actual, strict=True):
@@ -1129,11 +1214,26 @@ def run_calibration(
     if not isinstance(labels, dict):
         raise ValueError(f"{gold_path}: gold file must contain labels object")
 
-    fixture_version = str(
-        gold_data.get("fixture_version")
-        or bundle_data.get("fixture_version")
-        or "unknown"
-    )
+    gold_fixture_version = gold_data.get("fixture_version")
+    if not isinstance(gold_fixture_version, str) or not gold_fixture_version.strip():
+        raise ValueError(f"{gold_path}: gold file must contain fixture_version")
+    bundle_fixture_version = bundle_data.get("fixture_version")
+    if isinstance(bundle_fixture_version, str) and bundle_fixture_version.strip():
+        if bundle_fixture_version != gold_fixture_version:
+            raise ValueError(
+                f"{gold_path}: fixture_version {gold_fixture_version!r} does not match "
+                f"bundle fixture_version {bundle_fixture_version!r}"
+            )
+
+    label_errors: list[str] = []
+    for claim_id, gold_entry in labels.items():
+        label_errors.extend(
+            _validate_gold_label_entry(str(claim_id), gold_entry, path_prefix="labels")
+        )
+    if label_errors:
+        raise ValueError(f"{gold_path}: invalid gold labels: {label_errors}")
+
+    fixture_version = str(gold_fixture_version)
     report = run_bundle(bundle_data)
     if report.structural_errors:
         raise ValueError(
@@ -1165,11 +1265,7 @@ def run_calibration(
     negatives = 0
 
     for claim_id, gold_entry in labels.items():
-        if not isinstance(gold_entry, dict):
-            continue
         expected = gold_entry.get("verdict")
-        if expected not in VERDICTS:
-            continue
         if claim_id not in bundle_claim_ids:
             continue
         actual = predicted.get(claim_id)
@@ -1179,8 +1275,11 @@ def run_calibration(
             positives += 1
         else:
             negatives += 1
+        expected_subclaims = (
+            gold_entry.get("subclaims") if expected == "PARTIAL" else None
+        )
         subclaims_ok = _subclaims_match(
-            gold_entry.get("subclaims") if expected == "PARTIAL" else None,
+            expected_subclaims if isinstance(expected_subclaims, list) else None,
             actual.subclaims if actual else [],
         )
         if actual_verdict == expected and subclaims_ok:
@@ -1195,6 +1294,11 @@ def run_calibration(
 
     if total == 0:
         raise ValueError(f"{gold_path}: gold labels contain no valid verdict entries")
+    if positives == 0 or negatives == 0:
+        raise ValueError(
+            f"{gold_path}: calibration requires both positive and negative samples "
+            f"(positives={positives}, negatives={negatives})"
+        )
 
     accuracy = correct / total if total else 0.0
     return CalibrationReport(
