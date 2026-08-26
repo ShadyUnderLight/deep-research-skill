@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 FIXTURES = ROOT / "tests" / "fixtures" / "claim-alignment"
@@ -40,6 +42,15 @@ class TestClaimAlignmentCalibration:
             FIXTURES / "calibration-gold.json",
         )
         assert not any("C02: subclaim" in m for m in result.mismatches)
+
+    @pytest.mark.parametrize("threshold", [-0.01, 1.01, float("nan")])
+    def test_calibration_rejects_invalid_threshold(self, threshold: float) -> None:
+        with pytest.raises(ValueError, match="threshold"):
+            run_calibration(
+                FIXTURES / "calibration-bundle.json",
+                FIXTURES / "calibration-gold.json",
+                threshold=threshold,
+            )
 
     def test_calibration_cli_json(self) -> None:
         proc = subprocess.run(

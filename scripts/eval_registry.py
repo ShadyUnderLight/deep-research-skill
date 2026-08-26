@@ -114,7 +114,7 @@ REQUIRED_EXPECTED_FIELDS = {
 }
 OPTIONAL_EXPECTED_FIELDS = {"failure_stage"}
 REQUIRED_FIXTURE_FIELDS = {"report", "research_pack"}
-OPTIONAL_FIXTURE_FIELDS = {"activation_snapshot"}
+OPTIONAL_FIXTURE_FIELDS = {"activation_snapshot", "claim_alignment_bundle"}
 ALLOWED_STATUS_KEYS = {"research_status", "audit_status", "delivery_status"}
 PACK_FIELD_NAMES = {
     "Objective",
@@ -540,6 +540,8 @@ def _validate_case(
             f"{prefix}.fixtures.activation_snapshot is only valid for "
             "activation-record-integration"
         )
+    if "claim_alignment_bundle" in fixtures:
+        fixture_keys.add("claim_alignment_bundle")
     for fixture_key in fixture_keys:
         fixture_value = fixtures.get(fixture_key)
         fixture_path = _repo_relative_path(fixture_value, root) if isinstance(fixture_value, str) else None

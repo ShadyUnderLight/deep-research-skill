@@ -261,7 +261,8 @@
       "fixtures": {
         "report": "tests/fixtures/audit/market-outlook-pos.md",
         "research_pack": "tests/fixtures/forward/market-outlook-baseline-pack.md",
-        "activation_snapshot": "tests/fixtures/forward/forward-market-outlook-baseline-activation.json"
+        "activation_snapshot": "tests/fixtures/forward/forward-market-outlook-baseline-activation.json",
+        "claim_alignment_bundle": "tests/fixtures/claim-alignment/valid.json"
       },
       "failure_family": null,
       "related_rule": ["ROUTING-MATRIX.md#market-outlook-industry-evolution", "evals/cases/humanoid-robot-market-outlook-dual-route-case.md"],

@@ -44,7 +44,11 @@ from activation_snapshot import (
 )
 import registry_loader  # noqa: E402
 from audit_evidence import validate_evidence_reference  # noqa: E402 — re-validate manual/process evidence against real artifact (issue #403 re-review)
-from opt_in_audit_contract import audit_not_run_is_consumer_exempt  # noqa: E402
+from opt_in_audit_contract import (  # noqa: E402
+    OPT_IN_AGGREGATE_NOT_RUN_REASON,
+    audit_not_run_is_conditional_consumer_exempt,
+    audit_not_run_is_consumer_exempt,
+)
 
 # Canonical route → validator binding set.  The runner uses it to verify the
 # audit JSON validators[] is a complete, un-forged binding set (issue #393).
@@ -140,6 +144,7 @@ def _run_audit(
     report: Path,
     research_pack: Path,
     activation_snapshot: Path | None = None,
+    claim_alignment_bundle: Path | None = None,
 ) -> tuple[dict[str, Any] | None, str | None, int]:
     command = [
         sys.executable,
@@ -153,6 +158,12 @@ def _run_audit(
     ]
     if activation_snapshot is not None:
         command.extend(["--activation-snapshot", str(activation_snapshot)])
+    if claim_alignment_bundle is not None:
+        command.extend([
+            "--enable-claim-alignment",
+            "--claim-alignment-bundle",
+            str(claim_alignment_bundle),
+        ])
     completed = subprocess.run(command, capture_output=True, text=True, cwd=ROOT)
     try:
         data = json.loads(completed.stdout)
@@ -377,6 +388,74 @@ def _sha256(path: object) -> str | None:
         return None
 
 
+def _claim_alignment_bundle_binding_errors(
+    item: dict[str, Any],
+    expected_path: str | None,
+    *,
+    require_verified: bool = True,
+) -> list[str]:
+    """Verify the opt-in alignment bundle used by an automated audit.
+
+    The report hash alone is insufficient: the alignment bundle is a separate
+    input and may change while the report and Research Pack remain identical.
+    Delivered/forward consumers therefore require the caller to supply the
+    exact bundle path and re-hash it.
+    """
+    if expected_path is None:
+        return [
+            "claim-source-alignment requires the exact "
+            "--claim-alignment-bundle path for consumer verification"
+        ]
+    expected = Path(expected_path).resolve()
+    actual_hash = _sha256(expected)
+    if actual_hash is None:
+        return [f"cannot read claim-alignment bundle {expected}"]
+
+    provenance = item.get("evidence_provenance")
+    records = [
+        record
+        for record in provenance or []
+        if isinstance(record, dict)
+    ]
+    if require_verified:
+        records = [record for record in records if record.get("verified") is True]
+        if not records:
+            return ["claim-source-alignment has no verified provenance record"]
+    else:
+        records = [record for record in records if record.get("verified") is not True]
+        if not records:
+            return [
+                "aggregate NOT_RUN claim-source-alignment requires a "
+                "non-verified bundle binding"
+            ]
+
+    errors: list[str] = []
+    for record in records:
+        declared_path = record.get("claim_alignment_bundle")
+        if not isinstance(declared_path, str) or not declared_path.strip():
+            errors.append(
+                "verified provenance is missing claim_alignment_bundle"
+            )
+        else:
+            try:
+                declared = Path(declared_path).resolve()
+            except OSError as exc:
+                errors.append(f"claim_alignment_bundle path cannot resolve: {exc}")
+            else:
+                if declared != expected:
+                    errors.append(
+                        "claim_alignment_bundle path does not match the supplied "
+                        f"path ({declared} != {expected})"
+                    )
+        declared_hash = record.get("claim_alignment_bundle_sha256")
+        if declared_hash != actual_hash:
+            errors.append(
+                "claim_alignment_bundle_sha256 does not match the supplied "
+                f"bundle ({declared_hash!r} != {actual_hash})"
+            )
+    return errors
+
+
 def _audit_consistency_details(
     actual: dict[str, Any],
     expected_audit_ids: list[str],
@@ -387,6 +466,8 @@ def _audit_consistency_details(
     report_text: str | None = None,
     pack_text: str | None = None,
     expected_route: str | None = None,
+    claim_alignment_bundle_path: str | None = None,
+    require_opt_in_binding: bool = False,
 ) -> tuple[bool, list[str]]:
     """Detailed audit-set validation that returns locatable errors (issue #408).
 
@@ -397,6 +478,9 @@ def _audit_consistency_details(
     single source of truth for audit status semantics; ``_audits_ok`` is a
     boolean wrapper for backwards compatibility.
     """
+    require_opt_in_binding = (
+        require_opt_in_binding or claim_alignment_bundle_path is not None
+    )
     errors: list[str] = []
     audits = actual.get("audits")
     if not isinstance(audits, list):
@@ -643,7 +727,37 @@ def _audit_consistency_details(
             if errs or warns:
                 errors.append(f"{prefix} {status} must not carry errors/warnings (got errors={errs!r} warnings={warns!r})")
                 continue
-            if isinstance(raw_provenance, list) and raw_provenance:
+            aggregate_not_run_binding = (
+                audit_id == "claim-source-alignment"
+                and status == "not_run"
+                and reason == OPT_IN_AGGREGATE_NOT_RUN_REASON
+            )
+            if (
+                audit_id == "claim-source-alignment"
+                and status == "not_run"
+                and require_opt_in_binding
+                and not aggregate_not_run_binding
+            ):
+                errors.append(
+                    f"{prefix} enabled claim-source-alignment NOT_RUN must "
+                    "use the aggregate bundle binding; default-off or other "
+                    f"reason {reason!r} is not an opt-in exemption"
+                )
+            if aggregate_not_run_binding:
+                if not isinstance(raw_provenance, list) or not raw_provenance:
+                    errors.append(
+                        f"{prefix} aggregate NOT_RUN requires non-empty "
+                        "bundle provenance"
+                    )
+                elif any(
+                    isinstance(p, dict) and p.get("verified") is True
+                    for p in raw_provenance
+                ):
+                    errors.append(
+                        f"{prefix} aggregate NOT_RUN must not carry verified "
+                        "claim evidence"
+                    )
+            elif isinstance(raw_provenance, list) and raw_provenance:
                 if any(isinstance(p, dict) and p.get("verified") is True for p in raw_provenance):
                     errors.append(f"{prefix} {status} must not carry verified provenance")
                     continue
@@ -652,6 +766,24 @@ def _audit_consistency_details(
         else:
             errors.append(f"{prefix} unknown status '{status}'")
             continue
+
+        aggregate_not_run_binding = (
+            audit_id == "claim-source-alignment"
+            and status == "not_run"
+            and reason == OPT_IN_AGGREGATE_NOT_RUN_REASON
+        )
+        if (
+            audit_id == "claim-source-alignment"
+            and (status in {"pass", "conditional-pass"} or aggregate_not_run_binding)
+        ):
+            errors.extend(
+                f"{prefix} claim-alignment bundle binding failed: {error}"
+                for error in _claim_alignment_bundle_binding_errors(
+                    item,
+                    claim_alignment_bundle_path,
+                    require_verified=not aggregate_not_run_binding,
+                )
+            )
 
     # Top-level overall aggregation check
     overall = actual.get("overall")
@@ -668,7 +800,11 @@ def _audit_consistency_details(
                 for a in audits
                 if isinstance(a, dict)
                 and a.get("status") != "pass"
-                and not audit_not_run_is_consumer_exempt(a, opt_in_ids)
+                and not audit_not_run_is_consumer_exempt(
+                    a,
+                    opt_in_ids,
+                    require_opt_in_binding=require_opt_in_binding,
+                )
             ]
             if offending:
                 errors.append(
@@ -680,7 +816,11 @@ def _audit_consistency_details(
                 for a in audits
                 if isinstance(a, dict)
                 and a.get("status") in {"fail", "partial", "not_run", "skipped"}
-                and not audit_not_run_is_consumer_exempt(a, opt_in_ids)
+                and not audit_not_run_is_conditional_consumer_exempt(
+                    a,
+                    opt_in_ids,
+                    require_opt_in_binding=require_opt_in_binding,
+                )
             ]
             if offending:
                 errors.append(
@@ -700,6 +840,8 @@ def _audits_ok(
     report_text: str | None = None,
     pack_text: str | None = None,
     expected_route: str | None = None,
+    claim_alignment_bundle_path: str | None = None,
+    require_opt_in_binding: bool = False,
 ) -> bool:
     """Boolean wrapper around :func:`_audit_consistency_details` for backwards compat.
 
@@ -708,7 +850,8 @@ def _audits_ok(
     """
     ok, _ = _audit_consistency_details(
         actual, expected_audit_ids, audited_path, expected_report_sha256,
-        research_pack_path, expected_pack_sha256, report_text, pack_text, expected_route,
+        research_pack_path, expected_pack_sha256, report_text, pack_text,
+        expected_route, claim_alignment_bundle_path, require_opt_in_binding,
     )
     return ok
 
@@ -870,15 +1013,22 @@ def _audit_provenance_ok(
     return ok
 
 
-def _audit_status_is_fail_like(audit_id: str, status: str, reason: str | None = None) -> bool:
+def _audit_status_is_fail_like(
+    audit_id: str,
+    status: str,
+    reason: str | None = None,
+    *,
+    require_opt_in_binding: bool = False,
+) -> bool:
     """Fail-like audit statuses, excluding default-off opt-in not_run (#419)."""
     if status in {"fail", "partial", "skipped"}:
         return True
     if status == "not_run":
         opt_in_ids = set(_AUDIT_REGISTRY.opt_in_audit_ids())
-        if audit_not_run_is_consumer_exempt(
+        if audit_not_run_is_conditional_consumer_exempt(
             {"audit_id": audit_id, "status": status, "reason": reason},
             opt_in_ids,
+            require_opt_in_binding=require_opt_in_binding,
         ):
             return False
         return True
@@ -886,13 +1036,19 @@ def _audit_status_is_fail_like(audit_id: str, status: str, reason: str | None = 
 
 
 def _overall_consistency_details(
-    actual: dict[str, Any], returncode: int | None
+    actual: dict[str, Any],
+    returncode: int | None,
+    *,
+    require_opt_in_binding: bool = False,
 ) -> tuple[bool, list[str]]:
     """Detailed overall/returncode validation with locatable errors (issue #408 P1).
 
     Returns ``(ok, errors)``.  Errors are prefixed with ``overall`` or
     ``returncode`` so they are directly locatable in CI output.
     """
+    require_opt_in_binding = require_opt_in_binding or bool(
+        actual.get("claim_alignment_bundle")
+    )
     errors: list[str] = []
     overall = actual.get("overall")
     if overall not in {"pass", "conditional-pass", "fail"}:
@@ -920,11 +1076,19 @@ def _overall_consistency_details(
             str(a.get("audit_id") or ""),
             str(a.get("status") or ""),
             a.get("reason") if isinstance(a.get("reason"), str) else None,
+            require_opt_in_binding=require_opt_in_binding,
         )
         for a in audits
         if isinstance(a, dict) and a.get("status")
     )
     has_conditional = any(s == "conditional-pass" for s in audit_statuses)
+    has_conditional_not_run = any(
+        isinstance(a, dict)
+        and a.get("status") == "not_run"
+        and isinstance(a.get("reason"), str)
+        and a.get("reason") == OPT_IN_AGGREGATE_NOT_RUN_REASON
+        for a in audits
+    )
     has_validator_fail = any(s in {"fail", "incomplete"} for s in validator_statuses)
     has_validator_conditional = any(s == "conditional-pass" for s in validator_statuses)
     if overall == "pass":
@@ -937,9 +1101,26 @@ def _overall_consistency_details(
                     str(a.get("audit_id") or ""),
                     str(a.get("status") or ""),
                     a.get("reason") if isinstance(a.get("reason"), str) else None,
+                    require_opt_in_binding=require_opt_in_binding,
                 )
             ]
             errors.append(f"overall pass aggregates fail-like audit(s): {', '.join(offending)}")
+        non_exempt_not_run = [
+            f"{a.get('audit_id')}:{a.get('status')}"
+            for a in audits
+            if isinstance(a, dict)
+            and a.get("status") == "not_run"
+            and not audit_not_run_is_consumer_exempt(
+                a,
+                set(_AUDIT_REGISTRY.opt_in_audit_ids()),
+                require_opt_in_binding=require_opt_in_binding,
+            )
+        ]
+        if non_exempt_not_run:
+            errors.append(
+                "overall pass aggregates NOT_RUN audit(s): "
+                f"{', '.join(non_exempt_not_run)}"
+            )
         if has_conditional:
             offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") == "conditional-pass"]
             errors.append(f"overall pass aggregates conditional-pass audit(s): {', '.join(offending)}")
@@ -961,13 +1142,18 @@ def _overall_consistency_details(
                     str(a.get("audit_id") or ""),
                     str(a.get("status") or ""),
                     a.get("reason") if isinstance(a.get("reason"), str) else None,
+                    require_opt_in_binding=require_opt_in_binding,
                 )
             ]
             errors.append(f"overall conditional-pass aggregates fail-like audit(s): {', '.join(offending)}")
         if has_validator_fail:
             offending = [f"{v.get('validator_id')}:{v.get('status')}" for v in validators if isinstance(v, dict) and v.get("status") in {"fail", "incomplete"}]
             errors.append(f"overall conditional-pass aggregates validator fail(s): {', '.join(offending)}")
-        if not (has_conditional or has_validator_conditional):
+        if not (
+            has_conditional
+            or has_conditional_not_run
+            or has_validator_conditional
+        ):
             errors.append("overall conditional-pass requires at least one conditional-pass audit or validator")
         if blocking:
             errors.append(f"overall conditional-pass must have no blocking (got {blocking[:2]!r})")
@@ -978,10 +1164,17 @@ def _overall_consistency_details(
 
 
 def _overall_and_returncode_consistent(
-    actual: dict[str, Any], returncode: int | None
+    actual: dict[str, Any],
+    returncode: int | None,
+    *,
+    require_opt_in_binding: bool = False,
 ) -> bool:
     """Boolean wrapper around :func:`_overall_consistency_details` for backwards compat."""
-    ok, _ = _overall_consistency_details(actual, returncode)
+    ok, _ = _overall_consistency_details(
+        actual,
+        returncode,
+        require_opt_in_binding=require_opt_in_binding,
+    )
     return ok
 
 
@@ -1104,6 +1297,11 @@ def _evaluate_case(
     evaluation_mode = case.get("evaluation_mode", "structured-decision-replay")
     report = ROOT / fixtures["report"]
     research_pack = ROOT / fixtures["research_pack"]
+    claim_alignment_bundle = (
+        ROOT / fixtures["claim_alignment_bundle"]
+        if fixtures.get("claim_alignment_bundle")
+        else None
+    )
     pack = _pack_observation(research_pack)
     # External trust anchor: compute the artifact hashes ourselves rather than
     # trusting any hash embedded in the audit JSON (issue #403 P1).  A None here
@@ -1165,10 +1363,15 @@ def _evaluate_case(
         except (ActivationSnapshotError, OSError, KeyError) as exc:
             activation_snapshot_error = str(exc)
 
+    audit_kwargs: dict[str, object] = {
+        "activation_snapshot": activation_snapshot_path,
+    }
+    if claim_alignment_bundle is not None:
+        audit_kwargs["claim_alignment_bundle"] = claim_alignment_bundle
     audit_data, runner_error, returncode = _run_audit(
         report,
         research_pack,
-        activation_snapshot=activation_snapshot_path,
+        **audit_kwargs,
     )
 
     contract: dict[str, Any] = {}
@@ -1239,6 +1442,9 @@ def _evaluate_case(
         "returncode": returncode,
         "runner_error": runner_error,
         "expected_route": expected["primary_route"],
+        "claim_alignment_bundle": (
+            str(claim_alignment_bundle) if claim_alignment_bundle is not None else None
+        ),
     }
     actual["failure_family"] = _detect_failure_family(case, actual)
     actual["gap_class"] = gap_class_for_failure_family(actual["failure_family"])
@@ -1298,6 +1504,12 @@ def _evaluate_case(
             report_text=report_text_for_provenance,
             pack_text=pack_text_for_provenance,
             expected_route=audit_expected_route,
+            claim_alignment_bundle_path=(
+                str(claim_alignment_bundle)
+                if claim_alignment_bundle is not None
+                else None
+            ),
+            require_opt_in_binding=claim_alignment_bundle is not None,
         )
         # Duplicate audit_ids are already reported via _audit_consistency_details,
         # but audit_set_exact gives a fast pre-check for the common truncation case.
@@ -1355,7 +1567,11 @@ def _evaluate_case(
         audited_path=str(report),
         expected_input_sha256=expected_report_sha256,
     )
-    overall_and_returncode_ok, overall_consistency_errors = _overall_consistency_details(actual, returncode)
+    overall_and_returncode_ok, overall_consistency_errors = _overall_consistency_details(
+        actual,
+        returncode,
+        require_opt_in_binding=claim_alignment_bundle is not None,
+    )
     if expected["verdict"] == "pass":
         case_passed = all(
             [
@@ -1457,6 +1673,7 @@ def _evaluate_case(
             "contract_activation_snapshot": actual["contract_activation_snapshot"],
             "pack_activation_snapshot": actual["pack_activation_snapshot"],
             "pack_missing_required_fields": actual["pack_missing_required_fields"],
+            "claim_alignment_bundle": actual["claim_alignment_bundle"],
             "returncode": returncode,
             "runner_error": runner_error,
         },

@@ -103,6 +103,33 @@ def empty_artifact(tmp_path: Path, name: str = "artifact.bin") -> Path:
     return path
 
 
+def write_aligned_activation_snapshot(
+    tmp_path: Path,
+    state: dict,
+    *,
+    decision: str = "parallel",
+) -> Path:
+    """Bind a fixture state to a real activation snapshot for resume tests."""
+    snapshot = json.loads(
+        (
+            ROOT
+            / "tests"
+            / "fixtures"
+            / "forward"
+            / "forward-market-outlook-baseline-activation.json"
+        ).read_text(encoding="utf-8")
+    )
+    snapshot["parallelization_decision"] = decision
+    snapshot["snapshot_sha256"] = compute_snapshot_sha256(snapshot)
+    state["activation_reference"] = {
+        "activation_id": snapshot["activation_id"],
+        "snapshot_sha256": snapshot["snapshot_sha256"],
+        "snapshot_version": snapshot["snapshot_version"],
+        "decision_tree_version": snapshot["decision_tree_version"],
+    }
+    return write_json(tmp_path / "resume-activation.json", snapshot)
+
+
 def write_real_pass_audit(
     tmp_path: Path,
     *,
@@ -332,8 +359,17 @@ def test_pause_and_resume_same_phase(tmp_path):
     artifact = tmp_path / "pack.md"
     artifact.write_bytes(b"")
     paused["current_artifact_sha256"] = vrs.sha256_file(artifact)
+    snapshot_path = write_aligned_activation_snapshot(tmp_path, paused)
     paused_path = write_json(tmp_path / "paused.json", paused)
-    proc = run_cli(str(paused_path), "--resume", "--artifact", str(artifact), "--json")
+    proc = run_cli(
+        str(paused_path),
+        "--resume",
+        "--artifact",
+        str(artifact),
+        "--activation-snapshot",
+        str(snapshot_path),
+        "--json",
+    )
     assert json.loads(proc.stdout)["ok"] is True
     assert proc.returncode == 0
 
@@ -343,8 +379,17 @@ def test_resume_rechecks_unconsumed_pending_decision(tmp_path):
     artifact = tmp_path / "pack.md"
     artifact.write_bytes(b"")
     mid["current_artifact_sha256"] = vrs.sha256_file(artifact)
+    snapshot_path = write_aligned_activation_snapshot(tmp_path, mid)
     path = write_json(tmp_path / "mid.json", mid)
-    proc = run_cli(str(path), "--resume", "--artifact", str(artifact), "--json")
+    proc = run_cli(
+        str(path),
+        "--resume",
+        "--artifact",
+        str(artifact),
+        "--activation-snapshot",
+        str(snapshot_path),
+        "--json",
+    )
     payload = json.loads(proc.stdout)
     assert proc.returncode == 0
     assert payload["ok"] is True
@@ -355,11 +400,29 @@ def test_resume_stale_artifact_fails(tmp_path):
     paused = load_valid("valid-paused.json")
     artifact = tmp_path / "pack.md"
     artifact.write_text("stale-body", encoding="utf-8")
+    snapshot_path = write_aligned_activation_snapshot(tmp_path, paused)
     path = write_json(tmp_path / "paused.json", paused)
-    proc = run_cli(str(path), "--resume", "--artifact", str(artifact), "--json")
+    proc = run_cli(
+        str(path),
+        "--resume",
+        "--artifact",
+        str(artifact),
+        "--activation-snapshot",
+        str(snapshot_path),
+        "--json",
+    )
     payload = json.loads(proc.stdout)
     assert proc.returncode == 2
     assert any("stale" in err for err in payload["errors"])
+
+
+def test_resume_requires_artifact_and_activation_snapshot(tmp_path):
+    state_path = write_json(tmp_path / "paused.json", load_valid("valid-paused.json"))
+    proc = run_cli(str(state_path), "--resume", "--json")
+    payload = json.loads(proc.stdout)
+    assert proc.returncode == 2
+    assert any("--artifact" in err for err in payload["errors"])
+    assert any("--activation-snapshot" in err for err in payload["errors"])
 
 
 def test_partial_and_blocked_require_reasons():
@@ -589,6 +652,7 @@ def test_cannot_resume_completed_run(tmp_path):
     artifact = tmp_path / "pack.md"
     artifact.write_bytes(b"")
     delivered["current_artifact_sha256"] = vrs.sha256_file(artifact)
+    snapshot_path = write_aligned_activation_snapshot(tmp_path, delivered)
     path = write_json(tmp_path / "delivered.json", delivered)
     proc = run_cli(
         str(path),
@@ -599,6 +663,8 @@ def test_cannot_resume_completed_run(tmp_path):
         str(FIXTURES / "valid-audit-pass.json"),
         "--report",
         str(empty_artifact(tmp_path, "report.md")),
+        "--activation-snapshot",
+        str(snapshot_path),
         "--json",
     )
     payload = json.loads(proc.stdout)

@@ -38,6 +38,7 @@ This audit checks whether **locator-bound excerpts** support specific claims —
 - [ ] `excerpt_hash` matches the retrieved excerpt bytes when `retrieval_status: fetched`
 - [ ] section locators resolve against **visible** Markdown (hidden fence/HTML locators fail closed)
 - [ ] route / artifact hash mismatches fail closed when bindings are declared
+- [ ] an enabled audit result records and downstream consumers re-hash the exact claim-alignment bundle; changing that bundle invalidates the result
 
 ## Calibration (maintainers)
 

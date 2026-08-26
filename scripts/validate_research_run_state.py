@@ -19,10 +19,11 @@ Usage:
         [--audit-result audit.json] [--artifact pack.md] [--report report.md] [--json]
         # phase=delivered requires --audit-result, --artifact (Pack), and --report
     python3 scripts/validate_research_run_state.py <run-state.json> \\
-        --resume --artifact <pack.md> [--activation-snapshot snap.json] [--json]
+        --resume --artifact <pack.md> --activation-snapshot snap.json [--json]
     python3 scripts/validate_research_run_state.py --chain \\
         --handoff h1.json [--handoff h2.json ...] --run-state r.json --pack p.md \\
-        [--report report.md] [--audit-result a.json] [--json]
+        [--report report.md] [--audit-result a.json] \\
+        [--claim-alignment-bundle bundle.json] [--json]
         # --chain requires Pack ## Run state to name the same sidecar file;
         # every listed handoff_refs entry must be supplied via --handoff
 """
@@ -482,6 +483,8 @@ def _delivered_forbidden_audit_status(
     audit_id: str,
     status: str,
     reason: str | None = None,
+    *,
+    require_opt_in_binding: bool = False,
 ) -> bool:
     """Whether an audit status blocks phase=delivered (#419 default-off exempt only)."""
     if status not in DELIVERED_FORBIDDEN_AUDIT_STATUSES:
@@ -494,6 +497,7 @@ def _delivered_forbidden_audit_status(
             if audit_not_run_is_consumer_exempt(
                 {"audit_id": audit_id, "status": status, "reason": reason},
                 load_audit_registry().opt_in_audit_ids(),
+                require_opt_in_binding=require_opt_in_binding,
             ):
                 return False
         except Exception:
@@ -772,6 +776,8 @@ def check_audit_result_for_delivered(
     expected_pack_sha256: str | None = None,
     report_path: Path | str | None = None,
     pack_path: Path | str | None = None,
+    claim_alignment_bundle_path: Path | str | None = None,
+    require_opt_in_binding: bool = False,
 ) -> list[str]:
     """delivered 不能由未执行、空集、stale、畸形或失败的审计支撑。
 
@@ -779,6 +785,9 @@ def check_audit_result_for_delivered(
     ``current_artifact_sha256`` 是 Research Pack hash。两者必须分别校验，
     不能互相冒充。
     """
+    require_opt_in_binding = (
+        require_opt_in_binding or claim_alignment_bundle_path is not None
+    )
     if not isinstance(audit, dict):
         return ["audit result must be a JSON object"]
     errors: list[str] = []
@@ -809,7 +818,11 @@ def check_audit_result_for_delivered(
     if "exit_code" not in audit:
         errors.append("audit result requires exit_code")
     elif overall_details is not None:
-        _ok, overall_errors = overall_details(audit, audit.get("exit_code"))
+        _ok, overall_errors = overall_details(
+            audit,
+            audit.get("exit_code"),
+            require_opt_in_binding=require_opt_in_binding,
+        )
         errors.extend(overall_errors)
     else:
         expected_rc = {"pass": 0, "conditional-pass": 1, "fail": 2}.get(overall)
@@ -880,6 +893,12 @@ def check_audit_result_for_delivered(
             expected_report_sha256=expected_report_sha256,
             research_pack_path=str(pack_path) if pack_path is not None else None,
             expected_pack_sha256=pack_sha if isinstance(pack_sha, str) else None,
+            claim_alignment_bundle_path=(
+                str(claim_alignment_bundle_path)
+                if claim_alignment_bundle_path is not None
+                else None
+            ),
+            require_opt_in_binding=require_opt_in_binding,
         )
         errors.extend(entry_errors)
     else:
@@ -909,6 +928,7 @@ def check_audit_result_for_delivered(
             str(audit_id),
             str(status),
             entry.get("reason") if isinstance(entry.get("reason"), str) else None,
+            require_opt_in_binding=require_opt_in_binding,
         ):
             errors.append(
                 f"audit {audit_id!r} status {status!r} cannot support "
@@ -940,8 +960,13 @@ def require_delivered_audit(
     *,
     artifact_path: Path | str | None = None,
     report_path: Path | str | None = None,
+    claim_alignment_bundle_path: Path | str | None = None,
+    require_opt_in_binding: bool = False,
 ) -> list[str]:
     """CLI 进入/保持 delivered 时必须绑定报告审计与 Pack 过程工件。"""
+    require_opt_in_binding = (
+        require_opt_in_binding or claim_alignment_bundle_path is not None
+    )
     if audit_result_path is None:
         return [
             "phase=delivered requires --audit-result; "
@@ -976,6 +1001,8 @@ def require_delivered_audit(
         expected_pack_sha256=pack_sha,
         report_path=report_path,
         pack_path=artifact_path,
+        claim_alignment_bundle_path=claim_alignment_bundle_path,
+        require_opt_in_binding=require_opt_in_binding,
     )
 
 
@@ -1336,6 +1363,8 @@ def validate_chain(
     pack_path: Path | str,
     audit_result_path: Path | str | None = None,
     report_path: Path | str | None = None,
+    claim_alignment_bundle_path: Path | str | None = None,
+    require_opt_in_binding: bool = False,
 ) -> list[str]:
     """端到端：列出的全部 Handoff → Run State → Pack → 可选 audit result。"""
     errors: list[str] = []
@@ -1378,6 +1407,8 @@ def validate_chain(
                 audit_result_path,
                 artifact_path=pack_path,
                 report_path=report_path,
+                claim_alignment_bundle_path=claim_alignment_bundle_path,
+                require_opt_in_binding=require_opt_in_binding,
             )
         )
     return errors
@@ -1419,6 +1450,14 @@ def main(argv: list[str] | None = None) -> int:
         help="Activation snapshot to re-check on resume",
     )
     parser.add_argument("--audit-result", default=None, help="audit_report --json payload")
+    parser.add_argument(
+        "--claim-alignment-bundle",
+        default=None,
+        help=(
+            "Exact claim-alignment bundle used by audit_report; required to "
+            "re-hash an enabled alignment audit before delivered"
+        ),
+    )
     parser.add_argument("--chain", action="store_true", help="Validate the e2e artifact chain")
     parser.add_argument(
         "--handoff",
@@ -1445,6 +1484,8 @@ def main(argv: list[str] | None = None) -> int:
             pack_path=args.pack,
             audit_result_path=args.audit_result,
             report_path=args.report,
+            claim_alignment_bundle_path=args.claim_alignment_bundle,
+            require_opt_in_binding=args.claim_alignment_bundle is not None,
         )
         return _emit(not errors, errors, as_json=args.json)
 
@@ -1469,6 +1510,8 @@ def main(argv: list[str] | None = None) -> int:
                         args.audit_result,
                         artifact_path=args.artifact,
                         report_path=args.report,
+                        claim_alignment_bundle_path=args.claim_alignment_bundle,
+                        require_opt_in_binding=args.claim_alignment_bundle is not None,
                     )
                 )
         extra = None
@@ -1496,6 +1539,17 @@ def main(argv: list[str] | None = None) -> int:
     }
 
     if args.resume:
+        if args.artifact is None:
+            errors.append(
+                "--resume requires --artifact to re-check current_artifact_sha256"
+            )
+        if args.activation_snapshot is None:
+            errors.append(
+                "--resume requires --activation-snapshot to re-check "
+                "activation_reference"
+            )
+        if args.artifact is None or args.activation_snapshot is None:
+            return _emit(not errors, errors, as_json=args.json, extra=extra)
         errors.extend(
             check_resume(
                 state,
@@ -1530,6 +1584,8 @@ def main(argv: list[str] | None = None) -> int:
                 args.audit_result,
                 artifact_path=args.artifact,
                 report_path=args.report,
+                claim_alignment_bundle_path=args.claim_alignment_bundle,
+                require_opt_in_binding=args.claim_alignment_bundle is not None,
             )
         )
 

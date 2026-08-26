@@ -209,6 +209,86 @@ def test_route_misclassification_is_blocked_by_production_integration_gate() -> 
     assert result["checks"]["activation_snapshot_match"] is True
 
 
+def test_forward_case_executes_opt_in_claim_alignment_bundle() -> None:
+    registry = load_registry()
+    case = next(
+        item for item in registry["cases"] if item["id"] == "forward-market-outlook-baseline"
+    )
+    result = _evaluate_case(case, registry["decision_tree_version"])
+    assert result["passed"] is True
+    expected_bundle = ROOT / case["fixtures"]["claim_alignment_bundle"]
+    assert result["actual"]["claim_alignment_bundle"] == str(expected_bundle)
+    alignment = next(
+        audit
+        for audit in result["actual"]["audits"]
+        if audit["audit_id"] == "claim-source-alignment"
+    )
+    assert alignment["status"] == "pass"
+    assert alignment["evidence_provenance"][0]["claim_alignment_bundle"] == str(
+        expected_bundle.resolve()
+    )
+    assert alignment["evidence_provenance"][0]["claim_alignment_bundle_sha256"]
+
+
+def test_forward_runner_rejects_enabled_default_off_reason_downgrade(monkeypatch) -> None:
+    registry = load_registry()
+    case = next(
+        item for item in registry["cases"] if item["id"] == "forward-market-outlook-baseline"
+    )
+    fixtures = case["fixtures"]
+    report = ROOT / fixtures["report"]
+    pack = ROOT / fixtures["research_pack"]
+    bundle = ROOT / fixtures["claim_alignment_bundle"]
+    activation_snapshot = ROOT / fixtures["activation_snapshot"]
+    real_data, runner_error, returncode = run_forward_evals._run_audit(
+        report,
+        pack,
+        activation_snapshot=activation_snapshot,
+        claim_alignment_bundle=bundle,
+    )
+    assert runner_error is None
+    assert returncode == 0
+    assert real_data is not None
+    forged = copy.deepcopy(real_data)
+    alignment = next(
+        audit
+        for audit in forged["audits"]
+        if audit["audit_id"] == "claim-source-alignment"
+    )
+    alignment.update(
+        {
+            "status": "not_run",
+            "reason": "opt-in audit not enabled (default off)",
+            "evidence": [],
+            "evidence_provenance": [],
+        }
+    )
+    forged["overall"] = "pass"
+    forged["exit_code"] = 0
+    forged["blocking"] = []
+
+    def fake_run(
+        report_path,
+        research_pack_path,
+        activation_snapshot=None,
+        claim_alignment_bundle=None,
+    ):
+        assert claim_alignment_bundle == bundle
+        return forged, None, 0
+
+    monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)
+    result = _evaluate_case(case, registry["decision_tree_version"])
+
+    assert result["passed"] is False
+    assert result["checks"]["audits_consistent"] is False
+    assert result["checks"]["overall_and_returncode_ok"] is False
+    errors = [
+        *result["checks"]["audit_consistency_errors"],
+        *result["checks"]["overall_consistency_errors"],
+    ]
+    assert any("default-off" in error or "opt-in" in error for error in errors), errors
+
+
 def test_route_misclassification_does_not_mask_unrelated_report_failure(
     tmp_path: Path,
 ) -> None:
