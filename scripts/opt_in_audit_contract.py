@@ -38,11 +38,18 @@ def is_opt_in_aggregate_not_run_exempt(
 def audit_not_run_is_consumer_exempt(
     audit: dict[str, Any],
     opt_in_audit_ids: frozenset[str] | set[str],
+    *,
+    require_opt_in_binding: bool = False,
 ) -> bool:
     audit_id = str(audit.get("audit_id") or "")
     status = str(audit.get("status") or "")
     reason = audit.get("reason")
     reason_str = reason if isinstance(reason, str) else None
+    if require_opt_in_binding and audit_id in opt_in_audit_ids:
+        # A caller-supplied opt-in input is the trust anchor.  A payload that
+        # downgrades the same audit to default-off is contradictory and must
+        # not regain the exemption by changing its reason string.
+        return False
     # Only an audit that was never enabled may be omitted from a clean Pass.
     # An explicitly enabled audit whose population is entirely NOT_RUN must
     # remain visible as a non-Pass result.
@@ -54,6 +61,8 @@ def audit_not_run_is_consumer_exempt(
 def audit_not_run_is_conditional_consumer_exempt(
     audit: dict[str, Any],
     opt_in_audit_ids: frozenset[str] | set[str],
+    *,
+    require_opt_in_binding: bool = False,
 ) -> bool:
     """Allow opt-in NOT_RUN in conditional-pass, never in overall Pass."""
     audit_id = str(audit.get("audit_id") or "")
@@ -61,7 +70,11 @@ def audit_not_run_is_conditional_consumer_exempt(
     reason = audit.get("reason")
     reason_str = reason if isinstance(reason, str) else None
     return (
-        audit_not_run_is_consumer_exempt(audit, opt_in_audit_ids)
+        audit_not_run_is_consumer_exempt(
+            audit,
+            opt_in_audit_ids,
+            require_opt_in_binding=require_opt_in_binding,
+        )
         or is_opt_in_aggregate_not_run_exempt(
             audit_id, status, reason_str, opt_in_audit_ids
         )

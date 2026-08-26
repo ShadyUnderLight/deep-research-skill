@@ -198,6 +198,89 @@ def test_aggregate_not_run_requires_live_bundle_path(tmp_path) -> None:
     assert any("cannot read claim-alignment bundle" in error for error in errors), errors
 
 
+def test_delivered_consumer_rejects_enabled_default_off_reason_downgrade(tmp_path) -> None:
+    bundle_path = tmp_path / "claim-alignment.json"
+    bundle_path.write_text(
+        (FIXTURES / "claim-alignment" / "valid.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    result = _run_audit(
+        "--enable-claim-alignment",
+        "--claim-alignment-bundle",
+        str(bundle_path),
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    data = json.loads(result.stdout)
+    alignment = next(
+        audit for audit in data["audits"] if audit["audit_id"] == "claim-source-alignment"
+    )
+    alignment.update(
+        {
+            "status": "not_run",
+            "reason": "opt-in audit not enabled (default off)",
+            "evidence": [],
+            "evidence_provenance": [],
+        }
+    )
+    data["overall"] = "pass"
+    data["exit_code"] = 0
+    data["blocking"] = []
+
+    if str(SCRIPTS) not in sys.path:
+        sys.path.insert(0, str(SCRIPTS))
+    import validate_research_run_state as vrs  # noqa: E402
+
+    import hashlib
+
+    report_path = FIXTURES / "audit" / "market-outlook-pos.md"
+    pack_path = FIXTURES / "audit" / "research-pack-pos.md"
+    pack_sha = hashlib.sha256(pack_path.read_bytes()).hexdigest()
+    delivered = json.loads(
+        (FIXTURES / "research-run-state" / "valid-delivered.json").read_text()
+    )
+    delivered["current_artifact_sha256"] = pack_sha
+    errors = vrs.check_audit_result_for_delivered(
+        data,
+        delivered,
+        expected_report_sha256=hashlib.sha256(report_path.read_bytes()).hexdigest(),
+        expected_pack_sha256=pack_sha,
+        report_path=report_path,
+        pack_path=pack_path,
+        claim_alignment_bundle_path=bundle_path,
+    )
+    assert errors
+    assert any("default-off" in error or "opt-in" in error for error in errors), errors
+
+    audit_path = tmp_path / "tampered-audit.json"
+    audit_path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    state_path = tmp_path / "delivered-state.json"
+    state_path.write_text(json.dumps(delivered, ensure_ascii=False), encoding="utf-8")
+    cli = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "validate_research_run_state.py"),
+            str(state_path),
+            "--audit-result",
+            str(audit_path),
+            "--artifact",
+            str(pack_path),
+            "--report",
+            str(report_path),
+            "--claim-alignment-bundle",
+            str(bundle_path),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert cli.returncode == 2, cli.stdout + cli.stderr
+    cli_payload = json.loads(cli.stdout)
+    assert any(
+        "default-off" in error or "opt-in" in error
+        for error in cli_payload["errors"]
+    ), cli_payload
+
+
 def test_tampered_alignment_bundle_fails_consumer_binding(tmp_path) -> None:
     bundle_path = tmp_path / "claim-alignment.json"
     bundle_path.write_text(
