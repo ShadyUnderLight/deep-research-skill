@@ -4,7 +4,7 @@
   "audited_population": "source id binding adversarial fixture",
   "sampling_rule": "single entry",
   "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
-  "source_artifact_sha256": "742a6822a80cbf3fcf17353f2e2f78d4d89111d7040b3bcad097b9438f0993ba",
+  "source_artifact_sha256": "cf7d832cea3d698a90eb72ebe43ea080ef13d60e09ed197951c1463c1840a283",
   "route_id": "market-outlook",
   "source_register": [
     {

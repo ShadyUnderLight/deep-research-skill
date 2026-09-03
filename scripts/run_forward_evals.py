@@ -1211,7 +1211,6 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
                 checks["activation_secondary_routes_match"],
                 checks["report_secondary_routes_match"],
                 checks["parallelization_match"],
-                checks["prompt_identity_match"],
                 checks["activation_snapshot_match"],
                 checks["statuses_match"],
                 _blocking_ids_are_exact(actual, {"contract-check"}),
@@ -1227,7 +1226,6 @@ def _negative_structure_matches(case: dict[str, Any], actual: dict[str, Any], ch
         checks["disciplines_match"],
         checks["pack_fields_present"],
         checks["parallelization_match"],
-        checks["prompt_identity_match"],
         checks["decision_tree_version_match"],
         checks["statuses_match"],
     ]
@@ -1336,7 +1334,6 @@ def _evaluate_case(
             weight_bearing_object=input_data["weight_bearing_object"],
             secondary_routes=input_data["secondary_routes"],
             secondary_route_contracts=input_data.get("secondary_route_contracts", {}),
-            expected_prompt_sha256=input_data["prompt_sha256"],
         )
     except RouteActivationError as exc:
         activation = None
@@ -1404,7 +1401,6 @@ def _evaluate_case(
         "activation_action_category": activation.action_category if activation else None,
         "activation_weight_bearing_object": activation.weight_bearing_object if activation else None,
         "activation_parallelization_decision": activation.parallelization_decision if activation else None,
-        "activation_prompt_sha256": activation.prompt_sha256 if activation else None,
         "activation_decision_tree_version": (
             activation.decision_tree_version if activation else None
         ),
@@ -1537,7 +1533,6 @@ def _evaluate_case(
         actual["activation_parallelization_decision"]
         == expected["parallelization_decision"]
     )
-    prompt_identity_match = actual["activation_prompt_sha256"] == input_data["prompt_sha256"]
     activation_snapshot_match = (
         evaluation_mode != "activation-record-integration"
         or (
@@ -1585,7 +1580,6 @@ def _evaluate_case(
                 pack_fields_match,
                 status_match,
                 parallelization_match,
-                prompt_identity_match,
                 decision_tree_version_match,
                 activation_snapshot_match,
                 validators_ok,
@@ -1611,7 +1605,6 @@ def _evaluate_case(
             "disciplines_match": discipline_match,
             "pack_fields_present": pack_fields_match,
             "parallelization_match": parallelization_match,
-            "prompt_identity_match": prompt_identity_match,
             "decision_tree_version_match": decision_tree_version_match,
             "activation_snapshot_match": activation_snapshot_match,
             "statuses_match": status_match,
@@ -1650,7 +1643,6 @@ def _evaluate_case(
             "activation_action_category": actual["activation_action_category"],
             "activation_weight_bearing_object": actual["activation_weight_bearing_object"],
             "activation_parallelization_decision": actual["activation_parallelization_decision"],
-            "activation_prompt_sha256": actual["activation_prompt_sha256"],
             "activation_decision_tree_version": actual["activation_decision_tree_version"],
             "pack_decision_tree_version": actual["pack_decision_tree_version"],
             "activation_error": actual["activation_error"],
@@ -1693,7 +1685,6 @@ def _evaluate_case(
             "pack_fields_present": pack_fields_match,
             "statuses_match": status_match,
             "parallelization_match": parallelization_match,
-            "prompt_identity_match": prompt_identity_match,
             "decision_tree_version_match": decision_tree_version_match,
             "activation_snapshot_match": activation_snapshot_match,
             "validators_ok": validators_ok,

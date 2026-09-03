@@ -1059,7 +1059,6 @@ def check_activation_alignment(
     ref = state["activation_reference"]
     if (
         snapshot.get("activation_id") != ref["activation_id"]
-        or snapshot.get("snapshot_sha256") != ref["snapshot_sha256"]
         or snapshot.get("snapshot_version") != ref["snapshot_version"]
         or snapshot.get("decision_tree_version") != ref["decision_tree_version"]
     ):

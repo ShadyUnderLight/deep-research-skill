@@ -38,8 +38,7 @@ current-state, forward-looking, source-traceability, scope-completeness, quantit
 ## Activation snapshot
 
 - activation_id: forward-route-misclassification
-- snapshot_sha256: 3bf7ccf7086d1eba693dc753bb633d6a009a13421f6424250bcf98a2c4b89a56
-- snapshot_version: 1
+- snapshot_version: 2
 - decision_tree_version: 1
 
 ## Core subquestions

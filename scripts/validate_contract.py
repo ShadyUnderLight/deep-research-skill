@@ -66,6 +66,11 @@ VALID_AUDIT_STATUSES = {"passed", "skipped", "not_run", "partial"}
 # Recommended stable artifact identity fields (issue #376 范围 1).
 ARTIFACT_META_FIELDS = ("artifact_id", "contract_version", "created_at")
 
+# Route-activation-contract schema revision for contracts carrying an
+# activation_snapshot (issue #425 breaking simplification). Legacy contracts
+# without activation_snapshot keep their existing contract_version.
+ACTIVATION_CONTRACT_VERSION = "2.0.0"
+
 
 def _execution_source(execution_type: str) -> str:
     """Map a registry audit execution_type to the canonical provenance
@@ -460,6 +465,11 @@ def validate_contract(
             )
         except ActivationSnapshotError as exc:
             errors.append(str(exc))
+        if contract.get("contract_version") != ACTIVATION_CONTRACT_VERSION:
+            errors.append(
+                "contract with activation_snapshot must declare contract_version "
+                f"'{ACTIVATION_CONTRACT_VERSION}' (route-activation-contract schema v2)"
+            )
     if pack_activation_snapshot is not None:
         try:
             pack_activation_snapshot = validate_activation_reference(

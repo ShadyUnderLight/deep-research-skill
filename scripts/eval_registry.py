@@ -95,12 +95,12 @@ REQUIRED_CASE_FIELDS = {
 }
 REQUIRED_INPUT_FIELDS = {
     "user_prompt",
-    "prompt_sha256",
     "action_burden",
     "weight_bearing_object",
     "secondary_routes",
     "parallelization_decision",
 }
+OPTIONAL_INPUT_FIELDS = {"secondary_route_contracts"}
 REQUIRED_EXPECTED_FIELDS = {
     "primary_route",
     "closest_alternative",
@@ -269,11 +269,13 @@ def _validate_case(
             errors.append(
                 f"{prefix}.input missing field(s): {', '.join(sorted(missing_input))}"
             )
+        unexpected_input = set(input_data) - REQUIRED_INPUT_FIELDS - OPTIONAL_INPUT_FIELDS
+        if unexpected_input:
+            errors.append(
+                f"{prefix}.input has unexpected field(s): {', '.join(sorted(unexpected_input))}"
+            )
         if not _is_non_empty_string(input_data.get("user_prompt")):
             errors.append(f"{prefix}.input.user_prompt must be non-empty")
-        prompt_sha256 = input_data.get("prompt_sha256")
-        if not isinstance(prompt_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", prompt_sha256):
-            errors.append(f"{prefix}.input.prompt_sha256 must be a lowercase SHA-256")
         action_burden = input_data.get("action_burden")
         if (
             not isinstance(action_burden, str)

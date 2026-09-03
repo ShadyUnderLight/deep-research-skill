@@ -38,8 +38,7 @@ current-state, forward-looking, source-traceability, scope-completeness, quantit
 ## Activation snapshot
 
 - activation_id: forward-market-outlook-baseline
-- snapshot_sha256: aec9f2e6ccf91281590f5769abe1252d45a5a27c0680233ef77f861ec381949d
-- snapshot_version: 1
+- snapshot_version: 2
 - decision_tree_version: 1
 
 ## Core subquestions

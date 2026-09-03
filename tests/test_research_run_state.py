@@ -27,7 +27,6 @@ EXAMPLE_PACK = ROOT / "examples" / "research-pack-example.md"
 sys.path.insert(0, str(SCRIPTS))
 
 import validate_research_run_state as vrs  # noqa: E402
-from activation_snapshot import compute_snapshot_sha256  # noqa: E402
 
 EMPTY_SHA = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
 
@@ -120,10 +119,8 @@ def write_aligned_activation_snapshot(
         ).read_text(encoding="utf-8")
     )
     snapshot["parallelization_decision"] = decision
-    snapshot["snapshot_sha256"] = compute_snapshot_sha256(snapshot)
     state["activation_reference"] = {
         "activation_id": snapshot["activation_id"],
-        "snapshot_sha256": snapshot["snapshot_sha256"],
         "snapshot_version": snapshot["snapshot_version"],
         "decision_tree_version": snapshot["decision_tree_version"],
     }
@@ -589,7 +586,6 @@ def _snapshot_with_parallelization(decision: str) -> dict:
         .read_text(encoding="utf-8")
     )
     snapshot["parallelization_decision"] = decision
-    snapshot["snapshot_sha256"] = compute_snapshot_sha256(snapshot)
     return snapshot
 
 
@@ -599,7 +595,6 @@ def test_resume_rejects_parallel_gate_on_single_track_snapshot(tmp_path):
     snap_path = write_json(tmp_path / "snap.json", snapshot)
     state["activation_reference"] = {
         "activation_id": snapshot["activation_id"],
-        "snapshot_sha256": snapshot["snapshot_sha256"],
         "snapshot_version": snapshot["snapshot_version"],
         "decision_tree_version": snapshot["decision_tree_version"],
     }
@@ -627,7 +622,6 @@ def test_resume_accepts_aligned_parallel_snapshot(tmp_path):
     snap_path = write_json(tmp_path / "snap.json", snapshot)
     state["activation_reference"] = {
         "activation_id": snapshot["activation_id"],
-        "snapshot_sha256": snapshot["snapshot_sha256"],
         "snapshot_version": snapshot["snapshot_version"],
         "decision_tree_version": snapshot["decision_tree_version"],
     }
