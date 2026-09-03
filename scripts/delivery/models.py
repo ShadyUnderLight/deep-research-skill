@@ -17,6 +17,35 @@ class DeliveryStatus(str, Enum):
     NOT_RUN = "not_run"
 
 
+# Version of the machine-readable delivery result contract (issue #426).
+# v1 was the implicit hash-bearing shape (input/html/pdf_sha256, no version);
+# v2 removes all byte-identity bindings. Consumers fail closed on missing /
+# mismatched versions and on unknown fields so legacy v1 payloads — including
+# hash-stripped ones — are never silently accepted.
+DELIVERY_RESULT_SCHEMA_VERSION = 2
+
+KNOWN_DELIVERY_FIELDS = frozenset(
+    {
+        "schema_version",
+        "input_path",
+        "delivery_status",
+        "markdown_status",
+        "html_path",
+        "pdf_path",
+        "pdf_size_bytes",
+        "errors",
+        "warnings",
+        "kept_html",
+    }
+)
+
+# Hash keys removed in v2. Named explicitly so the consumer can report a
+# precise diagnostic instead of a generic unknown-field error.
+LEGACY_DELIVERY_HASH_FIELDS = frozenset(
+    {"input_sha256", "html_sha256", "pdf_sha256"}
+)
+
+
 @dataclass
 class DeliveryResult:
     """Machine-readable outcome shared by CLI, tests, and audit consumers."""
@@ -42,6 +71,7 @@ class DeliveryResult:
         """Serialize paths and statuses without exposing non-JSON objects."""
 
         return {
+            "schema_version": DELIVERY_RESULT_SCHEMA_VERSION,
             "input_path": str(self.input_path),
             "delivery_status": self.delivery_status.value,
             "markdown_status": self.markdown_status.value,

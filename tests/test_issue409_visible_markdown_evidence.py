@@ -445,7 +445,6 @@ def test_consumer_rejects_hidden_report_section_via_audits_ok():
         "audits": [audit],
         "validators": [],
         "blocking": [],
-        "input_sha256": "x" * 64,
     }
     expected_ids = [MANUAL_AUDIT_ID]
     # Raw text would have found the heading → old consumer would pass.  With
@@ -484,7 +483,6 @@ def test_consumer_sanitizes_raw_text_at_audits_ok_boundary():
         "audits": [audit],
         "validators": [],
         "blocking": [],
-        "input_sha256": "x" * 64,
     }
     raw_report = REPORT_WITH_HIDDEN_ONLY
     raw_pack = PACK_WITH_VISIBLE
@@ -513,7 +511,6 @@ def test_consumer_accepts_visible_report_section_via_audits_ok():
         "audits": [audit],
         "validators": [],
         "blocking": [],
-        "input_sha256": "x" * 64,
     }
     expected_ids = [MANUAL_AUDIT_ID]
     assert _audits_ok(
@@ -540,7 +537,6 @@ def test_consumer_hidden_pack_section_fails_and_diagnostic_is_locatable():
         "audits": [audit],
         "validators": [],
         "blocking": [],
-        "input_sha256": "x" * 64,
     }
     expected_ids = [MANUAL_AUDIT_ID]
     ok, errs = _audit_consistency_details(
@@ -576,7 +572,6 @@ def test_consumer_provenance_target_mismatch_still_distinct_diagnostic():
                 "validator_binding": "source-label-consistency",
                 "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
                 "target": "WRONG_TARGET.md",
-                "input_sha256": "x" * 64,
             }
         ],
         "validator_binding": "source-label-consistency",
@@ -924,7 +919,6 @@ def test_forward_eval_hidden_evidence_still_fails_when_report_has_no_visible_hea
         "audits": [audit],
         "validators": [],
         "blocking": [],
-        "input_sha256": "x" * 64,
     }
     ok, errs = _audit_consistency_details(
         actual,
@@ -978,32 +972,26 @@ def test_evaluate_case_wiring_rejects_hidden_report_section_e2e(tmp_path, monkey
             a["execution_source"] = MANUAL_SOURCE
             a["execution_type"] = "manual"
     tampered["overall"] = "pass"
-    # Make validator hashes match the tmp files so validators_ok does not mask
-    # the provenance failure (we want to isolate the visible-heading check)
-    tmp_report_hash = hashlib.sha256(report.read_bytes()).hexdigest()
-    tmp_pack_hash = hashlib.sha256(pack.read_bytes()).hexdigest()
-    tampered["input_sha256"] = tmp_report_hash
+    # Retarget validator/audit provenance to the tmp files so validators_ok
+    # does not mask the provenance failure (we want to isolate the
+    # visible-heading check)
     for v in tampered.get("validators", []):
-        # report-targeted validators should match tmp report hash; pack is not a validator target
+        # report-targeted validators should match tmp report; pack is not a validator target
         if v.get("target") == str(real_report):
             v["target"] = str(report)
-            v["input_sha256"] = tmp_report_hash
             v["validator_version"] = run_forward_evals.EXPECTED_VALIDATOR_VERSION
         elif v.get("target") == str(real_pack):
             v["target"] = str(pack)
-            v["input_sha256"] = tmp_pack_hash
     for a in tampered["audits"]:
         if a["audit_id"] == "research-pack":
             for p in a.get("evidence_provenance", []):
                 if p.get("target") == str(real_pack):
                     p["target"] = str(pack)
-                    p["input_sha256"] = tmp_pack_hash
         elif a["audit_id"] != MANUAL_AUDIT_ID:
             for p in a.get("evidence_provenance", []):
                 # automated provenance should bind to tmp report
                 if p.get("target") == str(real_report):
                     p["target"] = str(report)
-                    p["input_sha256"] = tmp_report_hash
 
     def fake_run(rp, pp, activation_snapshot=None):
         return tampered, None, 0
@@ -1047,28 +1035,23 @@ def test_evaluate_case_wiring_rejects_hidden_tilde_and_html_e2e(tmp_path, monkey
                 a["execution_source"] = MANUAL_SOURCE
                 a["execution_type"] = "manual"
         tampered["overall"] = "pass"
-        tmp_report_hash = hashlib.sha256(report.read_bytes()).hexdigest()
-        tmp_pack_hash = hashlib.sha256(pack.read_bytes()).hexdigest()
-        tampered["input_sha256"] = tmp_report_hash
+        # Retarget validator/audit provenance to the tmp files so
+        # validators_ok does not mask the visible-heading check.
         for v in tampered.get("validators", []):
             if v.get("target") == str(real_report):
                 v["target"] = str(report)
-                v["input_sha256"] = tmp_report_hash
             elif v.get("target") == str(real_pack):
                 v["target"] = str(pack)
-                v["input_sha256"] = tmp_pack_hash
         for a in tampered["audits"]:
             if a["audit_id"] == "research-pack":
                 for p in a.get("evidence_provenance", []):
                     if p.get("target") == str(real_pack):
                         p["target"] = str(pack)
-                        p["input_sha256"] = tmp_pack_hash
             elif a["audit_id"] != MANUAL_AUDIT_ID:
                 for p in a.get("evidence_provenance", []):
                     if p.get("target") == str(real_report):
                         p["target"] = str(report)
-                        p["input_sha256"] = tmp_report_hash
-
+    
         def fake_run(rp, pp, activation_snapshot=None, _tampered=tampered):
             return _tampered, None, 0
 

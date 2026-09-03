@@ -890,14 +890,12 @@ def require_delivered_audit(
     audit, errors = _load_json_object(audit_result_path, "audit result")
     if errors:
         return errors
-    try:
-        Path(artifact_path).read_bytes()
-    except OSError as exc:
-        return [f"cannot read artifact {artifact_path}: {exc}"]
-    try:
-        Path(report_path).read_bytes()
-    except OSError as exc:
-        return [f"cannot read report {report_path}: {exc}"]
+    err = _unreadable_error("artifact", artifact_path)
+    if err is not None:
+        return [err]
+    err = _unreadable_error("report", report_path)
+    if err is not None:
+        return [err]
     assert audit is not None
     return check_audit_result_for_delivered(
         audit,
@@ -907,6 +905,20 @@ def require_delivered_audit(
         claim_alignment_bundle_path=claim_alignment_bundle_path,
         require_opt_in_binding=require_opt_in_binding,
     )
+
+
+def _unreadable_error(label: str, path: Path | str) -> str | None:
+    """Cheap readability probe: open without loading content.
+
+    Issue #426 review cleanup: resume/delivered only needs to know the
+    artifact is readable, so avoid a full-file read of large Packs/reports.
+    """
+    try:
+        with open(path, "rb"):
+            pass
+    except OSError as exc:
+        return f"cannot read {label} {path}: {exc}"
+    return None
 
 
 def _load_json_object(path: Path | str, label: str) -> tuple[dict | None, list[str]]:
@@ -931,10 +943,9 @@ def check_resume(
     """恢复时重验 artifact 存在、activation reference、未消费 pending_decision。"""
     errors: list[str] = []
     if artifact_path is not None:
-        try:
-            Path(artifact_path).read_bytes()
-        except OSError as exc:
-            return [f"cannot read resume artifact {artifact_path}: {exc}"]
+        err = _unreadable_error("resume artifact", artifact_path)
+        if err is not None:
+            return [err]
     if activation_snapshot_path is not None:
         errors.extend(check_activation_alignment(state, activation_snapshot_path))
     if state["status"] in TERMINAL_STATUSES:
@@ -1015,10 +1026,9 @@ def bind_handoff_to_run_state(
             f"handoff_id {hid!r} is not listed in run state handoff_refs"
         )
     if matching and handoff_path is not None:
-        try:
-            Path(handoff_path).read_bytes()
-        except OSError as exc:
-            errors.append(f"cannot read handoff {handoff_path}: {exc}")
+        err = _unreadable_error("handoff", handoff_path)
+        if err is not None:
+            errors.append(err)
             return errors
     return errors
 
@@ -1160,10 +1170,9 @@ def check_pack_run_state(pack_path: Path | str, cleaned: str | None = None) -> l
             f"Run state run_id mismatch: pack declares {ref['run_id']!r}, "
             f"file has {state['run_id']!r}"
         )
-    try:
-        Path(pack_path).read_bytes()
-    except OSError as exc:
-        return [f"cannot read Research Pack {pack_path}: {exc}"]
+    err = _unreadable_error("Research Pack", pack_path)
+    if err is not None:
+        return [err]
     pack_artifact = _first_pack_section_line(cleaned, "Artifact id")
     if pack_artifact and pack_artifact != state["artifact_id"]:
         errors.append(
@@ -1440,10 +1449,9 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
     elif args.artifact:
-        try:
-            Path(args.artifact).read_bytes()
-        except OSError as exc:
-            errors.append(f"cannot read --artifact {args.artifact}: {exc}")
+        err = _unreadable_error("--artifact", args.artifact)
+        if err is not None:
+            errors.append(err)
 
     if args.activation_snapshot and not args.resume:
         errors.extend(

@@ -142,6 +142,7 @@ def test_audit_runner_consumes_delivery_result_without_merging_status_layers(
     delivery_result.write_text(
         json.dumps(
             {
+                "schema_version": 2,
                 "input_path": str(report.resolve()),
                 "delivery_status": "pdf_failed",
                 "markdown_status": "md_ready",
@@ -167,6 +168,7 @@ def test_audit_accepts_provenance_bound_pdf_ready_result(tmp_path: Path) -> None
     delivery_result.write_text(
         json.dumps(
             {
+                "schema_version": 2,
                 "input_path": str(report.resolve()),
                 "delivery_status": "pdf_ready",
                 "markdown_status": "md_ready",
@@ -188,6 +190,7 @@ def test_audit_rejects_forged_delivery_provenance(tmp_path: Path) -> None:
     delivery_result.write_text(
         json.dumps(
             {
+                "schema_version": 2,
                 "input_path": str((tmp_path / "wrong.md").resolve()),
                 "delivery_status": "pdf_ready",
                 "markdown_status": "md_ready",
@@ -209,6 +212,7 @@ def test_audit_cli_accepts_delivery_result_json(tmp_path: Path) -> None:
     delivery_result = tmp_path / "delivery.json"
     delivery_result.write_text(
         json.dumps({
+            "schema_version": 2,
             "input_path": str(report.resolve()),
             "delivery_status": "pdf_failed",
             "markdown_status": "md_ready",
@@ -233,3 +237,67 @@ def test_audit_cli_accepts_delivery_result_json(tmp_path: Path) -> None:
     assert completed.returncode in (0, 1), completed.stdout + completed.stderr
     payload = json.loads(completed.stdout)
     assert payload["delivery"]["delivery_status"] == "pdf_failed"
+
+
+def test_delivery_result_carries_schema_version_2(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from delivery.models import DELIVERY_RESULT_SCHEMA_VERSION  # noqa: E402
+
+    assert DELIVERY_RESULT_SCHEMA_VERSION == 2
+    input_path = tmp_path / "report.md"
+    input_path.write_text("# Report\n\nBody.\n", encoding="utf-8")
+    monkeypatch.setattr("delivery.pipeline._render_pdf", lambda *args, **kwargs: None)
+    result = run_delivery(input_path, tmp_path / "out.pdf")
+    assert result.to_dict()["schema_version"] == 2
+
+
+def test_audit_rejects_legacy_hash_bearing_delivery_result(tmp_path: Path) -> None:
+    report = ROOT / "tests" / "fixtures" / "audit" / "market-outlook-pos.md"
+    pdf_path = tmp_path / "report.pdf"
+    pdf_path.write_bytes(b"%PDF-1.7\nvalid test artifact\n")
+    # v1 shape: no schema_version, carries removed hash bindings. Paths and
+    # sizes are valid on purpose — rejection must come from the version /
+    # unknown-field gate, not from path checks.
+    delivery_result = tmp_path / "legacy.json"
+    delivery_result.write_text(
+        json.dumps(
+            {
+                "input_path": str(report.resolve()),
+                "input_sha256": "0" * 64,
+                "delivery_status": "pdf_ready",
+                "markdown_status": "md_ready",
+                "pdf_path": str(pdf_path.resolve()),
+                "pdf_sha256": "0" * 64,
+                "pdf_size_bytes": pdf_path.stat().st_size,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    verdict = audit_report(report, route="market-outlook", delivery_result=delivery_result)
+    assert verdict.exit_code == 2
+    assert verdict.overall == "fail"
+    assert any("schema_version" in error for error in verdict.blocking)
+    assert any("input_sha256" in error for error in verdict.blocking)
+    assert any("pdf_sha256" in error for error in verdict.blocking)
+
+
+def test_audit_rejects_hash_stripped_unversioned_delivery_result(tmp_path: Path) -> None:
+    report = ROOT / "tests" / "fixtures" / "audit" / "market-outlook-pos.md"
+    delivery_result = tmp_path / "unversioned.json"
+    delivery_result.write_text(
+        json.dumps(
+            {
+                "input_path": str(report.resolve()),
+                "delivery_status": "pdf_failed",
+                "markdown_status": "md_ready",
+                "errors": ["boom"],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    verdict = audit_report(report, route="market-outlook", delivery_result=delivery_result)
+    assert verdict.exit_code == 2
+    assert any("schema_version" in error for error in verdict.blocking)

@@ -104,6 +104,27 @@ ALLOWED_AUDIT_STATUSES = {
     "partial",
 }
 
+# Byte-identity hash bindings removed in issue #426 (Audit JSON schema v2).
+# A v2 payload carrying any of these is a half-migrated structure and must
+# fail closed — never silently accepted (no fallback, no compat reading).
+LEGACY_AUDIT_HASH_FIELDS = frozenset(
+    {
+        "input_sha256",
+        "artifact_sha256",
+        "artifact_hash",
+        "sha256",
+        "claim_alignment_bundle_sha256",
+        "record_artifact_sha256",
+    }
+)
+
+
+def _legacy_hash_fields_present(obj: object) -> list[str]:
+    """Sorted legacy hash keys present on a JSON object, or [] if none."""
+    if not isinstance(obj, dict):
+        return []
+    return sorted(LEGACY_AUDIT_HASH_FIELDS & set(obj))
+
 
 def _read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
@@ -272,6 +293,10 @@ def _validators_ok(
     for item in validators:
         if not isinstance(item, dict):
             return False
+        # Half-migrated v1 payloads still carrying removed hash bindings
+        # fail closed (issue #426: breaking cleanup, no fallback).
+        if _legacy_hash_fields_present(item):
+            return False
         status = str(item.get("status"))
         if status not in VALID_VALIDATOR_STATUSES:
             return False
@@ -436,6 +461,13 @@ def _audit_consistency_details(
         require_opt_in_binding or claim_alignment_bundle_path is not None
     )
     errors: list[str] = []
+    # Half-migrated v1 payloads still carrying removed hash bindings fail
+    # closed at the top level (issue #426: breaking cleanup, no fallback).
+    legacy_top = _legacy_hash_fields_present(actual)
+    if legacy_top:
+        errors.append(
+            "top-level carries removed v1 hash field(s): " + ", ".join(legacy_top)
+        )
     audits = actual.get("audits")
     if not isinstance(audits, list):
         return False, ["audits is not a list"]
@@ -458,6 +490,13 @@ def _audit_consistency_details(
             errors.append("audit entry is not an object")
             continue
         audit_id = str(item.get("audit_id") or "<missing>")
+        legacy_item = _legacy_hash_fields_present(item)
+        if legacy_item:
+            errors.append(
+                f"audit {audit_id}: carries removed v1 hash field(s): "
+                + ", ".join(legacy_item)
+            )
+            continue
         status = str(item.get("status") or "")
         prefix = f"audit {audit_id}:"
         if status not in ALLOWED_AUDIT_STATUSES:
@@ -837,6 +876,15 @@ def _audit_provenance_details(
     ]
     if not verified_records:
         return False, ["evidence_provenance has no verified record"]
+    # Half-migrated v1 records still carrying removed hash bindings fail
+    # closed (issue #426: breaking cleanup, no fallback).
+    for record in verified_records:
+        legacy_record = _legacy_hash_fields_present(record)
+        if legacy_record:
+            return False, [
+                f"provenance carries removed v1 hash field(s): "
+                + ", ".join(legacy_record)
+            ]
     for record in verified_records:
         if record.get("execution_source") != execution_source:
             return False, [

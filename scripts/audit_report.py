@@ -84,6 +84,11 @@ from validate_research_pack import (
     strip_fenced_code_blocks as vrp_strip_fenced_code_blocks,
 )
 from audit_evidence import validate_evidence_reference
+from delivery.models import (
+    DELIVERY_RESULT_SCHEMA_VERSION,
+    KNOWN_DELIVERY_FIELDS,
+    LEGACY_DELIVERY_HASH_FIELDS,
+)
 from activation_snapshot import (
     ActivationSnapshotError,
     extract_activation_snapshot_reference,
@@ -1068,6 +1073,23 @@ def _load_delivery_result(
         return None, ["delivery result must be a JSON object"]
 
     errors: list[str] = []
+    if payload.get("schema_version") != DELIVERY_RESULT_SCHEMA_VERSION:
+        errors.append(
+            "delivery result schema_version must be "
+            f"{DELIVERY_RESULT_SCHEMA_VERSION}, got "
+            f"{payload.get('schema_version')!r}"
+        )
+    legacy = sorted(LEGACY_DELIVERY_HASH_FIELDS & set(payload))
+    if legacy:
+        errors.append(
+            "delivery result carries removed v1 hash field(s): "
+            + ", ".join(legacy)
+        )
+    unknown = sorted(set(payload) - KNOWN_DELIVERY_FIELDS)
+    if unknown:
+        errors.append(
+            f"delivery result has unknown field(s): {unknown}"
+        )
     expected_input = audited_path.resolve()
     input_value = payload.get("input_path")
     if not isinstance(input_value, str) or not input_value:

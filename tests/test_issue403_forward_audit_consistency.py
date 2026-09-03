@@ -101,6 +101,74 @@ def test_audits_ok_accepts_genuine_audit_json() -> None:
 # ── _audits_ok: fail closed on truncation / forgery ──────────────────────────
 
 
+def test_audits_ok_rejects_legacy_top_level_hash_fields() -> None:
+    """A v2 payload whose top level still carries removed hash bindings is a
+    half-migrated structure and must fail closed (issue #426)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    tampered["input_sha256"] = "0" * 64
+    ok, errors = run_forward_evals._audit_consistency_details(
+        tampered, expected
+    )
+    assert ok is False
+    assert any("removed v1 hash" in e for e in errors), errors
+
+
+def test_audits_ok_rejects_legacy_audit_level_hash_fields() -> None:
+    """A v2 audits[] entry still carrying removed hash bindings must fail
+    closed (issue #426)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    tampered["audits"][0]["input_sha256"] = "0" * 64
+    ok, errors = run_forward_evals._audit_consistency_details(
+        tampered, expected
+    )
+    assert ok is False
+    assert any("removed v1 hash" in e for e in errors), errors
+
+
+def test_audits_ok_rejects_legacy_provenance_hash_fields() -> None:
+    """A v2 evidence_provenance[] record still carrying removed hash bindings
+    must fail closed (issue #426)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    target = next(
+        a
+        for a in tampered["audits"]
+        if any(
+            isinstance(p, dict) and p.get("verified") is True
+            for p in (a.get("evidence_provenance") or [])
+        )
+    )
+    target["evidence_provenance"][0]["input_sha256"] = "0" * 64
+    ok, errors = run_forward_evals._audit_consistency_details(
+        tampered, expected
+    )
+    assert ok is False
+    assert any("removed v1 hash" in e for e in errors), errors
+
+
+def test_validators_ok_rejects_legacy_hash_fields() -> None:
+    """A v2 validators[] entry still carrying removed hash bindings must fail
+    closed (issue #426)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected_validators = run_forward_evals._ROUTE_REGISTRY.validators_for(
+        data["route"]
+    )
+    tampered = copy.deepcopy(data["validators"][0])
+    tampered["input_sha256"] = "0" * 64
+    actual = {**data, "validators": [tampered, *data["validators"][1:]]}
+    assert (
+        run_forward_evals._validators_ok(
+            actual, expected_validators, audited_path=tampered.get("target")
+        )
+        is False
+    )
+
+
 def test_audits_ok_rejects_missing_global_audit() -> None:
     case, data = _real_audit_for(POSITIVE_CASE_ID)
     expected = _expected_for(case)
