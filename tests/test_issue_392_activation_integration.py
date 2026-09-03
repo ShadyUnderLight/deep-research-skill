@@ -101,6 +101,20 @@ def test_tampered_pack_snapshot_reference_fails_closed(tmp_path: Path) -> None:
     assert any("activation_snapshot" in item for item in payload["blocking"])
 
 
+def test_v2_contract_with_v1_contract_version_fails_closed(tmp_path: Path) -> None:
+    downgraded = tmp_path / "downgraded-report.md"
+    text = POSITIVE_REPORT.read_text(encoding="utf-8")
+    downgraded.write_text(
+        text.replace('"contract_version": "2.0.0"', '"contract_version": "1.0.0"', 1),
+        encoding="utf-8",
+    )
+
+    result, payload = _run(downgraded, POSITIVE_PACK, POSITIVE_SNAPSHOT)
+    assert result.returncode == 2
+    assert payload["overall"] == "fail"
+    assert any("contract_version" in item for item in payload["blocking"])
+
+
 def test_activation_snapshot_implies_contract_requirement(tmp_path: Path) -> None:
     report = tmp_path / "without-contract.md"
     report.write_text("# Report without a contract\n", encoding="utf-8")

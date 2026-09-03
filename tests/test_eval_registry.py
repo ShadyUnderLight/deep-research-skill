@@ -122,6 +122,14 @@ def test_registry_rejects_missing_fixture() -> None:
     assert any("does not exist" in error for error in errors)
 
 
+def test_registry_rejects_legacy_prompt_sha256() -> None:
+    registry = load_registry()
+    tampered = copy.deepcopy(registry)
+    tampered["cases"][0]["input"]["prompt_sha256"] = "0" * 64
+    errors = validate_registry(tampered)
+    assert any("prompt_sha256" in error for error in errors)
+
+
 def test_prompt_text_does_not_drive_routing() -> None:
     # Issue #425: routing is driven by structured action/object fields, not by
     # prompt bytes. Mutating user_prompt alone must not change the activation.

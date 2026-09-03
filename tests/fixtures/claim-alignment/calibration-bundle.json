@@ -247,6 +247,6 @@
     }
   ],
   "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
-  "source_artifact_sha256": "bc51ecc905d40a993fb601861100397adea6f2c939ee0f5621c91f54977a5957",
+  "source_artifact_sha256": "cf7d832cea3d698a90eb72ebe43ea080ef13d60e09ed197951c1463c1840a283",
   "route_id": "market-outlook"
 }

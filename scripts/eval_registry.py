@@ -100,6 +100,7 @@ REQUIRED_INPUT_FIELDS = {
     "secondary_routes",
     "parallelization_decision",
 }
+OPTIONAL_INPUT_FIELDS = {"secondary_route_contracts"}
 REQUIRED_EXPECTED_FIELDS = {
     "primary_route",
     "closest_alternative",
@@ -267,6 +268,11 @@ def _validate_case(
         if missing_input:
             errors.append(
                 f"{prefix}.input missing field(s): {', '.join(sorted(missing_input))}"
+            )
+        unexpected_input = set(input_data) - REQUIRED_INPUT_FIELDS - OPTIONAL_INPUT_FIELDS
+        if unexpected_input:
+            errors.append(
+                f"{prefix}.input has unexpected field(s): {', '.join(sorted(unexpected_input))}"
             )
         if not _is_non_empty_string(input_data.get("user_prompt")):
             errors.append(f"{prefix}.input.user_prompt must be non-empty")
