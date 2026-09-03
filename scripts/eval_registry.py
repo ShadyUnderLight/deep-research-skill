@@ -95,7 +95,6 @@ REQUIRED_CASE_FIELDS = {
 }
 REQUIRED_INPUT_FIELDS = {
     "user_prompt",
-    "prompt_sha256",
     "action_burden",
     "weight_bearing_object",
     "secondary_routes",
@@ -271,9 +270,6 @@ def _validate_case(
             )
         if not _is_non_empty_string(input_data.get("user_prompt")):
             errors.append(f"{prefix}.input.user_prompt must be non-empty")
-        prompt_sha256 = input_data.get("prompt_sha256")
-        if not isinstance(prompt_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", prompt_sha256):
-            errors.append(f"{prefix}.input.prompt_sha256 must be a lowercase SHA-256")
         action_burden = input_data.get("action_burden")
         if (
             not isinstance(action_burden, str)

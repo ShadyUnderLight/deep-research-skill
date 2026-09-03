@@ -125,13 +125,11 @@
       "additionalProperties": false,
       "required": [
         "activation_id",
-        "snapshot_sha256",
         "snapshot_version",
         "decision_tree_version"
       ],
       "properties": {
         "activation_id": {"type": "string", "minLength": 1},
-        "snapshot_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "snapshot_version": {"type": "integer", "minimum": 1},
         "decision_tree_version": {"type": "integer", "minimum": 1}
       },

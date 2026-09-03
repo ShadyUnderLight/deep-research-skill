@@ -7,8 +7,7 @@
   "current_artifact_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "activation_reference": {
     "activation_id": "run-state-explicit-resume",
-    "snapshot_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "snapshot_version": 1,
+    "snapshot_version": 2,
     "decision_tree_version": 1
   },
   "pending_decision": null,

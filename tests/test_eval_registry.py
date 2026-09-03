@@ -122,15 +122,17 @@ def test_registry_rejects_missing_fixture() -> None:
     assert any("does not exist" in error for error in errors)
 
 
-def test_prompt_mutation_cannot_pass_a_forward_case() -> None:
+def test_prompt_text_does_not_drive_routing() -> None:
+    # Issue #425: routing is driven by structured action/object fields, not by
+    # prompt bytes. Mutating user_prompt alone must not change the activation.
     case = copy.deepcopy(next(
         item for item in load_registry()["cases"]
         if item["id"] == "forward-provider-selection"
     ))
     case["input"]["user_prompt"] = "写一篇关于古典音乐历史的简短说明。"
-    result = _evaluate_case(case)
-    assert result["passed"] is False
-    assert result["checks"]["activation_route_match"] is False
+    result = _evaluate_case(case, 1)
+    assert result["passed"] is True
+    assert result["checks"]["activation_route_match"] is True
 
 
 def test_unstructured_prompt_activation_fails_closed() -> None:

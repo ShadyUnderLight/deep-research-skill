@@ -1,15 +1,13 @@
 {
   "activation_id": "forward-market-outlook-baseline",
-  "snapshot_version": 1,
+  "snapshot_version": 2,
   "evaluation_mode": "activation-record-integration",
   "decision_tree_version": 1,
-  "prompt_sha256": "db59e14712fb8287f0873e7e144dc5050b55e5cee4db85b281000f19de356ce5",
   "action_burden": "Judge direction / scenario",
   "weight_bearing_object": "Market / category trajectory",
   "primary_route": "market-outlook",
   "secondary_routes": [],
   "derived_secondary_routes": [],
   "manual_secondary_routes": [],
-  "parallelization_decision": "parallel",
-  "snapshot_sha256": "aec9f2e6ccf91281590f5769abe1252d45a5a27c0680233ef77f861ec381949d"
+  "parallelization_decision": "parallel"
 }

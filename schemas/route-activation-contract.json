@@ -3,7 +3,7 @@
   "$id": "https://deep-research-skill/schemas/route-activation-contract.json",
   "title": "Route Activation Contract",
   "description": "Typed, verifiable contract that separates primary route, secondary routes, cross-cutting disciplines, and audits. Audit evidence uses the shared typed-reference vocabulary and is re-verified at delivery. Designed for embedding in Markdown ```contract fenced blocks.",
-  "version": 1,
+  "version": 2,
   "type": "object",
   "required": ["primary_route", "secondary_routes", "disciplines", "audits"],
   "properties": {
@@ -23,10 +23,9 @@
     "activation_snapshot": {
       "type": "object",
       "description": "Stable reference to the canonical activation snapshot used by the integration audit.",
-      "required": ["activation_id", "snapshot_sha256", "snapshot_version", "decision_tree_version"],
+      "required": ["activation_id", "snapshot_version", "decision_tree_version"],
       "properties": {
         "activation_id": {"type": "string", "minLength": 1},
-        "snapshot_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
         "snapshot_version": {"type": "integer", "minimum": 1},
         "decision_tree_version": {"type": "integer", "minimum": 1}
       },

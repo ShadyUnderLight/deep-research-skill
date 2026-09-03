@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import sys
 from pathlib import Path
 
@@ -19,7 +18,6 @@ def _activate(**kwargs):
     return activate_prompt(
         prompt,
         "single-track",
-        expected_prompt_sha256=hashlib.sha256(prompt.encode()).hexdigest(),
         **kwargs,
     )
 

@@ -3,14 +3,12 @@
 
 Forward evals provide canonical action/object classifications explicitly.  This
 module resolves those structured values against the route-decision registry and
-keeps the original user prompt as an identity-checked input.  It intentionally
+requires the original user prompt as a non-empty input.  It intentionally
 does not guess from arbitrary prose or fall back to ``shared-workflow``.
 """
 
 from __future__ import annotations
 
-import hashlib
-import re
 from dataclasses import dataclass
 
 try:
@@ -41,7 +39,6 @@ class ActivationResult:
     action_category: str
     weight_bearing_object: str
     parallelization_decision: str
-    prompt_sha256: str
     decision_tree_version: int
     derived_secondary_routes: tuple[str, ...] = ()
     manual_secondary_routes: tuple[str, ...] = ()
@@ -125,14 +122,11 @@ def activate_prompt(
     weight_bearing_object: str | None = None,
     secondary_routes: list[str] | tuple[str, ...] | None = None,
     secondary_route_contracts: dict[str, dict[str, str]] | None = None,
-    expected_prompt_sha256: str | None = None,
 ) -> ActivationResult:
-    """Resolve structured activation input and verify prompt identity.
+    """Resolve structured activation input against the decision tree.
 
-    The prompt hash prevents a case from silently changing its natural-language
-    input while retaining the old expected activation.  Route selection itself
-    is based only on canonical action/object fields; an absent or unknown field
-    is a hard error instead of an escape-hatch fallback.
+    Route selection is based only on canonical action/object fields; an absent
+    or unknown field is a hard error instead of an escape-hatch fallback.
     """
     if not isinstance(prompt, str) or not prompt.strip():
         raise RouteActivationError("input.user_prompt must be a non-empty string")
@@ -153,13 +147,6 @@ def activate_prompt(
     ):
         raise RouteActivationError(
             f"unknown structured weight_bearing_object: {weight_bearing_object!r}"
-        )
-    if not isinstance(expected_prompt_sha256, str) or not re.fullmatch(r"[0-9a-f]{64}", expected_prompt_sha256):
-        raise RouteActivationError("input.prompt_sha256 must be a 64-character lowercase SHA-256")
-    prompt_sha256 = hashlib.sha256(prompt.encode("utf-8")).hexdigest()
-    if prompt_sha256 != expected_prompt_sha256:
-        raise RouteActivationError(
-            "input.user_prompt does not match input.prompt_sha256; refusing stale activation"
         )
     if not isinstance(secondary_routes, (list, tuple)) or not all(
         isinstance(route, str) and route.strip() for route in secondary_routes
@@ -208,7 +195,6 @@ def activate_prompt(
         action_category=action_category,
         weight_bearing_object=weight_bearing_object,
         parallelization_decision=parallelization_decision,
-        prompt_sha256=prompt_sha256,
         decision_tree_version=decision_tree.version,
         derived_secondary_routes=tuple(sorted(derived_secondary)),
         manual_secondary_routes=manual_secondary,

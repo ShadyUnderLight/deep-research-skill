@@ -8,7 +8,6 @@ the canonical action/object decision tree still owns route semantics.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 from pathlib import Path
@@ -22,20 +21,18 @@ from registry_loader import (
 from route_activation import ALLOWED_PARALLELIZATION, ActivationResult
 
 
-SNAPSHOT_VERSION = 1
+SNAPSHOT_VERSION = 2
 SNAPSHOT_MODES = {
     "structured-decision-replay",
     "activation-record-integration",
 }
 ACTIVATION_REF_FIELDS = {
     "activation_id",
-    "snapshot_sha256",
     "snapshot_version",
     "decision_tree_version",
 }
 SNAPSHOT_REQUIRED_FIELDS = ACTIVATION_REF_FIELDS | {
     "evaluation_mode",
-    "prompt_sha256",
     "action_burden",
     "weight_bearing_object",
     "primary_route",
@@ -44,31 +41,10 @@ SNAPSHOT_REQUIRED_FIELDS = ACTIVATION_REF_FIELDS | {
     "manual_secondary_routes",
     "parallelization_decision",
 }
-SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 class ActivationSnapshotError(ValueError):
     """Raised when an activation snapshot or reference is malformed."""
-
-
-def _canonical_payload(snapshot: Mapping[str, Any]) -> dict[str, Any]:
-    """Return the hash payload, excluding the self-referential digest."""
-    return {
-        key: snapshot[key]
-        for key in sorted(snapshot)
-        if key != "snapshot_sha256"
-    }
-
-
-def compute_snapshot_sha256(snapshot: Mapping[str, Any]) -> str:
-    """Hash a snapshot using stable JSON serialization."""
-    encoded = json.dumps(
-        _canonical_payload(snapshot),
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def activation_reference(snapshot: Mapping[str, Any]) -> dict[str, Any]:
@@ -79,14 +55,6 @@ def activation_reference(snapshot: Mapping[str, Any]) -> dict[str, Any]:
 def _require_non_empty_string(value: Any, field: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ActivationSnapshotError(f"{field} must be a non-empty string")
-    return value
-
-
-def _require_sha256(value: Any, field: str) -> str:
-    if not isinstance(value, str) or not SHA256_RE.fullmatch(value):
-        raise ActivationSnapshotError(
-            f"{field} must be a 64-character lowercase SHA-256"
-        )
     return value
 
 
@@ -127,7 +95,6 @@ def validate_activation_reference(
             f"{label} has unexpected field(s): {', '.join(sorted(unexpected))}"
         )
     activation_id = _require_non_empty_string(reference["activation_id"], f"{label}.activation_id")
-    digest = _require_sha256(reference["snapshot_sha256"], f"{label}.snapshot_sha256")
     snapshot_version = _require_positive_int(
         reference["snapshot_version"], f"{label}.snapshot_version"
     )
@@ -136,7 +103,6 @@ def validate_activation_reference(
     )
     return {
         "activation_id": activation_id,
-        "snapshot_sha256": digest,
         "snapshot_version": snapshot_version,
         "decision_tree_version": decision_tree_version,
     }
@@ -185,9 +151,6 @@ def validate_snapshot(
     normalized["decision_tree_version"] = _require_positive_int(
         snapshot["decision_tree_version"], "decision_tree_version"
     )
-    normalized["prompt_sha256"] = _require_sha256(
-        snapshot["prompt_sha256"], "prompt_sha256"
-    )
     normalized["action_burden"] = _require_non_empty_string(
         snapshot["action_burden"], "action_burden"
     )
@@ -214,9 +177,6 @@ def validate_snapshot(
             "parallelization_decision must be one of "
             f"{sorted(ALLOWED_PARALLELIZATION)}"
         )
-    normalized["snapshot_sha256"] = _require_sha256(
-        snapshot["snapshot_sha256"], "snapshot_sha256"
-    )
 
     try:
         route_registry = load_route_registry()
@@ -259,11 +219,6 @@ def validate_snapshot(
         )
     if normalized["primary_route"] in secondary:
         raise ActivationSnapshotError("primary_route cannot also be a secondary route")
-    expected_digest = compute_snapshot_sha256(normalized)
-    if normalized["snapshot_sha256"] != expected_digest:
-        raise ActivationSnapshotError(
-            "snapshot_sha256 does not match the canonical snapshot payload"
-        )
 
     if expected_reference is not None:
         reference = validate_activation_reference(expected_reference, label="expected activation reference")
@@ -295,13 +250,12 @@ def build_activation_snapshot(
     *,
     evaluation_mode: str,
 ) -> dict[str, Any]:
-    """Serialize a canonical ActivationResult and attach its stable hash."""
+    """Serialize a canonical ActivationResult as a versioned snapshot."""
     payload: dict[str, Any] = {
         "activation_id": activation_id,
         "snapshot_version": SNAPSHOT_VERSION,
         "evaluation_mode": evaluation_mode,
         "decision_tree_version": activation.decision_tree_version,
-        "prompt_sha256": activation.prompt_sha256,
         "action_burden": activation.action_category,
         "weight_bearing_object": activation.weight_bearing_object,
         "primary_route": activation.primary_route,
@@ -310,7 +264,6 @@ def build_activation_snapshot(
         "manual_secondary_routes": sorted(activation.manual_secondary_routes),
         "parallelization_decision": activation.parallelization_decision,
     }
-    payload["snapshot_sha256"] = compute_snapshot_sha256(payload)
     return validate_snapshot(payload)
 
 
@@ -343,7 +296,7 @@ def extract_activation_snapshot_reference(
             continue
         line = re.sub(r"^[-*]\s+", "", line)
         field_match = re.fullmatch(
-            r"(activation_id|snapshot_sha256|snapshot_version|decision_tree_version)\s*:\s*(.+)",
+            r"(activation_id|snapshot_version|decision_tree_version)\s*:\s*(.+)",
             line,
         )
         if not field_match:
