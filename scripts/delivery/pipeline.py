@@ -6,7 +6,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from .models import DeliveryResult, DeliveryStatus, sha256_file
+from .models import DeliveryResult, DeliveryStatus
 from .status import write_delivery_status
 
 
@@ -93,7 +93,6 @@ def run_delivery(
     pdf_path.parent.mkdir(parents=True, exist_ok=True)
     result = DeliveryResult(
         input_path=input_path,
-        input_sha256=sha256_file(input_path),
         pdf_path=pdf_path,
         kept_html=keep_html,
     )
@@ -106,7 +105,6 @@ def run_delivery(
             convert(input_path, html_path, title)
             _validate_non_empty_file(html_path, "HTML")
             result.markdown_status = DeliveryStatus.MD_READY
-            result.html_sha256 = sha256_file(html_path)
             if keep_html:
                 result.html_path = html_path
         except Exception as exc:
@@ -133,7 +131,6 @@ def run_delivery(
             )
             result.pdf_size_bytes = _validate_pdf_artifact(pdf_path)
             result.delivery_status = DeliveryStatus.PDF_READY
-            result.pdf_sha256 = sha256_file(pdf_path)
         except Exception as exc:
             result.delivery_status = DeliveryStatus.PDF_FAILED
             result.errors.append(f"HTML to PDF failed (Chromium/PDF renderer): {exc}")

@@ -27,8 +27,8 @@ reject stale or misrouted handoffs from a previous run,
 --expected-scope-file to verify the track executed within its assigned
 scope/timeframe boundary.
 When --run-state is supplied, the handoff must bind to that Run State's
-artifact_id and listed handoff hash (issue #417). Omitting --run-state
-preserves the #416 single-handoff path.
+artifact_id and listed handoff_id (issue #417, #426: no sha256). Omitting
+--run-state preserves the #416 single-handoff path.
 """
 
 from __future__ import annotations
@@ -636,7 +636,7 @@ def main(argv: list[str] | None = None) -> int:
         type=str,
         default=None,
         help="Optional issue #417 binding: reject unless this handoff matches the "
-        "Run State's artifact_id and listed handoff_refs sha256. Omitting this "
+        "Run State's artifact_id and listed handoff_id. Omitting this "
         "flag leaves the #416 path unchanged.",
     )
     args = parser.parse_args(argv)

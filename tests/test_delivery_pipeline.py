@@ -14,7 +14,7 @@ SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from delivery.models import DeliveryResult, DeliveryStatus, sha256_file  # noqa: E402
+from delivery.models import DeliveryResult, DeliveryStatus  # noqa: E402
 from delivery.normalization import normalize_text_for_pdf  # noqa: E402
 from delivery.pipeline import run_delivery  # noqa: E402
 from delivery.status import write_delivery_status  # noqa: E402
@@ -83,7 +83,6 @@ def test_missing_pdf_artifact_cannot_claim_ready(
 
     assert result.ok is False
     assert result.delivery_status is DeliveryStatus.PDF_FAILED
-    assert result.pdf_sha256 is None
     assert result.pdf_size_bytes is None
     assert any("without creating" in error for error in result.errors)
 
@@ -144,7 +143,6 @@ def test_audit_runner_consumes_delivery_result_without_merging_status_layers(
         json.dumps(
             {
                 "input_path": str(report.resolve()),
-                "input_sha256": sha256_file(report),
                 "delivery_status": "pdf_failed",
                 "markdown_status": "md_ready",
                 "pdf_path": str(tmp_path / "missing.pdf"),
@@ -170,11 +168,9 @@ def test_audit_accepts_provenance_bound_pdf_ready_result(tmp_path: Path) -> None
         json.dumps(
             {
                 "input_path": str(report.resolve()),
-                "input_sha256": sha256_file(report),
                 "delivery_status": "pdf_ready",
                 "markdown_status": "md_ready",
                 "pdf_path": str(pdf_path.resolve()),
-                "pdf_sha256": sha256_file(pdf_path),
                 "pdf_size_bytes": pdf_path.stat().st_size,
             }
         ),
@@ -193,11 +189,9 @@ def test_audit_rejects_forged_delivery_provenance(tmp_path: Path) -> None:
         json.dumps(
             {
                 "input_path": str((tmp_path / "wrong.md").resolve()),
-                "input_sha256": "forged",
                 "delivery_status": "pdf_ready",
                 "markdown_status": "md_ready",
                 "pdf_path": str((tmp_path / "missing.pdf").resolve()),
-                "pdf_sha256": "forged",
                 "pdf_size_bytes": 1,
             }
         ),
@@ -216,7 +210,6 @@ def test_audit_cli_accepts_delivery_result_json(tmp_path: Path) -> None:
     delivery_result.write_text(
         json.dumps({
             "input_path": str(report.resolve()),
-            "input_sha256": sha256_file(report),
             "delivery_status": "pdf_failed",
             "markdown_status": "md_ready",
             "errors": ["boom"],

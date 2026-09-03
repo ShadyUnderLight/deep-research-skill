@@ -72,17 +72,12 @@ def test_enabled_claim_alignment_passes_consumer_provenance() -> None:
         sys.path.insert(0, str(SCRIPTS))
     from run_forward_evals import _audit_consistency_details, _expected_audit_set  # noqa: E402
 
-    report_sha = __import__("hashlib").sha256(report_path.read_bytes()).hexdigest()
     expected_ids = _expected_audit_set("market-outlook", [])
     ok, errors = _audit_consistency_details(
         data,
         expected_ids,
         audited_path=str(report_path),
-        expected_report_sha256=report_sha,
         research_pack_path=str(FIXTURES / "audit" / "research-pack-pos.md"),
-        expected_pack_sha256=__import__("hashlib").sha256(
-            (FIXTURES / "audit" / "research-pack-pos.md").read_bytes()
-        ).hexdigest(),
         expected_route="market-outlook",
         claim_alignment_bundle_path=str(bundle_path),
     )
@@ -136,15 +131,11 @@ def test_aggregate_not_run_audit_is_conditional_and_cannot_deliver() -> None:
 
     report_path = FIXTURES / "audit" / "market-outlook-pos.md"
     pack_path = FIXTURES / "audit" / "research-pack-pos.md"
-    report_sha = __import__("hashlib").sha256(report_path.read_bytes()).hexdigest()
-    pack_sha = __import__("hashlib").sha256(pack_path.read_bytes()).hexdigest()
     ok_audit, audit_errors = _audit_consistency_details(
         data,
         _expected_audit_set("market-outlook", []),
         audited_path=str(report_path),
-        expected_report_sha256=report_sha,
         research_pack_path=str(pack_path),
-        expected_pack_sha256=pack_sha,
         expected_route="market-outlook",
         claim_alignment_bundle_path=str(bundle_path),
     )
@@ -154,12 +145,9 @@ def test_aggregate_not_run_audit_is_conditional_and_cannot_deliver() -> None:
     delivered = json.loads(
         (FIXTURES / "research-run-state" / "valid-delivered.json").read_text()
     )
-    delivered["current_artifact_sha256"] = pack_sha
     delivered_errors = vrs.check_audit_result_for_delivered(
         data,
         delivered,
-        expected_report_sha256=report_sha,
-        expected_pack_sha256=pack_sha,
         report_path=report_path,
         pack_path=pack_path,
         claim_alignment_bundle_path=bundle_path,
@@ -182,15 +170,11 @@ def test_aggregate_not_run_requires_live_bundle_path(tmp_path) -> None:
         sys.path.insert(0, str(SCRIPTS))
     from run_forward_evals import _audit_consistency_details, _expected_audit_set  # noqa: E402
 
-    import hashlib
-
     ok, errors = _audit_consistency_details(
         data,
         _expected_audit_set("market-outlook", []),
         audited_path=str(report_path),
-        expected_report_sha256=hashlib.sha256(report_path.read_bytes()).hexdigest(),
         research_pack_path=str(pack_path),
-        expected_pack_sha256=hashlib.sha256(pack_path.read_bytes()).hexdigest(),
         expected_route="market-outlook",
         claim_alignment_bundle_path=str(tmp_path / "deleted-bundle.json"),
     )
@@ -230,20 +214,14 @@ def test_delivered_consumer_rejects_enabled_default_off_reason_downgrade(tmp_pat
         sys.path.insert(0, str(SCRIPTS))
     import validate_research_run_state as vrs  # noqa: E402
 
-    import hashlib
-
     report_path = FIXTURES / "audit" / "market-outlook-pos.md"
     pack_path = FIXTURES / "audit" / "research-pack-pos.md"
-    pack_sha = hashlib.sha256(pack_path.read_bytes()).hexdigest()
     delivered = json.loads(
         (FIXTURES / "research-run-state" / "valid-delivered.json").read_text()
     )
-    delivered["current_artifact_sha256"] = pack_sha
     errors = vrs.check_audit_result_for_delivered(
         data,
         delivered,
-        expected_report_sha256=hashlib.sha256(report_path.read_bytes()).hexdigest(),
-        expected_pack_sha256=pack_sha,
         report_path=report_path,
         pack_path=pack_path,
         claim_alignment_bundle_path=bundle_path,
@@ -281,7 +259,7 @@ def test_delivered_consumer_rejects_enabled_default_off_reason_downgrade(tmp_pat
     ), cli_payload
 
 
-def test_tampered_alignment_bundle_fails_consumer_binding(tmp_path) -> None:
+def test_wrong_alignment_bundle_path_fails_consumer_binding(tmp_path) -> None:
     bundle_path = tmp_path / "claim-alignment.json"
     bundle_path.write_text(
         (FIXTURES / "claim-alignment" / "valid.json").read_text(encoding="utf-8"),
@@ -296,29 +274,26 @@ def test_tampered_alignment_bundle_fails_consumer_binding(tmp_path) -> None:
     data = json.loads(result.stdout)
     report_path = FIXTURES / "audit" / "market-outlook-pos.md"
     pack_path = FIXTURES / "audit" / "research-pack-pos.md"
-    bundle_path.write_text(bundle_path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
 
     if str(SCRIPTS) not in sys.path:
         sys.path.insert(0, str(SCRIPTS))
     from run_forward_evals import _audit_consistency_details, _expected_audit_set  # noqa: E402
 
-    import hashlib
-
+    other_bundle = tmp_path / "other-bundle.json"
+    other_bundle.write_text("{}", encoding="utf-8")
     ok, errors = _audit_consistency_details(
         data,
         _expected_audit_set("market-outlook", []),
         audited_path=str(report_path),
-        expected_report_sha256=hashlib.sha256(report_path.read_bytes()).hexdigest(),
         research_pack_path=str(pack_path),
-        expected_pack_sha256=hashlib.sha256(pack_path.read_bytes()).hexdigest(),
         expected_route="market-outlook",
-        claim_alignment_bundle_path=str(bundle_path),
+        claim_alignment_bundle_path=str(other_bundle),
     )
     assert not ok
-    assert any("claim_alignment_bundle_sha256" in error for error in errors)
+    assert any("claim_alignment_bundle" in error for error in errors)
 
 
-def test_delivered_consumer_rehashes_alignment_bundle(tmp_path) -> None:
+def test_delivered_consumer_verifies_alignment_bundle_path(tmp_path) -> None:
     bundle_path = tmp_path / "claim-alignment.json"
     bundle_path.write_text(
         (FIXTURES / "claim-alignment" / "valid.json").read_text(encoding="utf-8"),
@@ -336,37 +311,41 @@ def test_delivered_consumer_rehashes_alignment_bundle(tmp_path) -> None:
         sys.path.insert(0, str(SCRIPTS))
     import validate_research_run_state as vrs  # noqa: E402
 
-    import hashlib
-
     report_path = FIXTURES / "audit" / "market-outlook-pos.md"
     pack_path = FIXTURES / "audit" / "research-pack-pos.md"
     delivered = json.loads(
         (FIXTURES / "research-run-state" / "valid-delivered.json").read_text()
     )
-    pack_sha = hashlib.sha256(pack_path.read_bytes()).hexdigest()
-    delivered["current_artifact_sha256"] = pack_sha
 
     assert not vrs.check_audit_result_for_delivered(
         data,
         delivered,
-        expected_report_sha256=hashlib.sha256(report_path.read_bytes()).hexdigest(),
-        expected_pack_sha256=pack_sha,
         report_path=report_path,
         pack_path=pack_path,
         claim_alignment_bundle_path=bundle_path,
     )
 
     bundle_path.write_text(bundle_path.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+    # Issue #426: same-path content change is no longer a binding failure;
+    # the consumer binds by exact bundle path. A different path must fail.
     errors = vrs.check_audit_result_for_delivered(
         data,
         delivered,
-        expected_report_sha256=hashlib.sha256(report_path.read_bytes()).hexdigest(),
-        expected_pack_sha256=pack_sha,
         report_path=report_path,
         pack_path=pack_path,
         claim_alignment_bundle_path=bundle_path,
     )
-    assert any("claim_alignment_bundle_sha256" in error for error in errors), errors
+    assert not errors, errors
+    other_bundle = tmp_path / "other-bundle.json"
+    other_bundle.write_text("{}", encoding="utf-8")
+    path_errors = vrs.check_audit_result_for_delivered(
+        data,
+        delivered,
+        report_path=report_path,
+        pack_path=pack_path,
+        claim_alignment_bundle_path=other_bundle,
+    )
+    assert any("claim_alignment_bundle" in error for error in path_errors), path_errors
 
 
 def test_route_mismatch_bundle_blocks_alignment_pass() -> None:

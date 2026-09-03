@@ -13,7 +13,7 @@ The current delivery pipeline has three stages:
 3. **One-shot pipeline** — `scripts/md_to_pdf.py` calls the structured delivery pipeline: Markdown → temporary HTML → PDF. Intermediate HTML is removed by default; use `--keep-html` to retain it next to the PDF.
 
 The pipeline returns a machine-readable result with `markdown_status`,
-`delivery_status`, artifact paths, hashes, size, and errors. The canonical
+`delivery_status`, artifact paths, size, and errors. The canonical
 delivery values are `md_ready`, `pdf_ready`, `pdf_failed`, and `not_run`.
 Use `--json` to emit this result. Use `--write-status PATH` only when an
 explicit Research Pack/report writeback is intended; the input Markdown is

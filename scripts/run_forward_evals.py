@@ -12,7 +12,6 @@ mismatch is a real blocking assertion rather than a runner-only oracle.
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import re
 import subprocess
@@ -68,7 +67,8 @@ DEFAULT_BASELINE_PATH = ROOT / "evals" / "forward-metrics-baseline.json"
 # The audit JSON verdict schema this runner understands.  A schema_version it
 # does not know must fail closed instead of being treated as a Pass
 # (issue #393: unknown JSON shape ⇒ incomplete, never pass).
-EXPECTED_AUDIT_JSON_SCHEMA_VERSION = 1
+# v2 (issue #426): no input_sha256 / bundle hash bindings.
+EXPECTED_AUDIT_JSON_SCHEMA_VERSION = 2
 
 # The canonical provenance version string every audit JSON must carry.  Mirrors
 # audit_report._registry_version() so the runner rejects any JSON whose
@@ -230,9 +230,8 @@ def _validators_ok(
     actual: dict[str, Any],
     expected_validators: list[str],
     audited_path: str | None = None,
-    expected_input_sha256: str | None = None,
 ) -> bool:
-    """Consume the structured audit JSON provenance fields (issue #393).
+    """Consume the structured audit JSON provenance fields (issue #393, #426).
 
     A verdict is consumable only when:
     - the JSON schema_version is the one this runner understands; an unknown
@@ -243,26 +242,18 @@ def _validators_ok(
       resolved route, one-to-one (same length, same order, no duplicates, no
       forged extra id);
     - every entry carries its required provenance fields (validator_id,
-      status, errors/warnings, evidence, execution_source, validator_version)
-      and a legal status;
+      status, errors/warnings, evidence, execution_source, validator_version,
+      target path) and a legal status;
     - status is consistent with errors/warnings: ``pass`` carries neither,
       ``conditional-pass`` carries warnings and no errors, ``fail`` carries
       errors;
     - pass evidence is a verifiable locator against the audited report — an
       unverifiable locator blocks instead of being treated as a Pass.
+    Issue #426: no input_sha256 byte binding; binding is by target path.
     """
     if actual.get("schema_version") != EXPECTED_AUDIT_JSON_SCHEMA_VERSION:
         return False
     if actual.get("validator_version") != EXPECTED_VALIDATOR_VERSION:
-        return False
-    # External trust anchor: the verdict's audited-file hash must equal the hash
-    # the consumer computes from the report on disk — a missing / forged
-    # top-level hash (or one that merely matches another JSON field) fails
-    # closed (issue #403 P1).
-    if (
-        expected_input_sha256 is not None
-        and actual.get("input_sha256") != expected_input_sha256
-    ):
         return False
     validators = actual.get("validators") or []
     if not validators:
@@ -314,28 +305,13 @@ def _validators_ok(
         validator_version = item.get("validator_version")
         if validator_version != EXPECTED_VALIDATOR_VERSION:
             return False
-        # Bind the validator result to the audited file.  When an external
-        # trust anchor is available (the consumer-computed report hash) it is
-        # mandatory: target must equal audited_path and artifact hash must
-        # equal the consumer-computed hash — a missing / forged hash (even
-        # when top-level and item agree) fails closed (issue #403 P1).  Without
-        # an external anchor (simple unit tests) fall back to requiring the
-        # fields to be present and internally consistent.
+        # Bind the validator result to the audited file by target path
+        # (issue #426: no hash). Without an external anchor fall back to
+        # requiring the fields to be present and internally consistent.
         if audited_path is not None:
             if not isinstance(item.get("target"), str) or not item.get("target").strip():
                 return False
             if item.get("target") != audited_path:
-                return False
-            if (
-                not isinstance(item.get("input_sha256"), str)
-                or not item.get("input_sha256").strip()
-            ):
-                return False
-        if expected_input_sha256 is not None:
-            if item.get("input_sha256") != expected_input_sha256:
-                return False
-        elif actual.get("input_sha256") is not None:
-            if item.get("input_sha256") != actual.get("input_sha256"):
                 return False
     return True
 
@@ -375,19 +351,6 @@ def _expected_audit_set(
     return sorted(ordered)
 
 
-def _sha256(path: object) -> str | None:
-    """SHA-256 of a file's bytes, or ``None`` on read failure.
-
-    The consumer computes this itself so audit provenance is anchored to the
-    real on-disk artifact rather than to a hash that travelled inside the audit
-    JSON (issue #403 P1: a forged/missing JSON hash must not be trusted).
-    """
-    try:
-        return hashlib.sha256(Path(path).read_bytes()).hexdigest()
-    except (OSError, ValueError, UnicodeError):
-        return None
-
-
 def _claim_alignment_bundle_binding_errors(
     item: dict[str, Any],
     expected_path: str | None,
@@ -396,10 +359,10 @@ def _claim_alignment_bundle_binding_errors(
 ) -> list[str]:
     """Verify the opt-in alignment bundle used by an automated audit.
 
-    The report hash alone is insufficient: the alignment bundle is a separate
-    input and may change while the report and Research Pack remain identical.
-    Delivered/forward consumers therefore require the caller to supply the
-    exact bundle path and re-hash it.
+    Issue #426: binding is by exact bundle path, not by hash. The report
+    hash alone is insufficient and bundle re-hashing is removed: the bundle
+    is a separate input and may change while report/Pack stay identical, so
+    consumers require the exact bundle path.
     """
     if expected_path is None:
         return [
@@ -407,8 +370,7 @@ def _claim_alignment_bundle_binding_errors(
             "--claim-alignment-bundle path for consumer verification"
         ]
     expected = Path(expected_path).resolve()
-    actual_hash = _sha256(expected)
-    if actual_hash is None:
+    if not expected.is_file():
         return [f"cannot read claim-alignment bundle {expected}"]
 
     provenance = item.get("evidence_provenance")
@@ -447,12 +409,6 @@ def _claim_alignment_bundle_binding_errors(
                         "claim_alignment_bundle path does not match the supplied "
                         f"path ({declared} != {expected})"
                     )
-        declared_hash = record.get("claim_alignment_bundle_sha256")
-        if declared_hash != actual_hash:
-            errors.append(
-                "claim_alignment_bundle_sha256 does not match the supplied "
-                f"bundle ({declared_hash!r} != {actual_hash})"
-            )
     return errors
 
 
@@ -460,9 +416,7 @@ def _audit_consistency_details(
     actual: dict[str, Any],
     expected_audit_ids: list[str],
     audited_path: str | None = None,
-    expected_report_sha256: str | None = None,
     research_pack_path: str | None = None,
-    expected_pack_sha256: str | None = None,
     report_text: str | None = None,
     pack_text: str | None = None,
     expected_route: str | None = None,
@@ -498,14 +452,6 @@ def _audit_consistency_details(
             errors.append(f"missing required audit(s): {', '.join(missing)}")
         if extra:
             errors.append(f"unknown/forged audit(s): {', '.join(extra)}")
-    # External trust anchor
-    if (
-        expected_report_sha256 is not None
-        and actual.get("input_sha256") != expected_report_sha256
-    ):
-        errors.append(
-            f"top-level input_sha256 does not match consumer-computed report hash ({actual.get('input_sha256')!r} != {expected_report_sha256!r})"
-        )
 
     for item in audits:
         if not isinstance(item, dict):
@@ -631,13 +577,11 @@ def _audit_consistency_details(
                 continue
             if audit_id == "research-pack":
                 expected_target = str(research_pack_path) if research_pack_path else None
-                expected_hash = expected_pack_sha256
             else:
                 expected_target = audited_path
-                expected_hash = expected_report_sha256
             prov_ok, prov_errors = _audit_provenance_details(
                 item, audit_id, execution_type, execution_source,
-                expected_target, expected_hash,
+                expected_target,
                 report_text=report_text, pack_text=pack_text, expected_route=expected_route,
             )
             if not prov_ok:
@@ -668,13 +612,11 @@ def _audit_consistency_details(
                 continue
             if audit_id == "research-pack":
                 expected_target = str(research_pack_path) if research_pack_path else None
-                expected_hash = expected_pack_sha256
             else:
                 expected_target = audited_path
-                expected_hash = expected_report_sha256
             prov_ok, prov_errors = _audit_provenance_details(
                 item, audit_id, execution_type, execution_source,
-                expected_target, expected_hash,
+                expected_target,
                 report_text=report_text, pack_text=pack_text, expected_route=expected_route,
             )
             if not prov_ok:
@@ -834,9 +776,7 @@ def _audits_ok(
     actual: dict[str, Any],
     expected_audit_ids: list[str],
     audited_path: str | None = None,
-    expected_report_sha256: str | None = None,
     research_pack_path: str | None = None,
-    expected_pack_sha256: str | None = None,
     report_text: str | None = None,
     pack_text: str | None = None,
     expected_route: str | None = None,
@@ -849,8 +789,8 @@ def _audits_ok(
     error messages (issue #408 P1).
     """
     ok, _ = _audit_consistency_details(
-        actual, expected_audit_ids, audited_path, expected_report_sha256,
-        research_pack_path, expected_pack_sha256, report_text, pack_text,
+        actual, expected_audit_ids, audited_path,
+        research_pack_path, report_text, pack_text,
         expected_route, claim_alignment_bundle_path, require_opt_in_binding,
     )
     return ok
@@ -862,18 +802,19 @@ def _audit_provenance_details(
     execution_type: str,
     execution_source: str,
     expected_target: str | None,
-    expected_hash: str | None,
     report_text: str | None = None,
     pack_text: str | None = None,
     expected_route: str | None = None,
 ) -> tuple[bool, list[str]]:
-    """Detailed provenance verification that returns locatable errors (issue #409).
+    """Detailed provenance verification that returns locatable errors (issue #409, #426).
 
     Same semantics as :func:`_audit_provenance_ok` but returns ``(ok, errors)``
     where ``errors`` contains specific diagnostics (e.g. ``not found in the
     visible report`` or ``target mismatch``) so callers can surface them
     instead of a generic ``pass provenance failed``.  This mirrors the
     ``_audit_consistency_details`` pattern introduced in #408.
+    Issue #426: binding is by target path / validator / visible evidence,
+    not by input_sha256.
     """
     errors: list[str] = []
     # Enforce the visible-artifact contract at this helper boundary too.  The
@@ -924,14 +865,6 @@ def _audit_provenance_details(
                 or not record.get("target").strip()
             ):
                 return False, ["provenance target must be a non-empty string"]
-            prov_input = record.get("input_sha256")
-            if expected_hash is not None:
-                if not isinstance(prov_input, str) or prov_input != expected_hash:
-                    return False, [
-                        f"provenance input_sha256 {prov_input!r} != expected {expected_hash!r}"
-                    ]
-            elif not isinstance(prov_input, str) or not prov_input:
-                return False, ["provenance input_sha256 must be a non-empty string"]
         else:
             kind = record.get("kind")
             locator = record.get("locator")
@@ -974,7 +907,6 @@ def _audit_provenance_details(
                     artifact_label=artifact_label,
                     execution_type=execution_type,
                     expected_audit_id=audit_id,
-                    expected_artifact_sha256=expected_hash,
                     expected_route=expected_route,
                     report_text=visible_report_text,
                     pack_text=visible_pack_text,
@@ -999,7 +931,6 @@ def _audit_provenance_ok(
     execution_type: str,
     execution_source: str,
     expected_target: str | None,
-    expected_hash: str | None,
     report_text: str | None = None,
     pack_text: str | None = None,
     expected_route: str | None = None,
@@ -1007,7 +938,7 @@ def _audit_provenance_ok(
     """Boolean wrapper around :func:`_audit_provenance_details` for backwards compat."""
     ok, _ = _audit_provenance_details(
         item, audit_id, execution_type, execution_source,
-        expected_target, expected_hash,
+        expected_target,
         report_text=report_text, pack_text=pack_text, expected_route=expected_route,
     )
     return ok
@@ -1301,16 +1232,12 @@ def _evaluate_case(
         else None
     )
     pack = _pack_observation(research_pack)
-    # External trust anchor: compute the artifact hashes ourselves rather than
-    # trusting any hash embedded in the audit JSON (issue #403 P1).  A None here
-    # (unreadable file) fails the downstream bindings closed.
-    expected_report_sha256 = _sha256(report)
-    expected_pack_sha256 = _sha256(research_pack)
     # Visible texts for evidence re-validation (manual/process provenance must
     # be anchored to a real heading/table/checklist item, not just a JSON-
-    # self-consistent evidence+provenance pair).  Hashes above remain raw-byte
-    # anchored; only the locator lookup uses the canonical visible sanitizer
-    # (issue #409: fences / raw HTML must not contribute heading/table evidence).
+    # self-consistent evidence+provenance pair). Only the locator lookup uses
+    # the canonical visible sanitizer (issue #409: fences / raw HTML must not
+    # contribute heading/table evidence). Issue #426: no file re-hashing;
+    # binding is by path/ID/route/validator.
     try:
         raw_report_text = report.read_text(encoding="utf-8", errors="replace")
         report_text_for_provenance = sanitize_visible_markdown(raw_report_text)
@@ -1429,7 +1356,6 @@ def _evaluate_case(
         "validators": (audit_data or {}).get("validators", []),
         "schema_version": (audit_data or {}).get("schema_version"),
         "validator_version": (audit_data or {}).get("validator_version"),
-        "input_sha256": (audit_data or {}).get("input_sha256"),
         "overall": (audit_data or {}).get("overall"),
         "blocking": (audit_data or {}).get("blocking", []),
         "statuses": actual_statuses,
@@ -1494,9 +1420,7 @@ def _evaluate_case(
             actual,
             expected_audit_ids,
             audited_path=str(report),
-            expected_report_sha256=expected_report_sha256,
             research_pack_path=str(research_pack),
-            expected_pack_sha256=expected_pack_sha256,
             report_text=report_text_for_provenance,
             pack_text=pack_text_for_provenance,
             expected_route=audit_expected_route,
@@ -1560,7 +1484,6 @@ def _evaluate_case(
         actual,
         expected_validators,
         audited_path=str(report),
-        expected_input_sha256=expected_report_sha256,
     )
     overall_and_returncode_ok, overall_consistency_errors = _overall_consistency_details(
         actual,

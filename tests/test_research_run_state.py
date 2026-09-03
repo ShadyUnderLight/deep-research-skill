@@ -28,8 +28,6 @@ sys.path.insert(0, str(SCRIPTS))
 
 import validate_research_run_state as vrs  # noqa: E402
 
-EMPTY_SHA = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
-
 PACK_BASELINE = """\
 ## Objective
 Test task.
@@ -147,7 +145,6 @@ def write_real_pass_audit(
         state = load_valid("valid-delivered.json")
         state["run_id"] = run_id
         state["artifact_id"] = "fixture-market-outlook-pos"
-        state["current_artifact_sha256"] = vrs.sha256_file(pack)
         write_json(tmp_path / "run-state.json", state)
     proc = subprocess.run(
         [
@@ -197,11 +194,11 @@ def cli_state(data: dict, tmp_path: Path, *extra: str) -> subprocess.CompletedPr
     return run_cli(str(path), *extra)
 
 
-def test_schema_doc_exists_with_version_1():
+def test_schema_doc_exists_with_version_2():
     assert SCHEMA_DOC.exists()
     doc = json.loads(SCHEMA_DOC.read_text(encoding="utf-8"))
-    assert doc.get("version") == 1
-    assert doc.get("schema_version") == "1"
+    assert doc.get("version") == 2
+    assert doc.get("schema_version") == "2"
 
 
 def test_schema_required_fields_match_validator():
@@ -244,7 +241,6 @@ def test_valid_delivered_requires_audit_result_on_cli(tmp_path):
 
     report, pack, audit_path = write_real_pass_audit(tmp_path)
     state = load_valid("valid-delivered.json")
-    state["current_artifact_sha256"] = vrs.sha256_file(pack)
     state_path = write_json(tmp_path / "delivered.json", state)
 
     no_artifact = run_cli(
@@ -293,7 +289,7 @@ def test_validate_run_state_data_accepts_delivered_snapshot():
 def _walk_states() -> list[dict]:
     collecting = load_valid("valid-collecting.json")
     handoff_refs = [
-        {"handoff_id": "track-2026-08-24-competitors", "sha256": EMPTY_SHA}
+        {"handoff_id": "track-2026-08-24-competitors"}
     ]
     return [
         mutate(collecting, {"phase": "intake", "status": "in_progress",
@@ -323,12 +319,9 @@ def test_normal_path_transitions_are_legal():
 def test_normal_path_transitions_pass_cli(tmp_path):
     states = _walk_states()
     report, pack, audit_path = write_real_pass_audit(tmp_path)
-    pack_sha = vrs.sha256_file(pack)
     for before, after in zip(states, states[1:]):
         extra: list[str] = []
         if after["phase"] == "delivered":
-            before = mutate(before, {"current_artifact_sha256": pack_sha})
-            after = mutate(after, {"current_artifact_sha256": pack_sha})
             extra = [
                 "--audit-result",
                 str(audit_path),
@@ -355,7 +348,6 @@ def test_pause_and_resume_same_phase(tmp_path):
 
     artifact = tmp_path / "pack.md"
     artifact.write_bytes(b"")
-    paused["current_artifact_sha256"] = vrs.sha256_file(artifact)
     snapshot_path = write_aligned_activation_snapshot(tmp_path, paused)
     paused_path = write_json(tmp_path / "paused.json", paused)
     proc = run_cli(
@@ -375,7 +367,6 @@ def test_resume_rechecks_unconsumed_pending_decision(tmp_path):
     mid = load_valid("valid-mid-review.json")
     artifact = tmp_path / "pack.md"
     artifact.write_bytes(b"")
-    mid["current_artifact_sha256"] = vrs.sha256_file(artifact)
     snapshot_path = write_aligned_activation_snapshot(tmp_path, mid)
     path = write_json(tmp_path / "mid.json", mid)
     proc = run_cli(
@@ -392,25 +383,6 @@ def test_resume_rechecks_unconsumed_pending_decision(tmp_path):
     assert payload["ok"] is True
     assert mid["pending_decision"] == "continue"
 
-
-def test_resume_stale_artifact_fails(tmp_path):
-    paused = load_valid("valid-paused.json")
-    artifact = tmp_path / "pack.md"
-    artifact.write_text("stale-body", encoding="utf-8")
-    snapshot_path = write_aligned_activation_snapshot(tmp_path, paused)
-    path = write_json(tmp_path / "paused.json", paused)
-    proc = run_cli(
-        str(path),
-        "--resume",
-        "--artifact",
-        str(artifact),
-        "--activation-snapshot",
-        str(snapshot_path),
-        "--json",
-    )
-    payload = json.loads(proc.stdout)
-    assert proc.returncode == 2
-    assert any("stale" in err for err in payload["errors"])
 
 
 def test_resume_requires_artifact_and_activation_snapshot(tmp_path):
@@ -444,7 +416,7 @@ def test_skip_audit_to_delivered_fails():
         {
             "phase": "synthesizing",
             "handoff_refs": [
-                {"handoff_id": "track-2026-08-24-competitors", "sha256": EMPTY_SHA}
+                {"handoff_id": "track-2026-08-24-competitors"}
             ],
             "last_transition_reason": "search decision=continue",
         },
@@ -461,7 +433,7 @@ def test_audit_fail_cannot_enter_delivered(tmp_path):
         {
             "phase": "auditing",
             "handoff_refs": [
-                {"handoff_id": "track-2026-08-24-competitors", "sha256": EMPTY_SHA}
+                {"handoff_id": "track-2026-08-24-competitors"}
             ],
             "last_transition_reason": "audits running",
         },
@@ -497,7 +469,7 @@ def test_audit_fail_repair_returns_to_synthesizing():
             "status_reason": "required audit failed on source ids",
             "recovery_action": "fix claims and re-run final audit",
             "handoff_refs": [
-                {"handoff_id": "track-2026-08-24-competitors", "sha256": EMPTY_SHA}
+                {"handoff_id": "track-2026-08-24-competitors"}
             ],
             "last_transition_reason": "audit failed",
         },
@@ -508,7 +480,7 @@ def test_audit_fail_repair_returns_to_synthesizing():
             "phase": "synthesizing",
             "status": "in_progress",
             "handoff_refs": [
-                {"handoff_id": "track-2026-08-24-competitors", "sha256": EMPTY_SHA}
+                {"handoff_id": "track-2026-08-24-competitors"}
             ],
             "last_transition_reason": "repairing after audit fail",
         },
@@ -516,12 +488,20 @@ def test_audit_fail_repair_returns_to_synthesizing():
     assert vrs.validate_transition(auditing, synthesizing) == []
 
 
-def test_stale_hash_cannot_stay_delivered():
+def test_old_hash_bearing_structure_is_rejected():
     delivered = load_valid("valid-delivered.json")
-    stale = mutate(delivered, {"current_artifact_sha256": "ab" * 32})
-    errors = vrs.validate_transition(delivered, stale)
+    legacy = mutate(delivered, {"current_artifact_sha256": "ab" * 32})
+    errors = vrs.validate_run_state_data(legacy)
     assert errors
-    assert any("hash" in err for err in errors)
+    assert any("current_artifact_sha256" in err for err in errors)
+
+    legacy_handoff = mutate(
+        delivered,
+        {"handoff_refs": [{"handoff_id": "track-2026-08-24-competitors", "sha256": "ab" * 32}]},
+    )
+    errors = vrs.validate_run_state_data(legacy_handoff)
+    assert errors
+    assert any("sha256" in err for err in errors)
 
 
 def test_completed_cannot_return_to_in_progress():
@@ -559,7 +539,7 @@ def test_mid_review_without_pending_decision_fails():
 def test_explicit_resume_rejects_handoff_refs():
     state = mutate(
         load_valid("valid-explicit-resume.json"),
-        {"handoff_refs": [{"handoff_id": "x", "sha256": EMPTY_SHA}]},
+        {"handoff_refs": [{"handoff_id": "x"}]},
     )
     errors = vrs.validate_run_state_data(state)
     assert any("handoff_refs" in err for err in errors)
@@ -600,7 +580,6 @@ def test_resume_rejects_parallel_gate_on_single_track_snapshot(tmp_path):
     }
     artifact = tmp_path / "pack.md"
     artifact.write_bytes(b"")
-    state["current_artifact_sha256"] = vrs.sha256_file(artifact)
     path = write_json(tmp_path / "state.json", state)
     proc = run_cli(
         str(path),
@@ -627,7 +606,6 @@ def test_resume_accepts_aligned_parallel_snapshot(tmp_path):
     }
     artifact = tmp_path / "pack.md"
     artifact.write_bytes(b"")
-    state["current_artifact_sha256"] = vrs.sha256_file(artifact)
     path = write_json(tmp_path / "state.json", state)
     proc = run_cli(
         str(path),
@@ -645,7 +623,6 @@ def test_cannot_resume_completed_run(tmp_path):
     delivered = load_valid("valid-delivered.json")
     artifact = tmp_path / "pack.md"
     artifact.write_bytes(b"")
-    delivered["current_artifact_sha256"] = vrs.sha256_file(artifact)
     snapshot_path = write_aligned_activation_snapshot(tmp_path, delivered)
     path = write_json(tmp_path / "delivered.json", delivered)
     proc = run_cli(
@@ -683,21 +660,8 @@ def test_pack_without_run_state_section_keeps_light_path(tmp_path):
     assert proc.returncode == 0, proc.stdout + proc.stderr
 
 
-def test_pack_run_state_hash_mismatch_fails_strict(tmp_path):
-    sidecar = tmp_path / "run-state.json"
-    write_json(sidecar, load_valid("valid-collecting.json"))
-    pack = _write_pack(
-        tmp_path,
-        "\n## Run state\n"
-        "run_id: research-run-2026-08-25-001\n"
-        "path: run-state.json\n",
-    )
-    proc = run_pack(str(pack), "--strict")
-    assert proc.returncode == 4
-    assert "current_artifact_sha256" in proc.stdout
 
-
-def test_pack_run_state_matching_hash_passes(tmp_path):
+def test_pack_run_state_sidecar_binding_passes(tmp_path):
     pack = _write_pack(
         tmp_path,
         "\n## Run state\n"
@@ -705,7 +669,6 @@ def test_pack_run_state_matching_hash_passes(tmp_path):
         "path: run-state.json\n",
     )
     state = load_valid("valid-collecting.json")
-    state["current_artifact_sha256"] = vrs.sha256_file(pack)
     write_json(tmp_path / "run-state.json", state)
     proc = run_pack(str(pack), "--strict")
     assert proc.returncode == 0, proc.stdout + proc.stderr
@@ -720,7 +683,6 @@ def test_pack_in_progress_cannot_claim_research_complete(tmp_path):
         "path: run-state.json\n",
     )
     state = load_valid("valid-collecting.json")
-    state["current_artifact_sha256"] = vrs.sha256_file(pack)
     write_json(tmp_path / "run-state.json", state)
     proc = run_pack(str(pack), "--strict")
     assert proc.returncode == 4
@@ -732,31 +694,24 @@ def test_handoff_without_run_state_flag_unchanged():
     assert proc.returncode == 0, proc.stdout
 
 
-def test_handoff_run_state_binding_detects_stale_hash(tmp_path):
+def test_handoff_run_state_binding_rejects_unlisted_id(tmp_path):
     handoff = json.loads((HANDOFF_FIXTURES / "valid-complete.json").read_text())
     handoff["artifact_ref"] = {"artifact_id": "research-2026-08-25-001"}
     handoff_path = write_json(tmp_path / "handoff.json", handoff)
     state = load_valid("valid-delivered.json")
-    state["handoff_refs"] = [
-        {"handoff_id": handoff["handoff_id"], "sha256": EMPTY_SHA}
-    ]
+    state["handoff_refs"] = [{"handoff_id": "track-other-unlisted"}]
     state_path = write_json(tmp_path / "run-state.json", state)
     proc = run_handoff(str(handoff_path), "--run-state", str(state_path))
     assert proc.returncode == 2
-    assert "stale" in proc.stdout or "sha256" in proc.stdout
+    assert "not listed" in proc.stdout
 
 
-def test_handoff_run_state_binding_accepts_matching_hash(tmp_path):
+def test_handoff_run_state_binding_accepts_listed_id(tmp_path):
     handoff = json.loads((HANDOFF_FIXTURES / "valid-complete.json").read_text())
     handoff["artifact_ref"] = {"artifact_id": "research-2026-08-25-001"}
     handoff_path = write_json(tmp_path / "handoff.json", handoff)
     state = load_valid("valid-delivered.json")
-    state["handoff_refs"] = [
-        {
-            "handoff_id": handoff["handoff_id"],
-            "sha256": vrs.sha256_file(handoff_path),
-        }
-    ]
+    state["handoff_refs"] = [{"handoff_id": handoff["handoff_id"]}]
     state_path = write_json(tmp_path / "run-state.json", state)
     proc = run_handoff(str(handoff_path), "--run-state", str(state_path))
     assert proc.returncode == 0, proc.stdout + proc.stderr
@@ -770,12 +725,7 @@ def test_e2e_chain_tamper_cannot_deliver(tmp_path):
     handoff["artifact_ref"] = {"artifact_id": "fixture-market-outlook-pos"}
     handoff_path = write_json(tmp_path / "handoff.json", handoff)
     state = json.loads((tmp_path / "run-state.json").read_text(encoding="utf-8"))
-    state["handoff_refs"] = [
-        {
-            "handoff_id": handoff["handoff_id"],
-            "sha256": vrs.sha256_file(handoff_path),
-        }
-    ]
+    state["handoff_refs"] = [{"handoff_id": handoff["handoff_id"]}]
     state_path = write_json(tmp_path / "run-state.json", state)
     chain_base = [
         "--chain",
@@ -795,15 +745,12 @@ def test_e2e_chain_tamper_cannot_deliver(tmp_path):
     assert ok.returncode == 0, ok.stdout + ok.stderr
     assert payload["ok"] is True
 
-    tampered_handoff = mutate(handoff, {"question": "tampered question"})
+    tampered_handoff = copy.deepcopy(handoff)
+    tampered_handoff["artifact_ref"] = {"artifact_id": "other-artifact"}
     write_json(handoff_path, tampered_handoff)
-    stale_handoff = run_cli(*chain_base, "--audit-result", str(audit_path))
-    assert stale_handoff.returncode == 2
+    bad_binding = run_cli(*chain_base, "--audit-result", str(audit_path))
+    assert bad_binding.returncode == 2
     write_json(handoff_path, handoff)
-
-    pack.write_text(pack.read_text(encoding="utf-8") + "\n<!-- tamper -->\n", encoding="utf-8")
-    stale_pack = run_cli(*chain_base, "--audit-result", str(audit_path))
-    assert stale_pack.returncode == 2
 
     fail_audit = run_cli(
         *chain_base,
@@ -825,7 +772,6 @@ def test_audit_report_delivery_guard_blocks_delivered_on_fail(tmp_path):
         "path: run-state.json\n",
     )
     state = load_valid("valid-delivered.json")
-    state["current_artifact_sha256"] = vrs.sha256_file(pack)
     write_json(tmp_path / "run-state.json", state)
     verdict = AuditVerdict(route="constrained-choice", overall="fail", blocking=["x"])
     guarded = _apply_run_state_delivery_guard(verdict, pack)
@@ -838,7 +784,7 @@ def test_from_to_delivered_without_audit_result_fails(tmp_path):
         {
             "phase": "auditing",
             "handoff_refs": [
-                {"handoff_id": "track-2026-08-24-competitors", "sha256": EMPTY_SHA}
+                {"handoff_id": "track-2026-08-24-competitors"}
             ],
             "last_transition_reason": "audits running",
         },
@@ -868,7 +814,7 @@ def test_mid_review_pending_decision_cannot_carry_into_synthesizing():
             "phase": "synthesizing",
             "pending_decision": "continue",
             "handoff_refs": [
-                {"handoff_id": "track-2026-08-24-competitors", "sha256": EMPTY_SHA}
+                {"handoff_id": "track-2026-08-24-competitors"}
             ],
             "last_transition_reason": "search decision=continue",
         },
@@ -894,39 +840,6 @@ def test_empty_or_skipped_audit_cannot_support_delivered():
     assert any("skipped" in err for err in errors)
 
 
-def test_foreign_artifact_hash_cannot_support_delivered(tmp_path):
-    delivered = load_valid("valid-delivered.json")
-    foreign = tmp_path / "other.md"
-    foreign.write_text("another artifact", encoding="utf-8")
-    foreign_sha = vrs.sha256_file(foreign)
-    audit = json.loads((FIXTURES / "valid-audit-pass.json").read_text())
-    audit["input_sha256"] = foreign_sha
-    for rec in audit["audits"][0]["evidence_provenance"]:
-        rec["input_sha256"] = foreign_sha
-    errors = vrs.check_audit_result_for_delivered(
-        audit,
-        delivered,
-        expected_report_sha256=EMPTY_SHA,
-        expected_pack_sha256=EMPTY_SHA,
-    )
-    assert any("input_sha256" in err for err in errors)
-
-    actual = empty_artifact(tmp_path, "pack.bin")
-    report = empty_artifact(tmp_path, "report.md")
-    proc = run_cli(
-        str(FIXTURES / "valid-delivered.json"),
-        "--audit-result",
-        str(write_json(tmp_path / "foreign-audit.json", audit)),
-        "--artifact",
-        str(actual),
-        "--report",
-        str(report),
-        "--json",
-    )
-    payload = json.loads(proc.stdout)
-    assert proc.returncode == 2
-    assert any("input_sha256" in err for err in payload["errors"])
-
 
 def test_chain_requires_pack_run_state_section(tmp_path):
     pack = _write_pack(tmp_path)
@@ -934,7 +847,6 @@ def test_chain_requires_pack_run_state_section(tmp_path):
     handoff["artifact_ref"] = {"artifact_id": "research-2026-08-25-001"}
     handoff_path = write_json(tmp_path / "handoff.json", handoff)
     state = load_valid("valid-collecting.json")
-    state["current_artifact_sha256"] = vrs.sha256_file(pack)
     state_path = write_json(tmp_path / "run-state.json", state)
     proc = run_cli(
         "--chain",
@@ -959,7 +871,6 @@ def test_chain_rejects_mismatched_sidecar_identity(tmp_path):
         "path: run-state.json\n",
     )
     declared = load_valid("valid-collecting.json")
-    declared["current_artifact_sha256"] = vrs.sha256_file(pack)
     write_json(tmp_path / "run-state.json", declared)
     other = mutate(declared, {"run_id": "research-run-other-sidecar"})
     other_path = write_json(tmp_path / "other-state.json", other)
@@ -996,13 +907,9 @@ def test_explicit_resume_rejects_aligned_handoff_bind(tmp_path):
     assert "explicit_resume" in proc.stdout
 
 
-def test_delivered_keeps_report_and_pack_hashes_distinct(tmp_path):
+def test_delivered_requires_report_and_pack_paths(tmp_path):
     report, pack, audit_path = write_real_pass_audit(tmp_path)
-    pack_sha = vrs.sha256_file(pack)
-    report_sha = vrs.sha256_file(report)
-    assert pack_sha != report_sha
     state = load_valid("valid-delivered.json")
-    state["current_artifact_sha256"] = pack_sha
     state_path = write_json(tmp_path / "run-state.json", state)
     ok = run_cli(
         str(state_path),
@@ -1018,21 +925,15 @@ def test_delivered_keeps_report_and_pack_hashes_distinct(tmp_path):
     assert ok.returncode == 0, ok.stdout + ok.stderr
     assert payload["ok"] is True
 
-    forged = json.loads(audit_path.read_text(encoding="utf-8"))
-    forged["input_sha256"] = pack_sha
-    pack_as_report = run_cli(
+    missing_report = run_cli(
         str(state_path),
         "--audit-result",
-        str(write_json(tmp_path / "pack-as-report.json", forged)),
+        str(audit_path),
         "--artifact",
         str(pack),
-        "--report",
-        str(report),
         "--json",
     )
-    payload = json.loads(pack_as_report.stdout)
-    assert pack_as_report.returncode == 2
-    assert any("input_sha256" in err or "report" in err for err in payload["errors"])
+    assert missing_report.returncode == 2
 
 
 def test_incomplete_audit_set_cannot_support_delivered():
@@ -1042,8 +943,6 @@ def test_incomplete_audit_set_cannot_support_delivered():
     errors = vrs.check_audit_result_for_delivered(
         audit,
         delivered,
-        expected_report_sha256=EMPTY_SHA,
-        expected_pack_sha256=EMPTY_SHA,
     )
     assert errors
     assert any("missing required audit" in err for err in errors)
@@ -1056,7 +955,7 @@ def test_malformed_audit_entries_cannot_support_delivered():
     unknown = copy.deepcopy(base)
     unknown["audits"][0]["status"] = "looks-good"
     errors = vrs.check_audit_result_for_delivered(
-        unknown, delivered, expected_report_sha256=EMPTY_SHA, expected_pack_sha256=EMPTY_SHA
+        unknown, delivered
     )
     assert errors
     assert any("status" in err for err in errors)
@@ -1066,8 +965,6 @@ def test_malformed_audit_entries_cannot_support_delivered():
     errors = vrs.check_audit_result_for_delivered(
         missing_status,
         delivered,
-        expected_report_sha256=EMPTY_SHA,
-        expected_pack_sha256=EMPTY_SHA,
     )
     assert errors
     assert any("status" in err for err in errors)
@@ -1077,22 +974,18 @@ def test_malformed_audit_entries_cannot_support_delivered():
     errors = vrs.check_audit_result_for_delivered(
         missing_id,
         delivered,
-        expected_report_sha256=EMPTY_SHA,
-        expected_pack_sha256=EMPTY_SHA,
     )
     assert errors
     assert any("audit_id" in err for err in errors)
 
     missing_hash = copy.deepcopy(base)
-    del missing_hash["audits"][0]["evidence_provenance"][0]["input_sha256"]
+    del missing_hash["audits"][0]["evidence_provenance"][0]["execution_source"]
     errors = vrs.check_audit_result_for_delivered(
         missing_hash,
         delivered,
-        expected_report_sha256=EMPTY_SHA,
-        expected_pack_sha256=EMPTY_SHA,
     )
     assert errors
-    assert any("input_sha256" in err for err in errors)
+    assert any("execution_source" in err or "provenance" in err for err in errors)
 
     conditional = copy.deepcopy(base)
     conditional["overall"] = "conditional-pass"
@@ -1102,8 +995,6 @@ def test_malformed_audit_entries_cannot_support_delivered():
     errors = vrs.check_audit_result_for_delivered(
         conditional,
         delivered,
-        expected_report_sha256=EMPTY_SHA,
-        expected_pack_sha256=EMPTY_SHA,
     )
     assert errors
     assert any("warning" in err for err in errors)
@@ -1116,7 +1007,6 @@ def test_omitted_validators_cannot_support_delivered(tmp_path):
     del audit["validators"]
     stripped = write_json(tmp_path / "no-validators.json", audit)
     state = load_valid("valid-delivered.json")
-    state["current_artifact_sha256"] = vrs.sha256_file(pack)
     state_path = write_json(tmp_path / "delivered.json", state)
     proc = run_cli(
         str(state_path),
@@ -1140,7 +1030,6 @@ def test_omitted_audit_route_cannot_support_delivered(tmp_path):
     del audit["route"]
     stripped = write_json(tmp_path / "no-route.json", audit)
     state = load_valid("valid-delivered.json")
-    state["current_artifact_sha256"] = vrs.sha256_file(pack)
     state_path = write_json(tmp_path / "delivered.json", state)
     proc = run_cli(
         str(state_path),
@@ -1167,14 +1056,8 @@ def test_chain_rejects_unverified_second_handoff_ref(tmp_path):
     handoff_path = write_json(tmp_path / "handoff.json", handoff)
     state = json.loads((tmp_path / "run-state.json").read_text(encoding="utf-8"))
     state["handoff_refs"] = [
-        {
-            "handoff_id": handoff["handoff_id"],
-            "sha256": vrs.sha256_file(handoff_path),
-        },
-        {
-            "handoff_id": "track-ghost-unverified",
-            "sha256": EMPTY_SHA,
-        },
+        {"handoff_id": handoff["handoff_id"]},
+        {"handoff_id": "track-ghost-unverified"},
     ]
     state_path = write_json(tmp_path / "run-state.json", state)
     proc = run_cli(
@@ -1212,14 +1095,8 @@ def test_chain_accepts_every_listed_handoff(tmp_path):
     second_path = write_json(tmp_path / "handoff-b.json", second)
     state = json.loads((tmp_path / "run-state.json").read_text(encoding="utf-8"))
     state["handoff_refs"] = [
-        {
-            "handoff_id": first["handoff_id"],
-            "sha256": vrs.sha256_file(first_path),
-        },
-        {
-            "handoff_id": second["handoff_id"],
-            "sha256": vrs.sha256_file(second_path),
-        },
+        {"handoff_id": first["handoff_id"]},
+        {"handoff_id": second["handoff_id"]},
     ]
     state_path = write_json(tmp_path / "run-state.json", state)
     proc = run_cli(

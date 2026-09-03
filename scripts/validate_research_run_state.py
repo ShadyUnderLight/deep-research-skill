@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Fail-closed validator for the Research Run State contract (issue #417).
+"""Fail-closed validator for the Research Run State contract (issue #417, #426).
 
-Run State records process phase, run overlay, artifact hash, and checkpoints
-for long / multi-track / explicit-resume research. It is not a second
-interpretation of Research Pack ``research_status``, Final audit status, or
-``delivery_status``.
+Run State records process phase, run overlay, artifact identity, and
+checkpoints for long / multi-track / explicit-resume research. It is not a
+second interpretation of Research Pack ``research_status``, Final audit
+status, or ``delivery_status``. Issue #426: no byte-hash binding; binding is
+by run_id / artifact_id / handoff_id / path / route / validator.
 
 Single-track research does not create a Run State and never invokes this
 validator unless the user explicitly resumes a previous ``run_id``.
@@ -31,7 +32,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import re
 import sys
@@ -44,7 +44,7 @@ from activation_snapshot import (
     validate_activation_reference,
 )
 
-SCHEMA_VERSION = "1"
+SCHEMA_VERSION = "2"
 EXIT_OK = 0
 EXIT_FAIL_CLOSED = 2
 
@@ -110,7 +110,6 @@ REQUIRED_TOP_LEVEL = frozenset(
         "artifact_id",
         "phase",
         "status",
-        "current_artifact_sha256",
         "activation_reference",
         "pending_decision",
         "last_transition_reason",
@@ -128,9 +127,8 @@ OPTIONAL_TOP_LEVEL = frozenset(
     }
 )
 KNOWN_TOP_LEVEL = REQUIRED_TOP_LEVEL | OPTIONAL_TOP_LEVEL
-HANDOFF_REF_REQUIRED = frozenset({"handoff_id", "sha256"})
+HANDOFF_REF_REQUIRED = frozenset({"handoff_id"})
 
-SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _TIMESTAMP_RE = re.compile(
     r"^(\d{4}-\d{2}-\d{2})"
     r"(?:[Tt](\d{2}:\d{2}(?::\d{2}(?:\.\d+)?))([Zz]|[+-]\d{2}:\d{2})?)?$"
@@ -164,11 +162,6 @@ def _is_valid_timestamp(value: object) -> bool:
     except ValueError:
         return False
     return dt.tzinfo is not None
-
-
-def sha256_file(path: Path | str) -> str:
-    """Return the lowercase SHA-256 of a file's bytes."""
-    return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 
 def _phase_index(phase: str) -> int:
@@ -212,12 +205,6 @@ def validate_run_state_data(data: object) -> list[str]:
             errors.append(
                 f"illegal (phase, status) combination: ({phase!r}, {status!r})"
             )
-
-    digest = data.get("current_artifact_sha256")
-    if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
-        errors.append(
-            "'current_artifact_sha256' must be a 64-character lowercase SHA-256"
-        )
 
     enabled = data.get("enabled_reason")
     if not isinstance(enabled, str) or enabled not in ENABLED_REASONS:
@@ -302,12 +289,6 @@ def validate_run_state_data(data: object) -> list[str]:
                     errors.append(f"duplicate handoff_id in handoff_refs: {hid!r}")
                 else:
                     seen_ids.add(hid)
-                digest = item.get("sha256")
-                if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
-                    errors.append(
-                        f"handoff_refs[{index}].sha256 must be a 64-character "
-                        "lowercase SHA-256"
-                    )
 
     if (
         enabled == "parallel"
@@ -356,21 +337,6 @@ def validate_transition(before: object, after: object) -> list[str]:
     to_phase = after["phase"]
     from_idx = _phase_index(from_phase)
     to_idx = _phase_index(to_phase)
-    hash_changed = (
-        before["current_artifact_sha256"] != after["current_artifact_sha256"]
-    )
-
-    if hash_changed:
-        if to_phase == "delivered" or to_status == "completed":
-            errors.append(
-                "artifact hash change cannot keep or enter delivered/completed; "
-                "stale audit/handoff bindings must be re-run"
-            )
-        if to_phase == "auditing" and to_status != "in_progress":
-            errors.append(
-                "artifact hash change during auditing requires status=in_progress "
-                "(re-audit); old Pass must not be reused"
-            )
 
     if from_status in TERMINAL_STATUSES:
         if before != after:
@@ -648,10 +614,9 @@ def _delivered_validator_errors(
     *,
     route: str | None,
     report_path: Path | str | None,
-    expected_report_sha256: str | None,
     validators_ok_fn,
 ) -> list[str]:
-    """复用 canonical ``_validators_ok``，用外部 route / 报告 hash 绑定。"""
+    """复用 canonical ``_validators_ok``，用外部 route / 报告 path 绑定。"""
     errors: list[str] = []
     validators = audit.get("validators")
     if not isinstance(validators, list) or not validators:
@@ -684,23 +649,17 @@ def _delivered_validator_errors(
         audit,
         expected,
         audited_path=audited_path,
-        expected_input_sha256=expected_report_sha256,
     ):
         if not errors:
             errors.append(
                 "validators[] failed canonical binding (status, provenance, "
-                "report hash, or validator_version)"
+                "report path, or validator_version)"
             )
     return errors
 
 
-def _provenance_input_sha256_errors(
-    entry: dict,
-    *,
-    report_sha: str | None,
-    pack_sha: str | None,
-) -> list[str]:
-    """pass / conditional-pass 的 verified provenance 必须绑定报告或 Pack hash。"""
+def _provenance_binding_errors(entry: dict) -> list[str]:
+    """pass / conditional-pass 的 verified provenance 必须携带绑定字段。"""
     status = entry.get("status")
     if status not in {"pass", "conditional-pass"}:
         return []
@@ -724,23 +683,6 @@ def _provenance_input_sha256_errors(
         if not _is_non_empty_str(record.get("execution_source")):
             errors.append(
                 f"audit {audit_id!r} provenance requires execution_source"
-            )
-        record_hash = record.get("input_sha256")
-        if not isinstance(record_hash, str) or not SHA256_RE.fullmatch(record_hash):
-            errors.append(
-                f"audit {audit_id!r} provenance requires input_sha256"
-            )
-            continue
-        binds_pack = (
-            audit_id == "research-pack"
-            or record.get("kind") in PACK_PROVENANCE_KINDS
-        )
-        expected = pack_sha if binds_pack else report_sha
-        label = "pack" if binds_pack else "report"
-        if expected is not None and record_hash != expected:
-            errors.append(
-                f"audit {audit_id!r} provenance input_sha256 does not match "
-                f"the {label} hash"
             )
     return errors
 
@@ -772,18 +714,15 @@ def check_audit_result_for_delivered(
     audit: object,
     run_state: dict,
     *,
-    expected_report_sha256: str | None = None,
-    expected_pack_sha256: str | None = None,
     report_path: Path | str | None = None,
     pack_path: Path | str | None = None,
     claim_alignment_bundle_path: Path | str | None = None,
     require_opt_in_binding: bool = False,
 ) -> list[str]:
-    """delivered 不能由未执行、空集、stale、畸形或失败的审计支撑。
+    """delivered 不能由未执行、空集、畸形或失败的审计支撑。
 
-    ``audit_report --json`` 的 ``input_sha256`` 是报告 hash；Run State
-    ``current_artifact_sha256`` 是 Research Pack hash。两者必须分别校验，
-    不能互相冒充。
+    Issue #426: 绑定是显式路径/ID/route/validator/状态，不做字节 hash
+    比较；报告与 Pack 也只做路径存在与流程门禁，不互相冒充。
     """
     require_opt_in_binding = (
         require_opt_in_binding or claim_alignment_bundle_path is not None
@@ -832,29 +771,6 @@ def check_audit_result_for_delivered(
                 f"{overall!r} (expected {expected_rc})"
             )
 
-    input_hash = audit.get("input_sha256")
-    if not isinstance(input_hash, str) or not SHA256_RE.fullmatch(input_hash):
-        errors.append("audit result requires a valid input_sha256")
-    elif (
-        expected_report_sha256 is not None
-        and input_hash != expected_report_sha256
-    ):
-        errors.append(
-            "audit input_sha256 does not match the supplied report "
-            f"({input_hash} != {expected_report_sha256})"
-        )
-
-    pack_sha = expected_pack_sha256 or run_state.get("current_artifact_sha256")
-    if (
-        expected_pack_sha256 is not None
-        and expected_pack_sha256 != run_state.get("current_artifact_sha256")
-    ):
-        errors.append(
-            "Research Pack hash does not match run state "
-            f"current_artifact_sha256 ({expected_pack_sha256} != "
-            f"{run_state.get('current_artifact_sha256')})"
-        )
-
     audits = audit.get("audits")
     if not isinstance(audits, list) or not audits:
         errors.append("audit result requires a non-empty audits list")
@@ -890,9 +806,7 @@ def check_audit_result_for_delivered(
             audit,
             expected_ids,
             audited_path=str(report_path) if report_path is not None else None,
-            expected_report_sha256=expected_report_sha256,
             research_pack_path=str(pack_path) if pack_path is not None else None,
-            expected_pack_sha256=pack_sha if isinstance(pack_sha, str) else None,
             claim_alignment_bundle_path=(
                 str(claim_alignment_bundle_path)
                 if claim_alignment_bundle_path is not None
@@ -910,7 +824,6 @@ def check_audit_result_for_delivered(
             audit,
             route=route,
             report_path=report_path,
-            expected_report_sha256=expected_report_sha256,
             validators_ok_fn=validators_ok_fn,
         )
     )
@@ -934,15 +847,7 @@ def check_audit_result_for_delivered(
                 f"audit {audit_id!r} status {status!r} cannot support "
                 "phase=delivered"
             )
-        errors.extend(
-            _provenance_input_sha256_errors(
-                entry,
-                report_sha=expected_report_sha256 or (
-                    input_hash if isinstance(input_hash, str) else None
-                ),
-                pack_sha=pack_sha if isinstance(pack_sha, str) else None,
-            )
-        )
+        errors.extend(_provenance_binding_errors(entry))
 
     if overall == "conditional-pass" and not _is_non_empty_str(
         run_state.get("last_transition_reason")
@@ -975,30 +880,28 @@ def require_delivered_audit(
     if artifact_path is None:
         return [
             "phase=delivered requires --artifact (Research Pack) so "
-            "current_artifact_sha256 binds to the process artifact"
+            "artifact_id binds to the process artifact"
         ]
     if report_path is None:
         return [
-            "phase=delivered requires --report so audit input_sha256 "
+            "phase=delivered requires --report so audit "
             "binds to the actual report, not the Pack"
         ]
     audit, errors = _load_json_object(audit_result_path, "audit result")
     if errors:
         return errors
     try:
-        pack_sha = sha256_file(artifact_path)
+        Path(artifact_path).read_bytes()
     except OSError as exc:
         return [f"cannot read artifact {artifact_path}: {exc}"]
     try:
-        report_sha = sha256_file(report_path)
+        Path(report_path).read_bytes()
     except OSError as exc:
         return [f"cannot read report {report_path}: {exc}"]
     assert audit is not None
     return check_audit_result_for_delivered(
         audit,
         state,
-        expected_report_sha256=report_sha,
-        expected_pack_sha256=pack_sha,
         report_path=report_path,
         pack_path=artifact_path,
         claim_alignment_bundle_path=claim_alignment_bundle_path,
@@ -1025,19 +928,13 @@ def check_resume(
     artifact_path: Path | str | None = None,
     activation_snapshot_path: Path | str | None = None,
 ) -> list[str]:
-    """恢复时重验 artifact hash、activation reference、未消费 pending_decision。"""
+    """恢复时重验 artifact 存在、activation reference、未消费 pending_decision。"""
     errors: list[str] = []
     if artifact_path is not None:
         try:
-            actual = sha256_file(artifact_path)
+            Path(artifact_path).read_bytes()
         except OSError as exc:
             return [f"cannot read resume artifact {artifact_path}: {exc}"]
-        expected = state["current_artifact_sha256"]
-        if actual != expected:
-            errors.append(
-                "resume artifact hash is stale: "
-                f"run state has {expected}, file hashes to {actual}"
-            )
     if activation_snapshot_path is not None:
         errors.extend(check_activation_alignment(state, activation_snapshot_path))
     if state["status"] in TERMINAL_STATUSES:
@@ -1118,17 +1015,11 @@ def bind_handoff_to_run_state(
             f"handoff_id {hid!r} is not listed in run state handoff_refs"
         )
     if matching and handoff_path is not None:
-        expected = matching[0].get("sha256")
         try:
-            actual = sha256_file(handoff_path)
+            Path(handoff_path).read_bytes()
         except OSError as exc:
-            errors.append(f"cannot hash handoff {handoff_path}: {exc}")
+            errors.append(f"cannot read handoff {handoff_path}: {exc}")
             return errors
-        if expected != actual:
-            errors.append(
-                f"handoff {hid!r} sha256 is stale: run state has {expected}, "
-                f"file hashes to {actual}"
-            )
     return errors
 
 
@@ -1270,15 +1161,9 @@ def check_pack_run_state(pack_path: Path | str, cleaned: str | None = None) -> l
             f"file has {state['run_id']!r}"
         )
     try:
-        actual = sha256_file(pack_path)
+        Path(pack_path).read_bytes()
     except OSError as exc:
-        return [f"cannot hash Research Pack {pack_path}: {exc}"]
-    if actual != state["current_artifact_sha256"]:
-        errors.append(
-            "Research Pack hash does not match run state current_artifact_sha256 "
-            f"(pack={actual}, run_state={state['current_artifact_sha256']}); "
-            "stale process state cannot be reused"
-        )
+        return [f"cannot read Research Pack {pack_path}: {exc}"]
     pack_artifact = _first_pack_section_line(cleaned, "Artifact id")
     if pack_artifact and pack_artifact != state["artifact_id"]:
         errors.append(
@@ -1437,11 +1322,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--from", dest="from_file", default=None, help="Previous snapshot")
     parser.add_argument("--to", dest="to_file", default=None, help="Next snapshot")
     parser.add_argument("--resume", action="store_true", help="Re-validate for resume")
-    parser.add_argument("--artifact", default=None, help="Research Pack process artifact to hash")
+    parser.add_argument("--artifact", default=None, help="Research Pack process artifact")
     parser.add_argument(
         "--report",
         default=None,
-        help="Final report file; binds audit_report input_sha256 (distinct from the Pack)",
+        help="Final report file; binds audit_report (distinct from the Pack)",
     )
     parser.add_argument(
         "--activation-snapshot",
@@ -1454,7 +1339,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=(
             "Exact claim-alignment bundle used by audit_report; required to "
-            "re-hash an enabled alignment audit before delivered"
+            "verify an enabled alignment audit before delivered"
         ),
     )
     parser.add_argument("--chain", action="store_true", help="Validate the e2e artifact chain")
@@ -1539,9 +1424,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.resume:
         if args.artifact is None:
-            errors.append(
-                "--resume requires --artifact to re-check current_artifact_sha256"
-            )
+            errors.append("--resume requires --artifact to re-check artifact")
         if args.activation_snapshot is None:
             errors.append(
                 "--resume requires --activation-snapshot to re-check "
@@ -1558,13 +1441,7 @@ def main(argv: list[str] | None = None) -> int:
         )
     elif args.artifact:
         try:
-            actual = sha256_file(args.artifact)
-            if actual != state["current_artifact_sha256"]:
-                errors.append(
-                    "artifact hash mismatch: "
-                    f"run state has {state['current_artifact_sha256']}, "
-                    f"file hashes to {actual}"
-                )
+            Path(args.artifact).read_bytes()
         except OSError as exc:
             errors.append(f"cannot read --artifact {args.artifact}: {exc}")
 

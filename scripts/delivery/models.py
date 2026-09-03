@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass, field
 from enum import Enum
@@ -18,30 +17,15 @@ class DeliveryStatus(str, Enum):
     NOT_RUN = "not_run"
 
 
-def sha256_file(path: Path | None) -> str | None:
-    """Return a file hash without turning missing artifacts into a crash."""
-
-    if path is None or not path.is_file():
-        return None
-    digest = hashlib.sha256()
-    with path.open("rb") as stream:
-        for chunk in iter(lambda: stream.read(1024 * 1024), b""):
-            digest.update(chunk)
-    return digest.hexdigest()
-
-
 @dataclass
 class DeliveryResult:
     """Machine-readable outcome shared by CLI, tests, and audit consumers."""
 
     input_path: Path
-    input_sha256: str | None = None
     delivery_status: DeliveryStatus = DeliveryStatus.NOT_RUN
     markdown_status: DeliveryStatus = DeliveryStatus.NOT_RUN
     html_path: Path | None = None
     pdf_path: Path | None = None
-    html_sha256: str | None = None
-    pdf_sha256: str | None = None
     pdf_size_bytes: int | None = None
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
@@ -59,13 +43,10 @@ class DeliveryResult:
 
         return {
             "input_path": str(self.input_path),
-            "input_sha256": self.input_sha256,
             "delivery_status": self.delivery_status.value,
             "markdown_status": self.markdown_status.value,
             "html_path": str(self.html_path) if self.html_path else None,
             "pdf_path": str(self.pdf_path) if self.pdf_path else None,
-            "html_sha256": self.html_sha256,
-            "pdf_sha256": self.pdf_sha256,
             "pdf_size_bytes": self.pdf_size_bytes,
             "errors": list(self.errors),
             "warnings": list(self.warnings),
