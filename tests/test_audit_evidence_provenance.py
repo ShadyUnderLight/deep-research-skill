@@ -54,7 +54,7 @@ def test_strict_json_distinguishes_manual_and_automated_provenance() -> None:
     assert manual["execution_source"] == "manual_checklist_attestation"
     assert manual["evidence_provenance"][0]["kind"] == "report_section"
     assert manual["evidence_provenance"][0]["verified"] is True
-    assert manual["evidence_provenance"][0]["input_sha256"] == data["input_sha256"]
+    assert manual["evidence_provenance"][0]["target"]
     assert automated["execution_source"] == "automated_validator"
     assert automated["evidence_provenance"][0]["validator_binding"] == (
         "forward-looking-claims"
@@ -315,7 +315,7 @@ def test_audit_record_requires_matching_record_content(tmp_path: Path) -> None:
                     "recorded_at": "2026-08-18T10:00:00Z",
                     "audit_id": "market-outlook-audit",
                     "status": "passed",
-                    "artifact_sha256": "a" * 64,
+                    "artifact_id": "test-artifact-a",
                     "executed_at": "2026-08-18T10:00:00Z",
                     "execution_source": "manual_checklist_attestation",
                     "evidence": "report-section:Monitoring signals",
@@ -330,7 +330,7 @@ def test_audit_record_requires_matching_record_content(tmp_path: Path) -> None:
         base_dir=tmp_path,
         strict=True,
         expected_audit_id="market-outlook-audit",
-        expected_artifact_sha256="a" * 64,
+        expected_artifact_id="test-artifact-a",
         expected_route="market-outlook",
         artifact_text="## Monitoring signals\n\ncontent",
     )
@@ -565,7 +565,7 @@ def _automated_record(**overrides) -> dict:
         "recorded_at": "2026-08-19T10:00:00Z",
         "audit_id": "forward-looking-claims",
         "status": "passed",
-        "artifact_sha256": "b" * 64,
+        "artifact_id": "test-artifact-b",
         "executed_at": "2026-08-19T10:00:00Z",
         "execution_source": "automated_validator",
         "validator_binding": "forward-looking-claims",
@@ -590,7 +590,7 @@ def _validate_auto_record(record: dict, *, base_dir: Path) -> object:
         base_dir=base_dir,
         strict=True,
         expected_audit_id="forward-looking-claims",
-        expected_artifact_sha256="b" * 64,
+        expected_artifact_id="test-artifact-b",
         expected_route="market-outlook",
         expected_validator_binding="forward-looking-claims",
         execution_type="automated",
@@ -681,7 +681,7 @@ def test_evidence_object_kind_must_be_exact_schema_enum(kind: str) -> None:
 
 def test_json_automated_audit_provenance_is_complete() -> None:
     """The automated audit evidence_provenance must carry audit_id, binding,
-    execution_source, target, input/artifact hash and validator version —
+    execution_source, target and validator version —
     not just locator/binding/verified."""
     result = _run_report(POSITIVE, "--strict", "--require-contract", "--json")
     assert result.returncode == 0, result.stdout
@@ -696,14 +696,14 @@ def test_json_automated_audit_provenance_is_complete() -> None:
     assert prov["validator_binding"] == "forward-looking-claims"
     assert prov["execution_source"] == "automated_validator"
     assert prov["target"]
-    assert prov["input_sha256"] == data["input_sha256"]
+    assert prov["target"].endswith(".md")
     assert prov["validator_version"]
     assert prov["verified"] is True
 
 
-def test_json_validator_record_has_target_and_hash() -> None:
-    """Each route-level validator record must carry target and input/artifact
-    hash alongside execution_source and validator_version."""
+def test_json_validator_record_has_target_and_version() -> None:
+    """Each route-level validator record must carry target
+    alongside execution_source and validator_version."""
     result = _run_report(POSITIVE, "--strict", "--require-contract", "--json")
     assert result.returncode == 0, result.stdout
     data = json.loads(result.stdout)
@@ -711,7 +711,7 @@ def test_json_validator_record_has_target_and_hash() -> None:
         assert entry["execution_source"]
         assert entry["validator_version"]
         assert entry["target"]
-        assert entry["input_sha256"] == data["input_sha256"]
+        assert entry["target"]
 
 
 # ─── Issue #402 review round 2: nested object optional-field types must match
@@ -756,7 +756,7 @@ def test_manual_audit_record_empty_binding_is_rejected(tmp_path: Path) -> None:
         "recorded_at": "2026-08-18T10:00:00Z",
         "audit_id": "market-outlook-audit",
         "status": "passed",
-        "artifact_sha256": "a" * 64,
+        "artifact_id": "test-artifact-a",
         "executed_at": "2026-08-18T10:00:00Z",
         "execution_source": "manual_checklist_attestation",
         "evidence": "report-section:Monitoring signals",
@@ -773,7 +773,7 @@ def test_manual_audit_record_empty_binding_is_rejected(tmp_path: Path) -> None:
         base_dir=tmp_path,
         strict=True,
         expected_audit_id="market-outlook-audit",
-        expected_artifact_sha256="a" * 64,
+        expected_artifact_id="test-artifact-a",
         expected_route="market-outlook",
         execution_type="manual",
         artifact_text="## Monitoring signals\n\ncontent",

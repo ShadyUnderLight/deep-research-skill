@@ -16,7 +16,6 @@ from __future__ import annotations
 # ruff: noqa: E402
 
 import copy
-import hashlib
 import sys
 from pathlib import Path
 
@@ -71,7 +70,6 @@ def _minimal_pass_audit(audit_id="source-traceability", execution_type="automate
                 "validator_binding": binding,
                 "execution_source": "automated_validator",
                 "target": "tests/fixtures/forward/provider-selection-report.md",
-                "input_sha256": "x" * 64,
                 "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
                 "verified": True,
             }
@@ -200,11 +198,9 @@ def test_conditional_pass_without_warnings_fails() -> None:
             break
     rep = ROOT / case["fixtures"]["report"]
     rp = ROOT / case["fixtures"]["research_pack"]
-    report_hash = hashlib.sha256(rep.read_bytes()).hexdigest()
-    pack_hash = hashlib.sha256(rp.read_bytes()).hexdigest()
     rep_text = rep.read_text(encoding="utf-8", errors="replace")
     pack_text = rp.read_text(encoding="utf-8", errors="replace")
-    assert _audits_ok(tampered, expected, audited_path=str(rep), expected_report_sha256=report_hash, research_pack_path=str(rp), expected_pack_sha256=pack_hash, report_text=rep_text, pack_text=pack_text, expected_route="academic-review") is False
+    assert _audits_ok(tampered, expected, audited_path=str(rep), research_pack_path=str(rp), report_text=rep_text, pack_text=pack_text, expected_route="academic-review") is False
 
 
 def test_conditional_pass_with_errors_fails() -> None:
@@ -217,7 +213,7 @@ def test_conditional_pass_with_errors_fails() -> None:
             break
     rep = ROOT / case["fixtures"]["report"]
     rp = ROOT / case["fixtures"]["research_pack"]
-    assert _audits_ok(tampered, expected, audited_path=str(rep), expected_report_sha256=hashlib.sha256(rep.read_bytes()).hexdigest(), research_pack_path=str(rp), expected_pack_sha256=hashlib.sha256(rp.read_bytes()).hexdigest()) is False
+    assert _audits_ok(tampered, expected, audited_path=str(rep), research_pack_path=str(rp),) is False
 
 
 def test_conditional_pass_without_evidence_fails() -> None:
@@ -243,7 +239,7 @@ def test_conditional_pass_without_provenance_fails() -> None:
     rp = ROOT / case["fixtures"]["research_pack"]
     rep_text = rep.read_text(encoding="utf-8", errors="replace")
     pack_text = rp.read_text(encoding="utf-8", errors="replace")
-    assert _audits_ok(tampered, expected, audited_path=str(rep), expected_report_sha256=hashlib.sha256(rep.read_bytes()).hexdigest(), research_pack_path=str(rp), expected_pack_sha256=hashlib.sha256(rp.read_bytes()).hexdigest(), report_text=rep_text, pack_text=pack_text, expected_route="academic-review") is False
+    assert _audits_ok(tampered, expected, audited_path=str(rep), research_pack_path=str(rp), report_text=rep_text, pack_text=pack_text, expected_route="academic-review") is False
 
 
 def test_conditional_pass_forged_provenance_fails() -> None:
@@ -271,7 +267,7 @@ def test_conditional_pass_cross_audit_provenance_fails() -> None:
     rp = ROOT / case["fixtures"]["research_pack"]
     rep_text = rep.read_text(encoding="utf-8", errors="replace")
     pack_text = rp.read_text(encoding="utf-8", errors="replace")
-    assert _audits_ok(tampered, expected, audited_path=str(rep), expected_report_sha256=hashlib.sha256(rep.read_bytes()).hexdigest(), research_pack_path=str(rp), expected_pack_sha256=hashlib.sha256(rp.read_bytes()).hexdigest(), report_text=rep_text, pack_text=pack_text, expected_route="academic-review") is False
+    assert _audits_ok(tampered, expected, audited_path=str(rep), research_pack_path=str(rp), report_text=rep_text, pack_text=pack_text, expected_route="academic-review") is False
 
 
 def test_conditional_pass_cross_artifact_fails() -> None:
@@ -280,17 +276,14 @@ def test_conditional_pass_cross_artifact_fails() -> None:
     tampered = copy.deepcopy(data)
     rep = ROOT / case["fixtures"]["report"]
     rp = ROOT / case["fixtures"]["research_pack"]
-    pack_hash = hashlib.sha256(rp.read_bytes()).hexdigest()
     for a in tampered["audits"]:
         if a["audit_id"] == "markdown-delivery":
             for p in a["evidence_provenance"]:
                 p["target"] = str(rp)
-                p["input_sha256"] = pack_hash
             break
-    report_hash = hashlib.sha256(rep.read_bytes()).hexdigest()
     rep_text = rep.read_text(encoding="utf-8", errors="replace")
     pack_text = rp.read_text(encoding="utf-8", errors="replace")
-    assert _audits_ok(tampered, expected, audited_path=str(rep), expected_report_sha256=report_hash, research_pack_path=str(rp), expected_pack_sha256=pack_hash, report_text=rep_text, pack_text=pack_text, expected_route="academic-review") is False
+    assert _audits_ok(tampered, expected, audited_path=str(rep), research_pack_path=str(rp), report_text=rep_text, pack_text=pack_text, expected_route="academic-review") is False
 
 
 def test_conditional_pass_degraded_source_fails() -> None:
@@ -323,11 +316,9 @@ def test_conditional_pass_genuine_still_passes() -> None:
     expected = _expected(case)
     rep = ROOT / case["fixtures"]["report"]
     rp = ROOT / case["fixtures"]["research_pack"]
-    report_hash = hashlib.sha256(rep.read_bytes()).hexdigest()
-    pack_hash = hashlib.sha256(rp.read_bytes()).hexdigest()
     rep_text = rep.read_text(encoding="utf-8", errors="replace")
     pack_text = rp.read_text(encoding="utf-8", errors="replace")
-    assert _audits_ok(data, expected, audited_path=str(rep), expected_report_sha256=report_hash, research_pack_path=str(rp), expected_pack_sha256=pack_hash, report_text=rep_text, pack_text=pack_text, expected_route="academic-review") is True
+    assert _audits_ok(data, expected, audited_path=str(rep), research_pack_path=str(rp), report_text=rep_text, pack_text=pack_text, expected_route="academic-review") is True
 
 
 # ── pass / fail / partial ──────────────────────────────────────────────────
@@ -600,9 +591,7 @@ def test_conditional_pass_provenance_error_is_locatable() -> None:
     ok, errs = _audit_consistency_details(
         tampered, expected,
         audited_path=str(ROOT / case["fixtures"]["report"]),
-        expected_report_sha256=hashlib.sha256((ROOT / case["fixtures"]["report"]).read_bytes()).hexdigest(),
         research_pack_path=str(ROOT / case["fixtures"]["research_pack"]),
-        expected_pack_sha256=hashlib.sha256((ROOT / case["fixtures"]["research_pack"]).read_bytes()).hexdigest(),
     )
     assert ok is False
     assert any("markdown-delivery" in e and "provenance" in e.lower() for e in errs), errs

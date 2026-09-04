@@ -445,7 +445,6 @@ def test_consumer_rejects_hidden_report_section_via_audits_ok():
         "audits": [audit],
         "validators": [],
         "blocking": [],
-        "input_sha256": "x" * 64,
     }
     expected_ids = [MANUAL_AUDIT_ID]
     # Raw text would have found the heading → old consumer would pass.  With
@@ -454,7 +453,6 @@ def test_consumer_rejects_hidden_report_section_via_audits_ok():
         actual,
         expected_ids,
         audited_path="report.md",
-        expected_report_sha256="x" * 64,
         report_text=sanitized_report,
         pack_text=sanitized_pack,
         expected_route="provider-selection",
@@ -463,7 +461,6 @@ def test_consumer_rejects_hidden_report_section_via_audits_ok():
         actual,
         expected_ids,
         audited_path="report.md",
-        expected_report_sha256="x" * 64,
         report_text=sanitized_report,
         pack_text=sanitized_pack,
         expected_route="provider-selection",
@@ -486,7 +483,6 @@ def test_consumer_sanitizes_raw_text_at_audits_ok_boundary():
         "audits": [audit],
         "validators": [],
         "blocking": [],
-        "input_sha256": "x" * 64,
     }
     raw_report = REPORT_WITH_HIDDEN_ONLY
     raw_pack = PACK_WITH_VISIBLE
@@ -494,9 +490,7 @@ def test_consumer_sanitizes_raw_text_at_audits_ok_boundary():
         actual,
         [MANUAL_AUDIT_ID],
         audited_path="report.md",
-        expected_report_sha256="x" * 64,
         research_pack_path="pack.md",
-        expected_pack_sha256="y" * 64,
         report_text=raw_report,
         pack_text=raw_pack,
         expected_route="provider-selection",
@@ -517,14 +511,12 @@ def test_consumer_accepts_visible_report_section_via_audits_ok():
         "audits": [audit],
         "validators": [],
         "blocking": [],
-        "input_sha256": "x" * 64,
     }
     expected_ids = [MANUAL_AUDIT_ID]
     assert _audits_ok(
         actual,
         expected_ids,
         audited_path="report.md",
-        expected_report_sha256="x" * 64,
         report_text=sanitized_report,
         pack_text=sanitized_pack,
         expected_route="provider-selection",
@@ -545,16 +537,13 @@ def test_consumer_hidden_pack_section_fails_and_diagnostic_is_locatable():
         "audits": [audit],
         "validators": [],
         "blocking": [],
-        "input_sha256": "x" * 64,
     }
     expected_ids = [MANUAL_AUDIT_ID]
     ok, errs = _audit_consistency_details(
         actual,
         expected_ids,
         audited_path="report.md",
-        expected_report_sha256="x" * 64,
         research_pack_path="pack.md",
-        expected_pack_sha256="y" * 64,
         report_text=sanitized_report,
         pack_text=sanitized_pack,
         expected_route="provider-selection",
@@ -583,7 +572,6 @@ def test_consumer_provenance_target_mismatch_still_distinct_diagnostic():
                 "validator_binding": "source-label-consistency",
                 "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION,
                 "target": "WRONG_TARGET.md",
-                "input_sha256": "x" * 64,
             }
         ],
         "validator_binding": "source-label-consistency",
@@ -595,7 +583,6 @@ def test_consumer_provenance_target_mismatch_still_distinct_diagnostic():
         "automated",
         "automated_validator",
         expected_target="tests/fixtures/forward/provider-selection-report.md",
-        expected_hash="x" * 64,
     )
     assert ok is False
     assert any("target" in e.lower() for e in errs), errs
@@ -617,7 +604,6 @@ def test_provenance_details_propagates_not_found_for_hidden_table():
         MANUAL_EXECUTION_TYPE,
         MANUAL_SOURCE,
         expected_target="report.md",
-        expected_hash="x" * 64,
         report_text=sanitized_report,
         pack_text=None,
         expected_route="provider-selection",
@@ -787,7 +773,7 @@ def test_strict_audit_record_rejects_non_top_level_checklist_marker(tmp_path: Pa
                         "recorded_at": "2026-08-18T10:00:00Z",
                         "audit_id": "market-outlook-audit",
                         "status": "passed",
-                        "artifact_sha256": "a" * 64,
+                        "artifact_id": "test-artifact-a",
                         "executed_at": "2026-08-18T10:00:00Z",
                         "execution_source": "manual_checklist_attestation",
                         "evidence": "checklist-item:checklist.md#FA-999",
@@ -803,7 +789,7 @@ def test_strict_audit_record_rejects_non_top_level_checklist_marker(tmp_path: Pa
         base_dir=tmp_path,
         strict=True,
         expected_audit_id="market-outlook-audit",
-        expected_artifact_sha256="a" * 64,
+        expected_artifact_id="test-artifact-a",
         expected_route="market-outlook",
     )
     assert not result.is_valid
@@ -818,26 +804,7 @@ def test_checklist_sanitizer_removes_raw_html_but_keeps_top_level_marker(tmp_pat
     assert "code" not in stripped
 
 
-# ── hash stays raw-byte anchored ────────────────────────────────────────────
-
-
-def test_hash_is_raw_byte_not_sanitized(tmp_path: Path):
-    # Same logical heading but different raw bytes: sanitized hashes would be
-    # identical if computed from visible text, but raw hashes differ.
-    raw_hidden = REPORT_WITH_HIDDEN_ONLY
-    # Visible sanitized texts would differ, but we test that _sha256 is raw.
-    report_hidden = tmp_path / "hidden.md"
-    report_hidden.write_bytes(raw_hidden.encode("utf-8"))
-    raw_hash = hashlib.sha256(report_hidden.read_bytes()).hexdigest()
-    sanitized = _sanitized(raw_hidden)
-    sanitized_hash = hashlib.sha256(sanitized.encode("utf-8")).hexdigest()
-    assert raw_hash != sanitized_hash
-    # The consumer's _sha256 must equal raw_hash
-    from run_forward_evals import _sha256
-
-    assert _sha256(report_hidden) == raw_hash
-    assert _sha256(report_hidden) != sanitized_hash
-
+# ── producer / consumer parity (issue #426: no byte hashing; visible text only) ──
 
 # ── producer / consumer parity ──────────────────────────────────────────────
 
@@ -879,7 +846,6 @@ def test_producer_consumer_parity_visible():
         MANUAL_EXECUTION_TYPE,
         MANUAL_SOURCE,
         expected_target="report.md",
-        expected_hash="x" * 64,
         report_text=sanitized_via_consumer,
         pack_text=None,
         expected_route="provider-selection",
@@ -917,7 +883,6 @@ def test_producer_consumer_parity_hidden():
         MANUAL_EXECUTION_TYPE,
         MANUAL_SOURCE,
         expected_target="report.md",
-        expected_hash="x" * 64,
         report_text=sanitized_cons,
         pack_text=None,
         expected_route="provider-selection",
@@ -954,13 +919,11 @@ def test_forward_eval_hidden_evidence_still_fails_when_report_has_no_visible_hea
         "audits": [audit],
         "validators": [],
         "blocking": [],
-        "input_sha256": "x" * 64,
     }
     ok, errs = _audit_consistency_details(
         actual,
         [MANUAL_AUDIT_ID],
         audited_path="report.md",
-        expected_report_sha256="x" * 64,
         report_text=hidden_sanitized,
         pack_text=None,
         expected_route="provider-selection",
@@ -1009,32 +972,26 @@ def test_evaluate_case_wiring_rejects_hidden_report_section_e2e(tmp_path, monkey
             a["execution_source"] = MANUAL_SOURCE
             a["execution_type"] = "manual"
     tampered["overall"] = "pass"
-    # Make validator hashes match the tmp files so validators_ok does not mask
-    # the provenance failure (we want to isolate the visible-heading check)
-    tmp_report_hash = hashlib.sha256(report.read_bytes()).hexdigest()
-    tmp_pack_hash = hashlib.sha256(pack.read_bytes()).hexdigest()
-    tampered["input_sha256"] = tmp_report_hash
+    # Retarget validator/audit provenance to the tmp files so validators_ok
+    # does not mask the provenance failure (we want to isolate the
+    # visible-heading check)
     for v in tampered.get("validators", []):
-        # report-targeted validators should match tmp report hash; pack is not a validator target
+        # report-targeted validators should match tmp report; pack is not a validator target
         if v.get("target") == str(real_report):
             v["target"] = str(report)
-            v["input_sha256"] = tmp_report_hash
             v["validator_version"] = run_forward_evals.EXPECTED_VALIDATOR_VERSION
         elif v.get("target") == str(real_pack):
             v["target"] = str(pack)
-            v["input_sha256"] = tmp_pack_hash
     for a in tampered["audits"]:
         if a["audit_id"] == "research-pack":
             for p in a.get("evidence_provenance", []):
                 if p.get("target") == str(real_pack):
                     p["target"] = str(pack)
-                    p["input_sha256"] = tmp_pack_hash
         elif a["audit_id"] != MANUAL_AUDIT_ID:
             for p in a.get("evidence_provenance", []):
                 # automated provenance should bind to tmp report
                 if p.get("target") == str(real_report):
                     p["target"] = str(report)
-                    p["input_sha256"] = tmp_report_hash
 
     def fake_run(rp, pp, activation_snapshot=None):
         return tampered, None, 0
@@ -1078,28 +1035,23 @@ def test_evaluate_case_wiring_rejects_hidden_tilde_and_html_e2e(tmp_path, monkey
                 a["execution_source"] = MANUAL_SOURCE
                 a["execution_type"] = "manual"
         tampered["overall"] = "pass"
-        tmp_report_hash = hashlib.sha256(report.read_bytes()).hexdigest()
-        tmp_pack_hash = hashlib.sha256(pack.read_bytes()).hexdigest()
-        tampered["input_sha256"] = tmp_report_hash
+        # Retarget validator/audit provenance to the tmp files so
+        # validators_ok does not mask the visible-heading check.
         for v in tampered.get("validators", []):
             if v.get("target") == str(real_report):
                 v["target"] = str(report)
-                v["input_sha256"] = tmp_report_hash
             elif v.get("target") == str(real_pack):
                 v["target"] = str(pack)
-                v["input_sha256"] = tmp_pack_hash
         for a in tampered["audits"]:
             if a["audit_id"] == "research-pack":
                 for p in a.get("evidence_provenance", []):
                     if p.get("target") == str(real_pack):
                         p["target"] = str(pack)
-                        p["input_sha256"] = tmp_pack_hash
             elif a["audit_id"] != MANUAL_AUDIT_ID:
                 for p in a.get("evidence_provenance", []):
                     if p.get("target") == str(real_report):
                         p["target"] = str(report)
-                        p["input_sha256"] = tmp_report_hash
-
+    
         def fake_run(rp, pp, activation_snapshot=None, _tampered=tampered):
             return _tampered, None, 0
 

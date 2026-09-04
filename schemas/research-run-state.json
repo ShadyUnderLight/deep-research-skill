@@ -2,9 +2,9 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://deep-research-skill/schemas/research-run-state.json",
   "title": "Research Run State Contract",
-  "description": "Minimal process-state contract for long-running or multi-track research (issue #417). phase is the pipeline stage; status is the run overlay. This is not a second interpretation of Research Pack research_status / Final audit status / delivery_status. Runtime enforcement lives in scripts/validate_research_run_state.py. Single-track research does not create a Run State unless the user explicitly resumes a previous run_id.",
-  "version": 1,
-  "schema_version": "1",
+  "description": "Minimal process-state contract for long-running or multi-track research (issue #417, #426). phase is the pipeline stage; status is the run overlay. This is not a second interpretation of Research Pack research_status / Final audit status / delivery_status. Runtime enforcement lives in scripts/validate_research_run_state.py. Single-track research does not create a Run State unless the user explicitly resumes a previous run_id. v2 (issue #426): no current_artifact_sha256 / handoff sha256 byte bindings; binding is by run_id/artifact_id/handoff_id/path.",
+  "version": 2,
+  "schema_version": "2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -13,7 +13,6 @@
     "artifact_id",
     "phase",
     "status",
-    "current_artifact_sha256",
     "activation_reference",
     "pending_decision",
     "last_transition_reason",
@@ -72,7 +71,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "1",
+      "const": "2",
       "description": "Contract version. Consumers reject unknown versions instead of guessing."
     },
     "run_id": {
@@ -109,11 +108,6 @@
         "aborted"
       ],
       "description": "Run overlay. Mapping to Research Pack: partial/blocked may correspond to research_status; completed does not prove content-audit Pass or delivery_status=md_ready. paused/in_progress/phase are process-only and must not be written as Pack research_status."
-    },
-    "current_artifact_sha256": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$",
-      "description": "SHA-256 of the current process artifact bytes (the Research Pack file identified by artifact_id). Hash change invalidates delivered and any audit/handoff bound to the old bytes."
     },
     "parent_artifact_id": {
       "type": "string",
@@ -179,14 +173,13 @@
     },
     "handoff_refs": {
       "type": "array",
-      "description": "Optional bindings to Track Handoff artifacts. Required when enabled_reason=parallel and phase is synthesizing, auditing, or delivered. Tampering a listed handoff file fails closed.",
+      "description": "Optional bindings to Track Handoff artifacts. Required when enabled_reason=parallel and phase is synthesizing, auditing, or delivered. Binding is by handoff_id (issue #426: no sha256).",
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["handoff_id", "sha256"],
+        "required": ["handoff_id"],
         "properties": {
-          "handoff_id": {"type": "string", "minLength": 1},
-          "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+          "handoff_id": {"type": "string", "minLength": 1}
         }
       }
     }

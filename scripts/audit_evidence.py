@@ -323,7 +323,6 @@ def _validate_audit_record(
     *,
     strict: bool = False,
     expected_audit_id: str | None = None,
-    expected_artifact_sha256: str | None = None,
     expected_artifact_id: str | None = None,
     expected_route: str | None = None,
     expected_validator_binding: str | None = None,
@@ -469,28 +468,20 @@ def _validate_audit_record(
             strict_errors.append(
                 f"audit record status {record_status!r} is not passed (strict requires passed)"
             )
-        # artifact binding: each provided expected field is fail-closed independently (issue #401 P1).
-        # When audit_report passes both sha256 and artifact_id, both must match;
-        # a hash mismatch cannot be rescued by an id match.  When only one expected is given
-        # (contract / pack), that single field must match.
-        record_sha = matching_record.get("artifact_sha256") or matching_record.get("artifact_hash") or matching_record.get("sha256")
+        # artifact binding: fail closed on artifact_id mismatch (issue #401 P1,
+        # #426: no byte-hash binding — binding is by explicit artifact_id).
         record_aid = matching_record.get("artifact_id") or matching_record.get("artifactId")
-        if expected_artifact_sha256 is not None:
-            if not isinstance(record_sha, str) or record_sha.strip().lower() != expected_artifact_sha256.lower():
-                strict_errors.append(
-                    f"audit record artifact_sha256 {record_sha!r} does not match expected {expected_artifact_sha256!r}"
-                )
         if expected_artifact_id is not None:
             if not isinstance(record_aid, str) or record_aid.strip() != expected_artifact_id:
                 strict_errors.append(
                     f"audit record artifact_id {record_aid!r} does not match expected {expected_artifact_id!r}"
                 )
-        if expected_artifact_sha256 is None and expected_artifact_id is None:
-            if not (isinstance(record_sha, str) and record_sha.strip()) and not (
+        if expected_artifact_id is None:
+            if not (
                 isinstance(record_aid, str) and record_aid.strip()
             ):
                 strict_errors.append(
-                    "audit record is missing artifact binding (strict requires artifact_sha256 or artifact_id)"
+                    "audit record is missing artifact binding (strict requires artifact_id)"
                 )
         # route binding (issue #401 #4): record should declare the route it was executed for
         if expected_route is not None:
@@ -676,8 +667,6 @@ def _validate_audit_record(
                 provenance["record_audit_id"] = record_audit_id
             if record_status:
                 provenance["record_status"] = record_status
-            if record_sha is not None:
-                provenance["record_artifact_sha256"] = record_sha
             if record_aid is not None:
                 provenance["record_artifact_id"] = record_aid
             # expose route / execution_source / evidence for debugging
@@ -704,8 +693,6 @@ def _validate_audit_record(
         provenance["record_audit_id"] = matching_record.get("audit_id")
     if matching_record.get("status") is not None:
         provenance["record_status"] = matching_record.get("status")
-    if matching_record.get("artifact_sha256") is not None:
-        provenance["record_artifact_sha256"] = matching_record.get("artifact_sha256")
     if matching_record.get("artifact_id") is not None:
         provenance["record_artifact_id"] = matching_record.get("artifact_id")
     if matching_record.get("route") is not None:
@@ -769,7 +756,6 @@ def validate_evidence_reference(
     known_validator_bindings: Collection[str] | None = None,
     execution_type: str | None = None,
     expected_audit_id: str | None = None,
-    expected_artifact_sha256: str | None = None,
     expected_artifact_id: str | None = None,
     expected_route: str | None = None,
     expected_validator_binding: str | None = None,
@@ -884,7 +870,6 @@ def validate_evidence_reference(
             base_dir,
             strict=strict,
             expected_audit_id=expected_audit_id,
-            expected_artifact_sha256=expected_artifact_sha256,
             expected_artifact_id=expected_artifact_id,
             expected_route=expected_route,
             expected_validator_binding=expected_validator_binding,

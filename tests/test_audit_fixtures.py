@@ -92,7 +92,7 @@ class TestNegativeFixtures:
 
 
 class TestJsonConsumability:
-    def test_json_has_evidence_and_hash(self) -> None:
+    def test_json_has_evidence_and_provenance(self) -> None:
         result = _run(
             "market-outlook-pos.md", "research-pack-pos.md",
             extra=["--strict", "--require-contract", "--json"],
@@ -100,7 +100,7 @@ class TestJsonConsumability:
         data = json.loads(result.stdout)
         assert data["overall"] == "pass"
         assert data["exit_code"] == 0
-        assert data["input_sha256"]
+        assert data["validator_version"]
         assert data["validator_version"]
         # evidence locations present for executed audits
         forward = next(a for a in data["audits"] if a["audit_id"] == "forward-looking-claims")

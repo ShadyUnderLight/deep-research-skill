@@ -65,8 +65,6 @@ def _status_lines(result: DeliveryResult) -> list[str]:
     ])
     if result.pdf_path:
         lines.append(f"- pdf_path: {result.pdf_path}")
-    if result.pdf_sha256:
-        lines.append(f"- pdf_sha256: {result.pdf_sha256}")
     if result.errors:
         lines.append(f"- error: {result.errors[0]}")
     return lines

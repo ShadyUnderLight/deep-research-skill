@@ -86,26 +86,111 @@ def test_audits_ok_accepts_genuine_audit_json() -> None:
     case, data = _real_audit_for(POSITIVE_CASE_ID)
     expected = _expected_for(case)
     # Verify with consumer-computed hash anchor (mandatory path for real pipeline)
-    import hashlib
-    from pathlib import Path
-
     report = ROOT / case["fixtures"]["report"]
     rp = ROOT / case["fixtures"]["research_pack"]
-    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
-    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
     assert _audits_ok(
         data,
         expected,
         audited_path=str(report),
-        expected_report_sha256=expected_report_sha256,
         research_pack_path=str(rp),
-        expected_pack_sha256=expected_pack_sha256,
     ) is True
     # Also passes when called without the external anchor (fallback to non-empty)
     assert _audits_ok(data, expected) is True
 
 
 # ── _audits_ok: fail closed on truncation / forgery ──────────────────────────
+
+
+def test_audits_ok_rejects_legacy_top_level_hash_fields() -> None:
+    """A v2 payload whose top level still carries removed hash bindings is a
+    half-migrated structure and must fail closed (issue #426)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    tampered["input_sha256"] = "0" * 64
+    ok, errors = run_forward_evals._audit_consistency_details(
+        tampered, expected
+    )
+    assert ok is False
+    assert any("removed v1 hash" in e for e in errors), errors
+
+
+def test_audits_ok_rejects_legacy_audit_level_hash_fields() -> None:
+    """A v2 audits[] entry still carrying removed hash bindings must fail
+    closed (issue #426)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    tampered["audits"][0]["input_sha256"] = "0" * 64
+    ok, errors = run_forward_evals._audit_consistency_details(
+        tampered, expected
+    )
+    assert ok is False
+    assert any("removed v1 hash" in e for e in errors), errors
+
+
+def test_audits_ok_rejects_legacy_provenance_hash_fields() -> None:
+    """A v2 evidence_provenance[] record still carrying removed hash bindings
+    must fail closed (issue #426)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    target = next(
+        a
+        for a in tampered["audits"]
+        if any(
+            isinstance(p, dict) and p.get("verified") is True
+            for p in (a.get("evidence_provenance") or [])
+        )
+    )
+    target["evidence_provenance"][0]["input_sha256"] = "0" * 64
+    ok, errors = run_forward_evals._audit_consistency_details(
+        tampered, expected
+    )
+    assert ok is False
+    assert any("removed v1 hash" in e for e in errors), errors
+
+
+def test_audits_ok_rejects_legacy_hash_on_unverified_provenance() -> None:
+    """A legacy hash binding on an unverified provenance record must still
+    fail closed — the scan covers the whole evidence_provenance[] list, not
+    just verified records (issue #426)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    target = next(
+        a
+        for a in tampered["audits"]
+        if isinstance(a.get("evidence_provenance"), list)
+        and a["evidence_provenance"]
+    )
+    target["evidence_provenance"].append({
+        "verified": False,
+        "input_sha256": "0" * 64,
+    })
+    ok, errors = run_forward_evals._audit_consistency_details(
+        tampered, expected
+    )
+    assert ok is False
+    assert any("removed v1 hash" in e for e in errors), errors
+
+
+def test_validators_ok_rejects_legacy_hash_fields() -> None:
+    """A v2 validators[] entry still carrying removed hash bindings must fail
+    closed (issue #426)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected_validators = run_forward_evals._ROUTE_REGISTRY.validators_for(
+        data["route"]
+    )
+    tampered = copy.deepcopy(data["validators"][0])
+    tampered["input_sha256"] = "0" * 64
+    actual = {**data, "validators": [tampered, *data["validators"][1:]]}
+    assert (
+        run_forward_evals._validators_ok(
+            actual, expected_validators, audited_path=tampered.get("target")
+        )
+        is False
+    )
 
 
 def test_audits_ok_rejects_missing_global_audit() -> None:
@@ -250,51 +335,23 @@ def test_audits_ok_rejects_provenance_field_mismatch() -> None:
     assert _audits_ok(tampered, expected) is False
 
 
-def test_audits_ok_rejects_provenance_hash_mismatch() -> None:
-    """For a report-targeted automated audit, a forged artifact hash in the
-    provenance must fail closed (issue #403 P1 / scope 3)."""
-    import hashlib
-    from pathlib import Path
-
-    case, data = _real_audit_for(POSITIVE_CASE_ID)
-    expected = _expected_for(case)
-    tampered = copy.deepcopy(data)
-    target = None
-    report = ROOT / case["fixtures"]["report"]
-    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
-    for a in tampered["audits"]:
-        if a["audit_id"] == "source-traceability":
-            target = a["evidence_provenance"][0]["target"]
-            a["evidence_provenance"][0]["input_sha256"] = "forged-hash"
-    assert target is not None
-    assert _audits_ok(
-        tampered,
-        expected,
-        audited_path=target,
-        expected_report_sha256=expected_report_sha256,
-    ) is False
-
 
 def test_audits_ok_rejects_provenance_target_swap() -> None:
     """Swapping a report-targeted provenance target to another file must fail
     closed — the hash comparison must not be skippable via target (issue #403
     P1)."""
-    import hashlib
 
     case, data = _real_audit_for(POSITIVE_CASE_ID)
     expected = _expected_for(case)
     tampered = copy.deepcopy(data)
     report = ROOT / case["fixtures"]["report"]
-    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
     for a in tampered["audits"]:
         if a["audit_id"] == "source-traceability":
             a["evidence_provenance"][0]["target"] = "some-other-report.md"
-            a["evidence_provenance"][0]["input_sha256"] = "anything-non-empty"
     assert _audits_ok(
         tampered,
         expected,
         audited_path=str(report),
-        expected_report_sha256=expected_report_sha256,
     ) is False
 
 
@@ -302,26 +359,20 @@ def test_audits_ok_rejects_research_pack_provenance_wrong_artifact() -> None:
     """The research-pack audit's provenance must bind to the research pack,
     not the report — swapping to the report target/hash must fail closed
     (issue #403 P1)."""
-    import hashlib
 
     case, data = _real_audit_for(POSITIVE_CASE_ID)
     expected = _expected_for(case)
     tampered = copy.deepcopy(data)
     report = ROOT / case["fixtures"]["report"]
     rp = ROOT / case["fixtures"]["research_pack"]
-    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
-    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
     for a in tampered["audits"]:
         if a["audit_id"] == "research-pack":
             a["evidence_provenance"][0]["target"] = str(report)
-            a["evidence_provenance"][0]["input_sha256"] = expected_report_sha256
     assert _audits_ok(
         tampered,
         expected,
         audited_path=str(report),
-        expected_report_sha256=expected_report_sha256,
         research_pack_path=str(rp),
-        expected_pack_sha256=expected_pack_sha256,
     ) is False
 
 
@@ -397,7 +448,6 @@ def test_audits_ok_rejects_audit_record_wrong_audit_id(tmp_path) -> None:
     """An audit-record whose record audit_id belongs to another audit must
     fail closed even when the record file and evidence are otherwise valid
     (issue #403 re-review)."""
-    import hashlib
     import json
     import shutil
 
@@ -407,8 +457,6 @@ def test_audits_ok_rejects_audit_record_wrong_audit_id(tmp_path) -> None:
     rp = ROOT / case["fixtures"]["research_pack"]
     report_text = report.read_text(encoding="utf-8", errors="replace")
     pack_text = rp.read_text(encoding="utf-8", errors="replace")
-    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
-    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
     rec_dir = ROOT / "tmp" / f"test-rec-wrong-audit-{tmp_path.name}"
     rec_dir.mkdir(parents=True, exist_ok=True)
     try:
@@ -423,73 +471,6 @@ def test_audits_ok_rejects_audit_record_wrong_audit_id(tmp_path) -> None:
                     "record_id": "rec-001",
                     "recorded_at": "2026-08-14T00:00:00Z",
                     "audit_id": "different-audit",
-                    "status": "passed",
-                    "artifact_sha256": expected_report_sha256,
-                    "artifact_id": "test-artifact",
-                    "executed_at": "2026-08-14T00:00:00Z",
-                    "execution_source": "manual_checklist_attestation",
-                    "evidence": evidence_str,
-                    "route": "provider-selection",
-                }
-            ]
-        }
-        rec_path.write_text(json.dumps(payload), encoding="utf-8")
-        tampered = copy.deepcopy(data)
-        for a in tampered["audits"]:
-            if a["audit_id"] == "option-selection-final-audit":
-                a["evidence"] = [canonical]
-                a["evidence_provenance"] = [
-                    {
-                        "verified": True,
-                        "execution_source": "manual_checklist_attestation",
-                        "kind": "audit_record",
-                        "locator": locator,
-                    }
-                ]
-        assert _audits_ok(
-            tampered,
-            expected,
-            audited_path=str(report),
-            expected_report_sha256=expected_report_sha256,
-            research_pack_path=str(rp),
-            expected_pack_sha256=expected_pack_sha256,
-            report_text=report_text,
-            pack_text=pack_text,
-            expected_route="provider-selection",
-        ) is False
-    finally:
-        shutil.rmtree(rec_dir, ignore_errors=True)
-
-
-def test_audits_ok_rejects_audit_record_wrong_artifact(tmp_path) -> None:
-    """An audit-record whose artifact_sha256 belongs to another report must
-    fail closed (issue #403 re-review)."""
-    import hashlib
-    import json
-    import shutil
-
-    case, data = _real_audit_for(POSITIVE_CASE_ID)
-    expected = _expected_for(case)
-    report = ROOT / case["fixtures"]["report"]
-    rp = ROOT / case["fixtures"]["research_pack"]
-    report_text = report.read_text(encoding="utf-8", errors="replace")
-    pack_text = rp.read_text(encoding="utf-8", errors="replace")
-    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
-    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
-    rec_dir = ROOT / "tmp" / f"test-rec-wrong-artifact-{tmp_path.name}"
-    rec_dir.mkdir(parents=True, exist_ok=True)
-    try:
-        evidence_str = "report-section:Decision scope"
-        rec_path = rec_dir / "record.json"
-        rel = rec_path.relative_to(ROOT).as_posix()
-        locator = f"{rel}#rec-001@2026-08-14T00:00:00Z"
-        canonical = f"audit-record:{locator}"
-        payload = {
-            "records": [
-                {
-                    "record_id": "rec-001",
-                    "recorded_at": "2026-08-14T00:00:00Z",
-                    "audit_id": "option-selection-final-audit",
                     "status": "passed",
                     "artifact_sha256": "0" * 64,
                     "artifact_id": "test-artifact",
@@ -517,9 +498,7 @@ def test_audits_ok_rejects_audit_record_wrong_artifact(tmp_path) -> None:
             tampered,
             expected,
             audited_path=str(report),
-            expected_report_sha256=expected_report_sha256,
             research_pack_path=str(rp),
-            expected_pack_sha256=expected_pack_sha256,
             report_text=report_text,
             pack_text=pack_text,
             expected_route="provider-selection",
@@ -528,11 +507,11 @@ def test_audits_ok_rejects_audit_record_wrong_artifact(tmp_path) -> None:
         shutil.rmtree(rec_dir, ignore_errors=True)
 
 
+
 def test_audits_ok_rejects_nonexistent_report_section() -> None:
     """A report-section evidence+provenance pair that is internally consistent
     but whose locator does not exist in the report must fail closed (issue
     #403 re-review: JSON self-consistency → real artifact verification)."""
-    import hashlib
 
     case, data = _real_audit_for(POSITIVE_CASE_ID)
     expected = _expected_for(case)
@@ -540,8 +519,6 @@ def test_audits_ok_rejects_nonexistent_report_section() -> None:
     rp = ROOT / case["fixtures"]["research_pack"]
     report_text = report.read_text(encoding="utf-8", errors="replace")
     pack_text = rp.read_text(encoding="utf-8", errors="replace")
-    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
-    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
     tampered = copy.deepcopy(data)
     for a in tampered["audits"]:
         if a["audit_id"] == "option-selection-final-audit":
@@ -558,9 +535,7 @@ def test_audits_ok_rejects_nonexistent_report_section() -> None:
         tampered,
         expected,
         audited_path=str(report),
-        expected_report_sha256=expected_report_sha256,
         research_pack_path=str(rp),
-        expected_pack_sha256=expected_pack_sha256,
         report_text=report_text,
         pack_text=pack_text,
     ) is False
@@ -568,7 +543,6 @@ def test_audits_ok_rejects_nonexistent_report_section() -> None:
 
 def test_audits_ok_rejects_nonexistent_pack_section() -> None:
     """Same as above for pack-scoped evidence."""
-    import hashlib
 
     case, data = _real_audit_for(POSITIVE_CASE_ID)
     expected = _expected_for(case)
@@ -576,8 +550,6 @@ def test_audits_ok_rejects_nonexistent_pack_section() -> None:
     rp = ROOT / case["fixtures"]["research_pack"]
     report_text = report.read_text(encoding="utf-8", errors="replace")
     pack_text = rp.read_text(encoding="utf-8", errors="replace")
-    expected_report_sha256 = hashlib.sha256(report.read_bytes()).hexdigest()
-    expected_pack_sha256 = hashlib.sha256(rp.read_bytes()).hexdigest()
     tampered = copy.deepcopy(data)
     for a in tampered["audits"]:
         if a["audit_id"] == "option-selection-final-audit":
@@ -594,9 +566,7 @@ def test_audits_ok_rejects_nonexistent_pack_section() -> None:
         tampered,
         expected,
         audited_path=str(report),
-        expected_report_sha256=expected_report_sha256,
         research_pack_path=str(rp),
-        expected_pack_sha256=expected_pack_sha256,
         report_text=report_text,
         pack_text=pack_text,
     ) is False
@@ -655,30 +625,10 @@ def test_forward_eval_rejects_forged_validator_version(monkeypatch) -> None:
     assert result["passed"] is False
 
 
-def test_forward_eval_rejects_simultaneously_forged_hashes(monkeypatch) -> None:
-    """Top-level + validator hashes simultaneously forged to the same fake value
-    must still fail against the consumer-computed external anchor (issue #403
-    P1)."""
-    case = _positive_case()
-    original = run_forward_evals._run_audit
-
-    def fake_run(report, research_pack, activation_snapshot=None):
-        data, err, rc = original(report, research_pack)
-        forged = copy.deepcopy(data)
-        forged["input_sha256"] = "forged"
-        for v in forged["validators"]:
-            v["input_sha256"] = "forged"
-        return forged, err, rc
-
-    monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)
-    result = _evaluate_case(case, load_registry()["decision_tree_version"])
-    assert result["checks"]["validators_ok"] is False
-    assert result["passed"] is False
-
 
 def test_forward_eval_rejects_research_pack_wrong_artifact(monkeypatch) -> None:
     """The research-pack provenance must bind to the research pack, not the
-    report — swapping its target/hash to the report must fail closed (issue
+    report — swapping its target to the report must fail closed (issue
     #403 P1)."""
     case = _positive_case()
     original = run_forward_evals._run_audit
@@ -690,12 +640,6 @@ def test_forward_eval_rejects_research_pack_wrong_artifact(monkeypatch) -> None:
             if a["audit_id"] == "research-pack":
                 rec = a["evidence_provenance"][0]
                 rec["target"] = str(report)
-                # also forge hash to report's hash so it would pass a
-                # JSON-internal check but fail the consumer's pack anchor
-                import hashlib
-                from pathlib import Path
-
-                rec["input_sha256"] = hashlib.sha256(Path(report).read_bytes()).hexdigest()
         return forged, err, rc
 
     monkeypatch.setattr(run_forward_evals, "_run_audit", fake_run)

@@ -594,7 +594,7 @@ class TestJsonOutput:
         assert data["route"] == "market-outlook"
         assert data["overall"] == "pass"
         assert data["exit_code"] == 0
-        assert data["input_sha256"]
+        assert data["validator_version"]
         assert data["validator_version"]
         for audit in data["audits"]:
             assert audit["audit_id"]
@@ -646,7 +646,7 @@ class TestJsonOutput:
         result = _run_audit(path, extra_args=["--strict", "--json"])
         data = json.loads(result.stdout)
         assert data["overall"] == "fail"
-        assert data["input_sha256"], data
+        assert data["validator_version"], data
         assert data["validator_version"], data
 
     def test_unknown_route_json_has_provenance(self) -> None:
@@ -654,7 +654,7 @@ class TestJsonOutput:
         result = _run_audit(path, extra_args=["--route", "no-such-route", "--json"])
         data = json.loads(result.stdout)
         assert data["overall"] == "fail"
-        assert data["input_sha256"], data
+        assert data["validator_version"], data
         assert data["validator_version"], data
 
     def test_json_has_schema_version(self) -> None:
@@ -662,7 +662,7 @@ class TestJsonOutput:
         path = _write(_report(contract=_contract()))
         result = _run_audit(path, extra_args=["--json"])
         data = json.loads(result.stdout)
-        assert data["schema_version"] == 1, data
+        assert data["schema_version"] == 2, data
 
     def test_json_lists_route_validators_with_provenance(self) -> None:
         """Every route-level validator must appear in validators[] with

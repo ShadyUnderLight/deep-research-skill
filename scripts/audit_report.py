@@ -22,7 +22,6 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import re
 import sys
@@ -85,6 +84,11 @@ from validate_research_pack import (
     strip_fenced_code_blocks as vrp_strip_fenced_code_blocks,
 )
 from audit_evidence import validate_evidence_reference
+from delivery.models import (
+    DELIVERY_RESULT_SCHEMA_VERSION,
+    KNOWN_DELIVERY_FIELDS,
+    LEGACY_DELIVERY_HASH_FIELDS,
+)
 from activation_snapshot import (
     ActivationSnapshotError,
     extract_activation_snapshot_reference,
@@ -124,7 +128,9 @@ EXIT_BLOCKING = 2
 # forward runner pins the same value (EXPECTED_AUDIT_JSON_SCHEMA_VERSION) and
 # fails closed when it does not match.  Bump only on breaking JSON field
 # changes; additive fields do not require a bump.
-AUDIT_JSON_SCHEMA_VERSION = 1
+# v2 (issue #426): removed input_sha256 / claim_alignment_bundle_sha256
+# byte-identity bindings; provenance is path/ID/route/validator based.
+AUDIT_JSON_SCHEMA_VERSION = 2
 
 
 # ── Types ───────────────────────────────────────────────────────────────────
@@ -990,7 +996,6 @@ class ValidatorResult:
     execution_source: str = "automated_validator"
     validator_version: str | None = None
     target: str | None = None
-    input_sha256: str | None = None
     reason: str | None = None
 
 
@@ -1005,7 +1010,6 @@ class AuditVerdict:
     recommended_audit_status: dict[str, str] = field(default_factory=dict)
     audit_results: list[AuditResult] = field(default_factory=list)
     validator_results: list[ValidatorResult] = field(default_factory=list)
-    input_sha256: str | None = None
     validator_version: str | None = None
     delivery: dict[str, object] | None = None
 
@@ -1021,14 +1025,6 @@ class AuditVerdict:
 # ── Required-audit execution (issue #378) ────────────────────────────────────
 
 
-def _sha256(path: Path) -> str | None:
-    """Return the sha256 of a file's bytes, or None on read failure."""
-    try:
-        return hashlib.sha256(path.read_bytes()).hexdigest()
-    except OSError:
-        return None
-
-
 PACK_PROVENANCE_KINDS = frozenset({"pack_section", "pack_table"})
 
 
@@ -1037,15 +1033,12 @@ def _bind_manual_process_provenance(
     *,
     execution_source: str,
     report_path: Path,
-    report_sha: str | None,
     pack_path: Path | None,
-    pack_sha: str | None,
 ) -> dict[str, object]:
-    """Attach the audited report/Pack hash to manual/process provenance.
+    """Attach the audited report/Pack path target to manual/process provenance.
 
-    Automated provenance already carries ``input_sha256``. Manual/process
-    ``report_section`` records previously omitted it, so a real
-    ``audit_report --json`` Pass could not bind to Run State delivered.
+    Issue #426: no byte-identity binding. The record carries explicit
+    ``target`` path so consumers bind by path/ID/route, not by hash.
     """
     record = {**provenance, "execution_source": execution_source}
     kind = record.get("kind")
@@ -1053,12 +1046,8 @@ def _bind_manual_process_provenance(
     if binds_pack:
         if pack_path is not None:
             record.setdefault("target", str(pack_path))
-        if pack_sha:
-            record["input_sha256"] = pack_sha
     else:
         record.setdefault("target", str(report_path))
-        if report_sha:
-            record["input_sha256"] = report_sha
     return record
 
 
@@ -1068,9 +1057,10 @@ def _load_delivery_result(
 ) -> tuple[dict[str, object] | None, list[str]]:
     """Load and verify an optional result emitted by ``md_to_pdf --json``.
 
-    Status strings alone are not provenance. The result must bind to the
-    exact audited Markdown input, and ``pdf_ready`` must point to a real,
-    non-empty PDF whose size and hash match the declared metadata.
+    Issue #426: no byte-identity binding. The result must bind to the
+    exact audited Markdown input by path, and ``pdf_ready`` must point to
+    a real, non-empty PDF with a valid header and matching declared size.
+    Size is output metadata, not content-identity proof.
     """
 
     if path is None:
@@ -1083,6 +1073,23 @@ def _load_delivery_result(
         return None, ["delivery result must be a JSON object"]
 
     errors: list[str] = []
+    if payload.get("schema_version") != DELIVERY_RESULT_SCHEMA_VERSION:
+        errors.append(
+            "delivery result schema_version must be "
+            f"{DELIVERY_RESULT_SCHEMA_VERSION}, got "
+            f"{payload.get('schema_version')!r}"
+        )
+    legacy = sorted(LEGACY_DELIVERY_HASH_FIELDS & set(payload))
+    if legacy:
+        errors.append(
+            "delivery result carries removed v1 hash field(s): "
+            + ", ".join(legacy)
+        )
+    unknown = sorted(set(payload) - KNOWN_DELIVERY_FIELDS)
+    if unknown:
+        errors.append(
+            f"delivery result has unknown field(s): {unknown}"
+        )
     expected_input = audited_path.resolve()
     input_value = payload.get("input_path")
     if not isinstance(input_value, str) or not input_value:
@@ -1091,13 +1098,6 @@ def _load_delivery_result(
         errors.append(
             f"delivery result input_path does not match audited report: {input_value!r}"
         )
-
-    input_hash = payload.get("input_sha256")
-    actual_input_hash = _sha256(expected_input)
-    if not isinstance(input_hash, str) or not input_hash:
-        errors.append("delivery result input_sha256 is required")
-    elif actual_input_hash is None or input_hash != actual_input_hash:
-        errors.append("delivery result input_sha256 does not match audited report")
 
     delivery_status = payload.get("delivery_status")
     markdown_status = payload.get("markdown_status")
@@ -1137,16 +1137,6 @@ def _load_delivery_result(
                     errors.append("pdf_size_bytes does not match the PDF artifact")
                 if header != b"%PDF":
                     errors.append("pdf_ready artifact does not have a PDF header")
-                declared_hash = payload.get("pdf_sha256")
-                actual_hash = _sha256(pdf_path)
-                if not isinstance(declared_hash, str) or not declared_hash:
-                    errors.append("pdf_ready requires pdf_sha256")
-                elif actual_hash is None or declared_hash != actual_hash:
-                    errors.append("pdf_sha256 does not match the PDF artifact")
-    elif pdf_path is not None and pdf_path.is_file():
-        declared_hash = payload.get("pdf_sha256")
-        if declared_hash is not None and declared_hash != _sha256(pdf_path):
-            errors.append("pdf_sha256 does not match the optional PDF artifact")
 
     return (payload, []) if not errors else (None, errors)
 
@@ -1321,16 +1311,10 @@ def _execute_required_audits(
         )
     except (OSError, UnicodeError):
         visible_text = None
-    # Artifact binding for strict provenance (issue #401): audit-record must
-    # prove it targets the current artifact, not any template.  Compute the
-    # input hash once and extract the contract's stable artifact_id up front
-    # so validation can fail closed on mismatched bindings.
-    expected_artifact_sha256 = _sha256(path) if path.is_file() else None
-    expected_pack_sha256 = (
-        _sha256(research_pack)
-        if research_pack is not None and research_pack.is_file()
-        else None
-    )
+    # Artifact binding for strict provenance (issue #401, #426): audit-record
+    # must prove it targets the current artifact by ID/path/route, not by
+    # byte hash. Extract the contract's stable artifact_id up front so
+    # validation can fail closed on mismatched bindings.
     contract_data_for_binding: dict | None = None
     try:
         contract_data_for_binding = extract_contract_from_markdown(
@@ -1404,7 +1388,6 @@ def _execute_required_audits(
                     known_validator_bindings=_registered_validator_bindings(),
                     execution_type=audit.execution_type,
                     expected_audit_id=audit_id,
-                    expected_artifact_sha256=expected_artifact_sha256,
                     expected_artifact_id=expected_artifact_id,
                     expected_route=route_id,
                     report_text=visible_text,
@@ -1430,9 +1413,7 @@ def _execute_required_audits(
                             evidence_result.provenance,
                             execution_source=execution_source,
                             report_path=path,
-                            report_sha=expected_artifact_sha256,
                             pack_path=research_pack,
-                            pack_sha=expected_pack_sha256,
                         )
                     )
                 if evidence_result.errors:
@@ -1536,7 +1517,6 @@ def _execute_required_audits(
             "validator_binding": binding,
             "execution_source": "automated_validator",
             "target": str(target),
-            "input_sha256": _sha256(target),
             "validator_version": _registry_version(),
             "verified": True,
         }]
@@ -1608,7 +1588,6 @@ def _execute_required_audits(
                 known_validator_bindings=_registered_validator_bindings(),
                 execution_type="manual",
                 expected_audit_id=derived_id,
-                expected_artifact_sha256=expected_artifact_sha256,
                 expected_artifact_id=expected_artifact_id,
                 expected_route=route_id,
                 report_text=visible_text,
@@ -1629,9 +1608,7 @@ def _execute_required_audits(
                         evidence_result.provenance,
                         execution_source=execution_source,
                         report_path=path,
-                        report_sha=expected_artifact_sha256,
                         pack_path=research_pack,
-                        pack_sha=expected_pack_sha256,
                     )
                 )
             if evidence_result.errors:
@@ -1744,7 +1721,6 @@ def _execute_opt_in_audits(
         # outer verdict layer as conditional-pass rather than silently
         # exempting it like the default-off path.
         warnings.append(f"[{audit_id}] {reason} (audit)")
-        report_hash = _sha256(path)
         evidence_provenance = [{
             "kind": "automated_validator",
             "audit_id": audit_id,
@@ -1752,14 +1728,12 @@ def _execute_opt_in_audits(
             "validator_binding": binding,
             "execution_source": "automated_validator",
             "target": str(path),
-            "input_sha256": report_hash,
             "validator_version": _registry_version(),
             # The bundle was structurally inspected, but no claim produced
             # executable support evidence, so this binding is not a Pass
-            # attestation. Consumers still need the binding to re-hash it.
+            # attestation.
             "verified": False,
             "claim_alignment_bundle": str(Path(claim_alignment_bundle).resolve()),
-            "claim_alignment_bundle_sha256": _sha256(claim_alignment_bundle),
         }]
     elif status == "fail":
         evidence = [str(e)[:200] for e in check.errors[:5]]
@@ -1768,7 +1742,6 @@ def _execute_opt_in_audits(
             f"{path}: claim-alignment bundle {claim_alignment_bundle} "
             f"validated by {binding}"
         ]
-        report_hash = _sha256(path)
         evidence_provenance = [{
             "kind": "automated_validator",
             "audit_id": audit_id,
@@ -1776,11 +1749,9 @@ def _execute_opt_in_audits(
             "validator_binding": binding,
             "execution_source": "automated_validator",
             "target": str(path),
-            "input_sha256": report_hash,
             "validator_version": _registry_version(),
             "verified": True,
             "claim_alignment_bundle": str(Path(claim_alignment_bundle).resolve()),
-            "claim_alignment_bundle_sha256": _sha256(claim_alignment_bundle),
         }]
     results.append(AuditResult(
         audit_id=audit_id,
@@ -1967,7 +1938,6 @@ def _verdict_to_json(verdict: AuditVerdict) -> str:
         "exit_code": verdict.exit_code,
         "blocking": verdict.blocking,
         "warnings": verdict.warnings,
-        "input_sha256": verdict.input_sha256,
         "validator_version": verdict.validator_version,
         "delivery": verdict.delivery,
         "validators": [
@@ -1980,7 +1950,6 @@ def _verdict_to_json(verdict: AuditVerdict) -> str:
                 "execution_source": v.execution_source,
                 "validator_version": v.validator_version,
                 "target": v.target,
-                "input_sha256": v.input_sha256,
                 "reason": v.reason,
             }
             for v in verdict.validator_results
@@ -2051,7 +2020,7 @@ def _audit_report_impl(
     -------
     AuditVerdict
         Consolidated verdict with blocking errors, warnings, and recommended
-        audit status.  Provenance (input sha256 / validator version) is
+        audit status.  Provenance (validator version / target path) is
         filled by the public audit_report() wrapper on every path.
     """
     delivery, delivery_errors = _load_delivery_result(delivery_result, path)
@@ -2188,26 +2157,24 @@ def _apply_run_state_delivery_guard(
 
 
 def _finalize_verdict(verdict: AuditVerdict, path: Path) -> AuditVerdict:
-    """Fill provenance (input sha256, validator version) on any verdict.
+    """Fill provenance (validator version) on any verdict.
 
     Runs on every return path of audit_report() — including early failures
     (missing route declaration, unknown route, registry drift) so JSON
-    consumers always get the artifact hash and validator version
-    (issue #378 acceptance 8).
+    consumers always get the validator version (issue #378 acceptance 8).
+    Issue #426: no input_sha256 byte binding; binding is by path/target.
     """
-    if verdict.input_sha256 is None:
-        verdict.input_sha256 = _sha256(path)
     if verdict.validator_version is None:
         verdict.validator_version = _registry_version()
-    # Propagate the shared validator version and artifact hash onto each
-    # route-level validator result so JSON carries per-validator provenance
-    # (issue #393) and each record is bound to the audited artifact
-    # (issue #402: target, input/artifact hash, version).
+    # Propagate the shared validator version onto each route-level validator
+    # result so JSON carries per-validator provenance (issue #393).
+    # Each record is bound to the audited artifact by target path
+    # (issue #402, #426: no hash).
     for validator in verdict.validator_results:
         if validator.validator_version is None:
             validator.validator_version = verdict.validator_version
-        if validator.input_sha256 is None:
-            validator.input_sha256 = verdict.input_sha256
+        if validator.target is None:
+            validator.target = str(path)
     return verdict
 
 
@@ -2333,7 +2300,7 @@ def main(argv: list[str] | None = None) -> int:
         default=False,
         help=(
             "Emit a machine-readable JSON verdict on stdout (route, audit id, "
-            "status, evidence, input sha256). The human-readable summary is "
+            "status, evidence, validator version). The human-readable summary is "
             "suppressed on stdout."
         ),
     )
