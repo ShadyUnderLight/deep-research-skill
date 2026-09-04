@@ -8,7 +8,6 @@ stay distinct from content failures.
 
 from __future__ import annotations
 
-import hashlib
 import json
 import math
 import re
@@ -16,8 +15,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-SCHEMA_VERSION = "1"
-VALIDATOR_VERSION = "claim-alignment-v2"
+SCHEMA_VERSION = "2"
+VALIDATOR_VERSION = "claim-alignment-v3"
 SCHEMA_PATH = Path(__file__).resolve().parents[1] / "schemas" / "claim-alignment-evidence.json"
 
 VERDICTS = frozenset(
@@ -54,7 +53,7 @@ BUNDLE_REQUIRED = frozenset(
 )
 
 PRODUCTION_BINDING_FIELDS = frozenset(
-    {"source_artifact_path", "source_artifact_sha256", "route_id"}
+    {"source_artifact_path", "route_id"}
 )
 
 ENTRY_REQUIRED = frozenset(
@@ -69,13 +68,12 @@ RECORD_REQUIRED = frozenset(
         "source_id",
         "locator",
         "retrieval_status",
-        "excerpt_hash",
         "evidence_role",
     }
 )
 
 SOURCE_REGISTER_REQUIRED = frozenset(
-    {"source_id", "source_artifact_path", "source_artifact_sha256"}
+    {"source_id", "source_artifact_path"}
 )
 
 _HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*$")
@@ -83,12 +81,15 @@ _HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*$")
 
 @dataclass(frozen=True)
 class ResolvedSource:
-    """Resolved source_register entry: artifact bytes and text on disk."""
+    """Resolved source_register entry: artifact text on disk (issue #427).
+
+    No byte-identity hash is stored or compared: the excerpt/source text is
+    read directly for locator, scope, and semantic judging.
+    """
 
     source_id: str
     path: Path
     text: str
-    sha256_hex: str
 
 
 @dataclass(frozen=True)
@@ -191,15 +192,6 @@ class BundleReport:
         if "NOT_RUN" in verdicts:
             return "not_run"
         return "conditional-pass"
-
-
-def excerpt_sha256(text: str) -> str:
-    digest = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    return f"sha256:{digest}"
-
-
-def artifact_sha256(path: Path) -> str:
-    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _resolve_repo_path(path_value: str, base_dir: Path) -> Path | None:
@@ -360,16 +352,10 @@ def build_resolved_source_register(
         if not isinstance(source_id, str) or not source_id.strip():
             continue
         src_path = source.get("source_artifact_path")
-        src_hash = source.get("source_artifact_sha256")
         if not isinstance(src_path, str) or not src_path.strip():
             continue
         path = _resolve_repo_path(src_path, root)
         if path is None:
-            continue
-        if not isinstance(src_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", src_hash):
-            continue
-        actual_hash = artifact_sha256(path)
-        if src_hash != actual_hash:
             continue
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
@@ -380,45 +366,30 @@ def build_resolved_source_register(
             source_id=source_id,
             path=path,
             text=text,
-            sha256_hex=actual_hash,
         )
     return resolved, errors
 
 
-def _excerpt_digest_hex(excerpt_hash: str | None) -> str | None:
-    if not isinstance(excerpt_hash, str):
-        return None
-    if excerpt_hash.startswith("sha256:"):
-        digest = excerpt_hash[7:]
-    else:
-        digest = excerpt_hash
-    if not re.fullmatch(r"[0-9a-f]{64}", digest):
-        return None
-    return digest
-
-
 def _excerpt_bound_to_source(
     excerpt: str,
-    excerpt_hash: str | None,
     source: ResolvedSource,
 ) -> bool:
-    excerpt_digest = _excerpt_digest_hex(excerpt_hash)
-    if excerpt_digest is None:
-        return False
-    if excerpt_digest == source.sha256_hex:
-        return True
+    """Issue #427: excerpt binds by text presence, never by digest equality.
+
+    An empty excerpt never binds: it must not gain support from an
+    empty-file digest match.
+    """
     if not excerpt.strip():
-        return excerpt_digest == source.sha256_hex
+        return False
     return excerpt in source.text or excerpt.casefold() in source.text.casefold()
 
 
 def _validate_excerpt_source_binding(
     excerpt: str,
-    excerpt_hash: str | None,
     source: ResolvedSource,
     prefix: str,
 ) -> list[str]:
-    if _excerpt_bound_to_source(excerpt, excerpt_hash, source):
+    if _excerpt_bound_to_source(excerpt, source):
         return []
     return [
         f"{prefix}: excerpt not bound to source artifact {source.source_id!r} "
@@ -464,16 +435,6 @@ def validate_bundle_structure(
                 f"source_artifact_path mismatch: bundle declares {declared_path!r}, "
                 f"expected {artifact_path!r}"
             )
-        declared_hash = data.get("source_artifact_sha256")
-        if not isinstance(declared_hash, str) or not re.fullmatch(r"[0-9a-f]{64}", declared_hash):
-            errors.append("source_artifact_sha256 must be a 64-char hex digest")
-        else:
-            actual_hash = artifact_sha256(artifact_path)
-            if declared_hash != actual_hash:
-                errors.append(
-                    f"source_artifact_sha256 mismatch: bundle declares {declared_hash}, "
-                    f"artifact bytes hash {actual_hash}"
-                )
         if binding.expected_route:
             route_id = data.get("route_id")
             if not isinstance(route_id, str) or not route_id.strip():
@@ -505,17 +466,14 @@ def validate_bundle_structure(
                 errors.append(f"{prefix}: duplicate source_id {source_id}")
             register_ids.add(source_id)
         src_path = source.get("source_artifact_path")
-        src_hash = source.get("source_artifact_sha256")
-        if isinstance(src_path, str) and src_path.strip():
+        if not isinstance(src_path, str) or not src_path.strip():
+            errors.append(
+                f"{prefix}: source_artifact_path must be a non-empty path"
+            )
+        else:
             resolved = _resolve_repo_path(src_path, root)
             if resolved is None:
                 errors.append(f"{prefix}: source artifact not found: {src_path}")
-            elif isinstance(src_hash, str) and re.fullmatch(r"[0-9a-f]{64}", src_hash):
-                actual = artifact_sha256(resolved)
-                if src_hash != actual:
-                    errors.append(
-                        f"{prefix}: source_artifact_sha256 mismatch for {src_path}"
-                    )
 
     resolved_sources, resolve_errors = build_resolved_source_register(
         register if isinstance(register, list) else [], root
@@ -567,17 +525,21 @@ def validate_bundle_structure(
                     f"not found in source_register"
                 )
             elif source_id in resolved_sources and record.get("retrieval_status") == "fetched":
+                # Issue #427: text-presence binding for non-empty excerpts only.
+                # An empty fetched excerpt is a judgment-level UNSUPPORTED
+                # (see judge_entry), not a structural error, so calibration
+                # entries with empty excerpts still produce verdicts.
                 excerpt = entry.get("excerpt")
                 if not isinstance(excerpt, str):
                     excerpt = ""
-                errors.extend(
-                    _validate_excerpt_source_binding(
-                        excerpt,
-                        record.get("excerpt_hash"),
-                        resolved_sources[source_id],
-                        prefix,
+                if excerpt.strip():
+                    errors.extend(
+                        _validate_excerpt_source_binding(
+                            excerpt,
+                            resolved_sources[source_id],
+                            prefix,
+                        )
                     )
-                )
         else:
             errors.append(f"{prefix}: evidence_record must be an object")
         candidates = entry.get("subclaim_candidates")
@@ -624,11 +586,6 @@ def _validate_evidence_record(record: dict[str, Any], prefix: str) -> list[str]:
     role = record.get("evidence_role")
     if role not in EVIDENCE_ROLES:
         errors.append(f"{prefix}.evidence_record.evidence_role invalid: {role!r}")
-    excerpt_hash = record.get("excerpt_hash")
-    if isinstance(excerpt_hash, str) and not re.fullmatch(
-        r"sha256:[0-9a-f]{64}", excerpt_hash
-    ):
-        errors.append(f"{prefix}.evidence_record.excerpt_hash must match sha256:<hex>")
     source_id = record.get("source_id")
     if not isinstance(source_id, str) or not source_id.strip():
         errors.append(f"{prefix}.evidence_record.source_id must be a non-empty string")
@@ -934,12 +891,14 @@ def judge_entry(
         return EntryJudgment(claim_id=claim_id, verdict="RETRIEVAL_FAILED")
 
     if retrieval_status == "fetched":
-        expected_hash = record.get("excerpt_hash")
-        actual_hash = excerpt_sha256(excerpt)
-        if expected_hash != actual_hash:
+        # Issue #427: no digest comparison. A fetched entry is judged by
+        # whether the excerpt is non-empty and actually appears in the
+        # source text / locator scope. An empty excerpt can never support —
+        # it must not pass on an empty-file digest match.
+        if not excerpt.strip():
             errors.append(
-                f"excerpt_hash mismatch for {claim_id}: record binds {expected_hash!r}, "
-                f"excerpt bytes hash {actual_hash!r}"
+                f"empty excerpt cannot support {claim_id}: "
+                "fetched evidence requires non-empty excerpt text"
             )
             return EntryJudgment(
                 claim_id=claim_id,
@@ -947,7 +906,7 @@ def judge_entry(
                 errors=errors,
             )
         if resolved_source is not None:
-            if not _excerpt_bound_to_source(excerpt, expected_hash, resolved_source):
+            if not _excerpt_bound_to_source(excerpt, resolved_source):
                 errors.append(
                     f"excerpt not bound to source artifact {source_id!r} "
                     f"({resolved_source.path})"

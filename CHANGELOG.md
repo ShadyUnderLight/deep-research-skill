@@ -25,6 +25,7 @@ This file is intentionally lightweight. Use concise entries that explain:
 - `checklists/final-audit.md`, `scripts/validate_figure_references.py` docstring (#394): figure validation is documented as an **independent advisory check** — it is NOT part of the unified `audit_report.py` audit registry, so `audit_report.py --strict` does not cover figure references and the validator must be run separately.
 
 ### Changed
+- `schemas/claim-alignment-evidence.json` / `scripts/claim_alignment.py` (#427): removed the source/excerpt/bundle SHA-256 byte-identity binding (`source_artifact_sha256`, `excerpt_hash`, and all digest generation/comparison); bundles now bind by `source_artifact_path` + `route_id`, and `fetched` excerpts are judged by non-emptiness plus presence in the source text / locator scope. Breaking revision: bundle `schema_version` `1`→`2` (unified single version expression), evaluator `claim-alignment-v2`→`v3`; old hash-bearing bundles fail closed via unknown-field + version gates, with no migration/fallback. The accepted capability loss (no byte-level tamper/replay proof) is intentional; locator, visible-Markdown scope, direction/negation/year/percentage, and calibration gold-set isolation are unchanged.
 - `scripts/validate_figure_references.py` (#394): `_mermaid_spans` replaced by `_mermaid_fences` returning explicit per-block state; only closed blocks become figure entities; invalid block content is blanked before reference/caption collection.
 
 ### Fixed

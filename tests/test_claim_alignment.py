@@ -95,9 +95,9 @@ class TestProductionBindingFailClosed:
         )
         assert any("source_artifact_path" in err for err in errors)
 
-    def test_report_hash_mismatch_fails(self) -> None:
+    def test_report_path_mismatch_fails(self) -> None:
         data = json.loads((FIXTURES / "valid.json").read_text())
-        data["source_artifact_sha256"] = "0000000000000000000000000000000000000000000000000000000000000000"
+        data["source_artifact_path"] = "tests/fixtures/audit/other-report.md"
         errors = validate_bundle_structure(
             data,
             binding=BindingContext(
@@ -106,7 +106,30 @@ class TestProductionBindingFailClosed:
                 require_production_bindings=True,
             ),
         )
-        assert any("source_artifact_sha256 mismatch" in err for err in errors)
+        assert any("source_artifact_path mismatch" in err for err in errors)
+
+    def test_legacy_hash_bearing_bundle_rejected(self) -> None:
+        # Issue #427: a fully valid pre-revision bundle (correct hashes, old
+        # schema_version) must fail closed under the new contract — unknown
+        # hash fields + stale schema_version — never be silently accepted.
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["schema_version"] = "1"
+        data["source_artifact_sha256"] = (
+            "cf7d832cea3d698a90eb72ebe43ea080ef13d60e09ed197951c1463c1840a283"
+        )
+        data["source_register"][0]["source_artifact_sha256"] = (
+            "5d09c917aedf10633d7bc83b18afaf53dd548659aae27fb50211dc073fbc4b66"
+        )
+        data["entries"][0]["evidence_record"]["excerpt_hash"] = (
+            "sha256:5d09c917aedf10633d7bc83b18afaf53dd548659aae27fb50211dc073fbc4b66"
+        )
+        errors = validate_bundle_structure(data)
+        assert errors
+        assert any("schema_version" in err for err in errors) or any(
+            "unknown fields" in err for err in errors
+        )
+        report = run_bundle(data)
+        assert report.structural_errors
 
     def test_route_mismatch_fails_in_production_path(self) -> None:
         data = json.loads((FIXTURES / "route-mismatch.json").read_text())
@@ -137,6 +160,19 @@ class TestProductionBindingFailClosed:
         data = json.loads((FIXTURES / "claim-id-mismatch.json").read_text())
         errors = validate_bundle_structure(data)
         assert any("claim_id" in err for err in errors)
+
+    def test_blank_source_artifact_path_fails_closed(self) -> None:
+        # P2 (PR #430 review): a whitespace-only register path must be a
+        # structural error — otherwise no source ever resolves yet the entry
+        # can still reach the semantic judge and yield SUPPORTED.
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["source_register"][0]["source_artifact_path"] = "   "
+        report = run_bundle(data)
+        assert report.structural_errors
+        assert not report.judgments
+        assert any(
+            "source_artifact_path" in err for err in report.structural_errors
+        )
 
     def test_unbound_bundle_fails_against_report(self) -> None:
         bare = {
@@ -182,7 +218,6 @@ class TestVerdictSemantics:
                 "source_id": "S01",
                 "locator": {"kind": "quote", "value": "A"},
                 "retrieval_status": "fetched",
-                "excerpt_hash": "sha256:112fb46a9479574d2a180970f5e456ce91c9dc3da9e76003dfc6853eaa7091df",
                 "evidence_role": "primary",
             },
             "excerpt": "A only",
@@ -209,11 +244,24 @@ class TestVerdictSemantics:
         assert report.judgments[0].verdict == "AMBIGUOUS"
         assert report.aggregate_verdict == "conditional-pass"
 
-    def test_hash_mismatch_fail_closed(self) -> None:
+    def test_unresolvable_quote_locator_fails_closed(self) -> None:
+        # Issue #427: C08 no longer carries an excerpt_hash; its quote locator
+        # does not resolve in the source artifact, so it stays UNSUPPORTED via
+        # locator scope — not via a hash mismatch.
         report = load_and_run_bundle(FIXTURES / "calibration-bundle.json")
         bad = next(j for j in report.judgments if j.claim_id == "C08")
         assert bad.verdict == "UNSUPPORTED"
-        assert bad.errors
+        assert any("did not resolve" in err for err in bad.errors)
+
+    def test_empty_fetched_excerpt_is_unsupported(self) -> None:
+        # Issue #427: a fetched empty excerpt must not gain support from
+        # digest equality (e.g. empty-file sha256 match); it is UNSUPPORTED.
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["entries"][0]["excerpt"] = ""
+        report = run_bundle(data)
+        assert not report.structural_errors
+        assert report.judgments[0].verdict == "UNSUPPORTED"
+        assert any("excerpt" in err for err in report.judgments[0].errors)
 
     def test_hidden_markdown_section_locator_fails(self) -> None:
         report = load_and_run_bundle(FIXTURES / "calibration-bundle.json")
@@ -243,7 +291,6 @@ class TestAggregateVerdict:
                     "source_id": "S01",
                     "locator": {"kind": "quote", "value": "pending"},
                     "retrieval_status": "not_run",
-                    "excerpt_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
                     "evidence_role": "unknown",
                 },
                 "excerpt": "",
@@ -327,10 +374,7 @@ class TestLexicalJudgeAndProductionBundle:
         assert report.judgments[0].verdict == "UNSUPPORTED"
 
     def test_cjk_negation_conflict_not_supported(self) -> None:
-        import hashlib
-
         data = json.loads((FIXTURES / "valid.json").read_text())
-        src = ROOT / "tests/fixtures/claim-alignment/sources/cjk-growth-source.txt"
         excerpt = "收入增长"
         data["source_register"] = [
             {
@@ -338,7 +382,6 @@ class TestLexicalJudgeAndProductionBundle:
                 "source_artifact_path": (
                     "tests/fixtures/claim-alignment/sources/cjk-growth-source.txt"
                 ),
-                "source_artifact_sha256": hashlib.sha256(src.read_bytes()).hexdigest(),
             }
         ]
         data["entries"][0]["claim_text"] = "收入没有增长"
@@ -349,54 +392,37 @@ class TestLexicalJudgeAndProductionBundle:
             "value": "收入增长",
         }
         data["entries"][0]["excerpt"] = excerpt
-        data["entries"][0]["evidence_record"]["excerpt_hash"] = (
-            f"sha256:{hashlib.sha256(excerpt.encode()).hexdigest()}"
-        )
         report = run_bundle(data)
         assert report.judgments[0].verdict == "UNSUPPORTED"
 
     def test_year_mismatch_not_supported(self) -> None:
-        import hashlib
-
         data = json.loads((FIXTURES / "valid.json").read_text())
-        src = ROOT / "tests/fixtures/claim-alignment/sources/year-mismatch-source.txt"
         data["source_register"] = [
             {
                 "source_id": "S01",
                 "source_artifact_path": (
                     "tests/fixtures/claim-alignment/sources/year-mismatch-source.txt"
                 ),
-                "source_artifact_sha256": hashlib.sha256(src.read_bytes()).hexdigest(),
             }
         ]
         excerpt = "Revenue grew 15% in FY2025."
         data["entries"][0]["claim_text"] = "Revenue grew 15% in FY2024"
         data["entries"][0]["excerpt"] = excerpt
-        data["entries"][0]["evidence_record"]["excerpt_hash"] = (
-            f"sha256:{hashlib.sha256(excerpt.encode()).hexdigest()}"
-        )
         report = run_bundle(data)
         assert report.judgments[0].verdict == "UNSUPPORTED"
 
     def test_hidden_quote_in_fence_not_supported(self) -> None:
-        import hashlib
-
         data = json.loads((FIXTURES / "valid.json").read_text())
-        src = ROOT / "tests/fixtures/claim-alignment/sources/hidden-quote-source.txt"
         data["source_register"] = [
             {
                 "source_id": "S01",
                 "source_artifact_path": (
                     "tests/fixtures/claim-alignment/sources/hidden-quote-source.txt"
                 ),
-                "source_artifact_sha256": hashlib.sha256(src.read_bytes()).hexdigest(),
             }
         ]
         excerpt = "revenue increased 15%"
         data["entries"][0]["excerpt"] = excerpt
-        data["entries"][0]["evidence_record"]["excerpt_hash"] = (
-            f"sha256:{hashlib.sha256(excerpt.encode()).hexdigest()}"
-        )
         report = run_bundle(data)
         assert report.judgments[0].verdict == "UNSUPPORTED"
 
