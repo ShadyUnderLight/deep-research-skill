@@ -407,6 +407,34 @@ def _validate_audit_record(
             )
         )
 
+    removed_hash_locations: list[str] = []
+    if isinstance(payload, dict):
+        envelope_hash_fields = sorted(
+            REMOVED_AUDIT_RECORD_HASH_FIELDS & set(payload)
+        )
+        if envelope_hash_fields:
+            removed_hash_locations.append(
+                "envelope: " + ", ".join(envelope_hash_fields)
+            )
+    for index, record in enumerate(records):
+        if not isinstance(record, dict):
+            continue
+        record_hash_fields = sorted(
+            REMOVED_AUDIT_RECORD_HASH_FIELDS & set(record)
+        )
+        if record_hash_fields:
+            removed_hash_locations.append(
+                f"records[{index}]: " + ", ".join(record_hash_fields)
+            )
+    if removed_hash_locations:
+        return EvidenceValidation(
+            provenance={**provenance, "verified": False},
+            errors=(
+                "audit record payload carries removed hash field(s): "
+                + "; ".join(removed_hash_locations),
+            ),
+        )
+
     def _parse_timestamp(value: object) -> datetime | None:
         if not isinstance(value, str):
             return None
@@ -452,18 +480,6 @@ def _validate_audit_record(
             ),
         )
     matching_record = matching_records[0]
-
-    removed_hash_fields = sorted(
-        REMOVED_AUDIT_RECORD_HASH_FIELDS & set(matching_record)
-    )
-    if removed_hash_fields:
-        return EvidenceValidation(
-            provenance={**provenance, "verified": False},
-            errors=(
-                "audit record carries removed hash field(s): "
-                + ", ".join(removed_hash_fields),
-            ),
-        )
 
     # Strict artifact / audit binding (issue #401): an audit-record must be
     # provably bound to the current artifact, audit, execution state, and evidence.

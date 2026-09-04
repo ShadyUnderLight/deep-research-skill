@@ -27,6 +27,14 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "audit_report.py"
 POS = ROOT / "tests" / "fixtures" / "audit" / "market-outlook-pos.md"
 PACK = ROOT / "tests" / "fixtures" / "audit" / "research-pack-pos.md"
+REMOVED_AUDIT_RECORD_HASH_FIELDS = (
+    "input_sha256",
+    "artifact_sha256",
+    "artifact_hash",
+    "sha256",
+    "record_artifact_sha256",
+    "claim_alignment_bundle_sha256",
+)
 
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -198,14 +206,7 @@ def test_valid_audit_record_with_binding_passes(tmp_path: Path) -> None:
 
 @pytest.mark.parametrize(
     "field",
-    [
-        "input_sha256",
-        "artifact_sha256",
-        "artifact_hash",
-        "sha256",
-        "record_artifact_sha256",
-        "claim_alignment_bundle_sha256",
-    ],
+    REMOVED_AUDIT_RECORD_HASH_FIELDS,
 )
 def test_audit_record_removed_hash_field_cannot_pass(
     tmp_path: Path, field: str
@@ -243,6 +244,50 @@ def test_audit_record_removed_hash_field_cannot_pass(
         assert proc.returncode == 2, proc.stdout
         data = json.loads(proc.stdout)
         assert any("removed hash field" in error for error in data["blocking"])
+    finally:
+        shutil.rmtree(record_dir, ignore_errors=True)
+
+
+@pytest.mark.parametrize("field", REMOVED_AUDIT_RECORD_HASH_FIELDS)
+def test_audit_record_envelope_removed_hash_field_cannot_pass(
+    tmp_path: Path, field: str
+) -> None:
+    """Removed hash fields on a records envelope must fail closed."""
+    record_dir = _make_record_dir()
+    try:
+        content = POS.read_text(encoding="utf-8")
+        report_tmp = tmp_path / "report.md"
+        ts = "2026-08-18T10:00:00Z"
+        record = {
+            "record_id": "r1",
+            "recorded_at": ts,
+            "audit_id": "market-outlook-audit",
+            "status": "passed",
+            "artifact_id": "fixture-market-outlook-pos",
+            "executed_at": ts,
+            "execution_source": "manual_checklist_attestation",
+            "evidence": "report-section:Monitoring signals",
+            "route": "market-outlook",
+        }
+        rec_payload = {"records": [record], field: "0" * 64}
+        rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
+        locator = f"audit-record:{rel}#r1@{ts}"
+        placeholder = content.replace(
+            "report-section:Monitoring signals", locator, 1
+        )
+        placeholder = placeholder.replace(
+            '"evidence": "report-section:Monitoring signals"',
+            f'"evidence": "{locator}"',
+            1,
+        )
+        report_tmp.write_text(placeholder, encoding="utf-8")
+        proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
+        assert proc.returncode == 2, proc.stdout
+        data = json.loads(proc.stdout)
+        assert data["overall"] != "pass"
+        assert any("removed hash field" in error for error in data["blocking"])
+        assert any("envelope" in error for error in data["blocking"])
+        assert rec_path.is_file()
     finally:
         shutil.rmtree(record_dir, ignore_errors=True)
 

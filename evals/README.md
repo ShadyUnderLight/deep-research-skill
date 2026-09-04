@@ -127,8 +127,8 @@ production audit still returns Pass and must be `0.0`; and
 the evaluator. `negative_case_contract_pass_rate` is the positive rate at which
 all negative cases match their declared failure shape. `pack_completeness`,
 `declared_not_executed_rate`, and `declared_not_executed_recall` retain their
-existing denominators. The prompt SHA is fixture identity only, not route or
-agent accuracy.
+existing denominators. The natural-language prompt is fixture input only; route
+resolution and agent accuracy use the structured case contract and its outputs.
 
 ## What not to put here
 
