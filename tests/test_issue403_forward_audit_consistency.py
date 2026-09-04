@@ -151,6 +151,30 @@ def test_audits_ok_rejects_legacy_provenance_hash_fields() -> None:
     assert any("removed v1 hash" in e for e in errors), errors
 
 
+def test_audits_ok_rejects_legacy_hash_on_unverified_provenance() -> None:
+    """A legacy hash binding on an unverified provenance record must still
+    fail closed — the scan covers the whole evidence_provenance[] list, not
+    just verified records (issue #426)."""
+    case, data = _real_audit_for(POSITIVE_CASE_ID)
+    expected = _expected_for(case)
+    tampered = copy.deepcopy(data)
+    target = next(
+        a
+        for a in tampered["audits"]
+        if isinstance(a.get("evidence_provenance"), list)
+        and a["evidence_provenance"]
+    )
+    target["evidence_provenance"].append({
+        "verified": False,
+        "input_sha256": "0" * 64,
+    })
+    ok, errors = run_forward_evals._audit_consistency_details(
+        tampered, expected
+    )
+    assert ok is False
+    assert any("removed v1 hash" in e for e in errors), errors
+
+
 def test_validators_ok_rejects_legacy_hash_fields() -> None:
     """A v2 validators[] entry still carrying removed hash bindings must fail
     closed (issue #426)."""

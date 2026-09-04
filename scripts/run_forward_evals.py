@@ -597,6 +597,16 @@ def _audit_consistency_details(
                 if not isinstance(p, dict):
                     errors.append(f"{prefix} evidence_provenance[{idx}] must be object")
                     break
+                # Half-migrated v1 records still carrying removed hash bindings
+                # fail closed regardless of verified status or audit status
+                # (issue #426: breaking cleanup, no fallback).
+                legacy_prov = _legacy_hash_fields_present(p)
+                if legacy_prov:
+                    errors.append(
+                        f"{prefix} evidence_provenance[{idx}] carries "
+                        "removed v1 hash field(s): " + ", ".join(legacy_prov)
+                    )
+                    break
         # Per-status semantics
         if status == "pass":
             if errs or warns:
