@@ -161,6 +161,19 @@ class TestProductionBindingFailClosed:
         errors = validate_bundle_structure(data)
         assert any("claim_id" in err for err in errors)
 
+    def test_blank_source_artifact_path_fails_closed(self) -> None:
+        # P2 (PR #430 review): a whitespace-only register path must be a
+        # structural error — otherwise no source ever resolves yet the entry
+        # can still reach the semantic judge and yield SUPPORTED.
+        data = json.loads((FIXTURES / "valid.json").read_text())
+        data["source_register"][0]["source_artifact_path"] = "   "
+        report = run_bundle(data)
+        assert report.structural_errors
+        assert not report.judgments
+        assert any(
+            "source_artifact_path" in err for err in report.structural_errors
+        )
+
     def test_unbound_bundle_fails_against_report(self) -> None:
         bare = {
             "schema_version": "1",

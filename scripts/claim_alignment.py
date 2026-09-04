@@ -466,7 +466,11 @@ def validate_bundle_structure(
                 errors.append(f"{prefix}: duplicate source_id {source_id}")
             register_ids.add(source_id)
         src_path = source.get("source_artifact_path")
-        if isinstance(src_path, str) and src_path.strip():
+        if not isinstance(src_path, str) or not src_path.strip():
+            errors.append(
+                f"{prefix}: source_artifact_path must be a non-empty path"
+            )
+        else:
             resolved = _resolve_repo_path(src_path, root)
             if resolved is None:
                 errors.append(f"{prefix}: source artifact not found: {src_path}")
