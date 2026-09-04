@@ -2,7 +2,7 @@
   "schema_version": "2",
   "bundle_id": "claim-alignment-excerpt-not-from-source",
   "audited_population": "adversarial excerpt binding",
-  "sampling_rule": "excerpt hash self-consistent but not from registered source artifact",
+  "sampling_rule": "excerpt text is not present in the registered source artifact",
   "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
   "route_id": "market-outlook",
   "source_register": [

@@ -1,1 +1,1 @@
-Wrong artifact excerpt for hash binding test.
+Wrong artifact excerpt for source text binding test.

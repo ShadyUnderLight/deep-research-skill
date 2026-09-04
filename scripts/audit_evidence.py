@@ -53,6 +53,20 @@ _ITEM_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 _RECORD_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]*$")
 _HEADING_RE = re.compile(r"^(#{1,6})[ \t]+(.+?)[ \t]*$")
 
+# Removed audit-record byte-identity fields. New audit records bind through
+# artifact_id, route, audit identity, execution state, and visible evidence;
+# an old record carrying one of these fields must not be silently consumed.
+REMOVED_AUDIT_RECORD_HASH_FIELDS = frozenset(
+    {
+        "input_sha256",
+        "artifact_sha256",
+        "artifact_hash",
+        "sha256",
+        "record_artifact_sha256",
+        "claim_alignment_bundle_sha256",
+    }
+)
+
 
 @dataclass(frozen=True)
 class EvidenceValidation:
@@ -438,6 +452,18 @@ def _validate_audit_record(
             ),
         )
     matching_record = matching_records[0]
+
+    removed_hash_fields = sorted(
+        REMOVED_AUDIT_RECORD_HASH_FIELDS & set(matching_record)
+    )
+    if removed_hash_fields:
+        return EvidenceValidation(
+            provenance={**provenance, "verified": False},
+            errors=(
+                "audit record carries removed hash field(s): "
+                + ", ".join(removed_hash_fields),
+            ),
+        )
 
     # Strict artifact / audit binding (issue #401): an audit-record must be
     # provably bound to the current artifact, audit, execution state, and evidence.

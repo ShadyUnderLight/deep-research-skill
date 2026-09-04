@@ -100,7 +100,7 @@ python3 scripts/run_forward_evals.py --offline --check-baseline
 ```
 
 The runner binds each prompt to canonical `action_burden`,
-`weight_bearing_object`, secondary-route and prompt-hash fields, resolves that
+`weight_bearing_object`, and secondary-route fields, resolves that
 structured activation through the route-selection decision tree, then replays
 local report and Research Pack snapshots. Integration cases additionally pass
 the canonical activation snapshot to `scripts/audit_report.py`; a mismatch

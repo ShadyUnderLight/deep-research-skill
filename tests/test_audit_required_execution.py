@@ -11,7 +11,7 @@ Verifies that:
 4. Strict mode fails when route / contract / pack declarations are missing —
    no silent fallback to technical-deep-dive.
 5. ``--json`` emits a machine-readable verdict with audit id, status,
-   evidence, validator version and input artifact hash.
+   evidence, validator version and target path.
 6. Markdown delivery, Research Pack (when provided) and route-specific
    audits run in a single command.
 """
@@ -633,7 +633,7 @@ class TestJsonOutput:
                 assert str(path) in audit["evidence"][0], audit
 
     def test_early_failure_json_has_provenance(self) -> None:
-        """Even early-failure verdicts must carry input hash + version."""
+        """Even early-failure verdicts must carry target provenance + version."""
         report = (
             "# Test Report\n\n"
             "## Findings\n\nBody [S01].\n\n"

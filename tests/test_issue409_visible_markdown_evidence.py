@@ -14,7 +14,6 @@ This file covers:
 - pack-section / pack-table symmetry
 - diagnostics contain "not found in the visible report/pack"
 - checklist markers hidden in fences → fail, visible → pass
-- artifact hash stays bound to raw bytes
 - producer / consumer parity (same visible sanitizer)
 """
 
@@ -24,7 +23,6 @@ from __future__ import annotations
 # ruff: noqa: E402
 
 import copy
-import hashlib
 import json
 import sys
 from pathlib import Path
@@ -103,7 +101,6 @@ def _minimal_overall(pass_audit: dict) -> dict:
         "audits": [pass_audit],
         "validators": [],
         "blocking": [],
-        "input_sha256": None,
     }
 
 
@@ -949,7 +946,7 @@ def test_evaluate_case_wiring_rejects_hidden_report_section_e2e(tmp_path, monkey
     base_case = next(c for c in registry["cases"] if c["id"] == "forward-provider-selection")
     case = copy.deepcopy(base_case)
     # Absolute tmp paths: ROOT / absolute == absolute, so _evaluate_case will
-    # compute hashes from the tmp files and sanitize their contents.
+    # bind the synthetic artifacts by path and sanitize their contents.
     case["fixtures"]["report"] = str(report)
     case["fixtures"]["research_pack"] = str(pack)
 
@@ -1001,8 +998,6 @@ def test_evaluate_case_wiring_rejects_hidden_report_section_e2e(tmp_path, monkey
     assert result["passed"] is False
     assert result["checks"]["audits_consistent"] is False
     assert any("not found in the visible report" in e.lower() for e in result["checks"]["audit_consistency_errors"]), result["checks"]["audit_consistency_errors"]
-    # Hash must stay raw — the computed hash is the raw file hash, not the sanitized one
-    assert hashlib.sha256(report.read_bytes()).hexdigest() != hashlib.sha256(sanitize_visible_markdown(REPORT_WITH_HIDDEN_ONLY).encode()).hexdigest()
 
 
 def test_evaluate_case_wiring_rejects_hidden_tilde_and_html_e2e(tmp_path, monkeypatch):
@@ -1051,7 +1046,6 @@ def test_evaluate_case_wiring_rejects_hidden_tilde_and_html_e2e(tmp_path, monkey
                 for p in a.get("evidence_provenance", []):
                     if p.get("target") == str(real_report):
                         p["target"] = str(report)
-    
         def fake_run(rp, pp, activation_snapshot=None, _tampered=tampered):
             return _tampered, None, 0
 

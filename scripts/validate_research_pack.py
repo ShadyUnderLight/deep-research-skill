@@ -535,8 +535,8 @@ def run_strict_checks(
         errors.extend(run_state_issues)
         if ref is not None:
             errors.append(
-                "Run state section is present but cannot be hashed without "
-                "a pack file path"
+                "Run state section is present but its sidecar cannot be "
+                "validated without a pack file path"
             )
 
     result: list[str] = []
