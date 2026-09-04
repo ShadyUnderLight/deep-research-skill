@@ -1,17 +1,15 @@
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "bundle_id": "claim-alignment-route-mismatch",
   "fixture_version": "claim-alignment-calibration-v1",
   "audited_population": "route binding adversarial fixture",
   "sampling_rule": "single entry",
   "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
-  "source_artifact_sha256": "cf7d832cea3d698a90eb72ebe43ea080ef13d60e09ed197951c1463c1840a283",
   "route_id": "technical-deep-dive",
   "source_register": [
     {
       "source_id": "S11",
       "source_artifact_path": "tests/fixtures/claim-alignment/sources/s11-excerpt.txt",
-      "source_artifact_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
       "title": "Source S11",
       "url": "https://example.com/s11"
     }
@@ -28,7 +26,6 @@
           "value": "scenario weights"
         },
         "retrieval_status": "fetched",
-        "excerpt_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "evidence_role": "secondary"
       },
       "excerpt": ""

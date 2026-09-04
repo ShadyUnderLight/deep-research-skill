@@ -1,16 +1,14 @@
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "bundle_id": "claim-alignment-excerpt-not-from-source",
   "audited_population": "adversarial excerpt binding",
   "sampling_rule": "excerpt hash self-consistent but not from registered source artifact",
   "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
-  "source_artifact_sha256": "cf7d832cea3d698a90eb72ebe43ea080ef13d60e09ed197951c1463c1840a283",
   "route_id": "market-outlook",
   "source_register": [
     {
       "source_id": "S01",
       "source_artifact_path": "tests/fixtures/claim-alignment/sources/s01-excerpt.txt",
-      "source_artifact_sha256": "5d09c917aedf10633d7bc83b18afaf53dd548659aae27fb50211dc073fbc4b66",
       "title": "FY2025 filing excerpt",
       "url": "https://example.com/filing"
     }
@@ -27,7 +25,6 @@
           "value": "Revenue fell 20%"
         },
         "retrieval_status": "fetched",
-        "excerpt_hash": "sha256:cf395e72e85e192a72d2824582eb129f32771d1af5dabe1dd92ed9a13e6925c6",
         "evidence_role": "primary"
       },
       "excerpt": "Revenue fell 20% in the fiscal year."

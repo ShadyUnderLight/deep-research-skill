@@ -8,7 +8,7 @@ This audit checks whether **locator-bound excerpts** support specific claims —
 
 **In scope**
 
-- machine-readable evidence records bind `claim_id`, `source_id`, locator, retrieval status, excerpt hash, and evidence role
+- machine-readable evidence records bind `claim_id`, `source_id`, locator, retrieval status, and evidence role (issue #427: no `excerpt_hash` / byte-identity binding)
 - bounded verdicts: `SUPPORTED`, `PARTIAL`, `UNSUPPORTED`, `AMBIGUOUS`, `RETRIEVAL_FAILED`, `NOT_RUN`
 - offline rule-based evaluator + calibration gold set (CI only)
 
@@ -23,7 +23,7 @@ This audit checks whether **locator-bound excerpts** support specific claims —
 
 - Do **not** enable this audit in routine delivery unless calibration has passed and the task carries an alignment bundle.
 - Calibration passing **does not** mean production semantic correctness — only that the offline evaluator matches the gold set under declared thresholds.
-- Re-evaluate default-off when: fixture coverage is stable, artifact/hash binding is proven in production paths, and per-class FNR/FPR meet thresholds on an updated gold set.
+- Re-evaluate default-off when: fixture coverage is stable, path/route binding is proven in production paths, and per-class FNR/FPR meet thresholds on an updated gold set.
 
 ## Verdict discipline
 
@@ -35,10 +35,10 @@ This audit checks whether **locator-bound excerpts** support specific claims —
 ## Structural binding
 
 - [ ] every evidence record binds the correct `claim_id` and `source_id`
-- [ ] `excerpt_hash` matches the retrieved excerpt bytes when `retrieval_status: fetched`
+- [ ] a `fetched` excerpt is non-empty and appears in the source artifact text (empty excerpts never support)
 - [ ] section locators resolve against **visible** Markdown (hidden fence/HTML locators fail closed)
-- [ ] route / artifact hash mismatches fail closed when bindings are declared
-- [ ] an enabled audit result records and downstream consumers re-hash the exact claim-alignment bundle; changing that bundle invalidates the result
+- [ ] route / path mismatches fail closed when bindings are declared
+- [ ] an enabled audit result records the exact claim-alignment bundle path and downstream consumers re-check that path binding (issue #426: path binding, no bundle re-hash)
 
 ## Calibration (maintainers)
 

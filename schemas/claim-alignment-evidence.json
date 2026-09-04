@@ -2,9 +2,8 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://deep-research-skill/schemas/claim-alignment-evidence.json",
   "title": "Claim-Source Alignment Evidence Bundle",
-  "description": "Machine-readable evidence records and offline alignment audit inputs (issue #419). Production bundles must bind report artifact path/hash and route_id. Gold labels are calibration-only.",
-  "version": 2,
-  "schema_version": "1",
+  "description": "Machine-readable evidence records and offline alignment audit inputs (issue #419). Production bundles bind report artifact path and route_id (issue #427: no byte-identity hashes). Gold labels are calibration-only.",
+  "schema_version": "2",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -13,7 +12,6 @@
     "audited_population",
     "sampling_rule",
     "source_artifact_path",
-    "source_artifact_sha256",
     "route_id",
     "source_register",
     "entries"
@@ -21,7 +19,7 @@
   "properties": {
     "schema_version": {
       "type": "string",
-      "const": "1"
+      "const": "2"
     },
     "bundle_id": {
       "type": "string",
@@ -42,10 +40,6 @@
     "source_artifact_path": {
       "type": "string",
       "minLength": 1
-    },
-    "source_artifact_sha256": {
-      "type": "string",
-      "pattern": "^[0-9a-f]{64}$"
     },
     "route_id": {
       "type": "string",
@@ -76,7 +70,7 @@
     "source_register_entry": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["source_id", "source_artifact_path", "source_artifact_sha256"],
+      "required": ["source_id", "source_artifact_path"],
       "properties": {
         "source_id": {
           "type": "string",
@@ -85,10 +79,6 @@
         "source_artifact_path": {
           "type": "string",
           "minLength": 1
-        },
-        "source_artifact_sha256": {
-          "type": "string",
-          "pattern": "^[0-9a-f]{64}$"
         },
         "title": {
           "type": "string",
@@ -129,7 +119,6 @@
         "source_id",
         "locator",
         "retrieval_status",
-        "excerpt_hash",
         "evidence_role"
       ],
       "properties": {
@@ -147,10 +136,6 @@
         "retrieval_status": {
           "type": "string",
           "enum": ["fetched", "unavailable", "unreadable", "not_run"]
-        },
-        "excerpt_hash": {
-          "type": "string",
-          "pattern": "^sha256:[0-9a-f]{64}$"
         },
         "evidence_role": {
           "type": "string",

@@ -1,16 +1,14 @@
 {
-  "schema_version": "1",
+  "schema_version": "2",
   "bundle_id": "claim-alignment-not-run-only",
   "audited_population": "single not_run entry integration fixture",
   "sampling_rule": "aggregate NOT_RUN audit record contract",
   "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",
-  "source_artifact_sha256": "cf7d832cea3d698a90eb72ebe43ea080ef13d60e09ed197951c1463c1840a283",
   "route_id": "market-outlook",
   "source_register": [
     {
       "source_id": "S01",
       "source_artifact_path": "tests/fixtures/claim-alignment/sources/s01-excerpt.txt",
-      "source_artifact_sha256": "5d09c917aedf10633d7bc83b18afaf53dd548659aae27fb50211dc073fbc4b66",
       "title": "FY2025 filing excerpt",
       "url": "https://example.com/filing"
     }
@@ -27,7 +25,6 @@
           "value": "pending"
         },
         "retrieval_status": "not_run",
-        "excerpt_hash": "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "evidence_role": "unknown"
       },
       "excerpt": ""
