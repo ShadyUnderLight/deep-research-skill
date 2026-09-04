@@ -251,7 +251,7 @@
     },
     "artifact_ref": {
       "type": "object",
-      "description": "Optional binding to the parent Run State artifact (issue #417). Shape-checked without --run-state; required and hash-bound when merging with --run-state.",
+      "description": "Optional binding to the parent Run State artifact (issue #417). Shape-checked without --run-state; required and bound by artifact_id and listed handoff_id when merging with --run-state.",
       "additionalProperties": false,
       "required": ["artifact_id"],
       "properties": {

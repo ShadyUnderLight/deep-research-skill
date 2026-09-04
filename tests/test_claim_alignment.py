@@ -254,8 +254,8 @@ class TestVerdictSemantics:
         assert any("did not resolve" in err for err in bad.errors)
 
     def test_empty_fetched_excerpt_is_unsupported(self) -> None:
-        # Issue #427: a fetched empty excerpt must not gain support from
-        # digest equality (e.g. empty-file sha256 match); it is UNSUPPORTED.
+        # Issue #427: a fetched empty excerpt must not gain support merely
+        # because the source text is empty; it is UNSUPPORTED.
         data = json.loads((FIXTURES / "valid.json").read_text())
         data["entries"][0]["excerpt"] = ""
         report = run_bundle(data)

@@ -131,7 +131,7 @@
         "retrieval_status": "fetched",
         "evidence_role": "primary"
       },
-      "excerpt": "Wrong artifact excerpt for hash binding test."
+      "excerpt": "Wrong artifact excerpt for source text binding test."
     },
     {
       "claim_id": "C09",

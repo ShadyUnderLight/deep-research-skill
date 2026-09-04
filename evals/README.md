@@ -100,7 +100,7 @@ python3 scripts/run_forward_evals.py --offline --check-baseline
 ```
 
 The runner binds each prompt to canonical `action_burden`,
-`weight_bearing_object`, secondary-route and prompt-hash fields, resolves that
+`weight_bearing_object`, and secondary-route fields, resolves that
 structured activation through the route-selection decision tree, then replays
 local report and Research Pack snapshots. Integration cases additionally pass
 the canonical activation snapshot to `scripts/audit_report.py`; a mismatch
@@ -127,8 +127,8 @@ production audit still returns Pass and must be `0.0`; and
 the evaluator. `negative_case_contract_pass_rate` is the positive rate at which
 all negative cases match their declared failure shape. `pack_completeness`,
 `declared_not_executed_rate`, and `declared_not_executed_recall` retain their
-existing denominators. The prompt SHA is fixture identity only, not route or
-agent accuracy.
+existing denominators. The natural-language prompt is fixture input only; route
+resolution and agent accuracy use the structured case contract and its outputs.
 
 ## What not to put here
 

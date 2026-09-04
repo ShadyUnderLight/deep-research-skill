@@ -4,15 +4,15 @@ Covers the acceptance criteria:
 
 - checklist marker alone (even if exists) cannot obtain trusted pass in strict
 - forged item id, missing checklist, unchecked template (all strict) -> partial/not_run
-- audit-record missing / status != passed / artifact mismatch / audit_id mismatch / route mismatch / missing evidence/source -> fail closed
+- audit-record missing / status != passed / artifact_id mismatch / audit_id mismatch / route mismatch / missing evidence/source -> fail closed
 - duplicate record -> fail closed
-- valid audit-record with artifact binding + evidence + route -> pass
+- valid audit-record with artifact_id binding + evidence + route -> pass
+- audit-records carrying removed hash fields -> fail closed
 - JSON distinguishes 4 execution sources
 """
 
 from __future__ import annotations
 
-import hashlib
 import json
 import re
 import shutil
@@ -27,6 +27,14 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "audit_report.py"
 POS = ROOT / "tests" / "fixtures" / "audit" / "market-outlook-pos.md"
 PACK = ROOT / "tests" / "fixtures" / "audit" / "research-pack-pos.md"
+REMOVED_AUDIT_RECORD_HASH_FIELDS = (
+    "input_sha256",
+    "artifact_sha256",
+    "artifact_hash",
+    "sha256",
+    "record_artifact_sha256",
+    "claim_alignment_bundle_sha256",
+)
 
 sys.path.insert(0, str(ROOT / "scripts"))
 
@@ -109,13 +117,11 @@ def test_audit_record_status_not_passed_cannot_pass(tmp_path: Path) -> None:
         placeholder = content.replace("report-section:Monitoring signals", "audit-record:tmp/placeholder#r1@2026-08-18T10:00:00Z", 1)
         m = re.search(r'"artifact_id"\s*:\s*"([^"]+)"', placeholder)
         aid = m.group(1) if m else "fixture-market-outlook-pos"
-        rec_payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "partial", "artifact_sha256": "x"*64, "artifact_id": aid, "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
+        rec_payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "partial", "artifact_id": aid, "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
         placeholder = content.replace("report-section:Monitoring signals", f"audit-record:{rel}#r1@2026-08-18T10:00:00Z", 1)
         placeholder = placeholder.replace('"evidence": "report-section:Monitoring signals"', f'"evidence": "audit-record:{rel}#r1@2026-08-18T10:00:00Z"', 1)
         report_tmp.write_text(placeholder, encoding="utf-8")
-        sha2 = hashlib.sha256(report_tmp.read_bytes()).hexdigest()
-        rec_payload["records"][0]["artifact_sha256"] = sha2
         rec_path.write_text(json.dumps(rec_payload), encoding="utf-8")
         proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
         assert proc.returncode == 2, proc.stdout
@@ -131,7 +137,7 @@ def test_audit_record_wrong_artifact_cannot_pass(tmp_path: Path) -> None:
     try:
         content = POS.read_text(encoding="utf-8")
         report_tmp = tmp_path / "report.md"
-        rec_payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "0"*64, "artifact_id": "some-other-artifact", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
+        rec_payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "some-other-artifact", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
         placeholder = content.replace("report-section:Monitoring signals", f"audit-record:{rel}#r1@2026-08-18T10:00:00Z", 1)
         placeholder = placeholder.replace('"evidence": "report-section:Monitoring signals"', f'"evidence": "audit-record:{rel}#r1@2026-08-18T10:00:00Z"', 1)
@@ -154,14 +160,11 @@ def test_audit_record_wrong_audit_id_cannot_pass(tmp_path: Path) -> None:
         aid = m.group(1) if m else "fixture-market-outlook-pos"
         tmp_placeholder = placeholder.replace("audit-record:tmp/placeholder#r1@2026-08-18T10:00:00Z", "audit-record:tmp/dummy#r1@2026-08-18T10:00:00Z", 1)
         report_tmp.write_text(tmp_placeholder, encoding="utf-8")
-        sha_probe = hashlib.sha256(report_tmp.read_bytes()).hexdigest()
-        rec_payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "final-audit", "status": "passed", "artifact_sha256": sha_probe, "artifact_id": aid, "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
+        rec_payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "final-audit", "status": "passed", "artifact_id": aid, "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
         placeholder = content.replace("report-section:Monitoring signals", f"audit-record:{rel}#r1@2026-08-18T10:00:00Z", 1)
         placeholder = placeholder.replace('"evidence": "report-section:Monitoring signals"', f'"evidence": "audit-record:{rel}#r1@2026-08-18T10:00:00Z"', 1)
         report_tmp.write_text(placeholder, encoding="utf-8")
-        sha = hashlib.sha256(report_tmp.read_bytes()).hexdigest()
-        rec_payload["records"][0]["artifact_sha256"] = sha
         rec_path.write_text(json.dumps(rec_payload), encoding="utf-8")
         proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
         assert proc.returncode == 2, proc.stdout
@@ -176,15 +179,13 @@ def test_valid_audit_record_with_binding_passes(tmp_path: Path) -> None:
     try:
         content = POS.read_text(encoding="utf-8")
         report_tmp = tmp_path / "report.md"
-        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "placeholder", "artifact_id": "fixture-market-outlook-pos", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
+        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "fixture-market-outlook-pos", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
         placeholder = content.replace("report-section:Monitoring signals", f"audit-record:{rel}#r1@2026-08-18T10:00:00Z", 1)
         placeholder = placeholder.replace('"evidence": "report-section:Monitoring signals"', f'"evidence": "audit-record:{rel}#r1@2026-08-18T10:00:00Z"', 1)
         m = re.search(r'"artifact_id"\s*:\s*"([^"]+)"', placeholder)
         aid = m.group(1) if m else "fixture-market-outlook-pos"
         report_tmp.write_text(placeholder, encoding="utf-8")
-        sha = hashlib.sha256(report_tmp.read_bytes()).hexdigest()
-        rec_payload["records"][0]["artifact_sha256"] = sha
         rec_payload["records"][0]["artifact_id"] = aid
         rec_path.write_text(json.dumps(rec_payload), encoding="utf-8")
         proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
@@ -203,20 +204,105 @@ def test_valid_audit_record_with_binding_passes(tmp_path: Path) -> None:
 
 
 
-def test_audit_record_id_mismatch_even_if_hash_matches_cannot_pass(tmp_path: Path) -> None:
-    """P1 regression: hash correct but id wrong must still fail."""
+@pytest.mark.parametrize(
+    "field",
+    REMOVED_AUDIT_RECORD_HASH_FIELDS,
+)
+def test_audit_record_removed_hash_field_cannot_pass(
+    tmp_path: Path, field: str
+) -> None:
+    """Removed audit-record hash fields must fail closed under the new contract."""
     record_dir = _make_record_dir()
     try:
         content = POS.read_text(encoding="utf-8")
         report_tmp = tmp_path / "report.md"
-        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "placeholder", "artifact_id": "wrong-id", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
+        rec_payload = {"records": [{
+            "record_id": "r1",
+            "recorded_at": "2026-08-18T10:00:00Z",
+            "audit_id": "market-outlook-audit",
+            "status": "passed",
+            "artifact_id": "fixture-market-outlook-pos",
+            field: "0" * 64,
+            "executed_at": "2026-08-18T10:00:00Z",
+            "execution_source": "manual_checklist_attestation",
+            "evidence": "report-section:Monitoring signals",
+            "route": "market-outlook",
+        }]}
+        rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
+        placeholder = content.replace(
+            "report-section:Monitoring signals",
+            f"audit-record:{rel}#r1@2026-08-18T10:00:00Z",
+            1,
+        )
+        placeholder = placeholder.replace(
+            '"evidence": "report-section:Monitoring signals"',
+            f'"evidence": "audit-record:{rel}#r1@2026-08-18T10:00:00Z"',
+            1,
+        )
+        report_tmp.write_text(placeholder, encoding="utf-8")
+        proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
+        assert proc.returncode == 2, proc.stdout
+        data = json.loads(proc.stdout)
+        assert any("removed hash field" in error for error in data["blocking"])
+    finally:
+        shutil.rmtree(record_dir, ignore_errors=True)
+
+
+@pytest.mark.parametrize("field", REMOVED_AUDIT_RECORD_HASH_FIELDS)
+def test_audit_record_envelope_removed_hash_field_cannot_pass(
+    tmp_path: Path, field: str
+) -> None:
+    """Removed hash fields on a records envelope must fail closed."""
+    record_dir = _make_record_dir()
+    try:
+        content = POS.read_text(encoding="utf-8")
+        report_tmp = tmp_path / "report.md"
+        ts = "2026-08-18T10:00:00Z"
+        record = {
+            "record_id": "r1",
+            "recorded_at": ts,
+            "audit_id": "market-outlook-audit",
+            "status": "passed",
+            "artifact_id": "fixture-market-outlook-pos",
+            "executed_at": ts,
+            "execution_source": "manual_checklist_attestation",
+            "evidence": "report-section:Monitoring signals",
+            "route": "market-outlook",
+        }
+        rec_payload = {"records": [record], field: "0" * 64}
+        rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
+        locator = f"audit-record:{rel}#r1@{ts}"
+        placeholder = content.replace(
+            "report-section:Monitoring signals", locator, 1
+        )
+        placeholder = placeholder.replace(
+            '"evidence": "report-section:Monitoring signals"',
+            f'"evidence": "{locator}"',
+            1,
+        )
+        report_tmp.write_text(placeholder, encoding="utf-8")
+        proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
+        assert proc.returncode == 2, proc.stdout
+        data = json.loads(proc.stdout)
+        assert data["overall"] != "pass"
+        assert any("removed hash field" in error for error in data["blocking"])
+        assert any("envelope" in error for error in data["blocking"])
+        assert rec_path.is_file()
+    finally:
+        shutil.rmtree(record_dir, ignore_errors=True)
+
+
+def test_audit_record_id_mismatch_cannot_pass(tmp_path: Path) -> None:
+    """P1 regression: artifact_id mismatch must still fail."""
+    record_dir = _make_record_dir()
+    try:
+        content = POS.read_text(encoding="utf-8")
+        report_tmp = tmp_path / "report.md"
+        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "wrong-id", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
         placeholder = content.replace("report-section:Monitoring signals", f"audit-record:{rel}#r1@2026-08-18T10:00:00Z", 1)
         placeholder = placeholder.replace('"evidence": "report-section:Monitoring signals"', f'"evidence": "audit-record:{rel}#r1@2026-08-18T10:00:00Z"', 1)
         report_tmp.write_text(placeholder, encoding="utf-8")
-        sha = hashlib.sha256(report_tmp.read_bytes()).hexdigest()
-        rec_payload["records"][0]["artifact_sha256"] = sha
-        rec_payload["records"][0]["artifact_id"] = "wrong-id"
         rec_path.write_text(json.dumps(rec_payload), encoding="utf-8")
         proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
         assert proc.returncode == 2, proc.stdout
@@ -232,15 +318,13 @@ def test_audit_record_execution_source_mismatch_cannot_pass(tmp_path: Path) -> N
     try:
         content = POS.read_text(encoding="utf-8")
         report_tmp = tmp_path / "report.md"
-        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "placeholder", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "process_node_evidence", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
+        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "process_node_evidence", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
         placeholder = content.replace("report-section:Monitoring signals", f"audit-record:{rel}#r1@2026-08-18T10:00:00Z", 1)
         placeholder = placeholder.replace('"evidence": "report-section:Monitoring signals"', f'"evidence": "audit-record:{rel}#r1@2026-08-18T10:00:00Z"', 1)
         m = re.search(r'"artifact_id"\s*:\s*"([^"]+)"', placeholder)
         aid = m.group(1) if m else "fixture-market-outlook-pos"
         report_tmp.write_text(placeholder, encoding="utf-8")
-        sha = hashlib.sha256(report_tmp.read_bytes()).hexdigest()
-        rec_payload["records"][0]["artifact_sha256"] = sha
         rec_payload["records"][0]["artifact_id"] = aid
         rec_path.write_text(json.dumps(rec_payload), encoding="utf-8")
         proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
@@ -257,15 +341,13 @@ def test_audit_record_legacy_source_cannot_pass(tmp_path: Path) -> None:
     try:
         content = POS.read_text(encoding="utf-8")
         report_tmp = tmp_path / "report.md"
-        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "placeholder", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "legacy_self_attested", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
+        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "legacy_self_attested", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
         placeholder = content.replace("report-section:Monitoring signals", f"audit-record:{rel}#r1@2026-08-18T10:00:00Z", 1)
         placeholder = placeholder.replace('"evidence": "report-section:Monitoring signals"', f'"evidence": "audit-record:{rel}#r1@2026-08-18T10:00:00Z"', 1)
         m = re.search(r'"artifact_id"\s*:\s*"([^"]+)"', placeholder)
         aid = m.group(1) if m else "fixture-market-outlook-pos"
         report_tmp.write_text(placeholder, encoding="utf-8")
-        sha = hashlib.sha256(report_tmp.read_bytes()).hexdigest()
-        rec_payload["records"][0]["artifact_sha256"] = sha
         rec_payload["records"][0]["artifact_id"] = aid
         rec_path.write_text(json.dumps(rec_payload), encoding="utf-8")
         proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
@@ -282,15 +364,13 @@ def test_audit_record_missing_execution_source_cannot_pass(tmp_path: Path) -> No
     try:
         content = POS.read_text(encoding="utf-8")
         report_tmp = tmp_path / "report.md"
-        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "placeholder", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
+        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
         placeholder = content.replace("report-section:Monitoring signals", f"audit-record:{rel}#r1@2026-08-18T10:00:00Z", 1)
         placeholder = placeholder.replace('"evidence": "report-section:Monitoring signals"', f'"evidence": "audit-record:{rel}#r1@2026-08-18T10:00:00Z"', 1)
         m = re.search(r'"artifact_id"\s*:\s*"([^"]+)"', placeholder)
         aid = m.group(1) if m else "fixture-market-outlook-pos"
         report_tmp.write_text(placeholder, encoding="utf-8")
-        sha = hashlib.sha256(report_tmp.read_bytes()).hexdigest()
-        rec_payload["records"][0]["artifact_sha256"] = sha
         rec_payload["records"][0]["artifact_id"] = aid
         rec_path.write_text(json.dumps(rec_payload), encoding="utf-8")
         proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
@@ -311,15 +391,13 @@ def test_audit_record_missing_evidence_cannot_pass(tmp_path: Path) -> None:
     try:
         content = POS.read_text(encoding="utf-8")
         report_tmp = tmp_path / "report.md"
-        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "placeholder", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "route": "market-outlook"}]}
+        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
         placeholder = content.replace("report-section:Monitoring signals", f"audit-record:{rel}#r1@2026-08-18T10:00:00Z", 1)
         placeholder = placeholder.replace('"evidence": "report-section:Monitoring signals"', f'"evidence": "audit-record:{rel}#r1@2026-08-18T10:00:00Z"', 1)
         m = re.search(r'"artifact_id"\s*:\s*"([^"]+)"', placeholder)
         aid = m.group(1) if m else "fixture-market-outlook-pos"
         report_tmp.write_text(placeholder, encoding="utf-8")
-        sha = hashlib.sha256(report_tmp.read_bytes()).hexdigest()
-        rec_payload["records"][0]["artifact_sha256"] = sha
         rec_payload["records"][0]["artifact_id"] = aid
         rec_path.write_text(json.dumps(rec_payload), encoding="utf-8")
         proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
@@ -338,8 +416,8 @@ def test_audit_record_duplicate_cannot_pass(tmp_path: Path) -> None:
         report_tmp = tmp_path / "report.md"
         # Two records with same id+timestamp but different status/evidence - should be ambiguous
         rec_payload = {"records": [
-            {"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "placeholder", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"},
-            {"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "partial", "artifact_sha256": "placeholder", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"},
+            {"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"},
+            {"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "partial", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "market-outlook"},
         ]}
         rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
         placeholder = content.replace("report-section:Monitoring signals", f"audit-record:{rel}#r1@2026-08-18T10:00:00Z", 1)
@@ -347,9 +425,7 @@ def test_audit_record_duplicate_cannot_pass(tmp_path: Path) -> None:
         m = re.search(r'"artifact_id"\s*:\s*"([^"]+)"', placeholder)
         aid = m.group(1) if m else "fixture-market-outlook-pos"
         report_tmp.write_text(placeholder, encoding="utf-8")
-        sha = hashlib.sha256(report_tmp.read_bytes()).hexdigest()
         for rec in rec_payload["records"]:
-            rec["artifact_sha256"] = sha
             rec["artifact_id"] = aid
         rec_path.write_text(json.dumps(rec_payload), encoding="utf-8")
         proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
@@ -372,15 +448,13 @@ def test_audit_record_wrong_route_cannot_pass(tmp_path: Path) -> None:
     try:
         content = POS.read_text(encoding="utf-8")
         report_tmp = tmp_path / "report.md"
-        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "placeholder", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "technical-deep-dive"}]}
+        rec_payload: dict = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "placeholder", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Monitoring signals", "route": "technical-deep-dive"}]}
         rec_path, rel = _write_record_file(record_dir, "record.json", rec_payload)
         placeholder = content.replace("report-section:Monitoring signals", f"audit-record:{rel}#r1@2026-08-18T10:00:00Z", 1)
         placeholder = placeholder.replace('"evidence": "report-section:Monitoring signals"', f'"evidence": "audit-record:{rel}#r1@2026-08-18T10:00:00Z"', 1)
         m = re.search(r'"artifact_id"\s*:\s*"([^"]+)"', placeholder)
         aid = m.group(1) if m else "fixture-market-outlook-pos"
         report_tmp.write_text(placeholder, encoding="utf-8")
-        sha = hashlib.sha256(report_tmp.read_bytes()).hexdigest()
-        rec_payload["records"][0]["artifact_sha256"] = sha
         rec_payload["records"][0]["artifact_id"] = aid
         rec_path.write_text(json.dumps(rec_payload), encoding="utf-8")
         proc = _run_report(report_tmp, "--strict", "--require-contract", "--json")
@@ -412,7 +486,7 @@ def test_json_distinguishes_execution_sources(tmp_path: Path) -> None:
     from audit_evidence import validate_evidence_reference
     rec_dir = _make_record_dir()
     try:
-        payload = {"records": [{"record_id": "p1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "mid-research-review-audit", "status": "passed", "artifact_sha256": "b"*64, "artifact_id": "proc-artifact-1", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "process_node_evidence", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
+        payload = {"records": [{"record_id": "p1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "mid-research-review-audit", "status": "passed", "artifact_id": "proc-artifact-1", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "process_node_evidence", "evidence": "report-section:Monitoring signals", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(rec_dir, "prec.json", payload)
         res = validate_evidence_reference(f"audit-record:{rel}#p1@2026-08-18T10:00:00Z", base_dir=ROOT, strict=True, execution_type="process", expected_audit_id="mid-research-review-audit", expected_route="market-outlook", artifact_text="## Monitoring signals\n\ncontent")
         assert res.is_valid, res.errors
@@ -429,7 +503,7 @@ def test_nested_report_section_only_in_pack_must_fail(tmp_path: Path) -> None:
         # Pack has ## Artifact contract, report fixture does not
         pack_text = "## Artifact contract\n\ncontract body\n"
         report_text = "## Monitoring signals\n\nsignals\n"
-        payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "c"*64, "artifact_id": "test-artifact", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Artifact contract", "route": "market-outlook"}]}
+        payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "test-artifact", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "report-section:Artifact contract", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(rec_dir, "r.json", payload)
         # Validate as report audit: report_text is report_text (without Artifact contract), pack_text is pack_text
         # Inner report-section:Artifact contract should fail because it's not in report_text
@@ -459,7 +533,7 @@ def test_nested_pack_section_only_in_report_must_fail(tmp_path: Path) -> None:
         # Report has Monitoring signals, pack has Artifact contract only
         pack_text = "## Artifact contract\n\ncontract body\n"
         report_text = "## Monitoring signals\n\nsignals\n"
-        payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "c"*64, "artifact_id": "test-artifact", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "pack-section:Monitoring signals", "route": "market-outlook"}]}
+        payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "test-artifact", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "pack-section:Monitoring signals", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(rec_dir, "r.json", payload)
         # Validate via research_pack context: artifact_text is pack, report_text is report
         # Inner pack-section:Monitoring signals should fail because pack_text doesn't have it
@@ -487,7 +561,7 @@ def test_report_context_rejects_pack_evidence_without_pack_text(tmp_path: Path) 
     from audit_evidence import validate_evidence_reference
     rec_dir = _make_record_dir()
     try:
-        payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_sha256": "d"*64, "artifact_id": "art", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "pack-section:Artifact contract", "route": "market-outlook"}]}
+        payload = {"records": [{"record_id": "r1", "recorded_at": "2026-08-18T10:00:00Z", "audit_id": "market-outlook-audit", "status": "passed", "artifact_id": "art", "executed_at": "2026-08-18T10:00:00Z", "execution_source": "manual_checklist_attestation", "evidence": "pack-section:Artifact contract", "route": "market-outlook"}]}
         rec_path, rel = _write_record_file(rec_dir, "r.json", payload)
         # Report-only context: no pack_text
         res = validate_evidence_reference(

@@ -13,5 +13,5 @@
   "last_transition_reason": "session interrupted during collection",
   "updated_at": "2026-08-25T02:30:00Z",
   "enabled_reason": "parallel",
-  "next_action": "resume collection after re-hashing the Research Pack"
+  "next_action": "resume collection after confirming the Research Pack"
 }

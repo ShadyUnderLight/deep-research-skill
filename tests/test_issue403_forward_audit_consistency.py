@@ -85,7 +85,7 @@ def test_expected_audit_set_registry_drift_returns_none() -> None:
 def test_audits_ok_accepts_genuine_audit_json() -> None:
     case, data = _real_audit_for(POSITIVE_CASE_ID)
     expected = _expected_for(case)
-    # Verify with consumer-computed hash anchor (mandatory path for real pipeline)
+    # Verify with consumer-bound artifact paths (the real pipeline path)
     report = ROOT / case["fixtures"]["report"]
     rp = ROOT / case["fixtures"]["research_pack"]
     assert _audits_ok(
@@ -338,7 +338,7 @@ def test_audits_ok_rejects_provenance_field_mismatch() -> None:
 
 def test_audits_ok_rejects_provenance_target_swap() -> None:
     """Swapping a report-targeted provenance target to another file must fail
-    closed — the hash comparison must not be skippable via target (issue #403
+    closed — the path binding must not be skippable via target (issue #403
     P1)."""
 
     case, data = _real_audit_for(POSITIVE_CASE_ID)
@@ -357,7 +357,7 @@ def test_audits_ok_rejects_provenance_target_swap() -> None:
 
 def test_audits_ok_rejects_research_pack_provenance_wrong_artifact() -> None:
     """The research-pack audit's provenance must bind to the research pack,
-    not the report — swapping to the report target/hash must fail closed
+    not the report — swapping to the report target must fail closed
     (issue #403 P1)."""
 
     case, data = _real_audit_for(POSITIVE_CASE_ID)

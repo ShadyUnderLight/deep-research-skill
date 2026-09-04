@@ -746,7 +746,7 @@ def test_partial_warnings_empty_string_also_rejected_diagnostically() -> None:
                 "errors": [],
                 "warnings": [],
                 "evidence": ["x: y"],
-                "evidence_provenance": [{"verified": True, "execution_source": "automated_validator", "audit_id": "markdown-delivery", "validator_binding": "markdown-delivery", "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION, "target": "x", "input_sha256": "y"}],
+                "evidence_provenance": [{"verified": True, "execution_source": "automated_validator", "audit_id": "markdown-delivery", "validator_binding": "markdown-delivery", "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION, "target": "x"}],
                 "validator_binding": "markdown-delivery",
             },
             {
@@ -757,13 +757,12 @@ def test_partial_warnings_empty_string_also_rejected_diagnostically() -> None:
                 "errors": [],
                 "warnings": [],
                 "evidence": ["x: y"],
-                "evidence_provenance": [{"verified": True, "execution_source": "automated_validator", "audit_id": "research-pack", "validator_binding": "research-pack", "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION, "target": "x", "input_sha256": "y"}],
+                "evidence_provenance": [{"verified": True, "execution_source": "automated_validator", "audit_id": "research-pack", "validator_binding": "research-pack", "validator_version": run_forward_evals.EXPECTED_VALIDATOR_VERSION, "target": "x"}],
                 "validator_binding": "research-pack",
             },
         ],
         "validators": [],
         "blocking": [],
-        "input_sha256": None,
     }
     # Use a minimal expected set that matches the audits above
     expected_ids = ["final-audit", "markdown-delivery", "research-pack"]

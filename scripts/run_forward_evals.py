@@ -4,7 +4,7 @@
 The runner deliberately consumes the existing command-line audit surface and
 its JSON output. It does not call a paid model, browse the network, or invent a
 production prompt classifier. Structured replay cases supply canonical
-action/object activation inputs and a prompt hash. Integration cases also pass
+action/object activation inputs and secondary-route declarations. Integration cases also pass
 a versioned activation snapshot into the production audit command so route
 mismatch is a real blocking assertion rather than a runner-only oracle.
 """
