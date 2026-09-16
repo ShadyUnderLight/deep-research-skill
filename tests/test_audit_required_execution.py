@@ -583,6 +583,113 @@ class TestNonStrictAggregation:
         ), data["blocking"]
 
 
+class TestNonStrictDegradedConsumerRoundTrip:
+    """Issue #433 re-review: the non-strict degraded verdict must be accepted
+    by the repository's own canonical consumers.
+
+    Outside ``--strict`` a required manual/process audit that did not execute
+    (or only partially executed) stays visible as ``not_run`` / ``skipped`` /
+    ``partial`` while the verdict resolves to ``conditional-pass`` (exit 1).
+    ``run_forward_evals._audit_consistency_details`` and
+    ``_overall_consistency_details`` — also reused by Run State validation —
+    must agree with that contract instead of classifying the producer's own
+    degraded statuses as fail-like.
+    """
+
+    @staticmethod
+    def _degraded_report(cell: str) -> Path:
+        if cell == "missing-declaration":
+            return TestManualAuditStatus()._report_missing_declaration()
+        return _manual_status_report(cell)
+
+    @pytest.mark.parametrize(
+        "cell,expected",
+        [
+            ("missing-declaration", "not_run"),
+            ("⚠️ Skipped", "skipped"),
+            ("partial", "partial"),
+        ],
+    )
+    def test_degraded_verdict_passes_canonical_consumers(
+        self, cell: str, expected: str
+    ) -> None:
+        path = self._degraded_report(cell)
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == expected, mo
+        # Producer shape: reason carried, no evidence/provenance for a
+        # non-executed audit (issue #408 consumer contract).
+        assert mo["reason"], mo
+        assert not mo["evidence"], mo
+        assert not mo["evidence_provenance"], mo
+        assert data["overall"] == "conditional-pass", data
+        assert data["exit_code"] == 1, data
+
+        from run_forward_evals import (  # noqa: PLC0415
+            _audit_consistency_details,
+            _expected_audit_set,
+            _overall_consistency_details,
+        )
+
+        ok_audits, audit_errors = _audit_consistency_details(
+            data,
+            _expected_audit_set("market-outlook", []),
+            audited_path=str(path),
+            research_pack_path=None,
+            expected_route="market-outlook",
+        )
+        assert ok_audits, audit_errors
+        ok_overall, overall_errors = _overall_consistency_details(
+            data, data.get("exit_code")
+        )
+        assert ok_overall, overall_errors
+
+    @pytest.mark.parametrize(
+        "cell",
+        ["missing-declaration", "⚠️ Skipped", "partial"],
+    )
+    def test_degraded_statuses_still_cannot_aggregate_to_pass(
+        self, cell: str
+    ) -> None:
+        """The A1 relaxation must not let a tampered ``overall=pass`` through."""
+        path = self._degraded_report(cell)
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        tampered = json.loads(json.dumps(data))
+        tampered["overall"] = "pass"
+        tampered["exit_code"] = 0
+
+        from run_forward_evals import (  # noqa: PLC0415
+            _audit_consistency_details,
+            _expected_audit_set,
+            _overall_consistency_details,
+        )
+
+        ok_audits, audit_errors = _audit_consistency_details(
+            tampered,
+            _expected_audit_set("market-outlook", []),
+            audited_path=str(path),
+            research_pack_path=None,
+            expected_route="market-outlook",
+        )
+        assert ok_audits is False, audit_errors
+        ok_overall, overall_errors = _overall_consistency_details(tampered, 0)
+        assert ok_overall is False, overall_errors
+
+    def test_research_pack_skip_carries_reason_without_provenance(self) -> None:
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        pack = next(a for a in data["audits"] if a["audit_id"] == "research-pack")
+        assert pack["status"] == "skipped", pack
+        assert pack["reason"], pack
+        assert not pack["evidence"], pack
+        assert not pack["evidence_provenance"], pack
+
+
 class TestTableEvidenceFailClosed:
     """Issue #433 A4: report-table evidence must point to a real, continuous
     Markdown table — prose with pipes plus a dashed line is not a table."""
@@ -672,6 +779,34 @@ class TestValidatorResultBinding:
         by_id = {v.validator_id: v for v in verdict.validator_results}
         assert by_id["declared-execution"].status == "incomplete"
         assert by_id["report-quality"].status == "incomplete"
+
+    def test_market_outlook_validator_reports_canonical_binding_id(self) -> None:
+        """Issue #433 re-review: the market-outlook validator must report the
+        canonical manifest binding id so ``validators[]`` and
+        ``recommended_audit_status`` share one identity space."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        recorded = {entry["validator_id"] for entry in data["validators"]}
+        assert "market-outlook-monitoring-actionability" in recorded, recorded
+        assert "market-outlook-monitoring" not in recorded, recorded
+
+    def test_recommended_audit_status_uses_canonical_ids_only(self) -> None:
+        fixture = ROOT / "tests/fixtures/audit/market-outlook-pos.md"
+        check = audit_report._run_market_outlook_monitoring_actionability(fixture)
+        assert check.name == "market-outlook-monitoring-actionability"
+        verdict = audit_report._compute_verdict(
+            "market-outlook",
+            [check],
+            expected_validators=["market-outlook-monitoring-actionability"],
+        )
+        assert set(verdict.recommended_audit_status) == {
+            "market-outlook-monitoring-actionability"
+        }, verdict.recommended_audit_status
+        assert "market-outlook-monitoring" not in verdict.recommended_audit_status
+        rendered = audit_report.format_verdict(verdict)
+        assert "market-outlook-monitoring-actionability: pass" in rendered
+        assert "market-outlook-monitoring: pass" not in rendered
 
 
 class TestFailClosed:

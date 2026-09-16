@@ -221,6 +221,10 @@ def _section_has_markdown_table(section: list[str]) -> bool:
     stray pipes, a lone ``--- | ---`` line, or dashed separators are not
     tables.  A fail-closed minimum of two columns is required so a single
     pipe-delimited line cannot satisfy table evidence.
+
+    A malformed candidate (bad body row) is skipped rather than rejecting
+    the whole section: when several tables share one section, a broken one
+    must not hide a later valid table.
     """
     # ``section`` starts with the first line after the heading, so a table
     # may begin at index 0 when the heading is not followed by a blank line.
@@ -237,14 +241,19 @@ def _section_has_markdown_table(section: list[str]) -> bool:
             _DELIMITER_CELL_RE.match(cell) for cell in delimiter_cells
         ):
             continue
+        candidate_valid = True
         for row in section[index + 2:]:
             if not row.strip():
                 break
             if "|" not in row or _HEADING_RE.match(row):
                 break
             if len(_split_markdown_row(row)) != len(header_cells):
-                return False
-        return True
+                # Column-count mismatch: this candidate is not a table, but
+                # keep scanning — a later candidate may be valid.
+                candidate_valid = False
+                break
+        if candidate_valid:
+            return True
     return False
 
 

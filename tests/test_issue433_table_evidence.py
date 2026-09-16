@@ -88,6 +88,48 @@ def test_column_count_mismatch_fails() -> None:
     assert result.errors, result
 
 
+def test_malformed_candidate_before_valid_table_still_passes() -> None:
+    """Issue #433 re-review: a malformed candidate table must not hide a
+    later valid table in the same section — the parser keeps scanning."""
+    text = (
+        "## T\n\n"
+        "| A | B |\n"
+        "| --- | --- |\n"
+        "| 1 | 2 | 3 |\n"
+        "\n"
+        "| X | Y |\n"
+        "| --- | --- |\n"
+        "| 1 | 2 |\n"
+    )
+    result = _check(text)
+    assert not result.errors, result
+
+
+def test_section_scanner_continues_after_invalid_candidate() -> None:
+    from audit_evidence import _section_has_markdown_table
+
+    section = [
+        "| A | B |",
+        "| --- | --- |",
+        "| 1 | 2 | 3 |",
+        "",
+        "| X | Y |",
+        "| --- | --- |",
+        "| 1 | 2 |",
+    ]
+    assert _section_has_markdown_table(section)
+
+
+def test_all_malformed_candidates_still_fail() -> None:
+    text = (
+        "## T\n\n"
+        "| A | B |\n| --- | --- |\n| 1 | 2 | 3 |\n\n"
+        "| X | Y |\n| --- | --- |\n| 1 | 2 | 3 |\n"
+    )
+    result = _check(text)
+    assert result.errors, result
+
+
 def test_valid_table_passes() -> None:
     result = _check(VALID_TABLE)
     assert not result.errors, result

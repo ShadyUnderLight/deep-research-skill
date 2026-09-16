@@ -2641,13 +2641,15 @@ Body text with citation [S01].
 """
         result = _run_audit(content, extra_args=["--route", "market-outlook"])
         # The market-outlook validator chain: report-quality, declared-execution,
-        # table-role-labels, source-label-consistency, market-outlook-monitoring
+        # table-role-labels, source-label-consistency, and the market-outlook
+        # monitoring validator, which reports its canonical manifest binding id
+        # (issue #433 A5).
         expected_prefixes = [
             "report-quality",
             "declared-execution",
             "table-role-labels",
             "source-label-consistency",
-            "market-outlook-monitoring",
+            "market-outlook-monitoring-actionability",
             "secondary-route-check",
         ]
         for prefix in expected_prefixes:

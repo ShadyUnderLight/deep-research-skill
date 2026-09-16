@@ -45,8 +45,12 @@ import registry_loader  # noqa: E402
 from audit_evidence import validate_evidence_reference  # noqa: E402 — re-validate manual/process evidence against real artifact (issue #403 re-review)
 from opt_in_audit_contract import (  # noqa: E402
     OPT_IN_AGGREGATE_NOT_RUN_REASON,
-    audit_not_run_is_conditional_consumer_exempt,
-    audit_not_run_is_consumer_exempt,
+)
+from audit_state_contract import (  # noqa: E402
+    audit_status_blocks_clean_pass,
+    audit_status_blocks_conditional_pass,
+    audit_status_is_conditional_cause,
+    audit_status_is_fail_like,
 )
 
 # Canonical route → validator binding set.  The runner uses it to verify the
@@ -780,19 +784,16 @@ def _audit_consistency_details(
     overall = actual.get("overall")
     if isinstance(overall, str):
         opt_in_ids = set(_AUDIT_REGISTRY.opt_in_audit_ids())
-        audit_statuses = [
-            (str(a.get("audit_id")), str(a.get("status")))
-            for a in audits
-            if isinstance(a, dict) and a.get("status")
-        ]
         if overall == "pass":
             offending = [
                 f"{a.get('audit_id')}:{a.get('status')}"
                 for a in audits
                 if isinstance(a, dict)
-                and a.get("status") != "pass"
-                and not audit_not_run_is_consumer_exempt(
-                    a,
+                and a.get("status")
+                and audit_status_blocks_clean_pass(
+                    str(a.get("audit_id") or ""),
+                    str(a.get("status") or ""),
+                    a.get("reason") if isinstance(a.get("reason"), str) else None,
                     opt_in_ids,
                     require_opt_in_binding=require_opt_in_binding,
                 )
@@ -802,20 +803,19 @@ def _audit_consistency_details(
                     f"overall pass aggregates non-pass audit(s): {', '.join(offending)}"
                 )
         if overall == "conditional-pass":
+            # Issue #433 A1: degraded required audits (not_run/skipped/partial)
+            # are the non-strict conditional cause; only an outright fail
+            # audit is rejected here.
             offending = [
                 f"{a.get('audit_id')}:{a.get('status')}"
                 for a in audits
                 if isinstance(a, dict)
-                and a.get("status") in {"fail", "partial", "not_run", "skipped"}
-                and not audit_not_run_is_conditional_consumer_exempt(
-                    a,
-                    opt_in_ids,
-                    require_opt_in_binding=require_opt_in_binding,
-                )
+                and a.get("status")
+                and audit_status_blocks_conditional_pass(str(a.get("status")))
             ]
             if offending:
                 errors.append(
-                    f"overall conditional-pass aggregates fail-like audit(s): {', '.join(offending)}"
+                    f"overall conditional-pass aggregates fail audit(s): {', '.join(offending)}"
                 )
 
     return (len(errors) == 0, errors)
@@ -1009,19 +1009,18 @@ def _audit_status_is_fail_like(
     *,
     require_opt_in_binding: bool = False,
 ) -> bool:
-    """Fail-like audit statuses, excluding default-off opt-in not_run (#419)."""
-    if status in {"fail", "partial", "skipped"}:
-        return True
-    if status == "not_run":
-        opt_in_ids = set(_AUDIT_REGISTRY.opt_in_audit_ids())
-        if audit_not_run_is_conditional_consumer_exempt(
-            {"audit_id": audit_id, "status": status, "reason": reason},
-            opt_in_ids,
-            require_opt_in_binding=require_opt_in_binding,
-        ):
-            return False
-        return True
-    return False
+    """Fail-like audit statuses, excluding default-off opt-in not_run (#419).
+
+    Thin wrapper over the shared audit state contract so all consumers share
+    one aggregation table (issue #433 A1).
+    """
+    return audit_status_is_fail_like(
+        audit_id,
+        status,
+        reason,
+        set(_AUDIT_REGISTRY.opt_in_audit_ids()),
+        require_opt_in_binding=require_opt_in_binding,
+    )
 
 
 def _overall_consistency_details(
@@ -1050,16 +1049,12 @@ def _overall_consistency_details(
     audits = actual.get("audits") or []
     validators = actual.get("validators") or []
     blocking = actual.get("blocking") or []
-    audit_statuses = [
-        str(a.get("status"))
-        for a in audits
-        if isinstance(a, dict) and a.get("status")
-    ]
     validator_statuses = [
         str(v.get("status"))
         for v in validators
         if isinstance(v, dict) and v.get("status")
     ]
+    opt_in_ids = set(_AUDIT_REGISTRY.opt_in_audit_ids())
     has_fail_like = any(
         _audit_status_is_fail_like(
             str(a.get("audit_id") or ""),
@@ -1070,49 +1065,28 @@ def _overall_consistency_details(
         for a in audits
         if isinstance(a, dict) and a.get("status")
     )
-    has_conditional = any(s == "conditional-pass" for s in audit_statuses)
-    has_conditional_not_run = any(
-        isinstance(a, dict)
-        and a.get("status") == "not_run"
-        and isinstance(a.get("reason"), str)
-        and a.get("reason") == OPT_IN_AGGREGATE_NOT_RUN_REASON
-        for a in audits
-    )
     has_validator_fail = any(s in {"fail", "incomplete"} for s in validator_statuses)
     has_validator_conditional = any(s == "conditional-pass" for s in validator_statuses)
     if overall == "pass":
-        if has_fail_like:
-            offending = [
-                f"{a.get('audit_id')}:{a.get('status')}"
-                for a in audits
-                if isinstance(a, dict)
-                and _audit_status_is_fail_like(
-                    str(a.get("audit_id") or ""),
-                    str(a.get("status") or ""),
-                    a.get("reason") if isinstance(a.get("reason"), str) else None,
-                    require_opt_in_binding=require_opt_in_binding,
-                )
-            ]
-            errors.append(f"overall pass aggregates fail-like audit(s): {', '.join(offending)}")
-        non_exempt_not_run = [
+        # Issue #433 A1: any non-pass audit blocks a clean pass; the shared
+        # contract keeps producer and consumer on one aggregation table.
+        offending = [
             f"{a.get('audit_id')}:{a.get('status')}"
             for a in audits
             if isinstance(a, dict)
-            and a.get("status") == "not_run"
-            and not audit_not_run_is_consumer_exempt(
-                a,
-                set(_AUDIT_REGISTRY.opt_in_audit_ids()),
+            and a.get("status")
+            and audit_status_blocks_clean_pass(
+                str(a.get("audit_id") or ""),
+                str(a.get("status") or ""),
+                a.get("reason") if isinstance(a.get("reason"), str) else None,
+                opt_in_ids,
                 require_opt_in_binding=require_opt_in_binding,
             )
         ]
-        if non_exempt_not_run:
+        if offending:
             errors.append(
-                "overall pass aggregates NOT_RUN audit(s): "
-                f"{', '.join(non_exempt_not_run)}"
+                f"overall pass aggregates non-pass audit(s): {', '.join(offending)}"
             )
-        if has_conditional:
-            offending = [f"{a.get('audit_id')}:{a.get('status')}" for a in audits if isinstance(a, dict) and a.get("status") == "conditional-pass"]
-            errors.append(f"overall pass aggregates conditional-pass audit(s): {', '.join(offending)}")
         if has_validator_fail:
             offending = [f"{v.get('validator_id')}:{v.get('status')}" for v in validators if isinstance(v, dict) and v.get("status") in {"fail", "incomplete"}]
             errors.append(f"overall pass aggregates validator fail(s): {', '.join(offending)}")
@@ -1122,28 +1096,37 @@ def _overall_consistency_details(
         if blocking:
             errors.append(f"overall pass must have no blocking (got {blocking[:2]!r})")
     elif overall == "conditional-pass":
-        if has_fail_like:
-            offending = [
-                f"{a.get('audit_id')}:{a.get('status')}"
-                for a in audits
-                if isinstance(a, dict)
-                and _audit_status_is_fail_like(
-                    str(a.get("audit_id") or ""),
-                    str(a.get("status") or ""),
-                    a.get("reason") if isinstance(a.get("reason"), str) else None,
-                    require_opt_in_binding=require_opt_in_binding,
-                )
-            ]
-            errors.append(f"overall conditional-pass aggregates fail-like audit(s): {', '.join(offending)}")
+        # Issue #433 A1: degraded required audits (not_run/skipped/partial)
+        # are the conditional cause produced outside --strict; only an
+        # outright fail audit escalates past conditional-pass.
+        offending = [
+            f"{a.get('audit_id')}:{a.get('status')}"
+            for a in audits
+            if isinstance(a, dict)
+            and a.get("status")
+            and audit_status_blocks_conditional_pass(str(a.get("status")))
+        ]
+        if offending:
+            errors.append(f"overall conditional-pass aggregates fail audit(s): {', '.join(offending)}")
         if has_validator_fail:
             offending = [f"{v.get('validator_id')}:{v.get('status')}" for v in validators if isinstance(v, dict) and v.get("status") in {"fail", "incomplete"}]
             errors.append(f"overall conditional-pass aggregates validator fail(s): {', '.join(offending)}")
-        if not (
-            has_conditional
-            or has_conditional_not_run
-            or has_validator_conditional
-        ):
-            errors.append("overall conditional-pass requires at least one conditional-pass audit or validator")
+        has_conditional_cause = has_validator_conditional or any(
+            isinstance(a, dict)
+            and a.get("status")
+            and audit_status_is_conditional_cause(
+                str(a.get("audit_id") or ""),
+                str(a.get("status")),
+                a.get("reason") if isinstance(a.get("reason"), str) else None,
+                opt_in_ids,
+            )
+            for a in audits
+        )
+        if not has_conditional_cause:
+            errors.append(
+                "overall conditional-pass requires at least one conditional-pass "
+                "audit/validator or a degraded required audit"
+            )
         if blocking:
             errors.append(f"overall conditional-pass must have no blocking (got {blocking[:2]!r})")
     elif overall == "fail":
