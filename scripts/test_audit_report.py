@@ -485,6 +485,7 @@ def _valid_market_outlook_report() -> str:
 | source-traceability | ✅ Passed | report-section:市场现状 |
 | quantitative-role-labeling | ✅ Passed | report-table:Comparison Table |
 | final-audit | ✅ Passed | report-section:执行摘要 |
+| market-outlook-audit | ✅ Passed | report-section:Monitoring Signals |
 
 ## 执行摘要
 
@@ -854,7 +855,7 @@ def _valid_regulatory_analysis_report() -> str:
 
 | Audit | Status | 证据 |
 |-------|--------|------|
-| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| regulatory-analysis-audit | ✅ Passed | §3-§6 监管影响已核验 |
 | final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
 
 ## 执行摘要
@@ -939,7 +940,7 @@ def _valid_startup_evaluation_report() -> str:
 
 | Audit | Status | 证据 |
 |-------|--------|------|
-| source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
+| startup-company-report | ✅ Passed | §3-§6 公司画像已核验 |
 | final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
 
 ## 执行摘要
@@ -1146,6 +1147,7 @@ def _report_with_declared_route(name: str) -> str:
 | Audit | Status | 证据 |
 |-------|--------|------|
 | final-audit | ✅ Passed | §2 |
+| technical-analysis-audit | ✅ Passed | §3 可追溯 |
 
 ## Body
 
@@ -1660,6 +1662,7 @@ class TestProperties:
 | Audit | Status | 证据 |
 |-------|--------|------|
 | final-audit | ✅ Passed | §2 可追溯 |
+| technical-analysis-audit | ✅ Passed | §3 可追溯 |
 
 ## Body
 
@@ -2638,13 +2641,15 @@ Body text with citation [S01].
 """
         result = _run_audit(content, extra_args=["--route", "market-outlook"])
         # The market-outlook validator chain: report-quality, declared-execution,
-        # table-role-labels, source-label-consistency, market-outlook-monitoring
+        # table-role-labels, source-label-consistency, and the market-outlook
+        # monitoring validator, which reports its canonical manifest binding id
+        # (issue #433 A5).
         expected_prefixes = [
             "report-quality",
             "declared-execution",
             "table-role-labels",
             "source-label-consistency",
-            "market-outlook-monitoring",
+            "market-outlook-monitoring-actionability",
             "secondary-route-check",
         ]
         for prefix in expected_prefixes:

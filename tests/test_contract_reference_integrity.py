@@ -23,7 +23,9 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 from validate_contract import (
     validate_contract,
+    extract_contract_blocks,
     extract_contract_from_markdown,
+    extract_report_route_declaration,
 )
 
 MANIFEST = json.loads((ROOT / "schemas" / "route-manifest.json").read_text(encoding="utf-8"))
@@ -286,7 +288,10 @@ def _write_report(contract_text: str, status_block: str | None = None) -> Path:
     f = tempfile.NamedTemporaryFile(
         mode="w", suffix=".md", delete=False, encoding="utf-8"
     )
-    body = "# Test report\n\n"
+    # Issue #433 A2: typed contract evidence resolves against the visible
+    # report body in every mode, so the default evidence locator
+    # ("report-section:Executive summary") needs a real heading here.
+    body = "# Test report\n\n## Executive summary\n\nBody [S01].\n\n"
     if status_block:
         body += status_block + "\n\n"
     body += f"```contract\n{contract_text}\n```\n"
@@ -511,9 +516,13 @@ def _audit_report_report(contract_text: str) -> Path:
 | source-traceability | ✅ Passed | §3 正文使用 [S01] 与 [S02] 引用 |
 | final-audit | ✅ Passed | §2-§6 各核心关卡可追溯 |
 
-## 执行摘要
+## Executive summary
 
 Executive summary with citation [S01].
+
+## 执行摘要
+
+执行摘要 with citation [S01].
 
 ## Findings
 
@@ -605,20 +614,28 @@ def test_audit_report_status_block_mismatch_fails():
     assert "mismatch" in result.stdout or "mismatch" in result.stderr
 
 
-# ── CI regression: references/report-template.md must stay green ────────────
+# ── CI regression: the template example must stay structurally valid ───────
 
 
 def test_ci_template_contract_check_passes():
-    """CI runs `validate_contract.py references/report-template.md
-    --require-contract` (ci.yml); the template's status block example and
-    contract example must agree on the primary route."""
-    from validate_contract import main as vc_main
+    """The template's contract example must stay structurally valid.
 
+    Issue #433 A2: the CLI resolves typed evidence against the visible report
+    body in every mode, and the template's example contract references
+    sections of a *filled* report (Comparison / Sources / ...), not the
+    template document itself, so CI runs the visible-evidence gate against a
+    real fixture instead.  This test keeps the template example checked
+    through the standalone API (no artifact text: syntax semantics); the
+    example lives inside a fence, so it has no status-block route declaration
+    to cross-check.
+    """
     template = ROOT / "references" / "report-template.md"
     assert template.exists()
-    code = vc_main([str(template), "--require-contract"])
-    assert code == 0, (
-        f"CI template check must pass (exit 0), got {code}.\n"
-        "The template's '## Route and audit status' example and its "
-        "```contract example must declare the same primary route."
-    )
+    text = template.read_text(encoding="utf-8")
+    blocks, block_errors = extract_contract_blocks(text)
+    assert not block_errors, block_errors
+    assert blocks, "the template must contain a ```contract example"
+    report_route, malformed = extract_report_route_declaration(text)
+    assert not malformed, malformed
+    result = validate_contract(blocks[0], report_primary_route=report_route)
+    assert result.is_valid, result.errors

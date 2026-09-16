@@ -183,6 +183,22 @@ def _run_audit(
     return subprocess.run(args, capture_output=True, text=True)
 
 
+def _manual_status_report(status_cell: str) -> Path:
+    """Report whose market-outlook-audit manual declaration uses *status_cell*."""
+    block = (
+        "## Route and audit status\n\n"
+        "**Primary route**: Market Outlook\n\n"
+        "| Audit | Status | 证据 |\n"
+        "|-------|--------|------|\n"
+        f"| market-outlook-audit | {status_cell} | report-section:Monitoring signals |\n"
+        "| forward-looking-claims | ✅ Passed | report-section:Monitoring signals |\n"
+        "| source-traceability | ✅ Passed | report-section:Findings |\n"
+        "| final-audit | ✅ Passed | report-section:Executive summary |\n"
+        "| quantitative-role-audit | ✅ Passed | report-table:Comparison Table |\n"
+    )
+    return _write(_report(route_block=block, contract=_contract()))
+
+
 class TestRequiredAuditExecution:
     """Required audits must actually execute and appear in results."""
 
@@ -225,18 +241,7 @@ class TestManualAuditStatus:
         return _write(_report(route_block=block, contract=_contract()))
 
     def _report_with_status(self, status_cell: str) -> Path:
-        block = (
-            "## Route and audit status\n\n"
-            "**Primary route**: Market Outlook\n\n"
-            "| Audit | Status | 证据 |\n"
-            "|-------|--------|------|\n"
-            f"| market-outlook-audit | {status_cell} | report-section:Monitoring signals |\n"
-            "| forward-looking-claims | ✅ Passed | report-section:Monitoring signals |\n"
-            "| source-traceability | ✅ Passed | report-section:Findings |\n"
-            "| final-audit | ✅ Passed | report-section:Executive summary |\n"
-            "| quantitative-role-audit | ✅ Passed | report-table:Comparison Table |\n"
-        )
-        return _write(_report(route_block=block, contract=_contract()))
+        return _manual_status_report(status_cell)
 
     def test_negative_status_not_parsed_as_pass(self) -> None:
         """'❌ Not passed' must not match the 'passed' substring (fail closed)."""
@@ -428,7 +433,9 @@ class TestManualAuditStatus:
         assert mo["status"] == "pass", f"cell={cell!r} -> {mo['status']}"
 
     def test_undeclared_manual_audit_is_not_run_non_strict(self) -> None:
-        """Non-strict records not_run explicitly without changing exit code."""
+        """Issue #433: non-strict still records not_run, but a non-executed
+        required manual audit must not aggregate to a clean Pass — the
+        verdict becomes conditional-pass (exit 1), never pass/0."""
         path = self._report_missing_declaration()
         result = _run_audit(path, extra_args=["--json"])
         data = json.loads(result.stdout)
@@ -437,12 +444,369 @@ class TestManualAuditStatus:
         )
         assert mo["status"] == "not_run"
         assert mo["reason"] == "not declared in Route and audit status block"
+        assert data["overall"] == "conditional-pass", data
+        assert data["exit_code"] == 1, data
+        assert any(
+            "market-outlook-audit" in warning for warning in data["warnings"]
+        ), data["warnings"]
 
     def test_undeclared_manual_audit_is_blocking_in_strict(self) -> None:
         path = self._report_missing_declaration()
         result = _run_audit(path, extra_args=["--strict", "--require-contract"])
         assert result.returncode == 2, result.stdout
         assert "market-outlook-audit" in result.stdout
+
+
+class TestNonStrictAggregation:
+    """Issue #433 A1: non-strict mode must not aggregate non-executed or
+    partially-executed required manual/process audits to overall=pass.
+
+    Strict mode keeps blocking (exit 2); non-strict records a warning and
+    resolves to conditional-pass (exit 1).  A default-off opt-in audit stays
+    exempt; an explicitly enabled opt-in audit without its bundle still
+    blocks in every mode.
+    """
+
+    @pytest.mark.parametrize(
+        "cell,expected",
+        [
+            ("⚠️ Skipped", "skipped"),
+            ("partial", "partial"),
+        ],
+    )
+    def test_declared_skipped_or_partial_non_strict_is_conditional_pass(
+        self, cell: str, expected: str
+    ) -> None:
+        path = _manual_status_report(cell)
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == expected, mo
+        assert data["overall"] == "conditional-pass", data
+        assert data["exit_code"] == 1, data
+        assert any(
+            "market-outlook-audit" in warning for warning in data["warnings"]
+        ), data["warnings"]
+
+    def test_secondary_hard_fail_missing_non_strict_is_not_pass(self) -> None:
+        """A declared secondary route without its hard-fail audit must not
+        yield a clean Pass outside strict mode either: the contract check
+        blocks (exit 2) and the derived audit is surfaced in warnings."""
+        contract = _contract(
+            secondary_routes=["constrained-choice"],
+            audits=[
+                {"id": "market-outlook-audit", "status": "passed",
+                 "evidence": "report-section:Monitoring signals"},
+                {"id": "forward-looking-claims", "status": "passed",
+                 "evidence": "report-section:Monitoring signals"},
+                {"id": "source-traceability", "status": "passed",
+                 "evidence": "report-section:Findings"},
+                {"id": "final-audit", "status": "passed",
+                 "evidence": "report-section:Executive summary"},
+            ],
+        )
+        path = _write(_report(contract=contract, route_block=_route_block("market-outlook")))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        assert data["overall"] == "fail", data
+        assert data["exit_code"] == 2, data
+        assert any(
+            "constrained-choice-secondary-hard-fail" in message
+            for message in data["blocking"]
+        ), data["blocking"]
+        assert any(
+            "constrained-choice-secondary-hard-fail" in warning
+            for warning in data["warnings"]
+        ), data["warnings"]
+
+    def test_automated_failure_and_manual_not_run_non_strict(self) -> None:
+        """An automated audit failure blocks in non-strict mode; the manual
+        not_run is additionally surfaced as a warning."""
+        block = (
+            "## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n"
+            "|-------|--------|------|\n"
+            "| final-audit | ✅ Passed | report-section:Executive summary |\n"
+            "| quantitative-role-audit | ✅ Passed | report-table:Comparison Table |\n"
+            "| forward-looking-claims | ✅ Passed | report-section:Monitoring signals |\n"
+            "| source-traceability | ✅ Passed | report-section:Findings |\n"
+        )
+        report = _report(route_block=block, contract=_contract())
+        report += (
+            "\n## Outlook\n\n"
+            "[Confirmed] Shipments will reach 100 units by 2027.\n"
+        )
+        path = _write(report)
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        assert data["overall"] == "fail", data
+        assert result.returncode == 2, data
+        assert any(
+            "forward-looking" in message for message in data["blocking"]
+        ), data["blocking"]
+        assert any(
+            "market-outlook-audit" in warning for warning in data["warnings"]
+        ), data["warnings"]
+
+    def test_default_off_opt_in_stays_clean_pass_non_strict(self) -> None:
+        """claim-source-alignment default-off remains exempt: it is recorded
+        as not_run without turning a clean report into conditional-pass."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        claim = next(
+            a for a in data["audits"]
+            if a["audit_id"] == "claim-source-alignment"
+        )
+        assert claim["status"] == "not_run"
+        assert data["overall"] == "pass", (data["warnings"], data["blocking"])
+        assert data["exit_code"] == 0, data
+        assert not any(
+            "claim-source-alignment" in warning for warning in data["warnings"]
+        ), data["warnings"]
+
+    def test_enabled_opt_in_without_bundle_blocks_non_strict(self) -> None:
+        """An explicitly enabled opt-in audit without its bundle blocks in
+        non-strict mode too (the default-off exemption no longer applies)."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(
+            path, extra_args=["--enable-claim-alignment", "--json"]
+        )
+        data = json.loads(result.stdout)
+        assert result.returncode == 2, data
+        assert data["overall"] == "fail", data
+        assert any(
+            "claim-source-alignment" in message for message in data["blocking"]
+        ), data["blocking"]
+
+
+class TestNonStrictDegradedConsumerRoundTrip:
+    """Issue #433 re-review: the non-strict degraded verdict must be accepted
+    by the repository's own canonical consumers.
+
+    Outside ``--strict`` a required manual/process audit that did not execute
+    (or only partially executed) stays visible as ``not_run`` / ``skipped`` /
+    ``partial`` while the verdict resolves to ``conditional-pass`` (exit 1).
+    ``run_forward_evals._audit_consistency_details`` and
+    ``_overall_consistency_details`` — also reused by Run State validation —
+    must agree with that contract instead of classifying the producer's own
+    degraded statuses as fail-like.
+    """
+
+    @staticmethod
+    def _degraded_report(cell: str) -> Path:
+        if cell == "missing-declaration":
+            return TestManualAuditStatus()._report_missing_declaration()
+        return _manual_status_report(cell)
+
+    @pytest.mark.parametrize(
+        "cell,expected",
+        [
+            ("missing-declaration", "not_run"),
+            ("⚠️ Skipped", "skipped"),
+            ("partial", "partial"),
+        ],
+    )
+    def test_degraded_verdict_passes_canonical_consumers(
+        self, cell: str, expected: str
+    ) -> None:
+        path = self._degraded_report(cell)
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] == expected, mo
+        # Producer shape: reason carried, no evidence/provenance for a
+        # non-executed audit (issue #408 consumer contract).
+        assert mo["reason"], mo
+        assert not mo["evidence"], mo
+        assert not mo["evidence_provenance"], mo
+        assert data["overall"] == "conditional-pass", data
+        assert data["exit_code"] == 1, data
+
+        from run_forward_evals import (  # noqa: PLC0415
+            _audit_consistency_details,
+            _expected_audit_set,
+            _overall_consistency_details,
+        )
+
+        ok_audits, audit_errors = _audit_consistency_details(
+            data,
+            _expected_audit_set("market-outlook", []),
+            audited_path=str(path),
+            research_pack_path=None,
+            expected_route="market-outlook",
+        )
+        assert ok_audits, audit_errors
+        ok_overall, overall_errors = _overall_consistency_details(
+            data, data.get("exit_code")
+        )
+        assert ok_overall, overall_errors
+
+    @pytest.mark.parametrize(
+        "cell",
+        ["missing-declaration", "⚠️ Skipped", "partial"],
+    )
+    def test_degraded_statuses_still_cannot_aggregate_to_pass(
+        self, cell: str
+    ) -> None:
+        """The A1 relaxation must not let a tampered ``overall=pass`` through."""
+        path = self._degraded_report(cell)
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        tampered = json.loads(json.dumps(data))
+        tampered["overall"] = "pass"
+        tampered["exit_code"] = 0
+
+        from run_forward_evals import (  # noqa: PLC0415
+            _audit_consistency_details,
+            _expected_audit_set,
+            _overall_consistency_details,
+        )
+
+        ok_audits, audit_errors = _audit_consistency_details(
+            tampered,
+            _expected_audit_set("market-outlook", []),
+            audited_path=str(path),
+            research_pack_path=None,
+            expected_route="market-outlook",
+        )
+        assert ok_audits is False, audit_errors
+        ok_overall, overall_errors = _overall_consistency_details(tampered, 0)
+        assert ok_overall is False, overall_errors
+
+    def test_research_pack_skip_carries_reason_without_provenance(self) -> None:
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        pack = next(a for a in data["audits"] if a["audit_id"] == "research-pack")
+        assert pack["status"] == "skipped", pack
+        assert pack["reason"], pack
+        assert not pack["evidence"], pack
+        assert not pack["evidence_provenance"], pack
+
+
+class TestTableEvidenceFailClosed:
+    """Issue #433 A4: report-table evidence must point to a real, continuous
+    Markdown table — prose with pipes plus a dashed line is not a table."""
+
+    def test_fake_table_evidence_fails_strict(self) -> None:
+        fake_section = (
+            "\n## Fake Table\n\n"
+            "This is prose | with a pipe\n\n"
+            "--- | ---\n"
+        )
+        block = (
+            "## Route and audit status\n\n"
+            "**Primary route**: Market Outlook\n\n"
+            "| Audit | Status | 证据 |\n"
+            "|-------|--------|------|\n"
+            "| market-outlook-audit | ✅ Passed | report-table:Fake Table |\n"
+            "| forward-looking-claims | ✅ Passed | report-section:Monitoring signals |\n"
+            "| source-traceability | ✅ Passed | report-section:Findings |\n"
+            "| final-audit | ✅ Passed | report-section:Executive summary |\n"
+            "| quantitative-role-audit | ✅ Passed | report-table:Comparison Table |\n"
+        )
+        report = _report(route_block=block, contract=_contract()).replace(
+            "\n## Source Register", fake_section + "\n## Source Register"
+        )
+        path = _write(report)
+        result = _run_audit(
+            path, extra_args=["--strict", "--require-contract", "--json"]
+        )
+        data = json.loads(result.stdout)
+        assert result.returncode == 2, data
+        mo = next(
+            a for a in data["audits"] if a["audit_id"] == "market-outlook-audit"
+        )
+        assert mo["status"] != "pass", mo
+        assert any(
+            "Fake Table" in message for message in data["blocking"]
+        ), data["blocking"]
+
+
+class TestValidatorResultBinding:
+    """Issue #433 A5: route-level validator results bind to canonical
+    validator ids, not to list position; unknown or duplicate result names
+    fail closed instead of silently passing."""
+
+    def test_results_bind_by_canonical_id_not_position(self) -> None:
+        report_quality = audit_report.CheckResult(
+            name="report-quality", errors=[], warnings=[]
+        )
+        declared_execution = audit_report.CheckResult(
+            name="declared-execution", errors=["boom"], warnings=[]
+        )
+        verdict = audit_report._compute_verdict(
+            "market-outlook",
+            [declared_execution, report_quality],
+            expected_validators=["report-quality", "declared-execution"],
+        )
+        by_id = {v.validator_id: v for v in verdict.validator_results}
+        assert by_id["report-quality"].status == "pass"
+        assert by_id["declared-execution"].status == "fail"
+        assert by_id["declared-execution"].errors == ["boom"]
+
+    def test_unknown_result_name_fails_closed(self) -> None:
+        mystery = audit_report.CheckResult(name="mystery", errors=[], warnings=[])
+        verdict = audit_report._compute_verdict(
+            "market-outlook",
+            [mystery],
+            expected_validators=["report-quality"],
+        )
+        assert verdict.exit_code == audit_report.EXIT_BLOCKING
+        assert any(
+            "mystery" in message for message in verdict.blocking
+        ), verdict.blocking
+        by_id = {v.validator_id: v for v in verdict.validator_results}
+        assert by_id["report-quality"].status == "incomplete"
+
+    def test_duplicate_result_name_fails_closed(self) -> None:
+        first = audit_report.CheckResult(name="report-quality", errors=[], warnings=[])
+        second = audit_report.CheckResult(
+            name="report-quality", errors=["dup"], warnings=[]
+        )
+        verdict = audit_report._compute_verdict(
+            "market-outlook",
+            [first, second],
+            expected_validators=["report-quality", "declared-execution"],
+        )
+        assert verdict.exit_code == audit_report.EXIT_BLOCKING
+        by_id = {v.validator_id: v for v in verdict.validator_results}
+        assert by_id["declared-execution"].status == "incomplete"
+        assert by_id["report-quality"].status == "incomplete"
+
+    def test_market_outlook_validator_reports_canonical_binding_id(self) -> None:
+        """Issue #433 re-review: the market-outlook validator must report the
+        canonical manifest binding id so ``validators[]`` and
+        ``recommended_audit_status`` share one identity space."""
+        path = _write(_report(contract=_contract()))
+        result = _run_audit(path, extra_args=["--json"])
+        data = json.loads(result.stdout)
+        recorded = {entry["validator_id"] for entry in data["validators"]}
+        assert "market-outlook-monitoring-actionability" in recorded, recorded
+        assert "market-outlook-monitoring" not in recorded, recorded
+
+    def test_recommended_audit_status_uses_canonical_ids_only(self) -> None:
+        fixture = ROOT / "tests/fixtures/audit/market-outlook-pos.md"
+        check = audit_report._run_market_outlook_monitoring_actionability(fixture)
+        assert check.name == "market-outlook-monitoring-actionability"
+        verdict = audit_report._compute_verdict(
+            "market-outlook",
+            [check],
+            expected_validators=["market-outlook-monitoring-actionability"],
+        )
+        assert set(verdict.recommended_audit_status) == {
+            "market-outlook-monitoring-actionability"
+        }, verdict.recommended_audit_status
+        assert "market-outlook-monitoring" not in verdict.recommended_audit_status
+        rendered = audit_report.format_verdict(verdict)
+        assert "market-outlook-monitoring-actionability: pass" in rendered
+        assert "market-outlook-monitoring: pass" not in rendered
 
 
 class TestFailClosed:

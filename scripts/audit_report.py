@@ -17,6 +17,13 @@ Exit codes:
     0 = all checks pass
     1 = warnings only (conditional pass)
     2 = one or more blocking errors
+
+Non-strict mode keeps legacy compatibility for route fallback, a missing
+contract, and delivery-scope advisory failures.  It does not, however, turn
+an unexecuted required manual/process audit into a clean Pass: ``not_run`` /
+``skipped`` / ``partial`` manual audits are recorded on the verdict as
+warnings (conditional-pass, exit 1) without ``--strict`` and stay blocking
+(exit 2) with it (issue #433).
 """
 
 from __future__ import annotations
@@ -103,6 +110,7 @@ from activation_snapshot import (
 import registry_loader
 from registry_loader import RegistryError, UnknownRouteError
 from opt_in_audit_contract import OPT_IN_AGGREGATE_NOT_RUN_REASON, OPT_IN_DEFAULT_OFF_REASON
+from audit_state_contract import DEGRADED_AUDIT_STATUSES
 
 _ROUTE_REGISTRY = registry_loader.load_route_registry()
 _AUDIT_REGISTRY = registry_loader.load_audit_registry()
@@ -327,7 +335,7 @@ def _run_market_outlook_monitoring_actionability(
         text = path.read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError) as exc:
         return CheckResult(
-            name="market-outlook-monitoring",
+            name="market-outlook-monitoring-actionability",
             errors=[f"{path}: cannot read file — {exc}"],
         )
 
@@ -362,7 +370,7 @@ def _run_market_outlook_monitoring_actionability(
 
     if not monitoring_sections:
         return CheckResult(
-            name="market-outlook-monitoring",
+            name="market-outlook-monitoring-actionability",
             errors=[
                 "No monitoring section found — market-outlook report must "
                 "include monitoring signals with actionable fields "
@@ -470,7 +478,7 @@ def _run_market_outlook_monitoring_actionability(
         warnings.extend(f"  {s}" for s in partial_signals)
 
     return CheckResult(
-        name="market-outlook-monitoring",
+        name="market-outlook-monitoring-actionability",
         errors=errors,
         warnings=warnings,
     )
@@ -588,7 +596,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             activation_data = load_activation_snapshot(Path(activation_snapshot_path))
         except ActivationSnapshotError as exc:
             return CheckResult(
-                name="activation-record-integration",
+                name="contract-check",
                 errors=[str(exc)],
             )
 
@@ -627,12 +635,12 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             )
         except (OSError, UnicodeError) as exc:
             return CheckResult(
-                name="activation-record-integration",
+                name="contract-check",
                 errors=[f"cannot read Research Pack activation snapshot: {exc}"],
             )
         if activation_errors:
             return CheckResult(
-                name="activation-record-integration",
+                name="contract-check",
                 errors=activation_errors,
             )
 
@@ -1285,6 +1293,20 @@ def _registered_validator_bindings() -> set[str]:
     return set(_VALIDATOR_REGISTRY) | set(_AUDIT_VALIDATOR_REGISTRY)
 
 
+def _degraded_declaration_reason(status: str, evidence: list[str]) -> str:
+    """Reason text for a declared non-pass audit status.
+
+    Consumers (issue #408) require ``not_run`` / ``skipped`` to carry a
+    non-empty reason and no evidence, and ``partial`` to carry a reason when
+    no errors are present (issue #433 A1).  The declaration's third column
+    references the reason location, so it becomes the reason — never
+    execution evidence.
+    """
+    if evidence:
+        return evidence[0]
+    return f"declared status '{status}' requires a reason or evidence reference"
+
+
 def _execute_required_audits(
     path: Path,
     route_id: str,
@@ -1368,16 +1390,12 @@ def _execute_required_audits(
             if status == "pass" and not evidence:
                 status = "partial"
                 reason = "declared Passed but evidence column is empty"
-            elif (
-                declared is not None
-                and not declared.get("duplicate")
-                and status in {"skipped", "not_run", "partial"}
-                and not evidence
-            ):
-                reason = (
-                    f"declared status '{status}' requires a reason or evidence "
-                    "reference"
-                )
+            elif status in DEGRADED_AUDIT_STATUSES and not reason:
+                # Issue #408/#433 A1: consumers require not_run/skipped to
+                # carry a non-empty reason and no evidence, and partial to
+                # carry a reason; the third column references the reason.
+                reason = _degraded_declaration_reason(status, evidence)
+                evidence = []
             elif status == "pass":
                 evidence_result = validate_evidence_reference(
                     evidence[0],
@@ -1437,9 +1455,13 @@ def _execute_required_audits(
             )
             if strict:
                 blocking.append(message)
-            # Non-strict is the legacy compatibility mode: the status is
-            # still recorded explicitly (never aggregated as a Pass) but
-            # does not change the exit code.
+            else:
+                # Issue #433 A1: non-strict keeps the recorded status but a
+                # required manual/process audit that did not execute (or only
+                # partially executed) must not aggregate to a clean Pass.
+                # The warning resolves the verdict to conditional-pass
+                # (exit 1); strict mode keeps blocking (exit 2).
+                warnings.append(f"{message} (audit)")
             continue
 
         # automated audit (registry-bound; delivery-scope audits are also
@@ -1474,12 +1496,9 @@ def _execute_required_audits(
                 status=status,
                 execution_source="automated_validator",
                 validator_binding=binding,
-                evidence_provenance=[{
-                    "kind": "automated_validator",
-                    "locator": binding,
-                    "validator_binding": binding,
-                    "verified": False,
-                }],
+                # Issue #408: a skipped/not_run audit must not carry
+                # evidence_provenance; only the reason and binding identify
+                # why it did not execute.
                 reason=reason,
             ))
             continue
@@ -1578,6 +1597,10 @@ def _execute_required_audits(
         evidence_provenance: list[dict[str, object]] = []
         if status == "pass" and not evidence:
             status, reason = "partial", "hard-fail entry declared Passed but evidence empty"
+        elif status in DEGRADED_AUDIT_STATUSES and not reason:
+            # Same declaration semantics as the manual/process audits above.
+            reason = _degraded_declaration_reason(status, evidence)
+            evidence = []
         elif status == "pass":
             evidence_result = validate_evidence_reference(
                 raw_evidence,
@@ -1628,7 +1651,11 @@ def _execute_required_audits(
             message = f"[{derived_id}] {status} — {reason or 'not verified'}"
             if strict:
                 blocking.append(message)
-            # non-strict: recorded only (legacy compatibility)
+            else:
+                # Issue #433 A1: a declared secondary route whose hard-fail
+                # verification did not pass cannot leave the non-strict
+                # verdict at a clean Pass.
+                warnings.append(f"{message} (audit)")
 
     return results, blocking, warnings
 
@@ -1777,6 +1804,14 @@ def report_aggregate_not_run(check: CheckResult) -> bool:
     )
 
 
+# Runtime CheckResult names must equal the canonical manifest binding id
+# (issue #433 A5): every route validator reports its binding id directly, so
+# ``validators[]`` and ``recommended_audit_status`` share one identity space.
+# The former ``_BINDING_RESULT_NAMES`` mapping was removed — it left
+# ``recommended_audit_status`` keyed by a runtime name while ``validators[]``
+# used the canonical id (issue #433 re-review).
+
+
 def _compute_verdict(
     route: str | None,
     results: list[CheckResult],
@@ -1814,38 +1849,75 @@ def _compute_verdict(
             status[result.name] = "pass"
 
     # Build one ValidatorResult per dispatched validator, keyed by the
-    # canonical manifest binding id (issue #393).  Results are appended in
-    # dispatch order, so expected_validators[i] pairs with results[i].  A
-    # validator whose CheckResult name differs from its binding id (e.g.
-    # market-outlook-monitoring vs market-outlook-monitoring-actionability)
-    # is still recorded under the canonical id.
+    # canonical manifest binding id (issue #393).  Results are matched by
+    # their canonical CheckResult name, which every route validator reports
+    # directly (issue #433 A5) — never by list position.  Unknown or
+    # duplicate result names fail closed instead of being silently
+    # misattributed.
     if expected_validators is not None:
-        for i, validator_id in enumerate(expected_validators):
-            if i < len(results):
-                result = results[i]
+        results_by_name: dict[str, CheckResult] = {}
+        duplicate_names: set[str] = set()
+        for result in results:
+            if result.name in results_by_name:
+                duplicate_names.add(result.name)
+            results_by_name[result.name] = result
+
+        expected_name_set = set(expected_validators)
+        unexpected_names = sorted(
+            name for name in results_by_name if name not in expected_name_set
+        )
+        if unexpected_names:
+            blocking.append(
+                "[validator-results] unexpected result name(s): "
+                + ", ".join(unexpected_names)
+                + " — dispatched validators must report their canonical id "
+                "(issue #433 A5)"
+            )
+        for duplicate_name in sorted(duplicate_names):
+            blocking.append(
+                f"[{duplicate_name}] duplicate validator result name — each "
+                "dispatched validator must produce exactly one result "
+                "(issue #433 A5)"
+            )
+
+        for validator_id in expected_validators:
+            result = results_by_name.get(validator_id)
+            if result is not None and validator_id not in duplicate_names:
                 evidence = list(result.errors[:5]) or list(result.warnings[:5]) or [
                     f"{source_path or '<report>'}: no violations found by "
                     f"{validator_id}"
                 ]
+                if result.errors:
+                    pair_status = "fail"
+                elif result.warnings:
+                    pair_status = "conditional-pass"
+                else:
+                    pair_status = "pass"
                 validator_results.append(ValidatorResult(
                     validator_id=validator_id,
-                    status=status.get(result.name, "pass"),
+                    status=pair_status,
                     errors=list(result.errors),
                     warnings=list(result.warnings),
                     evidence=evidence,
                     target=source_path,
                 ))
             else:
-                # Fail-closed: a dispatched validator with no recorded result
-                # must never be interpreted as a silent Pass (issue #393).
+                # Fail-closed: a dispatched validator whose result is missing
+                # or duplicated must never be interpreted as a silent Pass
+                # (issue #393, #433 A5).
+                reason = (
+                    "duplicate validator result name — never aggregated as pass"
+                    if validator_id in duplicate_names
+                    else "validator result missing — never aggregated as pass"
+                )
                 validator_results.append(ValidatorResult(
                     validator_id=validator_id,
                     status="incomplete",
                     target=source_path,
-                    reason="validator result missing — never aggregated as pass",
+                    reason=reason,
                 ))
                 blocking.append(
-                    f"[{validator_id}] incomplete — validator result missing "
+                    f"[{validator_id}] incomplete — {reason} "
                     f"(issue #393: missing results must fail closed, not pass)"
                 )
 
