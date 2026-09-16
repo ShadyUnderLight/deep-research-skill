@@ -595,7 +595,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             activation_data = load_activation_snapshot(Path(activation_snapshot_path))
         except ActivationSnapshotError as exc:
             return CheckResult(
-                name="activation-record-integration",
+                name="contract-check",
                 errors=[str(exc)],
             )
 
@@ -634,12 +634,12 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
             )
         except (OSError, UnicodeError) as exc:
             return CheckResult(
-                name="activation-record-integration",
+                name="contract-check",
                 errors=[f"cannot read Research Pack activation snapshot: {exc}"],
             )
         if activation_errors:
             return CheckResult(
-                name="activation-record-integration",
+                name="contract-check",
                 errors=activation_errors,
             )
 

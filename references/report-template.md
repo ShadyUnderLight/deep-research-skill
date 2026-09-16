@@ -253,6 +253,7 @@ This symmetry matters because asymmetric structure signals to the reader that on
   「证据」列与 Status 列的自评状态共同构成可审计记录——评审者无需全文扫描即可定位每项审计的执行证据或决定理由。裸 `§3`、`§999` 和任意自由文本不属于可验证 evidence。
 - 如果路由未选择（shared-workflow 路径），列出 `workflow-spine-audit.md` 和 `final-audit.md` 的运行状态
 - **审计状态应由 validator 输出驱动**：技术类报告交付前，应使用 `scripts/audit_report.py`（route-aware 审计编排器）对报告运行一次 consolidated audit。该工具的 verdict 输出应作为最终 Route and Audit Status 区块的客观依据。如果未运行 audit wrapper，不得将任意状态默认为 ✅ Passed；必须标注为 ⚠️ Manual 或 ❌ Not Run，并附理由。
+- **未执行的必备 manual/process audit 不得得到 clean Pass**（issue #433）：Route and audit status 区块未声明（或声明 skipped/partial）的必备人工审计，在不带 `--strict` 时 verdict 至少为 conditional-pass（exit 1，warning 中列出该审计）；带 `--strict` 时直接阻断（exit 2）。只有 registry 标记为 default-off 的 opt-in 审计（`claim-source-alignment`）可以豁免；显式启用但缺少 bundle 时在所有模式下阻断。
 
   JSON 中的 `execution_source` 必须区分 `automated_validator`、`manual_checklist_attestation`、`process_node_evidence` 和兼容模式的 `legacy_self_attested`。
 

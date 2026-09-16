@@ -618,15 +618,16 @@ def test_audit_report_status_block_mismatch_fails():
 
 
 def test_ci_template_contract_check_passes():
-    """The template's status block example and contract example must agree
-    on the primary route and stay structurally valid.
+    """The template's contract example must stay structurally valid.
 
     Issue #433 A2: the CLI resolves typed evidence against the visible report
     body in every mode, and the template's example contract references
     sections of a *filled* report (Comparison / Sources / ...), not the
-    template document itself.  CI therefore runs the visible-evidence gate
-    against a real fixture, and this test keeps the template example checked
-    through the standalone API (no artifact text: syntax semantics).
+    template document itself, so CI runs the visible-evidence gate against a
+    real fixture instead.  This test keeps the template example checked
+    through the standalone API (no artifact text: syntax semantics); the
+    example lives inside a fence, so it has no status-block route declaration
+    to cross-check.
     """
     template = ROOT / "references" / "report-template.md"
     assert template.exists()

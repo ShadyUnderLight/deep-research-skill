@@ -53,6 +53,13 @@ VALID_TABLE_ALIGNMENT = (
     "| Cost | 100 |\n"
 )
 
+VALID_TABLE_NO_BLANK_LINE = (
+    "## T\n"
+    "| A | B |\n"
+    "| --- | --- |\n"
+    "| 1 | 2 |\n"
+)
+
 
 def test_prose_pipe_plus_dashed_line_is_not_a_table() -> None:
     result = _check(FAKE_TABLE)
@@ -94,6 +101,18 @@ def test_valid_table_without_outer_pipes_passes() -> None:
 def test_valid_table_with_alignment_passes() -> None:
     result = _check(VALID_TABLE_ALIGNMENT)
     assert not result.errors, result
+
+
+def test_valid_table_directly_after_heading_passes() -> None:
+    result = _check(VALID_TABLE_NO_BLANK_LINE)
+    assert not result.errors, result
+
+
+def test_single_column_table_is_rejected() -> None:
+    """Documented fail-closed rule: a table needs at least two columns, so a
+    single pipe-delimited line cannot satisfy report-table evidence."""
+    result = _check("## T\n\n| Metric |\n| --- |\n| 1 |\n")
+    assert result.errors, result
 
 
 def test_pack_table_uses_same_parser() -> None:

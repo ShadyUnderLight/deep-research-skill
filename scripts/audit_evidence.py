@@ -219,9 +219,13 @@ def _section_has_markdown_table(section: list[str]) -> bool:
     cell must be canonical (``---`` / ``:---`` / ``---:`` / ``:---:``);
     and every body row must keep the header's column count.  Prose with
     stray pipes, a lone ``--- | ---`` line, or dashed separators are not
-    tables.
+    tables.  A fail-closed minimum of two columns is required so a single
+    pipe-delimited line cannot satisfy table evidence.
     """
-    for index in range(1, len(section) - 1):
+    # ``section`` starts with the first line after the heading, so a table
+    # may begin at index 0 when the heading is not followed by a blank line.
+    # The heading guard is defensive only.
+    for index in range(0, len(section) - 1):
         header_line = section[index]
         if "|" not in header_line or _HEADING_RE.match(header_line):
             continue

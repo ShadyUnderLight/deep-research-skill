@@ -188,3 +188,37 @@ def test_exact_derived_hard_fail_is_accepted(tmp_path: Path) -> None:
     path = _write(tmp_path, _report(contract))
     result = _run_cli(path)
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+# ── A5: contract-check sub-check failures keep the canonical id ────────────
+
+
+def test_activation_snapshot_failure_keeps_contract_check_binding(
+    tmp_path: Path,
+) -> None:
+    """Issue #433 A5: a failing activation-snapshot sub-check inside
+    ``_run_contract_check`` must be reported under the canonical
+    ``contract-check`` validator id, not misattributed as an unexpected
+    result name or downgraded to ``incomplete``."""
+    path = _write(tmp_path, _report(_contract()))
+    bad_snapshot = tmp_path / "bad-snapshot.json"
+    bad_snapshot.write_text("{not json", encoding="utf-8")
+    result = subprocess.run(
+        [
+            sys.executable,
+            str(ROOT / "scripts" / "audit_report.py"),
+            str(path),
+            "--activation-snapshot",
+            str(bad_snapshot),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    data = json.loads(result.stdout)
+    by_id = {v["validator_id"]: v for v in data["validators"]}
+    assert by_id["contract-check"]["status"] == "fail", by_id["contract-check"]
+    assert by_id["contract-check"]["errors"], by_id["contract-check"]
+    assert all(
+        v["status"] != "incomplete" for v in data["validators"]
+    ), data["validators"]
