@@ -15,7 +15,11 @@ and audits, plus reference integrity (issue #376):
 - stable artifact identity fields (`artifact_id`, `contract_version`,
   `created_at`) are recommended by default and required under `--strict`,
 - with `--research-pack PATH`, the pack's primary route must match the
-  contract's primary route.
+  contract's primary route,
+- typed evidence locators (`report-section` / `report-table`) are resolved
+  against the visible report body whenever report text is available — the
+  CLI always supplies it, so `--strict` only escalates warnings, never
+  disables locator existence checks (issue #433 A2).
 
 Usage:
     python3 scripts/validate_contract.py path/to/report.md [--strict]
@@ -330,10 +334,13 @@ def validate_contract(
             agree with the report contract and Research Pack.
         require_activation_snapshot: require an actual activation snapshot
             for this validation call.
-        strict: when True, missing artifact identity fields are errors
-            instead of warnings.
+        strict: when True, missing artifact identity fields and other
+            non-strict warnings are escalated to errors.  It does not disable
+            typed-evidence locator resolution.
         report_text: visible report text used to resolve report-section/table
-            evidence. When omitted, typed references are syntax-checked only.
+            evidence. When omitted, typed references are syntax-checked only;
+            callers that hold the report body (e.g. the CLI) must pass it in
+            every mode (issue #433 A2).
         evidence_base_dir: root for checklist-item and audit-record paths.
         known_validator_bindings: actual validator binding ids available to
             the caller. Defaults to the canonical registry binding set.
@@ -794,10 +801,13 @@ def validate_contract(
                 f"Evidence must reference a concrete location in the artifact."
             )
         elif status == "passed":
-            # Issue #401: strict contract audits must bind to the current artifact
+            # Issue #401: contract audits must bind to the current artifact
             # when the evidence is an audit-record.  Pass the contract's stable
             # artifact_id, primary route, and audit id so a forged record for another
             # artifact/audit/route cannot be reused, and nested evidence is verified.
+            # Issue #433 A2: whenever the caller supplies the visible report body
+            # (the CLI always does), section/table locators are resolved in every
+            # mode — --strict only decides how warnings are escalated.
             expected_aid = None
             raw_aid = contract.get("artifact_id")
             if isinstance(raw_aid, str) and raw_aid.strip():
@@ -806,7 +816,7 @@ def validate_contract(
             expected_route_for_record = primary if isinstance(primary, str) and primary.strip() else None
             evidence_result = validate_evidence_reference(
                 evidence,
-                artifact_text=report_text if strict else None,
+                artifact_text=report_text,
                 base_dir=evidence_base_dir,
                 strict=strict,
                 artifact_label="report",
@@ -816,7 +826,7 @@ def validate_contract(
                 expected_artifact_id=expected_aid,
                 expected_route=expected_route_for_record,
                 expected_validator_binding=audit_validator_binding,
-                report_text=report_text if strict else None,
+                report_text=report_text,
                 pack_text=None,
             )
             errors.extend(
@@ -855,8 +865,10 @@ def validate_contract(
 
     # 6c. Secondary route hard-fail audit enforcement
     # Each declared secondary route must have a corresponding audit entry
-    # with status="passed" whose id contains the secondary route name.
-    # (e.g., "regulatory-analysis-secondary-hard-fail")
+    # with the exact canonical id "<secondary>-secondary-hard-fail" and
+    # status="passed".  A registry audit whose id merely contains the route
+    # name (e.g. "regulatory-analysis-audit") does not satisfy hard-fail
+    # tracking (issue #433 A3).
     if secondary:
         # Build map: audit_id -> status for all valid audit entries
         audit_status_map: dict[str, str] = {}
@@ -871,10 +883,10 @@ def validate_contract(
         for sr in secondary:
             if not isinstance(sr, str):
                 continue
-            # Find audits whose id contains the secondary route name
+            derived_id = f"{sr}-secondary-hard-fail"
             matching = [
                 (aid, st) for aid, st in audit_status_map.items()
-                if sr in aid
+                if aid == derived_id
             ]
             passed = [(aid, st) for aid, st in matching if st == "passed"]
             not_passed = [(aid, st) for aid, st in matching if st != "passed"]
@@ -890,8 +902,8 @@ def validate_contract(
                 else:
                     errors.append(
                         f"Secondary route '{sr}' has no hard-fail audit tracking. "
-                        f"Add an audit entry with status='passed' whose id contains "
-                        f"'{sr}' (e.g., '{sr}-secondary-hard-fail')."
+                        f"Add an audit entry '{derived_id}' with "
+                        f"status='passed'."
                     )
             elif not_passed:
                 warnings.append(
@@ -1161,7 +1173,9 @@ def main(argv: list[str] | None = None) -> int:
         require_activation_snapshot=args.activation_snapshot is not None,
         research_pack_provided=args.research_pack is not None,
         strict=args.strict,
-        report_text=_strip_fences(text) if args.strict else None,
+        # Issue #433 A2: the CLI always has the report body — pass the visible
+        # text so typed evidence locators are resolved in every mode.
+        report_text=_strip_fences(text),
         evidence_base_dir=PROJECT_ROOT,
     )
     print(result.format())

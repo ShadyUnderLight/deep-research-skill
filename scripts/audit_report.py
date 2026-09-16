@@ -17,6 +17,13 @@ Exit codes:
     0 = all checks pass
     1 = warnings only (conditional pass)
     2 = one or more blocking errors
+
+Non-strict mode keeps legacy compatibility for route fallback, a missing
+contract, and delivery-scope advisory failures.  It does not, however, turn
+an unexecuted required manual/process audit into a clean Pass: ``not_run`` /
+``skipped`` / ``partial`` manual audits are recorded on the verdict as
+warnings (conditional-pass, exit 1) without ``--strict`` and stay blocking
+(exit 2) with it (issue #433).
 """
 
 from __future__ import annotations
@@ -1437,9 +1444,13 @@ def _execute_required_audits(
             )
             if strict:
                 blocking.append(message)
-            # Non-strict is the legacy compatibility mode: the status is
-            # still recorded explicitly (never aggregated as a Pass) but
-            # does not change the exit code.
+            else:
+                # Issue #433 A1: non-strict keeps the recorded status but a
+                # required manual/process audit that did not execute (or only
+                # partially executed) must not aggregate to a clean Pass.
+                # The warning resolves the verdict to conditional-pass
+                # (exit 1); strict mode keeps blocking (exit 2).
+                warnings.append(f"{message} (audit)")
             continue
 
         # automated audit (registry-bound; delivery-scope audits are also
@@ -1628,7 +1639,11 @@ def _execute_required_audits(
             message = f"[{derived_id}] {status} — {reason or 'not verified'}"
             if strict:
                 blocking.append(message)
-            # non-strict: recorded only (legacy compatibility)
+            else:
+                # Issue #433 A1: a declared secondary route whose hard-fail
+                # verification did not pass cannot leave the non-strict
+                # verdict at a clean Pass.
+                warnings.append(f"{message} (audit)")
 
     return results, blocking, warnings
 
@@ -1777,6 +1792,18 @@ def report_aggregate_not_run(check: CheckResult) -> bool:
     )
 
 
+# Runtime CheckResult names for validator bindings whose result name is not
+# identical to the canonical manifest binding id (issue #433 A5).
+_BINDING_RESULT_NAMES: dict[str, str] = {
+    "market-outlook-monitoring-actionability": "market-outlook-monitoring",
+}
+
+
+def _expected_result_name(validator_id: str) -> str:
+    """Canonical CheckResult name for a manifest validator binding."""
+    return _BINDING_RESULT_NAMES.get(validator_id, validator_id)
+
+
 def _compute_verdict(
     route: str | None,
     results: list[CheckResult],
@@ -1814,38 +1841,78 @@ def _compute_verdict(
             status[result.name] = "pass"
 
     # Build one ValidatorResult per dispatched validator, keyed by the
-    # canonical manifest binding id (issue #393).  Results are appended in
-    # dispatch order, so expected_validators[i] pairs with results[i].  A
-    # validator whose CheckResult name differs from its binding id (e.g.
-    # market-outlook-monitoring vs market-outlook-monitoring-actionability)
-    # is still recorded under the canonical id.
+    # canonical manifest binding id (issue #393).  Results are matched by
+    # their canonical CheckResult name (binding id, or the explicit mapping
+    # above) — never by list position.  Unknown or duplicate result names
+    # fail closed instead of being silently misattributed (issue #433 A5).
     if expected_validators is not None:
-        for i, validator_id in enumerate(expected_validators):
-            if i < len(results):
-                result = results[i]
+        expected_names = [
+            _expected_result_name(validator_id)
+            for validator_id in expected_validators
+        ]
+        results_by_name: dict[str, CheckResult] = {}
+        duplicate_names: set[str] = set()
+        for result in results:
+            if result.name in results_by_name:
+                duplicate_names.add(result.name)
+            results_by_name[result.name] = result
+
+        expected_name_set = set(expected_names)
+        unexpected_names = sorted(
+            name for name in results_by_name if name not in expected_name_set
+        )
+        if unexpected_names:
+            blocking.append(
+                "[validator-results] unexpected result name(s): "
+                + ", ".join(unexpected_names)
+                + " — dispatched validators must report their canonical id "
+                "(issue #433 A5)"
+            )
+        for duplicate_name in sorted(duplicate_names):
+            blocking.append(
+                f"[{duplicate_name}] duplicate validator result name — each "
+                "dispatched validator must produce exactly one result "
+                "(issue #433 A5)"
+            )
+
+        for validator_id, expected_name in zip(expected_validators, expected_names):
+            result = results_by_name.get(expected_name)
+            if result is not None and expected_name not in duplicate_names:
                 evidence = list(result.errors[:5]) or list(result.warnings[:5]) or [
                     f"{source_path or '<report>'}: no violations found by "
                     f"{validator_id}"
                 ]
+                if result.errors:
+                    pair_status = "fail"
+                elif result.warnings:
+                    pair_status = "conditional-pass"
+                else:
+                    pair_status = "pass"
                 validator_results.append(ValidatorResult(
                     validator_id=validator_id,
-                    status=status.get(result.name, "pass"),
+                    status=pair_status,
                     errors=list(result.errors),
                     warnings=list(result.warnings),
                     evidence=evidence,
                     target=source_path,
                 ))
             else:
-                # Fail-closed: a dispatched validator with no recorded result
-                # must never be interpreted as a silent Pass (issue #393).
+                # Fail-closed: a dispatched validator whose result is missing
+                # or duplicated must never be interpreted as a silent Pass
+                # (issue #393, #433 A5).
+                reason = (
+                    "duplicate validator result name — never aggregated as pass"
+                    if expected_name in duplicate_names
+                    else "validator result missing — never aggregated as pass"
+                )
                 validator_results.append(ValidatorResult(
                     validator_id=validator_id,
                     status="incomplete",
                     target=source_path,
-                    reason="validator result missing — never aggregated as pass",
+                    reason=reason,
                 ))
                 blocking.append(
-                    f"[{validator_id}] incomplete — validator result missing "
+                    f"[{validator_id}] incomplete — {reason} "
                     f"(issue #393: missing results must fail closed, not pass)"
                 )
 

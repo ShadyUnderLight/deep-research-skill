@@ -305,6 +305,8 @@ Status block 中涉及四类实体，使用统一的 canonical id：
 
 （建议在 CI 和交付前验证中始终使用 `--require-contract`。不带该 flag 时，缺失 contract 的报告会静默跳过以兼容旧报告。）
 
+contract 中 `report-section:` / `report-table:` 的 locator 必须与报告正文的**可见 heading 文本一致**（比较前只做大小写与空白归一化；`### 9. Sources` 的 `9. ` 属于 heading 文本）。无论是否传 `--strict`，CLI 都会校验 locator 在正文中真实可见；`--strict` 只决定 warning 是否升级为错误（issue #433）。
+
 ### 9. Sources
 
 - list the most important sources

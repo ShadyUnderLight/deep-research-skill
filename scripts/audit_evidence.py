@@ -195,6 +195,55 @@ def _validate_artifact_heading(
     )
 
 
+_DELIMITER_CELL_RE = re.compile(r"^\s*:?-{3,}:?\s*$")
+
+
+def _split_markdown_row(line: str) -> list[str]:
+    """Split one Markdown table row into trimmed cells.
+
+    A single leading/trailing outer pipe is not a cell boundary, and an
+    escaped pipe (``\\|``) stays inside its cell.
+    """
+    stripped = line.strip()
+    if stripped.startswith("|"):
+        stripped = stripped[1:]
+    if stripped.endswith("|"):
+        stripped = stripped[:-1]
+    return [cell.strip() for cell in re.split(r"(?<!\\)\|", stripped)]
+
+
+def _section_has_markdown_table(section: list[str]) -> bool:
+    """True when *section* contains a real continuous Markdown table.
+
+    A header row and its delimiter row must be adjacent; every delimiter
+    cell must be canonical (``---`` / ``:---`` / ``---:`` / ``:---:``);
+    and every body row must keep the header's column count.  Prose with
+    stray pipes, a lone ``--- | ---`` line, or dashed separators are not
+    tables.
+    """
+    for index in range(1, len(section) - 1):
+        header_line = section[index]
+        if "|" not in header_line or _HEADING_RE.match(header_line):
+            continue
+        header_cells = _split_markdown_row(header_line)
+        delimiter_cells = _split_markdown_row(section[index + 1])
+        if len(header_cells) < 2 or len(delimiter_cells) != len(header_cells):
+            continue
+        if not all(
+            _DELIMITER_CELL_RE.match(cell) for cell in delimiter_cells
+        ):
+            continue
+        for row in section[index + 2:]:
+            if not row.strip():
+                break
+            if "|" not in row or _HEADING_RE.match(row):
+                break
+            if len(_split_markdown_row(row)) != len(header_cells):
+                return False
+        return True
+    return False
+
+
 def _validate_artifact_table(
     kind: str,
     locator: str,
@@ -222,12 +271,7 @@ def _validate_artifact_table(
 
     line = int(heading_result.provenance["line"])
     section = _section_lines(artifact_text, line)
-    has_row = any("|" in current for current in section)
-    has_separator = any(
-        "|" in current and re.search(r"-{3,}", current)
-        for current in section
-    )
-    if not has_row or not has_separator:
+    if not _section_has_markdown_table(section):
         return EvidenceValidation(
             errors=(
                 f"{kind} evidence locator {locator!r} does not point "
