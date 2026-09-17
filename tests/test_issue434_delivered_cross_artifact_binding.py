@@ -30,7 +30,9 @@ AUDIT_FIXTURES = FIXTURES / "audit"
 DELIVERED_STATE = FIXTURES / "research-run-state" / "valid-delivered.json"
 
 
-def _write_real_pass_audit(tmp_path: Path) -> tuple[Path, Path, Path]:
+def _write_real_pass_audit(
+    tmp_path: Path, *, pack_extra: str = ""
+) -> tuple[Path, Path, Path]:
     """Generate a real audit_report --json Pass bound to copied report/pack."""
     report = tmp_path / "report.md"
     report.write_text(
@@ -39,7 +41,8 @@ def _write_real_pass_audit(tmp_path: Path) -> tuple[Path, Path, Path]:
     )
     pack = tmp_path / "pack.md"
     pack.write_text(
-        (AUDIT_FIXTURES / "research-pack-pos.md").read_text(encoding="utf-8"),
+        (AUDIT_FIXTURES / "research-pack-pos.md").read_text(encoding="utf-8")
+        + pack_extra,
         encoding="utf-8",
     )
     proc = subprocess.run(
@@ -82,10 +85,20 @@ def _manual_entry(audit: dict) -> dict:
 
 
 def _run_delivered(
-    tmp_path: Path, report: Path, pack: Path, audit: Path
+    tmp_path: Path,
+    report: Path,
+    pack: Path,
+    audit: Path,
+    *,
+    state_data: dict | None = None,
 ) -> subprocess.CompletedProcess:
     state = tmp_path / "delivered-state.json"
-    state.write_text(DELIVERED_STATE.read_text(encoding="utf-8"), encoding="utf-8")
+    payload = (
+        state_data
+        if state_data is not None
+        else json.loads(DELIVERED_STATE.read_text(encoding="utf-8"))
+    )
+    state.write_text(json.dumps(payload), encoding="utf-8")
     return subprocess.run(
         [
             sys.executable,
@@ -296,3 +309,169 @@ def test_audit_route_mismatch_cannot_support_delivered(tmp_path: Path) -> None:
     assert proc.returncode == 2, proc.stdout + proc.stderr
     payload = _payload(proc)
     assert any("route mismatch" in error for error in payload["errors"]), payload
+
+
+def _tamper_visible_route(report: Path, replacement: str) -> None:
+    report.write_text(
+        report.read_text(encoding="utf-8").replace(
+            "**Primary route**: Market Outlook",
+            f"**Primary route**: {replacement}",
+        ),
+        encoding="utf-8",
+    )
+
+
+def test_report_status_route_tamper_cannot_support_delivered(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    _tamper_visible_route(report, "Technical Deep Dive")
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any(
+        "technical-deep-dive" in error or "route mismatch" in error
+        for error in payload["errors"]
+    ), payload
+
+
+def test_unknown_report_status_route_cannot_support_delivered(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    _tamper_visible_route(report, "Bogus Route")
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("Bogus Route" in error for error in payload["errors"]), payload
+
+
+def test_duplicate_pack_primary_route_cannot_support_delivered(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    pack.write_text(
+        pack.read_text(encoding="utf-8") + "\n## Primary route\n\nShared Workflow\n",
+        encoding="utf-8",
+    )
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("Primary route" in error for error in payload["errors"]), payload
+
+
+def test_duplicate_pack_artifact_id_cannot_support_delivered(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    pack.write_text(
+        pack.read_text(encoding="utf-8") + "\n## Artifact id\n\nother-artifact\n",
+        encoding="utf-8",
+    )
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("Artifact id" in error for error in payload["errors"]), payload
+
+
+def test_removed_contract_artifact_id_cannot_support_delivered(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    _edit_contract(report, lambda contract: contract.pop("artifact_id"))
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("artifact_id" in error for error in payload["errors"]), payload
+
+
+def test_duplicate_secondary_route_in_contract_cannot_support_delivered(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+
+    def duplicate_secondary(contract: dict) -> None:
+        contract["secondary_routes"] = ["regulatory-analysis", "regulatory-analysis"]
+        contract["audits"].append(
+            {
+                "id": "regulatory-analysis-secondary-hard-fail",
+                "status": "passed",
+                "evidence": "report-section:Findings",
+            }
+        )
+
+    _edit_contract(report, duplicate_secondary)
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any(
+        "Duplicate secondary route" in error or "duplicate secondary" in error
+        for error in payload["errors"]
+    ), payload
+
+
+ACTIVATION_SNAPSHOT_SECTION = (
+    "\n## Activation snapshot\n"
+    "\n"
+    "- activation_id: forward-market-outlook-baseline\n"
+    "- snapshot_version: 2\n"
+    "- decision_tree_version: 1\n"
+)
+
+
+def _state_with_activation_reference(activation_id: str) -> dict:
+    state = json.loads(DELIVERED_STATE.read_text(encoding="utf-8"))
+    state["activation_reference"] = {
+        "activation_id": activation_id,
+        "snapshot_version": 2,
+        "decision_tree_version": 1,
+    }
+    return state
+
+
+def test_matching_pack_activation_snapshot_still_passes(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(
+        tmp_path, pack_extra=ACTIVATION_SNAPSHOT_SECTION
+    )
+    state = _state_with_activation_reference("forward-market-outlook-baseline")
+
+    proc = _run_delivered(
+        tmp_path, report, pack, audit_path, state_data=state
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert _payload(proc)["ok"] is True
+
+
+def test_tampered_pack_activation_snapshot_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(
+        tmp_path, pack_extra=ACTIVATION_SNAPSHOT_SECTION
+    )
+    state = _state_with_activation_reference("forward-market-outlook-baseline")
+    pack.write_text(
+        pack.read_text(encoding="utf-8").replace(
+            "activation_id: forward-market-outlook-baseline",
+            "activation_id: tampered-activation",
+        ),
+        encoding="utf-8",
+    )
+
+    proc = _run_delivered(
+        tmp_path, report, pack, audit_path, state_data=state
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("activation" in error.lower() for error in payload["errors"]), payload
+
+
+def test_run_state_activation_reference_mismatch_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(
+        tmp_path, pack_extra=ACTIVATION_SNAPSHOT_SECTION
+    )
+    state = _state_with_activation_reference("different-activation")
+
+    proc = _run_delivered(
+        tmp_path, report, pack, audit_path, state_data=state
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any(
+        "Run State activation_reference" in error for error in payload["errors"]
+    ), payload

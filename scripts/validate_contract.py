@@ -1719,7 +1719,11 @@ def count_report_route_blocks(text: str) -> int:
     ))
 
 
-def extract_report_route_declaration(text: str) -> tuple[str | None, list[str]]:
+def extract_report_route_declaration(
+    text: str,
+    *,
+    unknown_route_is_error: bool = False,
+) -> tuple[str | None, list[str]]:
     """Resolve the canonical route declared in the report's
     '## Route and audit status' block (e.g. '**Primary route**: Market
     Outlook' or '**Route**: Shared-workflow').
@@ -1729,6 +1733,11 @@ def extract_report_route_declaration(text: str) -> tuple[str | None, list[str]]:
     malformation — the first declaration must not win.  Fenced code blocks
     are stripped first so a fake declaration inside a ```markdown block
     can never override the visible status block.
+
+    ``unknown_route_is_error`` is for consumers that own the whole
+    cross-artifact boundary (delivered Run State, issue #434): a visible
+    declaration that cannot be resolved is then reported as a structural
+    error instead of being silently ignored by other route validators.
     """
     cleaned = _strip_fences(text)
     match = re.search(
@@ -1767,6 +1776,11 @@ def extract_report_route_declaration(text: str) -> tuple[str | None, list[str]]:
     try:
         return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw), []
     except UnknownRouteError:
+        if unknown_route_is_error:
+            return None, [
+                "report 'Route and audit status' block declares unknown "
+                f"route {raw!r}"
+            ]
         # Unknown status-block routes are reported by other validators
         # (audit_report route detection); don't fail the contract check.
         return None, []

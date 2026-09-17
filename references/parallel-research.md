@@ -154,9 +154,14 @@ route, contract, and audit registry — a single `final-audit` entry is not
 enough — plus the canonical `validators[]` set for that route bound to the
 report. Entering `delivered` re-validates the whole cross-artifact chain
 instead of trusting a self-consistent audit JSON: the report contract must be
-a single, canonically valid activation contract; the contract
-primary/secondary routes and the Pack `## Primary route` must be canonical
-and agree with the audit result route; report/Pack evidence locators must
+a single, complete activation contract validated with the strict contract
+boundary (stable artifact identity included); the visible report
+`## Route and audit status` declaration, the contract primary/secondary
+routes, the Pack `## Primary route`, and the audit result route must all
+resolve to the same canonical route; the Pack must declare `## Primary route`
+and `## Artifact id` exactly once, with the artifact id matching the
+contract; the Pack `## Activation snapshot` must agree with the contract and
+with the Run State `activation_reference`; report/Pack evidence locators must
 resolve against the visible artifact body (fenced or HTML-hidden headings and
 tables do not count); and contract/registry failures are returned as
 structured delivered errors, never as an unhandled traceback. `--chain`
