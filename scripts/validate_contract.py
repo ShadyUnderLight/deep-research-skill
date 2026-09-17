@@ -650,13 +650,19 @@ def validate_contract(
                     "Must state under what conditions the route should be switched."
                 )
 
-    # 4c. Duplicate secondary routes detection
+    # 4c. Duplicate secondary routes detection (issue #434): a duplicated
+    # declaration is structural under strict / delivery validation, and an
+    # advisory warning in legacy non-strict mode.
     seen_secondary: set[str] = set()
     for sr in secondary:
         if not isinstance(sr, str):
             continue
         if sr in seen_secondary:
-            warnings.append(f"Duplicate secondary route: '{sr}'")
+            message = f"Duplicate secondary route: '{sr}'"
+            if strict:
+                errors.append(message)
+            else:
+                warnings.append(message)
         seen_secondary.add(sr)
 
     # 5. Disciplines — must be valid discipline ids, not route ids

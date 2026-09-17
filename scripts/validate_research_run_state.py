@@ -547,20 +547,43 @@ def _read_artifact_text(
 def _report_route_declaration(visible_report: str | None) -> tuple[str | None, list[str]]:
     """Issue #434 B1: re-read the visible report route declaration.
 
-    Reuses the canonical producer parser with ``unknown_route_is_error`` so a
-    post-audit edit of the ``## Route and audit status`` block cannot disagree
-    with the contract, Pack, or audit result route unnoticed.
+    Requires exactly one visible ``## Route and audit status`` block with
+    exactly one route declaration (same presence/cardinality rules as the
+    ``audit_report`` producer), and reuses the canonical parser with
+    ``unknown_route_is_error`` so a post-audit edit of the block — changing,
+    deleting, or duplicating it — cannot disagree with the contract, Pack, or
+    audit result route unnoticed.
     """
     if visible_report is None:
         return None, []
     try:
-        from validate_contract import extract_report_route_declaration
+        from validate_contract import (
+            count_report_route_blocks,
+            extract_report_route_declaration,
+        )
     except ImportError:
         return None, ["cannot load canonical report route parser"]
+    block_count = count_report_route_blocks(visible_report)
+    if block_count == 0:
+        return None, [
+            "delivered report requires a '## Route and audit status' section"
+        ]
+    if block_count > 1:
+        return None, [
+            f"delivered report has {block_count} '## Route and audit status' "
+            "blocks — exactly one is required (issue #378)"
+        ]
     route, malformed = extract_report_route_declaration(
         visible_report, unknown_route_is_error=True
     )
-    return route, [f"delivered {item}" for item in malformed]
+    if malformed:
+        return None, [f"delivered {item}" for item in malformed]
+    if route is None:
+        return None, [
+            "delivered report requires a visible route declaration "
+            "('**Primary route**' or '**Route**') in '## Route and audit status'"
+        ]
+    return route, []
 
 
 def _pack_declarations(
@@ -594,6 +617,11 @@ def _pack_declarations(
             "to a canonical route — fix the pack declaration"
         )
     pack_artifact_id = _extract_pack_artifact_id(str(pack_path))
+    if pack_artifact_id is None:
+        errors.append(
+            f"Research Pack {pack_path} has no '## Artifact id' declaration — "
+            "phase=delivered requires the artifact identity binding"
+        )
     snapshot = None
     if visible_pack is not None:
         snapshot, snapshot_errors = extract_activation_snapshot_reference(
@@ -637,8 +665,12 @@ def _validated_delivered_contract(
     (report status route, Pack artifact id, Pack activation snapshot) against
     the visible report body, before any expected audit id is derived.
     ``strict=True`` mirrors ``validate_contract.py --require-contract
-    --strict``; the remaining warnings are blocking too, so a post-audit edit
-    that drops the contract's stable identity fields cannot pass delivered.
+    --strict``: contract errors (including stable artifact identity) fail
+    closed, while pure advisory warnings (e.g. more than two secondary
+    routes) stay non-blocking so a strict producer ``conditional-pass`` is
+    not rejected here.  The delivered-specific structural requirements
+    (route declaration, Pack artifact id, duplicate secondary severity) live
+    in the helpers above / the canonical validator.
     Route agreement with the Pack/audit result stays in
     ``_derive_expected_audit_ids`` (single locatable error per mismatch).
     """
@@ -673,11 +705,7 @@ def _validated_delivered_contract(
         )
     except _registry_error_types() as exc:
         return contract, [f"delivered report contract validation failed: {exc}"]
-    problems = [
-        *result.errors,
-        *(f"warning: {item}" for item in result.warnings),
-    ]
-    return contract, [f"delivered report contract: {item}" for item in problems]
+    return contract, [f"delivered report contract: {item}" for item in result.errors]
 
 
 def _derive_expected_audit_ids(

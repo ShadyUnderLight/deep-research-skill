@@ -14,6 +14,7 @@ the audit result.  These tests pin the fail-closed boundary:
 
 from __future__ import annotations
 
+import copy
 import json
 import re
 import subprocess
@@ -475,3 +476,111 @@ def test_run_state_activation_reference_mismatch_cannot_support_delivered(
     assert any(
         "Run State activation_reference" in error for error in payload["errors"]
     ), payload
+
+
+def test_removed_report_route_status_section_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    text = report.read_text(encoding="utf-8")
+    text = re.sub(
+        r"## Route and audit status\n.*?(?=\n## )", "", text, flags=re.DOTALL
+    )
+    report.write_text(text, encoding="utf-8")
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any(
+        "Route and audit status" in error for error in payload["errors"]
+    ), payload
+
+
+def test_removed_report_route_declaration_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    report.write_text(
+        report.read_text(encoding="utf-8").replace(
+            "**Primary route**: Market Outlook\n", ""
+        ),
+        encoding="utf-8",
+    )
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any(
+        "route declaration" in error.lower() for error in payload["errors"]
+    ), payload
+
+
+def test_duplicate_report_route_status_blocks_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    report.write_text(
+        report.read_text(encoding="utf-8")
+        + "\n## Route and audit status\n\n**Primary route**: Shared Workflow\n",
+        encoding="utf-8",
+    )
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any(
+        "Route and audit status" in error for error in payload["errors"]
+    ), payload
+
+
+def test_removed_pack_artifact_id_section_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    text = pack.read_text(encoding="utf-8")
+    text = re.sub(r"## Artifact id\n.*?(?=\n## )", "", text, flags=re.DOTALL)
+    pack.write_text(text, encoding="utf-8")
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("Artifact id" in error for error in payload["errors"]), payload
+
+
+def test_advisory_contract_warnings_do_not_block_delivered(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    secondaries = ["regulatory-analysis", "technical-deep-dive", "startup-evaluation"]
+
+    def add_secondaries(contract: dict) -> None:
+        contract["secondary_routes"] = list(secondaries)
+        for route in secondaries:
+            contract["audits"].append(
+                {
+                    "id": f"{route}-secondary-hard-fail",
+                    "status": "passed",
+                    "evidence": "report-section:Monitoring signals",
+                }
+            )
+
+    _edit_contract(report, add_secondaries)
+
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    template = _manual_entry(audit)
+    for route in secondaries:
+        entry = copy.deepcopy(template)
+        entry["audit_id"] = f"{route}-secondary-hard-fail"
+        entry["evidence"] = ["report-section:Monitoring signals"]
+        entry["evidence_provenance"] = [
+            {
+                "verified": True,
+                "kind": "report_section",
+                "locator": "Monitoring signals",
+                "execution_source": "manual_checklist_attestation",
+            }
+        ]
+        audit["audits"].append(entry)
+    audit_path.write_text(json.dumps(audit, ensure_ascii=False), encoding="utf-8")
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert _payload(proc)["ok"] is True
