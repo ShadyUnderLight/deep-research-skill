@@ -40,7 +40,6 @@ from pathlib import Path
 
 from activation_snapshot import (
     ActivationSnapshotError,
-    extract_activation_snapshot_reference,
     load_activation_snapshot,
     validate_activation_reference,
 )
@@ -433,7 +432,7 @@ def load_run_state_file(path: Path | str) -> tuple[dict | None, list[str]]:
     path = Path(path)
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         return None, [f"cannot read run state file {path}: {exc}"]
     try:
         data = json.loads(text)
@@ -482,7 +481,14 @@ KNOWN_AUDIT_STATUSES = frozenset(
 
 
 def _canonical_audit_helpers():
-    """Lazy-import canonical audit JSON checks; None on ImportError."""
+    """Lazy-import canonical audit JSON checks.
+
+    Returns ``(schema_version, overall, audits, expected_set, validators)``;
+    ``schema_version`` is ``None`` when the canonical module cannot be loaded
+    because the route/audit registries are corrupt (``run_forward_evals``
+    loads them at import time), so callers fail closed with a structured
+    error instead of leaking a ``RegistryError`` traceback (issue #434 B5).
+    """
     try:
         from run_forward_evals import (
             EXPECTED_AUDIT_JSON_SCHEMA_VERSION,
@@ -493,6 +499,8 @@ def _canonical_audit_helpers():
         )
     except ImportError:
         return 1, None, None, None, None
+    except _registry_error_types():
+        return None, None, None, None, None
     return (
         EXPECTED_AUDIT_JSON_SCHEMA_VERSION,
         _overall_consistency_details,
@@ -547,12 +555,12 @@ def _read_artifact_text(
 def _report_route_declaration(visible_report: str | None) -> tuple[str | None, list[str]]:
     """Issue #434 B1: re-read the visible report route declaration.
 
-    Requires exactly one visible ``## Route and audit status`` block with
-    exactly one route declaration (same presence/cardinality rules as the
-    ``audit_report`` producer), and reuses the canonical parser with
-    ``unknown_route_is_error`` so a post-audit edit of the block — changing,
-    deleting, or duplicating it — cannot disagree with the contract, Pack, or
-    audit result route unnoticed.
+    Requires exactly one visible route-status block with exactly one route
+    declaration (same presence/cardinality/heading rules as the
+    ``audit_report`` producer: H2/H3, English or 附录：路由与审计状态), and
+    reuses the canonical parser with ``unknown_route_is_error`` so a
+    post-audit edit of the block — changing, deleting, or duplicating it —
+    cannot disagree with the contract, Pack, or audit result route unnoticed.
     """
     if visible_report is None:
         return None, []
@@ -566,22 +574,28 @@ def _report_route_declaration(visible_report: str | None) -> tuple[str | None, l
     block_count = count_report_route_blocks(visible_report)
     if block_count == 0:
         return None, [
-            "delivered report requires a '## Route and audit status' section"
+            "delivered report requires exactly one visible route-status block "
+            "('## Route and audit status' / '### Route and audit status' / "
+            "'附录：路由与审计状态')"
         ]
     if block_count > 1:
         return None, [
-            f"delivered report has {block_count} '## Route and audit status' "
-            "blocks — exactly one is required (issue #378)"
+            f"delivered report has {block_count} route-status blocks "
+            "('## Route and audit status' / '### Route and audit status' / "
+            "'附录：路由与审计状态') — exactly one is required (issue #378)"
         ]
-    route, malformed = extract_report_route_declaration(
-        visible_report, unknown_route_is_error=True
-    )
+    try:
+        route, malformed = extract_report_route_declaration(
+            visible_report, unknown_route_is_error=True
+        )
+    except _registry_error_types() as exc:
+        return None, [f"cannot parse report route declaration: {exc}"]
     if malformed:
         return None, [f"delivered {item}" for item in malformed]
     if route is None:
         return None, [
             "delivered report requires a visible route declaration "
-            "('**Primary route**' or '**Route**') in '## Route and audit status'"
+            "('**Primary route**' or '**Route**') in the route-status block"
         ]
     return route, []
 
@@ -590,59 +604,52 @@ def _pack_declarations(
     pack_path: Path | str,
     visible_pack: str | None,
 ) -> tuple[str | None, str | None, dict | None, list[str]]:
-    """Issue #434 B1: canonical Pack route / artifact id / activation snapshot.
+    """Issue #434 B1: canonical Pack declarations from the single read.
 
-    Reuses the same parsers as the ``audit_report`` producer: duplicate
-    ``## Primary route`` / ``## Artifact id`` sections are structural errors
-    (``validate_pack_sections``), an unresolvable route fails closed instead
-    of falling back to the first declaration, and the ``## Activation
-    snapshot`` reference is re-read from the visible Pack body.
+    Consumes the already-read visible Pack body through the public
+    ``parse_pack_declarations()`` API (same parser the ``audit_report``
+    producer consumes), so one delivered validation cannot mix Pack
+    versions and the accepted surfaces cannot drift (issue #434 review).
     """
+    if visible_pack is None:
+        return None, None, None, []
     try:
-        from validate_contract import (
-            _extract_pack_artifact_id,
-            _resolve_pack_primary_route,
-            validate_pack_sections,
-        )
+        from validate_contract import parse_pack_declarations
     except ImportError:
         return None, None, None, ["cannot load canonical Research Pack parsers"]
-    section_errors = validate_pack_sections(str(pack_path))
-    if section_errors:
-        return None, None, None, section_errors
-    errors: list[str] = []
-    pack_route = _resolve_pack_primary_route(str(pack_path))
-    if pack_route is None:
-        errors.append(
-            f"Research Pack {pack_path} '## Primary route' cannot be resolved "
-            "to a canonical route — fix the pack declaration"
-        )
-    pack_artifact_id = _extract_pack_artifact_id(str(pack_path))
-    if pack_artifact_id is None:
+    try:
+        declarations = parse_pack_declarations(visible_pack)
+    except _registry_error_types() as exc:
+        return None, None, None, [f"cannot parse Research Pack declarations: {exc}"]
+    errors = [
+        f"Research Pack {pack_path} {item}" for item in declarations.errors
+    ]
+    if declarations.artifact_id is None:
         errors.append(
             f"Research Pack {pack_path} has no '## Artifact id' declaration — "
             "phase=delivered requires the artifact identity binding"
         )
-    snapshot = None
-    if visible_pack is not None:
-        snapshot, snapshot_errors = extract_activation_snapshot_reference(
-            visible_pack, label="Research Pack"
-        )
-        errors.extend(snapshot_errors)
-    return pack_route, pack_artifact_id, snapshot, errors
+    return (
+        declarations.primary_route,
+        declarations.artifact_id,
+        declarations.activation_snapshot,
+        errors,
+    )
 
 
-def _activation_reference_errors(run_state: dict, pack_snapshot: dict) -> list[str]:
-    """Issue #434: Run State activation_reference must match the Pack snapshot."""
+def _activation_reference_errors(
+    run_state: dict, expected: dict, label: str
+) -> list[str]:
+    """Issue #434: Run State activation_reference must match *expected*."""
     reference = run_state.get("activation_reference")
     if not isinstance(reference, dict):
         return []
     errors: list[str] = []
     for field in ("activation_id", "snapshot_version", "decision_tree_version"):
-        if reference.get(field) != pack_snapshot.get(field):
+        if reference.get(field) != expected.get(field):
             errors.append(
-                "Run State activation_reference does not match the Research "
-                f"Pack activation_snapshot: {field} "
-                f"{reference.get(field)!r} != {pack_snapshot.get(field)!r}"
+                f"Run State activation_reference does not match the {label}: "
+                f"{field} {reference.get(field)!r} != {expected.get(field)!r}"
             )
     return errors
 
@@ -820,10 +827,10 @@ def _delivered_validator_errors(
     if route is None:
         return ["cannot bind validators[] without a resolved route"]
     try:
-        from registry_loader import UnknownRouteError, load_route_registry
+        from registry_loader import RegistryError, load_route_registry
 
         expected = load_route_registry().validators_for(route)
-    except (UnknownRouteError, OSError, ImportError) as exc:
+    except (RegistryError, OSError, ImportError) as exc:
         return [f"cannot load canonical validator set for route {route!r}: {exc}"]
 
     audited_path = str(report_path) if report_path is not None else None
@@ -970,8 +977,6 @@ def check_audit_result_for_delivered(
             pack_errors,
         ) = _pack_declarations(pack_path, visible_pack)
         errors.extend(pack_errors)
-        if pack_snapshot is not None:
-            errors.extend(_activation_reference_errors(run_state, pack_snapshot))
 
     contract, contract_errors = _validated_delivered_contract(
         raw_report,
@@ -983,7 +988,42 @@ def check_audit_result_for_delivered(
         pack_activation_snapshot=pack_snapshot,
     )
 
-    if audit.get("schema_version") != schema_version:
+    # Issue #434: Run State identity is bound to the canonical report
+    # contract / Pack, not only contract ↔ Pack.  An artifact A report+Pack
+    # cannot support an artifact B Run State, and the contract activation
+    # reference is compared even when the Pack has no activation snapshot.
+    expected_artifact_id = pack_artifact_id
+    if isinstance(contract, dict) and not contract_errors:
+        raw_artifact = contract.get("artifact_id")
+        if isinstance(raw_artifact, str) and raw_artifact.strip():
+            expected_artifact_id = raw_artifact.strip()
+        contract_activation = contract.get("activation_snapshot")
+        if isinstance(contract_activation, dict):
+            errors.extend(
+                _activation_reference_errors(
+                    run_state,
+                    contract_activation,
+                    "report contract activation_snapshot",
+                )
+            )
+    if expected_artifact_id is not None:
+        run_artifact_id = run_state.get("artifact_id")
+        if run_artifact_id != expected_artifact_id:
+            errors.append(
+                "delivered artifact_id mismatch: Run State declares "
+                f"{run_artifact_id!r} but the report contract/Pack declare "
+                f"{expected_artifact_id!r}"
+            )
+    if pack_snapshot is not None:
+        errors.extend(
+            _activation_reference_errors(
+                run_state, pack_snapshot, "Research Pack activation_snapshot"
+            )
+        )
+
+    if schema_version is None:
+        errors.append("cannot load canonical audit helpers (registry failure)")
+    elif audit.get("schema_version") != schema_version:
         errors.append(
             f"audit result schema_version must be {schema_version}, "
             f"got {audit.get('schema_version')!r}"
@@ -1147,14 +1187,23 @@ def require_delivered_audit(
     if err is not None:
         return [err]
     assert audit is not None
-    return check_audit_result_for_delivered(
-        audit,
-        state,
-        report_path=report_path,
-        pack_path=artifact_path,
-        claim_alignment_bundle_path=claim_alignment_bundle_path,
-        require_opt_in_binding=require_opt_in_binding,
-    )
+    try:
+        return check_audit_result_for_delivered(
+            audit,
+            state,
+            report_path=report_path,
+            pack_path=artifact_path,
+            claim_alignment_bundle_path=claim_alignment_bundle_path,
+            require_opt_in_binding=require_opt_in_binding,
+        )
+    except Exception as exc:  # noqa: BLE001 — last-resort fail-closed guard
+        # Issue #434 B5: no delivered path may leak an unhandled traceback.
+        # The specific type/registry/read failures are handled at their
+        # boundaries; this only catches unforeseen shapes.
+        return [
+            "delivered validation failed unexpectedly: "
+            f"{type(exc).__name__}: {exc}"
+        ]
 
 
 def _unreadable_error(label: str, path: Path | str) -> str | None:
@@ -1175,7 +1224,7 @@ def _load_json_object(path: Path | str, label: str) -> tuple[dict | None, list[s
     path = Path(path)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         return None, [f"cannot read {label} {path}: {exc}"]
     except json.JSONDecodeError as exc:
         return None, [f"{label} {path} is not valid JSON: {exc}"]

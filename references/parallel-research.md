@@ -158,12 +158,15 @@ a single, complete activation contract validated with the strict contract
 boundary (stable artifact identity blocking; pure advisory warnings stay
 non-blocking); the visible route-status block (`## Route and audit status`,
 H2/H3, English or `附录：路由与审计状态`) must exist exactly once and its
-route declaration must resolve to the same canonical route as the contract
-primary/secondary routes, the Pack `## Primary route`,
-and the audit result route; the Pack must declare `## Primary route` and
-`## Artifact id` exactly once, with the artifact id matching the contract;
-the Pack `## Activation snapshot` must agree with the contract and with the
-Run State `activation_reference`; report/Pack evidence locators must resolve
+route declaration must agree with the contract primary route, the Pack
+`## Primary route`, and the audit result route; every contract secondary
+route must independently be canonical and carry its exact
+`<secondary>-secondary-hard-fail` audit; the Pack must declare
+`## Primary route` and `## Artifact id` exactly once, with the artifact id
+matching the contract and the Run State `artifact_id`; the contract
+`activation_snapshot` must match the Run State `activation_reference`, and
+the Pack `## Activation snapshot` (when present) must match both;
+report/Pack evidence locators must resolve
 against the visible artifact body (fenced or HTML-hidden headings and tables
 do not count); and contract/registry failures are returned as structured
 delivered errors, never as an unhandled traceback. `--chain`

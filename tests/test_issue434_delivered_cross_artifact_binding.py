@@ -642,3 +642,202 @@ def test_producer_accepted_nested_h3_route_heading_still_passes_delivered(
     proc = _run_delivered(tmp_path, report, pack, audit_path)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert _payload(proc)["ok"] is True
+
+
+def test_run_state_artifact_id_mismatch_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    state = json.loads(DELIVERED_STATE.read_text(encoding="utf-8"))
+    state["artifact_id"] = "other-artifact"
+
+    proc = _run_delivered(
+        tmp_path, report, pack, audit_path, state_data=state
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("artifact_id" in error for error in payload["errors"]), payload
+
+
+def test_from_to_delivered_artifact_id_mismatch_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    before = json.loads(DELIVERED_STATE.read_text(encoding="utf-8"))
+    before.update(
+        {
+            "phase": "auditing",
+            "status": "in_progress",
+            "artifact_id": "other-artifact",
+        }
+    )
+    after = json.loads(DELIVERED_STATE.read_text(encoding="utf-8"))
+    after["artifact_id"] = "other-artifact"
+    before_path = tmp_path / "before.json"
+    after_path = tmp_path / "after.json"
+    before_path.write_text(json.dumps(before), encoding="utf-8")
+    after_path.write_text(json.dumps(after), encoding="utf-8")
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "validate_research_run_state.py"),
+            "--from",
+            str(before_path),
+            "--to",
+            str(after_path),
+            "--audit-result",
+            str(audit_path),
+            "--artifact",
+            str(pack),
+            "--report",
+            str(report),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("artifact_id" in error for error in payload["errors"]), payload
+
+
+def test_activation_reference_mismatch_without_pack_snapshot_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    state = json.loads(DELIVERED_STATE.read_text(encoding="utf-8"))
+    state["activation_reference"] = {
+        "activation_id": "different-activation",
+        "snapshot_version": 2,
+        "decision_tree_version": 1,
+    }
+
+    proc = _run_delivered(
+        tmp_path, report, pack, audit_path, state_data=state
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any(
+        "Run State activation_reference" in error for error in payload["errors"]
+    ), payload
+
+
+def test_matching_contract_activation_reference_without_pack_snapshot_passes(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert _payload(proc)["ok"] is True
+
+
+def test_malformed_typed_contract_cannot_support_delivered(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+
+    def unhashable_secondary(contract: dict) -> None:
+        contract["secondary_routes"] = [{}]
+        contract["secondary_route_contracts"] = {}
+
+    _edit_contract(report, unhashable_secondary)
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any(
+        "Secondary route" in error or "secondary" in error
+        for error in payload["errors"]
+    ), payload
+    assert "Traceback" not in proc.stderr
+
+
+def test_invalid_utf8_audit_json_returns_structured_error(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    audit_path.write_bytes(b'{"schema_version": "2", "x": "\xff\xfe"}')
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("audit result" in error for error in payload["errors"]), payload
+    assert "Traceback" not in proc.stderr
+
+
+def test_invalid_utf8_run_state_returns_structured_error(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    state_path = tmp_path / "bad-state.json"
+    state_path.write_bytes(b'{"schema_version": "2", "run_id": "\xff\xfe"}')
+
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "validate_research_run_state.py"),
+            str(state_path),
+            "--audit-result",
+            str(audit_path),
+            "--artifact",
+            str(pack),
+            "--report",
+            str(report),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("run state" in error for error in payload["errors"]), payload
+    assert "Traceback" not in proc.stderr
+
+
+def test_registry_failure_is_structured(monkeypatch) -> None:
+    import types
+
+    import registry_loader
+
+    import validate_research_run_state as vrs  # noqa: PLC0415
+
+    class Boom(types.ModuleType):
+        def __getattr__(self, name):  # noqa: ANN001
+            raise registry_loader.RegistryError("corrupt registry")
+
+    monkeypatch.setitem(sys.modules, "run_forward_evals", Boom("run_forward_evals"))
+
+    errors = vrs.check_audit_result_for_delivered(
+        {"schema_version": "2", "overall": "pass", "exit_code": 0, "audits": []},
+        {"artifact_id": "x"},
+    )
+    assert errors
+    assert any(
+        "registry" in error.lower() or "canonical" in error.lower()
+        for error in errors
+    ), errors
+
+
+def test_pack_locator_removed_cannot_support_delivered(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    entry = _manual_entry(audit)
+    entry["evidence"] = ["pack-section:Artifact contract"]
+    entry["evidence_provenance"] = [
+        {
+            "verified": True,
+            "kind": "pack_section",
+            "locator": "Artifact contract",
+            "execution_source": "manual_checklist_attestation",
+        }
+    ]
+    audit_path.write_text(json.dumps(audit, ensure_ascii=False), encoding="utf-8")
+
+    text = pack.read_text(encoding="utf-8")
+    text = re.sub(
+        r"## Artifact contract\n.*?(?=\n## )", "", text, flags=re.DOTALL
+    )
+    pack.write_text(text, encoding="utf-8")
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any(
+        "Artifact contract" in error or "visible pack" in error
+        for error in payload["errors"]
+    ), payload

@@ -39,6 +39,7 @@ import sys
 from collections.abc import Collection
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from registry_loader import (
     RegistryError,
@@ -404,6 +405,11 @@ def validate_contract(
         errors.append(f"audits must be an array, got {type(audits).__name__}")
         audits = []
 
+    # Type-filtered view for every set/sort operation: a malformed entry is
+    # reported above, but it must never reach hashing/sorting and crash the
+    # validator with a TypeError (issue #434 review).
+    secondary_strings = [item for item in secondary if isinstance(item, str)]
+
     primary = contract["primary_route"]
 
     # 1b. Primary route must be a string
@@ -521,7 +527,7 @@ def validate_contract(
                     f"'{actual_activation['primary_route']}' but contract declares "
                     f"'{primary}'"
                 )
-            if sorted(secondary) != actual_activation["secondary_routes"]:
+            if sorted(secondary_strings) != actual_activation["secondary_routes"]:
                 errors.append(
                     "Activation/contract secondary route mismatch: activation "
                     "snapshot and contract must declare the same routes"
@@ -546,7 +552,7 @@ def validate_contract(
         if not isinstance(secondary_contracts, dict):
             errors.append("secondary_route_contracts must be an object keyed by route id")
         else:
-            undeclared = set(secondary_contracts) - set(secondary)
+            undeclared = set(secondary_contracts) - set(secondary_strings)
             if undeclared:
                 errors.append(
                     "secondary_route_contracts contains route(s) not declared in "
@@ -1203,27 +1209,116 @@ def _count_pack_sections(text: str, heading: str) -> int:
     ))
 
 
-def validate_pack_sections(pack_path: str) -> list[str]:
-    """Cardinality check for pack declarations (issue #378).
+def validate_pack_sections_text(cleaned: str) -> list[str]:
+    """Cardinality errors for visible Pack declarations (issue #378/#434).
 
     '## Primary route' and '## Artifact id' must each appear at most once;
     a second conflicting declaration would silently bypass the
-    pack/contract cross-check if only the first section were read.
-    Returns structural errors (empty list when well-formed).
+    pack/contract cross-check if only the first section were read.  Consumes
+    the caller's already-read visible Pack body (issue #434 single-read).
     """
+    errors: list[str] = []
+    for heading in ("Primary route", "Artifact id"):
+        count = _count_pack_sections(cleaned, heading)
+        if count > 1:
+            errors.append(
+                f"declares '## {heading}' {count} times — exactly one is "
+                "required (issue #378)"
+            )
+    return errors
+
+
+def validate_pack_sections(pack_path: str) -> list[str]:
+    """Path wrapper for :func:`validate_pack_sections_text` (producer API)."""
     try:
         text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError) as exc:
         return [f"cannot read pack {pack_path}: {exc}"]
-    errors: list[str] = []
-    for heading in ("Primary route", "Artifact id"):
-        count = _count_pack_sections(text, heading)
-        if count > 1:
-            errors.append(
-                f"Research Pack {pack_path} declares '## {heading}' "
-                f"{count} times — exactly one is required (issue #378)"
-            )
-    return errors
+    return [
+        f"Research Pack {pack_path} {item}"
+        for item in validate_pack_sections_text(text)
+    ]
+
+
+def resolve_pack_primary_route_text(cleaned: str) -> tuple[str | None, list[str]]:
+    """Canonical route from a visible Pack body plus structural errors.
+
+    Fenced declarations do not count (issue #378).  The first non-empty line
+    that is not "Closest alternative:" prose wins; list markers / bold /
+    italic are stripped so display-name forms resolve.  Returns
+    ``(route, errors)``; ``route is None`` always carries at least one
+    error so callers cannot silently skip a broken declaration.
+    """
+    match = re.search(
+        r"## Primary route\s*\n(.*?)(?=\n## |\Z)", cleaned, re.DOTALL
+    )
+    if not match:
+        return None, ["has no '## Primary route' section."]
+    lines = [
+        line.strip() for line in match.group(1).split("\n")
+        if line.strip() and not line.strip().lower().startswith("closest")
+    ]
+    if not lines:
+        return None, ["'## Primary route' section is empty."]
+    raw = lines[0]
+    # Strip list markers / bold / italic so display-name forms resolve.
+    raw = re.sub(r"^[-*>]+\s+", "", raw)
+    raw = re.sub(r"^\d+[.)]\s+", "", raw)
+    raw = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", raw)
+    try:
+        return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw), []
+    except UnknownRouteError as exc:
+        return None, [f"cannot resolve pack primary route: {exc}"]
+
+
+def extract_pack_artifact_id_text(cleaned: str) -> str | None:
+    """First line of a visible Pack '## Artifact id' section (issue #378)."""
+    match = re.search(
+        r"## Artifact id\s*\n(.+?)(?=\n## |\Z)", cleaned, re.DOTALL
+    )
+    if not match:
+        return None
+    for line in match.group(1).split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        line = re.sub(r"^[-*>]+\s+", "", line)
+        line = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", line)
+        return line or None
+    return None
+
+
+@dataclass(frozen=True)
+class PackDeclarations:
+    """Canonical declarations parsed from a visible Research Pack body."""
+
+    primary_route: str | None
+    artifact_id: str | None
+    activation_snapshot: dict[str, Any] | None
+    errors: list[str]
+
+
+def parse_pack_declarations(cleaned: str) -> PackDeclarations:
+    """Single canonical parse of every Pack declaration (issue #434 review).
+
+    The ``audit_report`` producer and the delivered consumer consume the same
+    result, so their accepted surfaces cannot drift and the consumer does not
+    need to re-read the Pack per declaration.
+    """
+    errors = list(validate_pack_sections_text(cleaned))
+    primary_route, route_errors = resolve_pack_primary_route_text(cleaned)
+    errors.extend(route_errors)
+    artifact_id = extract_pack_artifact_id_text(cleaned)
+    activation_snapshot, snapshot_errors = extract_activation_snapshot_reference(
+        cleaned, label="Research Pack"
+    )
+    errors.extend(snapshot_errors)
+    return PackDeclarations(
+        primary_route=primary_route,
+        artifact_id=artifact_id,
+        activation_snapshot=activation_snapshot,
+        errors=errors,
+    )
 
 
 def _resolve_pack_primary_route(pack_path: str) -> str | None:
@@ -1243,41 +1338,10 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
 
     # Fenced declarations (e.g. a route inside ~~~markdown) do not count
     # as visible pack sections (issue #378).
-    text = _strip_fences(text)
-
-    match = re.search(
-        r"## Primary route\s*\n(.*?)(?=\n## |\Z)", text, re.DOTALL
-    )
-    if not match:
-        print(
-            f"Error: Research Pack {pack_path} has no '## Primary route' section.",
-            file=sys.stderr,
-        )
-        return None
-
-    # First non-empty line that is not "Closest alternative:" prose.
-    lines = [
-        line.strip() for line in match.group(1).split("\n")
-        if line.strip() and not line.strip().lower().startswith("closest")
-    ]
-    if not lines:
-        print(
-            f"Error: Research Pack {pack_path} '## Primary route' section is empty.",
-            file=sys.stderr,
-        )
-        return None
-
-    raw = lines[0]
-    # Strip list markers / bold / italic so display-name forms resolve.
-    raw = re.sub(r"^[-*>]+\s+", "", raw)
-    raw = re.sub(r"^\d+[.)]\s+", "", raw)
-    raw = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", raw)
-
-    try:
-        return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw)
-    except UnknownRouteError as exc:
-        print(f"Error: cannot resolve pack primary route: {exc}", file=sys.stderr)
-        return None
+    route, errors = resolve_pack_primary_route_text(_strip_fences(text))
+    for item in errors:
+        print(f"Error: Research Pack {pack_path} {item}", file=sys.stderr)
+    return route
 
 
 _HTML_COMMENT_RE = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
@@ -1844,20 +1908,7 @@ def _extract_pack_artifact_id(pack_path: str) -> str | None:
         text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError):
         return None
-    text = _strip_fences(text)
-    match = re.search(
-        r"## Artifact id\s*\n(.+?)(?=\n## |\Z)", text, re.DOTALL
-    )
-    if not match:
-        return None
-    for line in match.group(1).split("\n"):
-        line = line.strip()
-        if not line:
-            continue
-        line = re.sub(r"^[-*>]+\s+", "", line)
-        line = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", line)
-        return line or None
-    return None
+    return extract_pack_artifact_id_text(_strip_fences(text))
 
 
 if __name__ == "__main__":
