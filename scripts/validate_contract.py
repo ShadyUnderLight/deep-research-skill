@@ -1715,14 +1715,48 @@ def strip_fenced_code_blocks_only(text: str) -> str:
     return sanitize_checklist_visible_markdown(text)
 
 
+# Shared visible route-status block matcher (issue #434).  The audit
+# producer accepts H2/H3 headings whose text contains the English or the
+# Chinese route-status phrase (``audit_report._parse_audit_block_statuses``,
+# ``validate_report_quality.ROUTE_AUDIT_HEADING``); ``count_report_route_blocks``
+# and ``extract_report_route_declaration`` must consume the same matcher so the
+# producer and the delivered consumer cannot drift.  Line-anchored so a
+# ``## Route and audit status`` substring inside prose is never a block.
+_REPORT_ROUTE_BLOCK_RE = re.compile(
+    r"^#{2,3}\s+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)[^\n]*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+_REPORT_ROUTE_BLOCK_LEVEL_RE = re.compile(r"^(#{2,3})\s")
+
+
 def count_report_route_blocks(text: str) -> int:
-    """Number of visible (non-fenced) '## Route and audit status' blocks."""
+    """Number of visible (non-fenced) route-status blocks (H2/H3, EN/中文)."""
     cleaned = _strip_fences(text)
-    return len(re.findall(
-        r"^#{2,3}\s+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)",
-        cleaned,
-        re.MULTILINE | re.IGNORECASE,
-    ))
+    return len(_REPORT_ROUTE_BLOCK_RE.findall(cleaned))
+
+
+def _report_route_block_body(cleaned: str) -> str | None:
+    """Body of the first visible route-status block, heading included.
+
+    The block ends at the next heading whose level is <= the matched
+    heading level (mirroring ``validate_report_quality.section_bounds``).
+    """
+    lines = cleaned.split("\n")
+    for index, line in enumerate(lines):
+        stripped = line.rstrip()
+        if not _REPORT_ROUTE_BLOCK_RE.match(stripped):
+            continue
+        level_match = _REPORT_ROUTE_BLOCK_LEVEL_RE.match(stripped)
+        assert level_match is not None
+        level = len(level_match.group(1))
+        end = len(lines)
+        for cursor in range(index + 1, len(lines)):
+            heading = re.match(r"^(#{1,6})\s", lines[cursor])
+            if heading and len(heading.group(1)) <= level:
+                end = cursor
+                break
+        return "\n".join(lines[index:end])
+    return None
 
 
 def extract_report_route_declaration(
@@ -1738,7 +1772,10 @@ def extract_report_route_declaration(
     than one route declaration line in the block is structural
     malformation — the first declaration must not win.  Fenced code blocks
     are stripped first so a fake declaration inside a ```markdown block
-    can never override the visible status block.
+    can never override the visible status block.  The block heading matcher
+    is shared with :func:`count_report_route_blocks` (H2/H3, English or
+    中文), so consumers that check presence/cardinality and this parser
+    cannot drift (issue #434 review round 3).
 
     ``unknown_route_is_error`` is for consumers that own the whole
     cross-artifact boundary (delivered Run State, issue #434): a visible
@@ -1746,12 +1783,9 @@ def extract_report_route_declaration(
     error instead of being silently ignored by other route validators.
     """
     cleaned = _strip_fences(text)
-    match = re.search(
-        r"## Route and audit status\s*\n(.*?)(?=\n## |\Z)", cleaned, re.DOTALL
-    )
-    if not match:
+    block = _report_route_block_body(cleaned)
+    if block is None:
         return None, []
-    block = match.group(1)
 
     declarations: list[str] = []
     for line in block.split("\n"):

@@ -584,3 +584,61 @@ def test_advisory_contract_warnings_do_not_block_delivered(tmp_path: Path) -> No
     proc = _run_delivered(tmp_path, report, pack, audit_path)
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert _payload(proc)["ok"] is True
+
+
+def _rerun_producer(report: Path, pack: Path) -> dict:
+    proc = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "audit_report.py"),
+            str(report),
+            "--research-pack",
+            str(pack),
+            "--strict",
+            "--require-contract",
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    return json.loads(proc.stdout)
+
+
+def test_producer_accepted_chinese_route_heading_still_passes_delivered(
+    tmp_path: Path,
+) -> None:
+    """Issue #434 review round 3: producer and delivered must accept the same
+    route-status heading forms (H2/H3, English or 附录：路由与审计状态)."""
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    report.write_text(
+        report.read_text(encoding="utf-8").replace(
+            "## Route and audit status", "## 附录：路由与审计状态"
+        ),
+        encoding="utf-8",
+    )
+    audit = _rerun_producer(report, pack)
+    audit_path.write_text(json.dumps(audit, ensure_ascii=False), encoding="utf-8")
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert _payload(proc)["ok"] is True
+
+
+def test_producer_accepted_nested_h3_route_heading_still_passes_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    report.write_text(
+        report.read_text(encoding="utf-8").replace(
+            "## Route and audit status",
+            "## Appendix\n\n### Route and audit status",
+        ),
+        encoding="utf-8",
+    )
+    audit = _rerun_producer(report, pack)
+    audit_path.write_text(json.dumps(audit, ensure_ascii=False), encoding="utf-8")
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert _payload(proc)["ok"] is True

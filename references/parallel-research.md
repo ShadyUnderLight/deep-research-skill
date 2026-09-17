@@ -156,9 +156,10 @@ report. Entering `delivered` re-validates the whole cross-artifact chain
 instead of trusting a self-consistent audit JSON: the report contract must be
 a single, complete activation contract validated with the strict contract
 boundary (stable artifact identity blocking; pure advisory warnings stay
-non-blocking); the visible report `## Route and audit status` block must exist
-exactly once and its route declaration must resolve to the same canonical
-route as the contract primary/secondary routes, the Pack `## Primary route`,
+non-blocking); the visible route-status block (`## Route and audit status`,
+H2/H3, English or `附录：路由与审计状态`) must exist exactly once and its
+route declaration must resolve to the same canonical route as the contract
+primary/secondary routes, the Pack `## Primary route`,
 and the audit result route; the Pack must declare `## Primary route` and
 `## Artifact id` exactly once, with the artifact id matching the contract;
 the Pack `## Activation snapshot` must agree with the contract and with the

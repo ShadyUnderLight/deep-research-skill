@@ -720,10 +720,10 @@ def _derive_expected_audit_ids(
     """从 canonical contract / route registry 外算完整 expected audit set。
 
     不信任 payload 自己的 audits[] 列表。contract 已经过
-    ``_validated_delivered_contract`` 边界（errors 与 warnings 都已阻断），
-    这里只消费其 canonical ``primary_route`` / ``secondary_routes``，不重复
-    解释 contract 语义（issue #434 review）。顶层 ``route`` 必须存在并与
-    报告 contract / Pack 一致。
+    ``_validated_delivered_contract`` strict 边界：blocking errors 已阻断，
+    advisory warnings 非阻断；这里只消费其 canonical ``primary_route`` /
+    ``secondary_routes``，不重复解释 contract 语义（issue #434 review）。
+    顶层 ``route`` 必须存在并与报告 contract / Pack 一致。
     """
     errors = list(contract_errors)
     contract_route = None
