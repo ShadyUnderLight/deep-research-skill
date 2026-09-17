@@ -152,7 +152,15 @@ support `delivered`.
 The audit result must contain the complete expected audit set derived from the
 route, contract, and audit registry — a single `final-audit` entry is not
 enough — plus the canonical `validators[]` set for that route bound to the
-report. `--chain` requires the Pack `## Run state` section, the same sidecar
+report. Entering `delivered` re-validates the whole cross-artifact chain
+instead of trusting a self-consistent audit JSON: the report contract must be
+a single, canonically valid activation contract; the contract
+primary/secondary routes and the Pack `## Primary route` must be canonical
+and agree with the audit result route; report/Pack evidence locators must
+resolve against the visible artifact body (fenced or HTML-hidden headings and
+tables do not count); and contract/registry failures are returned as
+structured delivered errors, never as an unhandled traceback. `--chain`
+requires the Pack `## Run state` section, the same sidecar
 file, `--report` when the run is delivered, and a repeated `--handoff` for
 every listed `handoff_refs` entry. `explicit_resume` cannot bind a Track
 Handoff.

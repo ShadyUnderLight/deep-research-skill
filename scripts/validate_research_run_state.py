@@ -505,67 +505,185 @@ def _quiet_resolve_route(name: str | None) -> str | None:
     if not isinstance(name, str) or not name.strip():
         return None
     try:
-        from registry_loader import UnknownRouteError, load_route_registry
+        from registry_loader import RegistryError, load_route_registry
 
         return load_route_registry().resolve_route(name.strip())
-    except (UnknownRouteError, OSError, ImportError):
+    except (RegistryError, OSError, ImportError):
         return None
 
 
-def _quiet_pack_primary_route(pack_path: Path | str | None) -> str | None:
-    if pack_path is None:
-        return None
+def _registry_error_types() -> tuple[type[BaseException], ...]:
+    """Registry / parse failures delivered must surface as structured errors."""
     try:
-        cleaned = Path(pack_path).read_text(encoding="utf-8")
-    except OSError:
-        return None
-    line = _first_pack_section_line(cleaned, "Primary route")
-    return _quiet_resolve_route(line)
+        from registry_loader import RegistryError
+    except ImportError:  # pragma: no cover - standalone import guard
+        return (OSError, ValueError)
+    return (RegistryError, OSError, ValueError)
 
 
-def _report_contract(report_path: Path | str | None) -> dict | None:
-    if report_path is None:
-        return None
+def _read_artifact_text(
+    path: Path | str,
+    label: str,
+) -> tuple[str | None, str | None, list[str]]:
+    """Read an artifact once: raw text plus canonical visible text.
+
+    The raw text keeps the ```contract fence intact for canonical contract
+    extraction; the visible text is the sanitized body used to resolve
+    evidence locators (issue #434 B3: fenced/HTML-hidden headings and tables
+    must not count as evidence).
+    """
     try:
-        from validate_contract import extract_contract_from_markdown
+        raw = Path(path).read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        return None, None, [f"cannot read {label} {path}: {exc}"]
+    try:
+        from validate_contract import sanitize_visible_markdown
+    except ImportError:
+        return raw, None, ["cannot load canonical visible-Markdown sanitizer"]
+    return raw, sanitize_visible_markdown(raw), []
 
-        return extract_contract_from_markdown(
-            Path(report_path).read_text(encoding="utf-8")
+
+def _validated_delivered_contract(
+    raw_report: str | None,
+    visible_report: str | None,
+    *,
+    report_supplied: bool,
+    pack_artifact_id: str | None,
+    research_pack_provided: bool,
+) -> tuple[dict | None, list[str]]:
+    """Issue #434 B1: the report contract must be single, canonical and valid.
+
+    ``extract_contract_from_markdown()`` parsing success is not contract
+    validity.  The delivered consumer runs the same canonical
+    ``validate_contract()`` boundary the CLI runs, against the visible report
+    body, before any expected audit id is derived.  Warnings stay
+    non-blocking (producer non-strict semantics); errors fail closed.
+    """
+    if not report_supplied or raw_report is None:
+        return None, []
+    try:
+        from validate_contract import (
+            PROJECT_ROOT,
+            extract_contract_blocks,
+            validate_contract,
         )
-    except (OSError, UnicodeError, ImportError):
-        return None
+    except ImportError:
+        return None, ["cannot load canonical contract validator"]
+    contracts, contract_errors = extract_contract_blocks(raw_report)
+    if contract_errors:
+        return None, [f"delivered report contract: {item}" for item in contract_errors]
+    if not contracts:
+        return None, [
+            "phase=delivered requires a route activation contract in --report"
+        ]
+    contract = contracts[0]
+    try:
+        result = validate_contract(
+            contract,
+            pack_artifact_id=pack_artifact_id,
+            research_pack_provided=research_pack_provided,
+            strict=False,
+            report_text=visible_report,
+            evidence_base_dir=PROJECT_ROOT,
+        )
+    except _registry_error_types() as exc:
+        return contract, [f"delivered report contract validation failed: {exc}"]
+    return contract, [f"delivered report contract: {item}" for item in result.errors]
 
 
 def _derive_expected_audit_ids(
     audit: dict,
     *,
-    report_path: Path | str | None,
-    pack_path: Path | str | None,
+    contract: dict | None,
+    contract_errors: list[str],
+    report_supplied: bool,
+    visible_pack: str | None,
+    pack_supplied: bool,
     expected_set_fn,
 ) -> tuple[list[str] | None, str | None, list[str]]:
-    """从 route / contract / registry 外算完整 expected audit set。
+    """从 canonical contract / route registry 外算完整 expected audit set。
 
-    不信任 payload 自己的 audits[] 列表。顶层 ``route`` 必须存在并与
-    报告 contract / Pack 一致，这样删掉 JSON 里的 route 不能蒙混过关。
+    不信任 payload 自己的 audits[] 列表，也不信任未经 canonical 校验的报告
+    contract 文本（issue #434 B2）：unknown / 重复 / primary-as-secondary 的
+    secondary route 不能派生 ``<route>-secondary-hard-fail``。顶层 ``route``
+    必须存在并与报告 contract / Pack 一致。
     """
-    errors: list[str] = []
-    contract = _report_contract(report_path)
-    if report_path is not None and contract is None:
-        errors.append(
-            "phase=delivered requires a route activation contract in --report"
-        )
+    errors = list(contract_errors)
     contract_route = None
     secondaries: list[str] = []
-    if isinstance(contract, dict):
-        raw = contract.get("primary_route")
-        if isinstance(raw, str) and raw.strip():
-            contract_route = _quiet_resolve_route(raw) or raw.strip()
-        secondaries = [
-            str(item).strip()
-            for item in (contract.get("secondary_routes") or [])
-            if isinstance(item, str) and item.strip()
-        ]
-    pack_route = _quiet_pack_primary_route(pack_path)
+    if report_supplied:
+        if contract is None or errors:
+            return None, None, errors
+        raw_primary = contract.get("primary_route")
+        if isinstance(raw_primary, str) and raw_primary.strip():
+            contract_route = _quiet_resolve_route(raw_primary)
+            if contract_route is None:
+                errors.append(
+                    "delivered report contract primary route "
+                    f"{raw_primary!r} is not a canonical route"
+                )
+        else:
+            errors.append(
+                "delivered report contract requires a non-empty primary_route"
+            )
+        raw_secondaries = contract.get("secondary_routes") or []
+        if not isinstance(raw_secondaries, list):
+            errors.append(
+                "delivered report contract secondary_routes must be an array"
+            )
+            raw_secondaries = []
+        seen_secondaries: set[str] = set()
+        for item in raw_secondaries:
+            if not isinstance(item, str) or not item.strip():
+                errors.append(
+                    "delivered report contract secondary route entry must be "
+                    f"a non-empty string, got {item!r}"
+                )
+                continue
+            resolved = _quiet_resolve_route(item)
+            if resolved is None:
+                errors.append(
+                    f"delivered report contract secondary route {item!r} is "
+                    "not a canonical route"
+                )
+                continue
+            if resolved == contract_route:
+                errors.append(
+                    f"delivered report contract route {item!r} cannot be both "
+                    "primary and secondary"
+                )
+                continue
+            if resolved in seen_secondaries:
+                errors.append(
+                    "delivered report contract declares duplicate secondary "
+                    f"route {resolved!r}"
+                )
+                continue
+            seen_secondaries.add(resolved)
+            secondaries.append(resolved)
+        if errors:
+            return None, contract_route, errors
+
+    pack_route = None
+    if pack_supplied:
+        pack_line = (
+            _first_pack_section_line(visible_pack, "Primary route")
+            if visible_pack is not None
+            else None
+        )
+        if pack_line is None:
+            errors.append(
+                "Research Pack must declare a '## Primary route' section for "
+                "phase=delivered"
+            )
+        else:
+            pack_route = _quiet_resolve_route(pack_line)
+            if pack_route is None:
+                errors.append(
+                    f"Research Pack primary route {pack_line!r} is not a "
+                    "canonical route"
+                )
+
     raw_audit_route = audit.get("route")
     if not isinstance(raw_audit_route, str) or not raw_audit_route.strip():
         errors.append("audit result requires top-level route")
@@ -579,10 +697,11 @@ def _derive_expected_audit_ids(
 
     route = contract_route or pack_route or audit_route
     if route is None:
-        errors.append(
-            "phase=delivered cannot derive the expected audit set: "
-            "need a primary route from the report contract or Research Pack"
-        )
+        if not errors:
+            errors.append(
+                "phase=delivered cannot derive the expected audit set: "
+                "need a primary route from the report contract or Research Pack"
+            )
         return None, None, errors
 
     for label, other in (
@@ -596,10 +715,19 @@ def _derive_expected_audit_ids(
                 f"declares {other!r}"
             )
 
+    if errors:
+        return None, route, errors
+
     if expected_set_fn is None:
         errors.append("cannot load canonical expected audit set helper")
         return None, route, errors
-    expected = expected_set_fn(route, secondaries)
+    try:
+        expected = expected_set_fn(route, secondaries)
+    except _registry_error_types() as exc:
+        errors.append(
+            f"cannot derive expected audit set for route {route!r}: {exc}"
+        )
+        return None, route, errors
     if expected is None:
         errors.append(
             f"cannot derive expected audit set for route {route!r} "
@@ -723,6 +851,10 @@ def check_audit_result_for_delivered(
 
     Issue #426: 绑定是显式路径/ID/route/validator/状态，不做字节 hash
     比较；报告与 Pack 也只做路径存在与流程门禁，不互相冒充。
+    Issue #434: report contract 走 canonical ``validate_contract()`` 边界，
+    expected audit set 只从 canonical route/contract 派生，report/Pack
+    evidence locator 对可见正文重新定位；registry/parse 失败返回结构化
+    delivered 错误而不是 traceback。
     """
     require_opt_in_binding = (
         require_opt_in_binding or claim_alignment_bundle_path is not None
@@ -737,6 +869,34 @@ def check_audit_result_for_delivered(
         expected_set_fn,
         validators_ok_fn,
     ) = _canonical_audit_helpers()
+
+    # Issue #434: read report/Pack once; raw text keeps the contract fence,
+    # visible text is what evidence locators must resolve against.
+    raw_report = visible_report = None
+    if report_path is not None:
+        raw_report, visible_report, read_errors = _read_artifact_text(
+            report_path, "report"
+        )
+        errors.extend(read_errors)
+    raw_pack = visible_pack = None
+    if pack_path is not None:
+        raw_pack, visible_pack, read_errors = _read_artifact_text(
+            pack_path, "Research Pack"
+        )
+        errors.extend(read_errors)
+    pack_artifact_id = (
+        _first_pack_section_line(visible_pack, "Artifact id")
+        if visible_pack is not None
+        else None
+    )
+
+    contract, contract_errors = _validated_delivered_contract(
+        raw_report,
+        visible_report,
+        report_supplied=report_path is not None,
+        pack_artifact_id=pack_artifact_id,
+        research_pack_provided=raw_pack is not None,
+    )
 
     if audit.get("schema_version") != schema_version:
         errors.append(
@@ -783,8 +943,11 @@ def check_audit_result_for_delivered(
     ]
     expected_ids, route, expected_errors = _derive_expected_audit_ids(
         audit,
-        report_path=report_path,
-        pack_path=pack_path,
+        contract=contract,
+        contract_errors=contract_errors,
+        report_supplied=report_path is not None,
+        visible_pack=visible_pack,
+        pack_supplied=raw_pack is not None,
         expected_set_fn=expected_set_fn,
     )
     errors.extend(expected_errors)
@@ -807,6 +970,9 @@ def check_audit_result_for_delivered(
             expected_ids,
             audited_path=str(report_path) if report_path is not None else None,
             research_pack_path=str(pack_path) if pack_path is not None else None,
+            report_text=visible_report,
+            pack_text=visible_pack,
+            expected_route=route,
             claim_alignment_bundle_path=(
                 str(claim_alignment_bundle_path)
                 if claim_alignment_bundle_path is not None
