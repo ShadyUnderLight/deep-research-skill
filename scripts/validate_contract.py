@@ -1209,13 +1209,17 @@ def _count_pack_sections(text: str, heading: str) -> int:
     ))
 
 
-def validate_pack_sections_text(cleaned: str) -> list[str]:
+def validate_pack_sections_text(
+    cleaned: str, *, require_exactly_one: bool = False
+) -> list[str]:
     """Cardinality errors for visible Pack declarations (issue #378/#434).
 
     '## Primary route' and '## Artifact id' must each appear at most once;
     a second conflicting declaration would silently bypass the
     pack/contract cross-check if only the first section were read.  Consumes
     the caller's already-read visible Pack body (issue #434 single-read).
+    With ``require_exactly_one`` (the delivered boundary) a missing required
+    declaration is structural too, instead of relying on the extractors.
     """
     errors: list[str] = []
     for heading in ("Primary route", "Artifact id"):
@@ -1225,7 +1229,26 @@ def validate_pack_sections_text(cleaned: str) -> list[str]:
                 f"declares '## {heading}' {count} times — exactly one is "
                 "required (issue #378)"
             )
+        elif require_exactly_one and count == 0:
+            errors.append(f"requires exactly one '## {heading}' declaration")
     return errors
+
+
+def _pack_h2_section_body(cleaned: str, heading: str) -> str | None:
+    """Body of a required H2 Pack section, strictly line-anchored.
+
+    The cardinality counter and both declaration extractors must consume the
+    same ``## <heading>`` section (issue #434 review): an H3
+    ``### Primary route`` or an inline prose mention of the heading can
+    never masquerade as the required H2 declaration, and the section ends at
+    the next visible H2 / end of document.
+    """
+    match = re.search(
+        rf"^##[ \t]+{re.escape(heading)}[ \t]*\n(.*?)(?=^##[ \t]|\Z)",
+        cleaned,
+        re.MULTILINE | re.DOTALL,
+    )
+    return match.group(1) if match is not None else None
 
 
 def validate_pack_sections(pack_path: str) -> list[str]:
@@ -1249,13 +1272,11 @@ def resolve_pack_primary_route_text(cleaned: str) -> tuple[str | None, list[str]
     ``(route, errors)``; ``route is None`` always carries at least one
     error so callers cannot silently skip a broken declaration.
     """
-    match = re.search(
-        r"## Primary route\s*\n(.*?)(?=\n## |\Z)", cleaned, re.DOTALL
-    )
-    if not match:
+    body = _pack_h2_section_body(cleaned, "Primary route")
+    if body is None:
         return None, ["has no '## Primary route' section."]
     lines = [
-        line.strip() for line in match.group(1).split("\n")
+        line.strip() for line in body.split("\n")
         if line.strip() and not line.strip().lower().startswith("closest")
     ]
     if not lines:
@@ -1273,12 +1294,10 @@ def resolve_pack_primary_route_text(cleaned: str) -> tuple[str | None, list[str]
 
 def extract_pack_artifact_id_text(cleaned: str) -> str | None:
     """First line of a visible Pack '## Artifact id' section (issue #378)."""
-    match = re.search(
-        r"## Artifact id\s*\n(.+?)(?=\n## |\Z)", cleaned, re.DOTALL
-    )
-    if not match:
+    body = _pack_h2_section_body(cleaned, "Artifact id")
+    if body is None:
         return None
-    for line in match.group(1).split("\n"):
+    for line in body.split("\n"):
         line = line.strip()
         if not line:
             continue
@@ -1303,9 +1322,12 @@ def parse_pack_declarations(cleaned: str) -> PackDeclarations:
 
     The ``audit_report`` producer and the delivered consumer consume the same
     result, so their accepted surfaces cannot drift and the consumer does not
-    need to re-read the Pack per declaration.
+    need to re-read the Pack per declaration.  Required declarations must
+    exist exactly once (H2, line-anchored).
     """
-    errors = list(validate_pack_sections_text(cleaned))
+    errors = list(
+        validate_pack_sections_text(cleaned, require_exactly_one=True)
+    )
     primary_route, route_errors = resolve_pack_primary_route_text(cleaned)
     errors.extend(route_errors)
     artifact_id = extract_pack_artifact_id_text(cleaned)

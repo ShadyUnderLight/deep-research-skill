@@ -841,3 +841,76 @@ def test_pack_locator_removed_cannot_support_delivered(tmp_path: Path) -> None:
         "Artifact contract" in error or "visible pack" in error
         for error in payload["errors"]
     ), payload
+
+
+def test_removed_contract_activation_snapshot_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    _edit_contract(report, lambda contract: contract.pop("activation_snapshot"))
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("activation_snapshot" in error for error in payload["errors"]), payload
+
+
+def test_removed_contract_activation_snapshot_with_matching_pack_still_fails(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(
+        tmp_path, pack_extra=ACTIVATION_SNAPSHOT_SECTION
+    )
+    _edit_contract(report, lambda contract: contract.pop("activation_snapshot"))
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("activation_snapshot" in error for error in payload["errors"]), payload
+
+
+def test_h3_pack_primary_route_cannot_support_delivered(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    pack.write_text(
+        pack.read_text(encoding="utf-8").replace(
+            "## Primary route", "### Primary route", 1
+        ),
+        encoding="utf-8",
+    )
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("Primary route" in error for error in payload["errors"]), payload
+
+
+def test_h3_pack_artifact_id_cannot_support_delivered(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    pack.write_text(
+        pack.read_text(encoding="utf-8").replace(
+            "## Artifact id", "### Artifact id", 1
+        ),
+        encoding="utf-8",
+    )
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("Artifact id" in error for error in payload["errors"]), payload
+
+
+def test_prose_pack_heading_does_not_count_as_declaration(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    pack.write_text(
+        pack.read_text(encoding="utf-8").replace(
+            "## Primary route\n\nMarket Outlook",
+            "Prose mentioning ## Primary route\n\nMarket Outlook",
+            1,
+        ),
+        encoding="utf-8",
+    )
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("Primary route" in error for error in payload["errors"]), payload

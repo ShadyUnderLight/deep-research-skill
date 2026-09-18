@@ -624,7 +624,9 @@ def _pack_declarations(
     errors = [
         f"Research Pack {pack_path} {item}" for item in declarations.errors
     ]
-    if declarations.artifact_id is None:
+    if declarations.artifact_id is None and not any(
+        "'## Artifact id'" in item for item in declarations.errors
+    ):
         errors.append(
             f"Research Pack {pack_path} has no '## Artifact id' declaration — "
             "phase=delivered requires the artifact identity binding"
@@ -998,14 +1000,29 @@ def check_audit_result_for_delivered(
         if isinstance(raw_artifact, str) and raw_artifact.strip():
             expected_artifact_id = raw_artifact.strip()
         contract_activation = contract.get("activation_snapshot")
-        if isinstance(contract_activation, dict):
-            errors.extend(
-                _activation_reference_errors(
-                    run_state,
-                    contract_activation,
-                    "report contract activation_snapshot",
-                )
+        if not isinstance(contract_activation, dict):
+            errors.append(
+                "phase=delivered requires report contract activation_snapshot "
+                "to bind Run State activation_reference"
             )
+        else:
+            try:
+                canonical_ref = validate_activation_reference(
+                    contract_activation, label="contract activation_snapshot"
+                )
+            except ActivationSnapshotError as exc:
+                errors.append(
+                    "delivered report contract activation_snapshot is "
+                    f"invalid: {exc}"
+                )
+            else:
+                errors.extend(
+                    _activation_reference_errors(
+                        run_state,
+                        canonical_ref,
+                        "report contract activation_snapshot",
+                    )
+                )
     if expected_artifact_id is not None:
         run_artifact_id = run_state.get("artifact_id")
         if run_artifact_id != expected_artifact_id:
