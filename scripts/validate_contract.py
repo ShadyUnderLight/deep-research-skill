@@ -1390,16 +1390,21 @@ class PackDeclarations:
     errors: list[str]
 
 
-def parse_pack_declarations(cleaned: str) -> PackDeclarations:
+def parse_pack_declarations(
+    cleaned: str, *, require_exactly_one: bool = False
+) -> PackDeclarations:
     """Single canonical parse of every Pack declaration (issue #434 review).
 
     The ``audit_report`` producer and the delivered consumer consume the same
     result, so their accepted surfaces cannot drift and the consumer does not
-    need to re-read the Pack per declaration.  Required declarations must
-    exist exactly once (H2, line-anchored).
+    need to re-read the Pack per declaration.  ``require_exactly_one`` (the
+    delivered boundary) additionally makes a missing required declaration a
+    structural error instead of relying on the extractors.
     """
     errors = list(
-        validate_pack_sections_text(cleaned, require_exactly_one=True)
+        validate_pack_sections_text(
+            cleaned, require_exactly_one=require_exactly_one
+        )
     )
     primary_route, route_errors = resolve_pack_primary_route_text(cleaned)
     errors.extend(route_errors)
@@ -1882,10 +1887,10 @@ def strip_fenced_code_blocks_only(text: str) -> str:
 # producer and the delivered consumer cannot drift.  Line-anchored so a
 # ``## Route and audit status`` substring inside prose is never a block.
 _REPORT_ROUTE_BLOCK_RE = re.compile(
-    r"^#{2,3}\s+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)[^\n]*$",
+    r"^#{2,3}[ \t]+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)[^\n]*$",
     re.MULTILINE | re.IGNORECASE,
 )
-_REPORT_ROUTE_BLOCK_LEVEL_RE = re.compile(r"^(#{2,3})\s")
+_REPORT_ROUTE_BLOCK_LEVEL_RE = re.compile(r"^(#{2,3})[ \t]")
 
 
 def count_report_route_blocks(text: str) -> int:

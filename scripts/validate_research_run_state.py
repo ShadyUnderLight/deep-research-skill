@@ -530,6 +530,15 @@ def _registry_error_types() -> tuple[type[BaseException], ...]:
     return (RegistryError, OSError, ValueError)
 
 
+def _sanitize_visible(raw: str) -> tuple[str | None, list[str]]:
+    """Canonical visible-Markdown view of already-read artifact text."""
+    try:
+        from validate_contract import sanitize_visible_markdown
+    except ImportError:
+        return None, ["cannot load canonical visible-Markdown sanitizer"]
+    return sanitize_visible_markdown(raw), []
+
+
 def _read_artifact_text(
     path: Path | str,
     label: str,
@@ -545,11 +554,8 @@ def _read_artifact_text(
         raw = Path(path).read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return None, None, [f"cannot read {label} {path}: {exc}"]
-    try:
-        from validate_contract import sanitize_visible_markdown
-    except ImportError:
-        return raw, None, ["cannot load canonical visible-Markdown sanitizer"]
-    return raw, sanitize_visible_markdown(raw), []
+    visible, errors = _sanitize_visible(raw)
+    return raw, visible, errors
 
 
 def _report_route_declaration(visible_report: str | None) -> tuple[str | None, list[str]]:
@@ -618,7 +624,9 @@ def _pack_declarations(
     except ImportError:
         return None, None, None, ["cannot load canonical Research Pack parsers"]
     try:
-        declarations = parse_pack_declarations(visible_pack)
+        declarations = parse_pack_declarations(
+            visible_pack, require_exactly_one=True
+        )
     except _registry_error_types() as exc:
         return None, None, None, [f"cannot parse Research Pack declarations: {exc}"]
     errors = [
@@ -921,6 +929,7 @@ def check_audit_result_for_delivered(
     *,
     report_path: Path | str | None = None,
     pack_path: Path | str | None = None,
+    pack_text: str | None = None,
     claim_alignment_bundle_path: Path | str | None = None,
     require_opt_in_binding: bool = False,
 ) -> list[str]:
@@ -959,10 +968,17 @@ def check_audit_result_for_delivered(
         errors.extend(read_errors)
     raw_pack = visible_pack = None
     if pack_path is not None:
-        raw_pack, visible_pack, read_errors = _read_artifact_text(
-            pack_path, "Research Pack"
-        )
-        errors.extend(read_errors)
+        if pack_text is not None:
+            # Issue #434 review P3: --chain already read the Pack; consume the
+            # same snapshot instead of re-reading it for this validation.
+            raw_pack = pack_text
+            visible_pack, sanitize_errors = _sanitize_visible(pack_text)
+            errors.extend(sanitize_errors)
+        else:
+            raw_pack, visible_pack, read_errors = _read_artifact_text(
+                pack_path, "Research Pack"
+            )
+            errors.extend(read_errors)
 
     report_route, route_errors = _report_route_declaration(visible_report)
     errors.extend(route_errors)
@@ -1172,6 +1188,7 @@ def require_delivered_audit(
     *,
     artifact_path: Path | str | None = None,
     report_path: Path | str | None = None,
+    pack_text: str | None = None,
     claim_alignment_bundle_path: Path | str | None = None,
     require_opt_in_binding: bool = False,
 ) -> list[str]:
@@ -1210,6 +1227,7 @@ def require_delivered_audit(
             state,
             report_path=report_path,
             pack_path=artifact_path,
+            pack_text=pack_text,
             claim_alignment_bundle_path=claim_alignment_bundle_path,
             require_opt_in_binding=require_opt_in_binding,
         )
@@ -1466,12 +1484,11 @@ def resolve_declared_run_state_path(
 def check_pack_run_state(pack_path: Path | str, cleaned: str | None = None) -> list[str]:
     """Pack 出现 ``## Run state`` 时 fail-closed；缺省节不增加负担。"""
     pack_path = Path(pack_path)
-    try:
-        text = pack_path.read_text(encoding="utf-8")
-    except OSError as exc:
-        return [f"cannot read Research Pack {pack_path}: {exc}"]
     if cleaned is None:
-        cleaned = text
+        try:
+            cleaned = pack_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            return [f"cannot read Research Pack {pack_path}: {exc}"]
     ref, sidecar, errors = resolve_declared_run_state_path(pack_path, cleaned)
     if errors:
         return errors
@@ -1579,9 +1596,25 @@ def validate_chain(
     errors: list[str] = []
     state, state_errors = load_run_state_file(run_state_path)
     errors.extend(state_errors)
-    ref, sidecar, ref_errors = resolve_declared_run_state_path(pack_path)
+    # Issue #434 review P3: read the Pack once and thread the same snapshot
+    # through the whole chain instead of re-reading it per helper.
+    try:
+        pack_raw: str | None = Path(pack_path).read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        pack_raw = None
+        errors.append(f"cannot read Research Pack {pack_path}: {exc}")
+    pack_visible: str | None = None
+    if pack_raw is not None:
+        pack_visible, sanitize_errors = _sanitize_visible(pack_raw)
+        errors.extend(sanitize_errors)
+    if pack_raw is None:
+        ref, sidecar, ref_errors = None, None, []
+    else:
+        ref, sidecar, ref_errors = resolve_declared_run_state_path(
+            pack_path, pack_visible
+        )
     errors.extend(ref_errors)
-    if ref is None and not ref_errors:
+    if ref is None and not ref_errors and pack_raw is not None:
         errors.append(
             "--chain requires the Research Pack to declare ## Run state"
         )
@@ -1606,7 +1639,8 @@ def validate_chain(
                 f"--chain run_id mismatch: pack declares {ref.get('run_id')!r}, "
                 f"CLI run-state has {state.get('run_id')!r}"
             )
-    errors.extend(check_pack_run_state(pack_path))
+    if pack_raw is not None:
+        errors.extend(check_pack_run_state(pack_path, pack_visible))
     if state is not None:
         errors.extend(bind_listed_handoffs(state, handoff_paths))
     if state is not None and state["phase"] == "delivered":
@@ -1616,6 +1650,7 @@ def validate_chain(
                 audit_result_path,
                 artifact_path=pack_path,
                 report_path=report_path,
+                pack_text=pack_raw,
                 claim_alignment_bundle_path=claim_alignment_bundle_path,
                 require_opt_in_binding=require_opt_in_binding,
             )

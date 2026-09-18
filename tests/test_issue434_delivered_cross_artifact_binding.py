@@ -1068,3 +1068,98 @@ def test_delivered_execution_source_non_string_is_structured(tmp_path: Path) -> 
         audit, state, report_path=report, pack_path=pack
     )
     assert any("execution_source" in error for error in errors), errors
+
+
+def test_cross_line_report_route_heading_does_not_count_as_block() -> None:
+    from validate_contract import (  # noqa: PLC0415
+        count_report_route_blocks,
+        extract_report_route_declaration,
+    )
+
+    text = (
+        "##\n"
+        "Route and audit status\n\n"
+        "## Route and audit status\n\n"
+        "**Primary route**: Market Outlook\n"
+    )
+    assert count_report_route_blocks(text) == 1
+    route, malformed = extract_report_route_declaration(text)
+    assert route == "market-outlook"
+    assert malformed == []
+
+
+def test_cross_line_report_route_heading_still_passes_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+    report.write_text(
+        "##\nRoute and audit status\n\n"
+        + report.read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert _payload(proc)["ok"] is True
+
+
+def test_schema_checked_conditions_requires_non_empty_strings() -> None:
+    schema = json.loads(
+        (ROOT / "schemas" / "route-activation-contract.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    checked = schema["properties"]["boundary_judgment"]["properties"][
+        "checked_conditions"
+    ]
+    assert checked.get("minItems") == 1
+    assert checked["items"].get("minLength") == 1
+
+
+def _chain_fixtures(tmp_path: Path) -> tuple[Path, Path, Path, Path, Path]:
+    handoff = json.loads(
+        (FIXTURES / "track-handoff" / "valid-complete.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    state = json.loads(DELIVERED_STATE.read_text(encoding="utf-8"))
+    state["handoff_refs"] = [{"handoff_id": handoff["handoff_id"]}]
+    state_path = tmp_path / "run-state.json"
+    state_path.write_text(json.dumps(state), encoding="utf-8")
+    report, pack, audit_path = _write_real_pass_audit(
+        tmp_path,
+        pack_extra=(
+            f"\n## Run state\nrun_id: {state['run_id']}\npath: run-state.json\n"
+        ),
+    )
+    handoff["artifact_ref"] = {"artifact_id": state["artifact_id"]}
+    handoff_path = tmp_path / "handoff.json"
+    handoff_path.write_text(json.dumps(handoff), encoding="utf-8")
+    return report, pack, audit_path, state_path, handoff_path
+
+
+def test_chain_reads_pack_once(monkeypatch, tmp_path: Path) -> None:
+    import validate_research_run_state as vrs  # noqa: PLC0415
+
+    report, pack, audit_path, state_path, handoff_path = _chain_fixtures(
+        tmp_path
+    )
+    counts = {"pack": 0}
+    original = Path.read_text
+
+    def counting(self, *args, **kwargs):  # noqa: ANN001
+        if self == pack:
+            counts["pack"] += 1
+        return original(self, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", counting)
+
+    errors = vrs.validate_chain(
+        handoff_paths=[handoff_path],
+        run_state_path=state_path,
+        pack_path=pack,
+        audit_result_path=audit_path,
+        report_path=report,
+    )
+    assert errors == [], errors
+    assert counts["pack"] == 1, counts
