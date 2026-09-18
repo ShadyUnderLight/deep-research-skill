@@ -63,6 +63,25 @@ def _create_sibling_temp(target: Path) -> tuple[int, Path]:
     raise RuntimeError(f"could not create a temporary file next to {target}")
 
 
+def commit_staged_file(staged: Path, target: Path) -> None:
+    """Atomically move *staged* onto *target*, preserving the target's mode.
+
+    ``os.replace`` swaps inodes, so the staged file's permissions would
+    otherwise win; an existing artifact must keep its mode (issue #435
+    review round 3).
+    """
+
+    staged = Path(staged)
+    target = Path(target)
+    try:
+        existing_mode: int | None = stat.S_IMODE(target.stat().st_mode)
+    except OSError:
+        existing_mode = None
+    if existing_mode is not None:
+        os.chmod(staged, existing_mode)
+    os.replace(staged, target)
+
+
 def atomic_write_text(target: Path, text: str) -> None:
     """Write *text* via a sibling temp file, then atomically replace target.
 
@@ -70,22 +89,15 @@ def atomic_write_text(target: Path, text: str) -> None:
     on one filesystem, and a failed write never truncates an existing file.
     The final file keeps the previous target mode when one existed; new
     files get the kernel-applied umask default instead of ``0600``
-    (issue #435 review rounds 1-2).
+    (issue #435 review rounds 1-3).
     """
 
     target = Path(target)
-    try:
-        existing_mode: int | None = stat.S_IMODE(target.stat().st_mode)
-    except OSError:
-        existing_mode = None
-
     descriptor, temp_path = _create_sibling_temp(target)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             stream.write(text)
-        if existing_mode is not None:
-            os.chmod(temp_path, existing_mode)
-        os.replace(temp_path, target)
+        commit_staged_file(temp_path, target)
     except BaseException:
         temp_path.unlink(missing_ok=True)
         raise

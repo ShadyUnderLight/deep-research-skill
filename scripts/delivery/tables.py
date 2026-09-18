@@ -5,13 +5,28 @@ from __future__ import annotations
 import re
 from html.parser import HTMLParser
 
-# Tables are located with a bounded regex, then parsed by the stdlib
-# ``_TableStructureParser`` below: the parser understands quoted attribute
-# values, so a ``>`` inside an attribute can no longer truncate a cell or
-# hide a colspan/rowspan (issue #435 review rounds 1-2).
+# Both table location (``_TableSpanCollector``) and table structure parsing
+# (``_TableStructureParser``) use the stdlib HTML parser: depth-aware spans
+# keep nested tables intact, and quoted attribute values can no longer
+# truncate a cell or hide a colspan/rowspan (issue #435 review rounds 1-3).
 
 
-def _span_attrs(attributes: dict[str, str | None]) -> dict[str, int]:
+# Rebuilding a table with more than this many columns is never useful for a
+# reader-facing PDF and would let a tiny input amplify memory/CPU, so
+# oversized spans fail closed to the original markup (issue #435 review
+# round 3).
+MAX_TABLE_SPAN = 64
+
+
+def _span_attrs(attributes: dict[str, str | None]) -> dict[str, int] | None:
+    """Return normalized colspan/rowspan values, or None when unsupported.
+
+    ``rowspan`` values other than the default ``1`` (including the legal
+    ``rowspan="0"``) cannot be represented by the rebuild path, so they are
+    kept as spans and make the table unsupported downstream.  A colspan
+    beyond :data:`MAX_TABLE_SPAN` is rejected outright.
+    """
+
     spans: dict[str, int] = {}
     for name in ("colspan", "rowspan"):
         raw = attributes.get(name)
@@ -21,7 +36,12 @@ def _span_attrs(attributes: dict[str, str | None]) -> dict[str, int]:
             value = int(raw)
         except (TypeError, ValueError):
             continue
-        if value > 1:
+        if name == "rowspan":
+            if value != 1:
+                spans[name] = value
+        elif value > 1:
+            if value > MAX_TABLE_SPAN:
+                return None
             spans[name] = value
     return spans
 
@@ -74,8 +94,12 @@ class _TableStructureParser(HTMLParser):
             if self._row is None or self._cell is not None:
                 self.unsupported = True
                 return
+            spans = _span_attrs(dict(attrs))
+            if spans is None:
+                self.unsupported = True
+                return
             start_tag = self.get_starttag_text() or ""
-            self._cell = (tag, _span_attrs(dict(attrs)), self._offset() + len(start_tag))
+            self._cell = (tag, spans, self._offset() + len(start_tag))
 
     def handle_startendtag(self, tag, attrs):
         if tag in ("td", "th"):
@@ -122,6 +146,70 @@ def _parse_table_rows(
     return parser.rows
 
 
+class _TableSpanCollector(HTMLParser):
+    """Collect complete top-level ``<table>...</table>`` spans.
+
+    A depth counter keeps nested tables inside the outer span, so the
+    replacement never receives a half table cut at an inner ``</table>``
+    (issue #435 review round 3).
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self.spans: list[tuple[int, int]] = []
+        self._line_starts = [0]
+        self._depth = 0
+        self._start: int | None = None
+
+    def feed(self, data: str) -> None:
+        self._line_starts = [0]
+        for index, char in enumerate(data):
+            if char == "\n":
+                self._line_starts.append(index + 1)
+        super().feed(data)
+
+    def _offset(self) -> int:
+        line, column = self.getpos()
+        return self._line_starts[line - 1] + column
+
+    def handle_starttag(self, tag, attrs):
+        if tag != "table":
+            return
+        if self._depth == 0:
+            self._start = self._offset()
+        self._depth += 1
+
+    def handle_endtag(self, tag):
+        if tag != "table" or self._depth == 0:
+            return
+        self._depth -= 1
+        if self._depth != 0 or self._start is None:
+            return
+        end = self.rawdata.find(">", self._offset())
+        if end != -1:
+            self.spans.append((self._start, end + 1))
+        self._start = None
+
+
+def _replace_top_level_tables(html: str, replacement) -> str:
+    parser = _TableSpanCollector()
+    try:
+        parser.feed(html)
+        parser.close()
+    except Exception:
+        return html
+    if not parser.spans:
+        return html
+    pieces: list[str] = []
+    last = 0
+    for start, end in parser.spans:
+        pieces.append(html[last:start])
+        pieces.append(replacement(html[start:end]))
+        last = end
+    pieces.append(html[last:])
+    return "".join(pieces)
+
+
 def _expand_cells(
     cells: list[tuple[str, dict[str, int], str]],
 ) -> tuple[list[str], list[bool], bool]:
@@ -136,7 +224,7 @@ def _expand_cells(
     synthetic: list[bool] = []
     has_rowspan = False
     for _, attrs, inner in cells:
-        if attrs.get("rowspan", 1) > 1:
+        if attrs.get("rowspan", 1) != 1:
             has_rowspan = True
         values.append(inner)
         synthetic.append(False)
@@ -358,8 +446,7 @@ def maybe_wrap_wide_tables_in_html(
             chunks.append(build_table(headers[start:end], [row[start:end] for row in rows]))
         return chunks
 
-    def replace_table(match: re.Match[str]) -> str:
-        table_html = match.group(0)
+    def replace_table(table_html: str) -> str:
         structure = extract_table_structure(table_html)
         if structure is None:
             return f'<div class="table-wrap">{table_html}</div>'
@@ -386,4 +473,4 @@ def maybe_wrap_wide_tables_in_html(
             return f'<div class="table-wrap wide-table{source_class}">{compact_html}</div>'
         return f'<div class="table-wrap{source_class}">{compact_html}</div>'
 
-    return re.sub(r"<table[\s\S]*?</table>", replace_table, html, flags=re.I)
+    return _replace_top_level_tables(html, replace_table)

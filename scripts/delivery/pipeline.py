@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import asyncio
-import os
 import tempfile
 from pathlib import Path
 
 from .models import DeliveryResult, DeliveryStatus
-from .paths import paths_collide, pdf_output_reason
+from .paths import commit_staged_file, paths_collide, pdf_output_reason
 from .status import write_delivery_status
 
 
@@ -151,7 +150,7 @@ def run_delivery(
             _validate_non_empty_file(html_work, "HTML")
             result.markdown_status = DeliveryStatus.MD_READY
             if final_html_path is not None:
-                os.replace(html_work, final_html_path)
+                commit_staged_file(html_work, final_html_path)
                 result.html_path = final_html_path
         except Exception as exc:
             result.errors.append(f"Markdown to HTML failed: {exc}")
@@ -177,7 +176,7 @@ def run_delivery(
                 allow_remote=allow_remote,
             )
             result.pdf_size_bytes = _validate_pdf_artifact(pdf_work)
-            os.replace(pdf_work, pdf_path)
+            commit_staged_file(pdf_work, pdf_path)
             result.delivery_status = DeliveryStatus.PDF_READY
         except Exception as exc:
             result.delivery_status = DeliveryStatus.PDF_FAILED

@@ -224,6 +224,40 @@ def test_data_colspan_attribute_is_not_treated_as_colspan() -> None:
     assert rendered.count("<td>") == 2
 
 
+NESTED_TABLE = (
+    "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
+    "<tbody><tr><td>1</td>"
+    "<td><table><tbody><tr><td>inner</td></tr></tbody></table></td>"
+    "</tr></tbody></table>"
+)
+
+
+def test_nested_table_is_preserved_intact() -> None:
+    rendered = maybe_wrap_wide_tables_in_html(NESTED_TABLE)
+    assert NESTED_TABLE in rendered
+    assert rendered.count("<table") == 2
+    assert rendered.count("</table>") == 2
+
+
+def test_rowspan_zero_preserves_original_markup() -> None:
+    html = (
+        '<table><thead><tr><th>A</th><th>B</th></tr></thead>'
+        '<tbody><tr><td rowspan="0">x</td><td>1</td></tr>'
+        '<tr><td>2</td></tr></tbody></table>'
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
+def test_oversized_colspan_preserves_original_markup() -> None:
+    html = (
+        '<table><thead><tr><th>A</th><th>B</th></tr></thead>'
+        '<tbody><tr><td colspan="1000">x</td><td>y</td></tr></tbody></table>'
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
 def test_quoted_gt_rowspan_preserves_original_markup() -> None:
     html = (
         '<table><thead><tr><th>A</th><th>B</th></tr></thead>'

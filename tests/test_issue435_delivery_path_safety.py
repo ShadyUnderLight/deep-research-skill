@@ -132,6 +132,47 @@ def test_atomic_html_write_uses_umask_default_for_new_files(tmp_path: Path) -> N
     assert stat.S_IMODE(target.stat().st_mode) == 0o666 & ~current_umask
 
 
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission semantics")
+def test_keep_html_commit_preserves_existing_html_mode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = _write_report(tmp_path)
+    pdf = tmp_path / "out.pdf"
+    html = tmp_path / "out.html"
+    html.write_text("old html", encoding="utf-8")
+    os.chmod(html, 0o640)
+
+    def fake_renderer(html_path, pdf_path, **kwargs):
+        Path(pdf_path).write_bytes(b"%PDF-1.7\nok\n")
+
+    monkeypatch.setattr("delivery.pipeline._render_pdf", fake_renderer)
+
+    result = run_delivery(report, pdf, keep_html=True)
+
+    assert result.delivery_status is DeliveryStatus.PDF_READY
+    assert stat.S_IMODE(html.stat().st_mode) == 0o640
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission semantics")
+def test_pdf_commit_preserves_existing_pdf_mode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = _write_report(tmp_path)
+    pdf = tmp_path / "out.pdf"
+    pdf.write_bytes(b"%PDF-1.7\nold\n")
+    os.chmod(pdf, 0o600)
+
+    def fake_renderer(html_path, pdf_path, **kwargs):
+        Path(pdf_path).write_bytes(b"%PDF-1.7\nnew\n")
+
+    monkeypatch.setattr("delivery.pipeline._render_pdf", fake_renderer)
+
+    result = run_delivery(report, pdf)
+
+    assert result.delivery_status is DeliveryStatus.PDF_READY
+    assert stat.S_IMODE(pdf.stat().st_mode) == 0o600
+
+
 def test_atomic_html_write_does_not_mutate_process_umask(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
