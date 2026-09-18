@@ -5,56 +5,121 @@ from __future__ import annotations
 import re
 from html.parser import HTMLParser
 
-# Real tag boundaries matter here: a prefix regex like ``<th[^>]*>`` also
-# matches ``<thead>`` and silently shifts the whole header row (issue #435).
-THEAD_RE = re.compile(r"<thead\b[^>]*>(.*?)</thead>", re.S | re.I)
-TBODY_RE = re.compile(r"<tbody\b[^>]*>(.*?)</tbody>", re.S | re.I)
-TR_RE = re.compile(r"<tr\b[^>]*>(.*?)</tr>", re.S | re.I)
-CELL_RE = re.compile(r"<t([dh])\b([^>]*)>(.*?)</t\1>", re.S | re.I)
+# Tables are located with a bounded regex, then parsed by the stdlib
+# ``_TableStructureParser`` below: the parser understands quoted attribute
+# values, so a ``>`` inside an attribute can no longer truncate a cell or
+# hide a colspan/rowspan (issue #435 review rounds 1-2).
 
 
-class _StartTagAttributes(HTMLParser):
-    """Collect attributes from one start tag with the stdlib HTML parser.
-
-    The parser accepts single-, double-, and unquoted values and keeps
-    attribute-name boundaries, so ``data-colspan="2"`` can never be mistaken
-    for a real ``colspan`` (issue #435 review round 1).
-    """
-
-    def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
-        self.attributes: dict[str, str | None] = {}
-
-    def handle_starttag(self, tag, attrs):
-        self.attributes = {name.lower(): value for name, value in attrs}
-
-
-def _span_attrs(tag: str, attribute_text: str) -> dict[str, int]:
-    parser = _StartTagAttributes()
-    try:
-        parser.feed(f"<{tag} {attribute_text}>")
-    except Exception:
-        return {}
+def _span_attrs(attributes: dict[str, str | None]) -> dict[str, int]:
     spans: dict[str, int] = {}
     for name in ("colspan", "rowspan"):
-        raw = parser.attributes.get(name)
+        raw = attributes.get(name)
         if raw is None:
             continue
         try:
             value = int(raw)
-        except ValueError:
+        except (TypeError, ValueError):
             continue
         if value > 1:
             spans[name] = value
     return spans
 
 
-def _table_cells(row_html: str) -> list[tuple[str, dict[str, int], str]]:
-    cells: list[tuple[str, dict[str, int], str]] = []
-    for match in CELL_RE.finditer(row_html):
-        tag = match.group(1).lower()
-        cells.append((tag, _span_attrs(tag, match.group(2)), match.group(3)))
-    return cells
+class _TableStructureParser(HTMLParser):
+    """Parse one table into sections/rows with byte-accurate cell HTML.
+
+    Start tags, attributes, and cell boundaries all come from the stdlib
+    parser, so quoted ``>`` values, single/double/unquoted attributes, and
+    unclosed cells follow HTML rules instead of a regex (issue #435 review
+    round 2).
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=False)
+        self.rows: list[tuple[str | None, list[tuple[str, dict[str, int], str]]]] = []
+        self.unsupported = False
+        self._line_starts = [0]
+        self._section: str | None = None
+        self._row: list[tuple[str, dict[str, int], str]] | None = None
+        self._cell: tuple[str, dict[str, int], int] | None = None
+        self._table_depth = 0
+
+    def feed(self, data: str) -> None:
+        self._line_starts = [0]
+        for index, char in enumerate(data):
+            if char == "\n":
+                self._line_starts.append(index + 1)
+        super().feed(data)
+
+    def _offset(self) -> int:
+        line, column = self.getpos()
+        return self._line_starts[line - 1] + column
+
+    def handle_starttag(self, tag, attrs):
+        if tag == "table":
+            self._table_depth += 1
+            if self._table_depth > 1:
+                self.unsupported = True
+            return
+        if tag in ("thead", "tbody", "tfoot"):
+            self._section = "thead" if tag == "thead" else "tbody"
+            return
+        if tag == "tr":
+            if self._row is not None:
+                self.unsupported = True
+            self._row = []
+            return
+        if tag in ("td", "th"):
+            if self._row is None or self._cell is not None:
+                self.unsupported = True
+                return
+            start_tag = self.get_starttag_text() or ""
+            self._cell = (tag, _span_attrs(dict(attrs)), self._offset() + len(start_tag))
+
+    def handle_startendtag(self, tag, attrs):
+        if tag in ("td", "th"):
+            self.unsupported = True
+
+    def handle_endtag(self, tag):
+        if tag == "table":
+            self._table_depth -= 1
+            return
+        if tag in ("td", "th"):
+            if self._cell is None:
+                self.unsupported = True
+                return
+            cell_tag, spans, content_start = self._cell
+            content = self.rawdata[content_start:self._offset()]
+            if self._row is None:
+                self.unsupported = True
+            else:
+                self._row.append((cell_tag, spans, content))
+            self._cell = None
+            return
+        if tag == "tr":
+            if self._row is None or self._cell is not None:
+                self.unsupported = True
+            else:
+                self.rows.append((self._section, self._row))
+            self._row = None
+            return
+        if tag in ("thead", "tbody", "tfoot"):
+            self._section = None
+
+
+def _parse_table_rows(
+    table_html: str,
+) -> list[tuple[str | None, list[tuple[str, dict[str, int], str]]]] | None:
+    parser = _TableStructureParser()
+    try:
+        parser.feed(table_html)
+        parser.close()
+    except Exception:
+        return None
+    if parser.unsupported or parser._cell is not None or parser._row is not None:
+        return None
+    return parser.rows
 
 
 def _expand_cells(
@@ -91,32 +156,23 @@ def extract_table_structure(
     no body rows); callers then keep the original markup untouched.
     """
 
-    header_rows = [
-        _table_cells(row)
-        for region in THEAD_RE.findall(table_html)
-        for row in TR_RE.findall(region)
-    ]
-    body_rows = [
-        _table_cells(row)
-        for region in TBODY_RE.findall(table_html)
-        for row in TR_RE.findall(region)
-    ]
+    parsed_rows = _parse_table_rows(table_html)
+    if parsed_rows is None:
+        return None
 
-    if header_rows:
+    if any(section == "thead" for section, _ in parsed_rows):
+        header_rows = [cells for section, cells in parsed_rows if section == "thead"]
         if len(header_rows) != 1:
             return None
         header_cells = header_rows[0]
-        if body_rows:
-            body_cell_rows = body_rows
-        else:
-            all_rows = [_table_cells(row) for row in TR_RE.findall(table_html)]
-            body_cell_rows = all_rows[len(header_rows):]
+        body_cell_rows = [cells for section, cells in parsed_rows if section != "thead"]
     else:
-        all_rows = [_table_cells(row) for row in TR_RE.findall(table_html)]
-        if not all_rows or not any(tag == "th" for tag, _, _ in all_rows[0]):
+        if not parsed_rows:
             return None
-        header_cells = all_rows[0]
-        body_cell_rows = all_rows[1:]
+        header_cells = parsed_rows[0][1]
+        if not any(tag == "th" for tag, _, _ in header_cells):
+            return None
+        body_cell_rows = [cells for _, cells in parsed_rows[1:]]
 
     if not header_cells or not body_cell_rows:
         return None
@@ -144,10 +200,11 @@ def maybe_wrap_wide_tables_in_html(
     """Normalize dense tables and split wide tables into readable chunks.
 
     Data-bearing columns are never deleted by default: a column is only
-    dropped when it has no data at all (empty header and empty cells).
-    Metadata/URL columns are folded only when ``fold_metadata_columns`` is
-    explicitly enabled, and every drop/fold is reported through ``warnings``
-    (issue #435).
+    dropped when both its header and every cell are strictly empty layout
+    (whitespace or punctuation), never when they hold ``N/A``/``TBD``/``#1``
+    style status values.  Metadata/URL columns are folded only when
+    ``fold_metadata_columns`` is explicitly enabled, and every drop/fold is
+    reported through ``warnings`` (issue #435).
     """
 
     warning_sink = warnings if warnings is not None else []
@@ -157,12 +214,16 @@ def maybe_wrap_wide_tables_in_html(
         value = re.sub(r"<[^>]+>", "", value)
         return re.sub(r"\s+", " ", value).strip()
 
-    def is_placeholder(value: str) -> bool:
+    def is_empty_layout_cell(value: str) -> bool:
+        """True only for whitespace and pure layout punctuation.
+
+        Semantic marker values such as ``N/A``, ``TBD``, or ``#1`` are data,
+        not emptiness: they must never justify deleting a column or be
+        blanked out of a cell (issue #435 review round 2).
+        """
+
         text = plain_text(value)
-        return not text or text in {
-            "#", "—", "-", "–", "--", "——", "— —", "N/A", "n/a", "NA",
-            "TBD", "tbd", "/", "｜",
-        } or bool(re.fullmatch(r"#\d+", text))
+        return not text or text in {"#", "—", "-", "–", "--", "——", "— —", "/", "｜"}
 
     def normalize_meta_key(value: str) -> str:
         return re.sub(r"[\s:：\-_]+", "", plain_text(value).lower())
@@ -212,9 +273,9 @@ def maybe_wrap_wide_tables_in_html(
         min_row_width = min(len(row) for row in rows)
         if (
             len(headers) == min_row_width + 1
-            and is_placeholder(headers[0])
+            and is_empty_layout_cell(headers[0])
             and not header_synthetic[0]
-            and all(is_placeholder(row[0]) for row in rows)
+            and all(is_empty_layout_cell(row[0]) for row in rows)
         ):
             warning_sink.append("table column dropped: leading empty column (no data)")
             headers = headers[1:]
@@ -234,8 +295,8 @@ def maybe_wrap_wide_tables_in_html(
             header_text = plain_text(headers[index])
             column_values = [plain_text(row[index]) for row in rows]
             if not protected[index]:
-                if is_placeholder(header_text) and all(
-                    is_placeholder(value) for value in column_values
+                if is_empty_layout_cell(header_text) and all(
+                    is_empty_layout_cell(value) for value in column_values
                 ):
                     warning_sink.append(
                         f"table column dropped: empty column {index + 1} (no data)"
@@ -263,7 +324,7 @@ def maybe_wrap_wide_tables_in_html(
 
         cleaned_rows: list[list[str]] = []
         for row in rows:
-            cleaned = ["" if is_placeholder(cell) else normalize_cell_html(cell.strip()) for cell in row]
+            cleaned = ["" if is_empty_layout_cell(cell) else normalize_cell_html(cell.strip()) for cell in row]
             if any(plain_text(cell) for cell in cleaned):
                 cleaned_rows.append(cleaned)
         return headers, cleaned_rows

@@ -26,10 +26,13 @@ Intermediate HTML and the PDF are staged next to the output and validated
 (non-empty, `%PDF` header) before atomic replacement, so a rejected or
 failed render leaves the input and any existing PDF untouched; replaced
 files keep their previous permission mode. Fenced code (backtick or tilde,
-closed or not) is copied byte-for-byte through normalization and table
-repair, including its Unicode form, control characters, and line endings.
-Data-bearing table columns are never dropped: genuinely empty columns and
-columns removed by the optional metadata fold are reported as warnings.
+closed or not) is never rewritten by normalization or table repair: its
+Unicode form, control characters, and line endings pass through those
+stages unchanged (the downstream Markdown/HTML serializer renders LF).
+Data-bearing table columns are never dropped, including columns holding
+`N/A`/`TBD`/`#1` style status values; only strictly empty layout columns
+and columns removed by the optional metadata fold are dropped, with
+warnings.
 
 ## Pre-delivery checks
 

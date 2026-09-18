@@ -9,8 +9,8 @@ Markdown-to-HTML facade cannot drift apart (issue #435).
 from __future__ import annotations
 
 import os
+import secrets
 import stat
-import tempfile
 from pathlib import Path
 
 
@@ -45,12 +45,22 @@ def pdf_output_reason(path: Path) -> str | None:
     return None
 
 
-def _default_file_mode() -> int:
-    """Mode for a brand-new artifact, respecting the process umask."""
+def _create_sibling_temp(target: Path) -> tuple[int, Path]:
+    """Create a sibling temp file with umask-derived permissions.
 
-    umask = os.umask(0)
-    os.umask(umask)
-    return 0o666 & ~umask
+    ``os.open(..., O_CREAT | O_EXCL, 0o666)`` lets the kernel apply the
+    process umask at creation time, so nothing has to read or mutate the
+    process-global umask (issue #435 review round 2).
+    """
+
+    for _ in range(10):
+        candidate = target.parent / f".{target.stem}-{secrets.token_hex(8)}.tmp"
+        try:
+            descriptor = os.open(candidate, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666)
+        except FileExistsError:
+            continue
+        return descriptor, candidate
+    raise RuntimeError(f"could not create a temporary file next to {target}")
 
 
 def atomic_write_text(target: Path, text: str) -> None:
@@ -59,8 +69,8 @@ def atomic_write_text(target: Path, text: str) -> None:
     The temporary file lives in the target directory so ``os.replace`` stays
     on one filesystem, and a failed write never truncates an existing file.
     The final file keeps the previous target mode when one existed; new
-    files use the umask-derived default instead of ``mkstemp``'s ``0600``
-    (issue #435 review round 1).
+    files get the kernel-applied umask default instead of ``0600``
+    (issue #435 review rounds 1-2).
     """
 
     target = Path(target)
@@ -69,17 +79,12 @@ def atomic_write_text(target: Path, text: str) -> None:
     except OSError:
         existing_mode = None
 
-    descriptor, temp_name = tempfile.mkstemp(
-        prefix=f".{target.stem}-", suffix=".tmp", dir=target.parent
-    )
-    temp_path = Path(temp_name)
+    descriptor, temp_path = _create_sibling_temp(target)
     try:
         with os.fdopen(descriptor, "w", encoding="utf-8") as stream:
             stream.write(text)
-        os.chmod(
-            temp_path,
-            existing_mode if existing_mode is not None else _default_file_mode(),
-        )
+        if existing_mode is not None:
+            os.chmod(temp_path, existing_mode)
         os.replace(temp_path, target)
     except BaseException:
         temp_path.unlink(missing_ok=True)

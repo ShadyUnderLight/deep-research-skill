@@ -27,9 +27,10 @@ GitHub, or a similar reader.
   the opening.
 - The `.md` file remains the source of truth after PDF delivery: the pipeline
   must never write back to it. The PDF output must be a `.pdf` path, and
-  same-path or hardlink conflicts fail closed. Fenced code is preserved
-  byte-for-byte, and data-bearing table columns are never dropped (only
-  genuinely empty columns, and any explicit metadata fold, with warnings).
+  same-path or hardlink conflicts fail closed. Fenced code is not rewritten
+  by the delivery normalization/table passes, and data-bearing table columns
+  are never dropped — including `N/A`/`TBD` status columns (only strictly
+  empty columns, and any explicit metadata fold, with warnings).
 
 ## Reader goals
 

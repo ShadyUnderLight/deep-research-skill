@@ -59,7 +59,9 @@ def convert(input_path, output_path=None, title=None, *, warnings=None):
 
     Refuses to use the input Markdown as its own output and writes through a
     sibling temp file, so a conflicted or failed conversion cannot truncate
-    an existing artifact (issue #435).
+    an existing artifact (issue #435).  The file is read with ``newline=""``
+    so the normalization/table-repair fence boundary sees real CRLF input
+    instead of Python's universal-newline translation.
     """
 
     md_path = Path(input_path)
@@ -70,7 +72,9 @@ def convert(input_path, output_path=None, title=None, *, warnings=None):
     if paths_collide(md_path, out_path):
         raise ValueError(f"Refusing to overwrite input Markdown: {out_path}")
 
-    md_text = normalize_text_for_pdf(md_path.read_text(encoding="utf-8", errors="replace"))
+    with md_path.open("r", encoding="utf-8", errors="replace", newline="") as stream:
+        raw_text = stream.read()
+    md_text = normalize_text_for_pdf(raw_text)
     cover_title, cover_subtitle, meta_lines, body_text = extract_cover_meta(md_text)
     report_title = title or cover_title or md_path.stem
     full_html = build_html(

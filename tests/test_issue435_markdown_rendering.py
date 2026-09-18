@@ -76,6 +76,32 @@ def test_normalize_preserves_tilde_fence_content_verbatim() -> None:
     assert _fence_content(normalized, "~~~python") == _fence_content(TILDE_FENCED, "~~~python")
 
 
+def test_convert_reads_crlf_without_universal_newline_translation(
+    tmp_path: Path, monkeypatch
+) -> None:
+    report = tmp_path / "report.md"
+    report.write_bytes(b"# R\r\n\r\n```text\r\nline1\r\nline2\r\n```\r\n")
+    captured: dict[str, str] = {}
+
+    import markdown_to_html
+
+    real_normalize = markdown_to_html.normalize_text_for_pdf
+
+    def spy(text: str) -> str:
+        captured["text"] = text
+        return real_normalize(text)
+
+    monkeypatch.setattr(markdown_to_html, "normalize_text_for_pdf", spy)
+    output = tmp_path / "out.html"
+
+    markdown_to_html.convert(report, output)
+
+    assert "line1\r\nline2" in captured["text"]
+    html = output.read_text(encoding="utf-8")
+    assert "line1" in html
+    assert "line2" in html
+
+
 def test_normalize_preserves_fence_unicode_and_line_endings_verbatim() -> None:
     text = "# T\r\n\r\n```text\r\ne\u0301 += 1\r\n\r\ntail\r\n```\r\n"
     normalized = normalize_text_for_pdf(text)
@@ -196,6 +222,53 @@ def test_data_colspan_attribute_is_not_treated_as_colspan() -> None:
     rendered = maybe_wrap_wide_tables_in_html(html)
     assert rendered.count("<th>") == 2
     assert rendered.count("<td>") == 2
+
+
+def test_quoted_gt_rowspan_preserves_original_markup() -> None:
+    html = (
+        '<table><thead><tr><th>A</th><th>B</th></tr></thead>'
+        '<tbody><tr><td title="1 > 0" rowspan="2">x</td><td>1</td></tr>'
+        '<tr><td>2</td></tr></tbody></table>'
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
+def test_quoted_gt_colspan_expands_without_content_loss() -> None:
+    html = (
+        '<table><thead><tr><th>A</th><th>B</th><th>C</th></tr></thead>'
+        '<tbody><tr><td title="a > b" colspan="2">x</td><td>y</td></tr></tbody></table>'
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert "<td>x</td>" in rendered
+    assert "<td>y</td>" in rendered
+    assert rendered.count("<th>") == 3
+    assert rendered.count("<td>") == 3
+
+
+def test_semantic_placeholder_values_do_not_delete_columns() -> None:
+    html = (
+        "<table><thead><tr><th>Metric</th><th></th><th>Notes</th></tr></thead>"
+        "<tbody><tr><td>Revenue</td><td>N/A</td><td>ok</td></tr>"
+        "<tr><td>Margin</td><td>TBD</td><td>ok</td></tr>"
+        "<tr><td>Risk</td><td>#1</td><td>ok</td></tr></tbody></table>"
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert "N/A" in rendered
+    assert "TBD" in rendered
+    assert "#1" in rendered
+    assert rendered.count("<th>") == 3
+
+
+def test_na_and_tbd_cells_are_not_blanked() -> None:
+    body = process_markdown(
+        "| Metric | Current |\n"
+        "|---|---|\n"
+        "| Revenue | N/A |\n"
+        "| Margin | TBD |\n"
+    )
+    assert "N/A" in body
+    assert "TBD" in body
 
 
 METADATA_TABLE = (

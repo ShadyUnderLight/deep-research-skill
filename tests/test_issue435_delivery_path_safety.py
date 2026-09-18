@@ -132,6 +132,26 @@ def test_atomic_html_write_uses_umask_default_for_new_files(tmp_path: Path) -> N
     assert stat.S_IMODE(target.stat().st_mode) == 0o666 & ~current_umask
 
 
+def test_atomic_html_write_does_not_mutate_process_umask(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = _write_report(tmp_path)
+    target = tmp_path / "out.html"
+    umask_calls: list[int] = []
+    real_umask = os.umask
+
+    def spy(mask: int) -> int:
+        umask_calls.append(mask)
+        return real_umask(mask)
+
+    monkeypatch.setattr(os, "umask", spy)
+
+    convert(report, target)
+
+    assert umask_calls == []
+    assert target.is_file()
+
+
 def test_partial_pdf_failure_preserves_existing_artifact(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
