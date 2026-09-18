@@ -15,3 +15,8 @@
 def render_marker(value: str) -> str:
     return f"code-heavy-marker-{value}"
 ```
+
+```text
+A | B | C
+---|---|---
+```

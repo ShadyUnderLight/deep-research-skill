@@ -19,6 +19,22 @@ Use `--json` to emit this result. Use `--write-status PATH` only when an
 explicit Research Pack/report writeback is intended; the input Markdown is
 never mutated implicitly.
 
+Path conflicts fail closed before any write: the output must be a `.pdf`
+path (case-insensitive), must not resolve to the input Markdown (including
+hardlink aliases), and `--keep-html` must not collide with the PDF path.
+Intermediate HTML and the PDF are staged next to the output and validated
+(non-empty, `%PDF` header) before atomic replacement, so a rejected or
+failed render leaves the input and any existing PDF untouched; replaced
+files keep their previous permission mode. Fenced code (backtick or tilde,
+closed or not) is never rewritten by normalization or table repair: its
+Unicode form, control characters, and line endings pass through those
+stages unchanged (the downstream Markdown/HTML serializer renders LF).
+Data-bearing table columns are never dropped, including columns holding
+`N/A`/`TBD`/`#1` style status values; only strictly empty layout columns
+and columns removed by the optional metadata fold are dropped, with
+warnings. Nested tables, non-default rowspans, and oversized colspans are
+kept as original markup instead of being rebuilt.
+
 ## Pre-delivery checks
 
 Before running the pipeline, verify:
@@ -30,6 +46,14 @@ Before running the pipeline, verify:
 - [ ] the markdown can be read as a standalone document, not as an internal note with rendering dependencies
 
 ## Known failure patterns and mitigations
+
+### Markdown table repair
+
+Malformed or LLM-produced Markdown tables are repaired to
+`max(header width, widest data row)`; a wider data row is never sliced, and
+escaped pipes (`\|`) or pipes inside inline code spans stay in one cell.
+A leading layout-only column is dropped only when the header and every data
+cell are strictly layout values, and the drop is reported as a warning.
 
 ### Table degradation
 Very wide or deeply nested tables do not render well in PDF. The pipeline converts multi-column comparison tables into card/list blocks automatically, but extremely dense source tables still need manual simplification before delivery.
@@ -45,6 +69,23 @@ Mitigation: the pipeline runs a pre-parse CJK spacing repair pass (`scripts/mark
 `--allow-remote` is disabled by default. If the report uses remote images, external stylesheets, or web fonts, they will not load unless explicitly allowed.
 
 Mitigation: for local PDF delivery, avoid remote resource dependencies. If remote resources are required (e.g., company logo), use `--allow-remote` and verify the PDF renders correctly.
+
+### Path conflicts and overwrites
+
+A delivery invoked with the input Markdown as its output, a hardlink alias,
+or any non-`.pdf` output path (`.md`, `.html`, `.txt`, `.json`, or no
+extension) is rejected with an explicit error and `not_run`; `--keep-html`
+additionally rejects an HTML path that collides with the PDF, and
+`--write-status` rejects a status path that resolves to the input Markdown,
+the PDF, or the retained HTML. Nothing is written before these checks, and
+staged artifacts are replaced atomically, so a rejected or crashed render
+cannot truncate the source or a previously delivered PDF. Output-directory
+preparation failures return a structured `not_run` result instead of a
+traceback, so `--json` consumers always receive parseable JSON. With
+`--keep-html`, the HTML is committed before PDF rendering (so a failed
+render still leaves a readable HTML) while the previous PDF stays
+untouched; `kept_html` is true only after that commit succeeds. Diagnostics
+name the conflicting path; fix the command instead of deleting files.
 
 ### Placeholder leakage
 Internal generator hints, render-hint text, or template markers can survive into the final HTML if they appear outside of code fences or table structures.

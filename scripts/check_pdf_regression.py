@@ -68,6 +68,7 @@ def _check_case(
     marker: str,
     min_pages: int = 1,
     expected_tags: dict[str, int] | None = None,
+    expected_html_substrings: list[str] | None = None,
     artifact_stem: str | None = None,
 ) -> list[str]:
     artifact_dir.mkdir(parents=True, exist_ok=True)
@@ -82,8 +83,19 @@ def _check_case(
     if not result.pdf_path or not result.pdf_path.is_file():
         return [f"{markdown_path.name}: PDF artifact is missing"]
 
+    html_text = result.html_path.read_text(encoding="utf-8")
+    if re.search(r"<thead>\s*<tr>\s*<th></th>\s*</tr>\s*<tr", html_text, flags=re.I):
+        errors.append(
+            f"{markdown_path.name}: table header row contains an empty placeholder row"
+        )
+    for substring in expected_html_substrings or []:
+        if substring not in html_text:
+            errors.append(
+                f"{markdown_path.name}: missing expected HTML content {substring!r}"
+            )
+
     parser = StructureParser()
-    parser.feed(result.html_path.read_text(encoding="utf-8"))
+    parser.feed(html_text)
     for tag, minimum in (expected_tags or {}).items():
         if parser.counts.get(tag, 0) < minimum:
             errors.append(
@@ -129,14 +141,20 @@ def main(argv: list[str] | None = None) -> int:
         artifact_dir = Path(owned_temp.name)
 
     cases = [
-        (cases_dir / "cjk-heavy.md", "中文交付回归", 1, {"h1": 1, "h2": 1}),
-        (cases_dir / "mixed-language.md", "mixed-language-marker-2026", 1, {"h1": 1}),
-        (cases_dir / "long-table.md", "long-table-marker-2026", 1, {"table": 2}),
-        (cases_dir / "code-heavy.md", "code-heavy-marker", 1, {"pre": 2}),
-        (cases_dir / "multi-page.md", "multi-page-marker-2026", 2, {"h3": 1, "h4": 1}),
+        (cases_dir / "cjk-heavy.md", "中文交付回归", 1, {"h1": 1, "h2": 1}, None),
+        (cases_dir / "mixed-language.md", "mixed-language-marker-2026", 1, {"h1": 1}, None),
+        (cases_dir / "long-table.md", "long-table-marker-2026", 1, {"table": 2}, None),
+        (
+            cases_dir / "code-heavy.md",
+            "code-heavy-marker",
+            1,
+            {"pre": 3},
+            ["A | B | C\n---|---|---"],
+        ),
+        (cases_dir / "multi-page.md", "multi-page-marker-2026", 2, {"h3": 1, "h4": 1}, None),
     ]
     failures: list[str] = []
-    for path, marker, min_pages, expected_tags in cases:
+    for path, marker, min_pages, expected_tags, expected_html in cases:
         failures.extend(
             _check_case(
                 path,
@@ -144,6 +162,7 @@ def main(argv: list[str] | None = None) -> int:
                 marker=marker,
                 min_pages=min_pages,
                 expected_tags=expected_tags,
+                expected_html_substrings=expected_html,
             )
         )
 

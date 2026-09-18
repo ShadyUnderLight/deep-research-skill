@@ -40,7 +40,11 @@ def _check_runtime_deps() -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Markdown → PDF delivery pipeline")
     parser.add_argument("input", help="Input Markdown file")
-    parser.add_argument("output", nargs="?", help="Output PDF file (default: same name, .pdf)")
+    parser.add_argument(
+        "output",
+        nargs="?",
+        help="Output PDF file (default: same name, .pdf; must be a .pdf path different from input)",
+    )
     parser.add_argument("--title", help="Report title (overrides frontmatter)")
     parser.add_argument("--landscape", action="store_true", help="Render in landscape orientation")
     parser.add_argument("--media", choices=["print", "screen"], default="print")
