@@ -39,6 +39,7 @@ import sys
 from collections.abc import Collection
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from registry_loader import (
     RegistryError,
@@ -50,6 +51,7 @@ from registry_loader import (
 )
 from audit_evidence import validate_evidence_reference
 from activation_snapshot import (
+    SNAPSHOT_VERSION,
     ActivationSnapshotError,
     activation_reference,
     extract_activation_snapshot_reference,
@@ -404,6 +406,11 @@ def validate_contract(
         errors.append(f"audits must be an array, got {type(audits).__name__}")
         audits = []
 
+    # Type-filtered view for every set/sort operation: a malformed entry is
+    # reported above, but it must never reach hashing/sorting and crash the
+    # validator with a TypeError (issue #434 review).
+    secondary_strings = [item for item in secondary if isinstance(item, str)]
+
     primary = contract["primary_route"]
 
     # 1b. Primary route must be a string
@@ -477,6 +484,45 @@ def validate_contract(
                 "contract with activation_snapshot must declare contract_version "
                 f"'{ACTIVATION_CONTRACT_VERSION}' (route-activation-contract schema v2)"
             )
+        if contract_activation_ref is not None:
+            # Issue #434 review round 6: a reference is only canonical when its
+            # versions are the ones this implementation supports, and the
+            # contract's top-level decision_tree_version must agree with the
+            # nested reference regardless of whether a full snapshot is
+            # supplied.  Shape-only validation let a self-contradictory
+            # contract (top-level 1, nested 999) reach delivered.
+            ref_snapshot_version = contract_activation_ref["snapshot_version"]
+            if ref_snapshot_version != SNAPSHOT_VERSION:
+                errors.append(
+                    "contract activation_snapshot.snapshot_version "
+                    f"{ref_snapshot_version} does not match the supported "
+                    f"snapshot version {SNAPSHOT_VERSION}"
+                )
+            try:
+                canonical_tree = load_decision_tree_registry()
+            except RegistryError as exc:
+                errors.append(
+                    f"Cannot load canonical decision-tree registry: {exc}"
+                )
+            else:
+                ref_tree_version = contract_activation_ref["decision_tree_version"]
+                if ref_tree_version != canonical_tree.version:
+                    errors.append(
+                        "contract activation_snapshot.decision_tree_version "
+                        f"{ref_tree_version} does not match canonical version "
+                        f"{canonical_tree.version}"
+                    )
+                top_tree_version = contract.get("decision_tree_version")
+                if (
+                    isinstance(top_tree_version, int)
+                    and not isinstance(top_tree_version, bool)
+                    and top_tree_version != ref_tree_version
+                ):
+                    errors.append(
+                        f"contract decision_tree_version {top_tree_version} does "
+                        "not match activation_snapshot.decision_tree_version "
+                        f"{ref_tree_version}"
+                    )
     if pack_activation_snapshot is not None:
         try:
             pack_activation_snapshot = validate_activation_reference(
@@ -521,7 +567,7 @@ def validate_contract(
                     f"'{actual_activation['primary_route']}' but contract declares "
                     f"'{primary}'"
                 )
-            if sorted(secondary) != actual_activation["secondary_routes"]:
+            if sorted(secondary_strings) != actual_activation["secondary_routes"]:
                 errors.append(
                     "Activation/contract secondary route mismatch: activation "
                     "snapshot and contract must declare the same routes"
@@ -546,7 +592,7 @@ def validate_contract(
         if not isinstance(secondary_contracts, dict):
             errors.append("secondary_route_contracts must be an object keyed by route id")
         else:
-            undeclared = set(secondary_contracts) - set(secondary)
+            undeclared = set(secondary_contracts) - set(secondary_strings)
             if undeclared:
                 errors.append(
                     "secondary_route_contracts contains route(s) not declared in "
@@ -625,6 +671,14 @@ def validate_contract(
                     "boundary_judgment.checked_conditions is empty. "
                     "Must list which hard-fail conditions of the alternative were checked."
                 )
+            elif any(
+                not isinstance(item, str) or not item.strip()
+                for item in checked
+            ):
+                errors.append(
+                    "boundary_judgment.checked_conditions must be a list of "
+                    "non-empty strings"
+                )
 
             why_not = boundary.get("why_not_alternative")
             if not isinstance(why_not, str):
@@ -650,13 +704,19 @@ def validate_contract(
                     "Must state under what conditions the route should be switched."
                 )
 
-    # 4c. Duplicate secondary routes detection
+    # 4c. Duplicate secondary routes detection (issue #434): a duplicated
+    # declaration is structural under strict / delivery validation, and an
+    # advisory warning in legacy non-strict mode.
     seen_secondary: set[str] = set()
     for sr in secondary:
         if not isinstance(sr, str):
             continue
         if sr in seen_secondary:
-            warnings.append(f"Duplicate secondary route: '{sr}'")
+            message = f"Duplicate secondary route: '{sr}'"
+            if strict:
+                errors.append(message)
+            else:
+                warnings.append(message)
         seen_secondary.add(sr)
 
     # 5. Disciplines — must be valid discipline ids, not route ids
@@ -752,21 +812,33 @@ def validate_contract(
             reason = ""
 
         execution_source = audit.get("execution_source")
-        if execution_source is not None and execution_source not in {
-            "automated_validator",
-            "manual_checklist_attestation",
-            "process_node_evidence",
-            "legacy_self_attested",
-        }:
-            errors.append(
-                f"Audit '{audit_id}' has invalid execution_source "
-                f"'{execution_source}'"
-            )
+        # Type-check before the membership test: an unhashable JSON value
+        # (list / dict) would otherwise raise TypeError out of the canonical
+        # validator (issue #434 review round 7).
+        if execution_source is not None:
+            if not isinstance(execution_source, str):
+                errors.append(
+                    f"Audit '{audit_id}' execution_source must be a string, "
+                    f"got {type(execution_source).__name__}"
+                )
+            elif execution_source not in {
+                "automated_validator",
+                "manual_checklist_attestation",
+                "process_node_evidence",
+                "legacy_self_attested",
+            }:
+                errors.append(
+                    f"Audit '{audit_id}' has invalid execution_source "
+                    f"'{execution_source}'"
+                )
         # Issue #402: execution_source must be derived from the registry
         # execution_type, not arbitrarily overridden by the report.
         # legacy_self_attested is a compatibility label allowed only on the
         # non-strict path (where legacy free-form evidence is tolerated).
-        if execution_source is not None and audit_execution_type is not None:
+        if (
+            isinstance(execution_source, str)
+            and audit_execution_type is not None
+        ):
             derived_source = _execution_source(audit_execution_type)
             if execution_source != derived_source:
                 if strict or execution_source != "legacy_self_attested":
@@ -915,16 +987,19 @@ def validate_contract(
 
     # 7. Shared-workflow must have at least workflow-spine-audit or final-audit
     if primary == "shared-workflow":
-        audit_ids = {a.get("id", "") for a in audits if isinstance(a, dict)}
+        # Reuse the type-filtered id list from 6b: raw audit ids can be any
+        # JSON value (list/dict/int), and hashing/sorting them here would
+        # raise TypeError out of the canonical validator (issue #434 review).
+        declared_audit_ids = set(audit_id_list)
         required = {"workflow-spine-audit", "final-audit"}
-        if not (audit_ids & required):
+        if not (declared_audit_ids & required):
             errors.append(
                 f"Shared-workflow contract must include at least one of: {sorted(required)}. "
-                f"Found audits: {sorted(audit_ids)}"
+                f"Found audits: {sorted(declared_audit_ids)}"
             )
-        elif audit_ids & required and len(audit_ids) > 3:
+        elif declared_audit_ids & required and len(declared_audit_ids) > 3:
             warnings.append(
-                f"Shared-workflow has {len(audit_ids)} audits (unusually many). "
+                f"Shared-workflow has {len(declared_audit_ids)} audits (unusually many). "
                 f"Consider if a specialized route is more appropriate."
             )
 
@@ -1189,35 +1264,161 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _pack_h2_heading_pattern(heading: str) -> str:
+    """Strict H2 heading grammar shared by the Pack counter and extractors.
+
+    ``[ \\t]`` (not ``\\s``) after the hashes, so a ``##`` followed by a
+    newline can never be counted as a heading; the cardinality counter and
+    ``_pack_h2_section_body`` consume the same grammar (issue #434 review).
+    """
+    return rf"^##[ \t]+{re.escape(heading)}[ \t]*$"
+
+
 def _count_pack_sections(text: str, heading: str) -> int:
     """Number of visible (non-fenced) occurrences of a pack heading."""
     cleaned = _strip_fences(text)
-    return len(re.findall(
-        rf"^##\s+{re.escape(heading)}\s*$", cleaned, re.MULTILINE
-    ))
+    return len(
+        re.findall(_pack_h2_heading_pattern(heading), cleaned, re.MULTILINE)
+    )
 
 
-def validate_pack_sections(pack_path: str) -> list[str]:
-    """Cardinality check for pack declarations (issue #378).
+def validate_pack_sections_text(
+    cleaned: str, *, require_exactly_one: bool = False
+) -> list[str]:
+    """Cardinality errors for visible Pack declarations (issue #378/#434).
 
     '## Primary route' and '## Artifact id' must each appear at most once;
     a second conflicting declaration would silently bypass the
-    pack/contract cross-check if only the first section were read.
-    Returns structural errors (empty list when well-formed).
+    pack/contract cross-check if only the first section were read.  Consumes
+    the caller's already-read visible Pack body (issue #434 single-read).
+    With ``require_exactly_one`` (the delivered boundary) a missing required
+    declaration is structural too, instead of relying on the extractors.
     """
+    errors: list[str] = []
+    for heading in ("Primary route", "Artifact id"):
+        count = _count_pack_sections(cleaned, heading)
+        if count > 1:
+            errors.append(
+                f"declares '## {heading}' {count} times — exactly one is "
+                "required (issue #378)"
+            )
+        elif require_exactly_one and count == 0:
+            errors.append(f"requires exactly one '## {heading}' declaration")
+    return errors
+
+
+def _pack_h2_section_body(cleaned: str, heading: str) -> str | None:
+    """Body of a required H2 Pack section, strictly line-anchored.
+
+    The cardinality counter and both declaration extractors must consume the
+    same ``## <heading>`` section (issue #434 review): an H3
+    ``### Primary route`` or an inline prose mention of the heading can
+    never masquerade as the required H2 declaration, and the section ends at
+    the next visible H2 / end of document.
+    """
+    match = re.search(
+        _pack_h2_heading_pattern(heading) + r"\n(.*?)(?=^##[ \t]|\Z)",
+        cleaned,
+        re.MULTILINE | re.DOTALL,
+    )
+    return match.group(1) if match is not None else None
+
+
+def validate_pack_sections(pack_path: str) -> list[str]:
+    """Path wrapper for :func:`validate_pack_sections_text` (producer API)."""
     try:
         text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError) as exc:
         return [f"cannot read pack {pack_path}: {exc}"]
-    errors: list[str] = []
-    for heading in ("Primary route", "Artifact id"):
-        count = _count_pack_sections(text, heading)
-        if count > 1:
-            errors.append(
-                f"Research Pack {pack_path} declares '## {heading}' "
-                f"{count} times — exactly one is required (issue #378)"
-            )
-    return errors
+    return [
+        f"Research Pack {pack_path} {item}"
+        for item in validate_pack_sections_text(text)
+    ]
+
+
+def resolve_pack_primary_route_text(cleaned: str) -> tuple[str | None, list[str]]:
+    """Canonical route from a visible Pack body plus structural errors.
+
+    Fenced declarations do not count (issue #378).  The first non-empty line
+    that is not "Closest alternative:" prose wins; list markers / bold /
+    italic are stripped so display-name forms resolve.  Returns
+    ``(route, errors)``; ``route is None`` always carries at least one
+    error so callers cannot silently skip a broken declaration.
+    """
+    body = _pack_h2_section_body(cleaned, "Primary route")
+    if body is None:
+        return None, ["has no '## Primary route' section."]
+    lines = [
+        line.strip() for line in body.split("\n")
+        if line.strip() and not line.strip().lower().startswith("closest")
+    ]
+    if not lines:
+        return None, ["'## Primary route' section is empty."]
+    raw = lines[0]
+    # Strip list markers / bold / italic so display-name forms resolve.
+    raw = re.sub(r"^[-*>]+\s+", "", raw)
+    raw = re.sub(r"^\d+[.)]\s+", "", raw)
+    raw = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", raw)
+    try:
+        return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw), []
+    except UnknownRouteError as exc:
+        return None, [f"cannot resolve pack primary route: {exc}"]
+
+
+def extract_pack_artifact_id_text(cleaned: str) -> str | None:
+    """First line of a visible Pack '## Artifact id' section (issue #378)."""
+    body = _pack_h2_section_body(cleaned, "Artifact id")
+    if body is None:
+        return None
+    for line in body.split("\n"):
+        line = line.strip()
+        if not line:
+            continue
+        line = re.sub(r"^[-*>]+\s+", "", line)
+        line = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", line)
+        return line or None
+    return None
+
+
+@dataclass(frozen=True)
+class PackDeclarations:
+    """Canonical declarations parsed from a visible Research Pack body."""
+
+    primary_route: str | None
+    artifact_id: str | None
+    activation_snapshot: dict[str, Any] | None
+    errors: list[str]
+
+
+def parse_pack_declarations(
+    cleaned: str, *, require_exactly_one: bool = False
+) -> PackDeclarations:
+    """Single canonical parse of every Pack declaration (issue #434 review).
+
+    The ``audit_report`` producer and the delivered consumer consume the same
+    result, so their accepted surfaces cannot drift and the consumer does not
+    need to re-read the Pack per declaration.  ``require_exactly_one`` (the
+    delivered boundary) additionally makes a missing required declaration a
+    structural error instead of relying on the extractors.
+    """
+    errors = list(
+        validate_pack_sections_text(
+            cleaned, require_exactly_one=require_exactly_one
+        )
+    )
+    primary_route, route_errors = resolve_pack_primary_route_text(cleaned)
+    errors.extend(route_errors)
+    artifact_id = extract_pack_artifact_id_text(cleaned)
+    activation_snapshot, snapshot_errors = extract_activation_snapshot_reference(
+        cleaned, label="Research Pack"
+    )
+    errors.extend(snapshot_errors)
+    return PackDeclarations(
+        primary_route=primary_route,
+        artifact_id=artifact_id,
+        activation_snapshot=activation_snapshot,
+        errors=errors,
+    )
 
 
 def _resolve_pack_primary_route(pack_path: str) -> str | None:
@@ -1237,41 +1438,10 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
 
     # Fenced declarations (e.g. a route inside ~~~markdown) do not count
     # as visible pack sections (issue #378).
-    text = _strip_fences(text)
-
-    match = re.search(
-        r"## Primary route\s*\n(.*?)(?=\n## |\Z)", text, re.DOTALL
-    )
-    if not match:
-        print(
-            f"Error: Research Pack {pack_path} has no '## Primary route' section.",
-            file=sys.stderr,
-        )
-        return None
-
-    # First non-empty line that is not "Closest alternative:" prose.
-    lines = [
-        line.strip() for line in match.group(1).split("\n")
-        if line.strip() and not line.strip().lower().startswith("closest")
-    ]
-    if not lines:
-        print(
-            f"Error: Research Pack {pack_path} '## Primary route' section is empty.",
-            file=sys.stderr,
-        )
-        return None
-
-    raw = lines[0]
-    # Strip list markers / bold / italic so display-name forms resolve.
-    raw = re.sub(r"^[-*>]+\s+", "", raw)
-    raw = re.sub(r"^\d+[.)]\s+", "", raw)
-    raw = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", raw)
-
-    try:
-        return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw)
-    except UnknownRouteError as exc:
-        print(f"Error: cannot resolve pack primary route: {exc}", file=sys.stderr)
-        return None
+    route, errors = resolve_pack_primary_route_text(_strip_fences(text))
+    for item in errors:
+        print(f"Error: Research Pack {pack_path} {item}", file=sys.stderr)
+    return route
 
 
 _HTML_COMMENT_RE = re.compile(r"<!--.*?(?:-->|\Z)", re.DOTALL)
@@ -1709,17 +1879,55 @@ def strip_fenced_code_blocks_only(text: str) -> str:
     return sanitize_checklist_visible_markdown(text)
 
 
+# Shared visible route-status block matcher (issue #434).  The audit
+# producer accepts H2/H3 headings whose text contains the English or the
+# Chinese route-status phrase (``audit_report._parse_audit_block_statuses``,
+# ``validate_report_quality.ROUTE_AUDIT_HEADING``); ``count_report_route_blocks``
+# and ``extract_report_route_declaration`` must consume the same matcher so the
+# producer and the delivered consumer cannot drift.  Line-anchored so a
+# ``## Route and audit status`` substring inside prose is never a block.
+_REPORT_ROUTE_BLOCK_RE = re.compile(
+    r"^#{2,3}[ \t]+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)[^\n]*$",
+    re.MULTILINE | re.IGNORECASE,
+)
+_REPORT_ROUTE_BLOCK_LEVEL_RE = re.compile(r"^(#{2,3})[ \t]")
+
+
 def count_report_route_blocks(text: str) -> int:
-    """Number of visible (non-fenced) '## Route and audit status' blocks."""
+    """Number of visible (non-fenced) route-status blocks (H2/H3, EN/中文)."""
     cleaned = _strip_fences(text)
-    return len(re.findall(
-        r"^#{2,3}\s+.*(?:Route\s+and\s+audit\s+status|路由与审计状态)",
-        cleaned,
-        re.MULTILINE | re.IGNORECASE,
-    ))
+    return len(_REPORT_ROUTE_BLOCK_RE.findall(cleaned))
 
 
-def extract_report_route_declaration(text: str) -> tuple[str | None, list[str]]:
+def _report_route_block_body(cleaned: str) -> str | None:
+    """Body of the first visible route-status block, heading included.
+
+    The block ends at the next heading whose level is <= the matched
+    heading level (mirroring ``validate_report_quality.section_bounds``).
+    """
+    lines = cleaned.split("\n")
+    for index, line in enumerate(lines):
+        stripped = line.rstrip()
+        if not _REPORT_ROUTE_BLOCK_RE.match(stripped):
+            continue
+        level_match = _REPORT_ROUTE_BLOCK_LEVEL_RE.match(stripped)
+        assert level_match is not None
+        level = len(level_match.group(1))
+        end = len(lines)
+        for cursor in range(index + 1, len(lines)):
+            heading = re.match(r"^(#{1,6})\s", lines[cursor])
+            if heading and len(heading.group(1)) <= level:
+                end = cursor
+                break
+        return "\n".join(lines[index:end])
+    return None
+
+
+def extract_report_route_declaration(
+    text: str,
+    *,
+    unknown_route_is_error: bool = False,
+) -> tuple[str | None, list[str]]:
     """Resolve the canonical route declared in the report's
     '## Route and audit status' block (e.g. '**Primary route**: Market
     Outlook' or '**Route**: Shared-workflow').
@@ -1728,15 +1936,20 @@ def extract_report_route_declaration(text: str) -> tuple[str | None, list[str]]:
     than one route declaration line in the block is structural
     malformation — the first declaration must not win.  Fenced code blocks
     are stripped first so a fake declaration inside a ```markdown block
-    can never override the visible status block.
+    can never override the visible status block.  The block heading matcher
+    is shared with :func:`count_report_route_blocks` (H2/H3, English or
+    中文), so consumers that check presence/cardinality and this parser
+    cannot drift (issue #434 review round 3).
+
+    ``unknown_route_is_error`` is for consumers that own the whole
+    cross-artifact boundary (delivered Run State, issue #434): a visible
+    declaration that cannot be resolved is then reported as a structural
+    error instead of being silently ignored by other route validators.
     """
     cleaned = _strip_fences(text)
-    match = re.search(
-        r"## Route and audit status\s*\n(.*?)(?=\n## |\Z)", cleaned, re.DOTALL
-    )
-    if not match:
+    block = _report_route_block_body(cleaned)
+    if block is None:
         return None, []
-    block = match.group(1)
 
     declarations: list[str] = []
     for line in block.split("\n"):
@@ -1767,6 +1980,11 @@ def extract_report_route_declaration(text: str) -> tuple[str | None, list[str]]:
     try:
         return load_route_registry(ROUTE_MANIFEST_PATH).resolve_route(raw), []
     except UnknownRouteError:
+        if unknown_route_is_error:
+            return None, [
+                "report 'Route and audit status' block declares unknown "
+                f"route {raw!r}"
+            ]
         # Unknown status-block routes are reported by other validators
         # (audit_report route detection); don't fail the contract check.
         return None, []
@@ -1790,20 +2008,7 @@ def _extract_pack_artifact_id(pack_path: str) -> str | None:
         text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
     except (OSError, UnicodeError):
         return None
-    text = _strip_fences(text)
-    match = re.search(
-        r"## Artifact id\s*\n(.+?)(?=\n## |\Z)", text, re.DOTALL
-    )
-    if not match:
-        return None
-    for line in match.group(1).split("\n"):
-        line = line.strip()
-        if not line:
-            continue
-        line = re.sub(r"^[-*>]+\s+", "", line)
-        line = re.sub(r"\*{1,2}([^*]+)\*{1,2}", r"\1", line)
-        return line or None
-    return None
+    return extract_pack_artifact_id_text(_strip_fences(text))
 
 
 if __name__ == "__main__":

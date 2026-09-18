@@ -287,7 +287,13 @@ def test_validate_run_state_data_accepts_delivered_snapshot():
 
 
 def _walk_states() -> list[dict]:
+    delivered = load_valid("valid-delivered.json")
     collecting = load_valid("valid-collecting.json")
+    collecting["artifact_id"] = delivered["artifact_id"]
+    collecting["activation_reference"] = delivered["activation_reference"]
+    mid_review = load_valid("valid-mid-review.json")
+    mid_review["artifact_id"] = delivered["artifact_id"]
+    mid_review["activation_reference"] = delivered["activation_reference"]
     handoff_refs = [
         {"handoff_id": "track-2026-08-24-competitors"}
     ]
@@ -297,7 +303,7 @@ def _walk_states() -> list[dict]:
         mutate(collecting, {"phase": "route_locked", "status": "in_progress",
                             "last_transition_reason": "route locked"}),
         collecting,
-        load_valid("valid-mid-review.json"),
+        mid_review,
         mutate(collecting, {"phase": "synthesizing", "status": "in_progress",
                             "pending_decision": None,
                             "handoff_refs": handoff_refs,
@@ -305,7 +311,7 @@ def _walk_states() -> list[dict]:
         mutate(collecting, {"phase": "auditing", "status": "in_progress",
                             "handoff_refs": handoff_refs,
                             "last_transition_reason": "synthesis closed; audits running"}),
-        load_valid("valid-delivered.json"),
+        delivered,
     ]
 
 
@@ -422,6 +428,8 @@ def test_skip_audit_to_delivered_fails():
         },
     )
     delivered = load_valid("valid-delivered.json")
+    synthesizing["artifact_id"] = delivered["artifact_id"]
+    synthesizing["activation_reference"] = delivered["activation_reference"]
     errors = vrs.validate_transition(synthesizing, delivered)
     assert errors
     assert any("skip" in err or "auditing" in err for err in errors)
@@ -439,6 +447,8 @@ def test_audit_fail_cannot_enter_delivered(tmp_path):
         },
     )
     delivered = load_valid("valid-delivered.json")
+    auditing["artifact_id"] = delivered["artifact_id"]
+    auditing["activation_reference"] = delivered["activation_reference"]
     assert vrs.validate_transition(auditing, delivered) == []
     prev = write_json(tmp_path / "from.json", auditing)
     nxt = write_json(tmp_path / "to.json", delivered)
@@ -696,9 +706,9 @@ def test_handoff_without_run_state_flag_unchanged():
 
 def test_handoff_run_state_binding_rejects_unlisted_id(tmp_path):
     handoff = json.loads((HANDOFF_FIXTURES / "valid-complete.json").read_text())
-    handoff["artifact_ref"] = {"artifact_id": "research-2026-08-25-001"}
-    handoff_path = write_json(tmp_path / "handoff.json", handoff)
     state = load_valid("valid-delivered.json")
+    handoff["artifact_ref"] = {"artifact_id": state["artifact_id"]}
+    handoff_path = write_json(tmp_path / "handoff.json", handoff)
     state["handoff_refs"] = [{"handoff_id": "track-other-unlisted"}]
     state_path = write_json(tmp_path / "run-state.json", state)
     proc = run_handoff(str(handoff_path), "--run-state", str(state_path))
@@ -708,9 +718,9 @@ def test_handoff_run_state_binding_rejects_unlisted_id(tmp_path):
 
 def test_handoff_run_state_binding_accepts_listed_id(tmp_path):
     handoff = json.loads((HANDOFF_FIXTURES / "valid-complete.json").read_text())
-    handoff["artifact_ref"] = {"artifact_id": "research-2026-08-25-001"}
-    handoff_path = write_json(tmp_path / "handoff.json", handoff)
     state = load_valid("valid-delivered.json")
+    handoff["artifact_ref"] = {"artifact_id": state["artifact_id"]}
+    handoff_path = write_json(tmp_path / "handoff.json", handoff)
     state["handoff_refs"] = [{"handoff_id": handoff["handoff_id"]}]
     state_path = write_json(tmp_path / "run-state.json", state)
     proc = run_handoff(str(handoff_path), "--run-state", str(state_path))
@@ -790,6 +800,8 @@ def test_from_to_delivered_without_audit_result_fails(tmp_path):
         },
     )
     delivered = load_valid("valid-delivered.json")
+    auditing["artifact_id"] = delivered["artifact_id"]
+    auditing["activation_reference"] = delivered["activation_reference"]
     prev = write_json(tmp_path / "from.json", auditing)
     nxt = write_json(tmp_path / "to.json", delivered)
     proc = run_cli(

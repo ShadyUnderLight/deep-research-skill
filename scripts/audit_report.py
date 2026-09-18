@@ -74,12 +74,11 @@ from validate_contract import (
     validate_contract,
 )
 from validate_contract import (
-    _extract_pack_artifact_id as vc_extract_pack_artifact_id,
-    _resolve_pack_primary_route as vc_resolve_pack_primary_route,
+    PackDeclarations,
     _strip_fences as vc_strip_fences,
     count_report_route_blocks as vc_count_report_route_blocks,
     extract_report_route_declaration as vc_extract_report_route_declaration,
-    validate_pack_sections as vc_validate_pack_sections,
+    parse_pack_declarations as vc_parse_pack_declarations,
 )
 
 # Validators executed only through required-audit bindings (issue #378).
@@ -98,7 +97,6 @@ from delivery.models import (
 )
 from activation_snapshot import (
     ActivationSnapshotError,
-    extract_activation_snapshot_reference,
     load_activation_snapshot,
 )
 
@@ -619,30 +617,34 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
         )
 
     research_pack = kwargs.get("research_pack")
+    pack_declarations: PackDeclarations | None = None
     pack_activation_snapshot: dict | None = None
     if research_pack is not None:
-        pack_section_errors = vc_validate_pack_sections(str(research_pack))
-        if pack_section_errors:
-            return CheckResult(name="contract-check", errors=pack_section_errors)
         try:
             pack_text = Path(research_pack).read_text(
                 encoding="utf-8", errors="replace"
             )
-            pack_activation_snapshot, activation_errors = (
-                extract_activation_snapshot_reference(
-                    vc_strip_fences(pack_text), label="Research Pack"
-                )
-            )
         except (OSError, UnicodeError) as exc:
             return CheckResult(
                 name="contract-check",
-                errors=[f"cannot read Research Pack activation snapshot: {exc}"],
+                errors=[f"cannot read Research Pack {research_pack}: {exc}"],
             )
-        if activation_errors:
+        # Issue #434 review P3: one canonical parse for route / artifact id /
+        # activation snapshot, shared with the delivered consumer.
+        pack_declarations = vc_parse_pack_declarations(
+            vc_strip_fences(pack_text)
+        )
+        if pack_declarations.errors:
             return CheckResult(
                 name="contract-check",
-                errors=activation_errors,
+                errors=[
+                    item
+                    if item.startswith("Research Pack")
+                    else f"Research Pack {research_pack} {item}"
+                    for item in pack_declarations.errors
+                ],
             )
+        pack_activation_snapshot = pack_declarations.activation_snapshot
 
     report_route, route_malformed = vc_extract_report_route_declaration(text)
     if route_malformed:
@@ -699,8 +701,12 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
     # chain (contract → pack) is verified in one command.
     research_pack = kwargs.get("research_pack")
     if research_pack is not None and (result.is_valid or strict):
-        pack_primary = vc_resolve_pack_primary_route(str(research_pack))
-        pack_artifact = vc_extract_pack_artifact_id(str(research_pack))
+        pack_primary = (
+            pack_declarations.primary_route if pack_declarations else None
+        )
+        pack_artifact = (
+            pack_declarations.artifact_id if pack_declarations else None
+        )
         if pack_primary is None:
             # Matches the standalone validator's fail-closed behavior: a
             # pack whose '## Primary route' cannot be resolved is an error,

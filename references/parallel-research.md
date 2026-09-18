@@ -152,7 +152,29 @@ support `delivered`.
 The audit result must contain the complete expected audit set derived from the
 route, contract, and audit registry — a single `final-audit` entry is not
 enough — plus the canonical `validators[]` set for that route bound to the
-report. `--chain` requires the Pack `## Run state` section, the same sidecar
+report. Entering `delivered` re-validates the whole cross-artifact chain
+instead of trusting a self-consistent audit JSON: the report contract must be
+a single, complete activation contract validated with the strict contract
+boundary (stable artifact identity blocking; pure advisory warnings stay
+non-blocking); the visible route-status block (`## Route and audit status`,
+H2/H3, English or `附录：路由与审计状态`) must exist exactly once and its
+route declaration must agree with the contract primary route, the Pack
+`## Primary route`, and the audit result route; every contract secondary
+route must independently be canonical and carry its exact
+`<secondary>-secondary-hard-fail` audit; the Pack must declare
+`## Primary route` and `## Artifact id` exactly once (required H2 sections),
+with the artifact id matching the contract and the Run State `artifact_id`;
+the report contract must declare a valid `activation_snapshot` (canonical
+`snapshot_version` and `decision_tree_version`, with the contract's top-level
+`decision_tree_version` agreeing with it) and it must
+match the Run State `activation_reference` (a missing contract snapshot is a
+delivered error, not a legacy skip), and the Pack `## Activation snapshot`
+(when present) must match both;
+report/Pack evidence locators must resolve
+against the visible artifact body (fenced or HTML-hidden headings and tables
+do not count); and contract/registry failures are returned as structured
+delivered errors, never as an unhandled traceback. `--chain`
+requires the Pack `## Run state` section, the same sidecar
 file, `--report` when the run is delivered, and a repeated `--handoff` for
 every listed `handoff_refs` entry. `explicit_resume` cannot bind a Track
 Handoff.

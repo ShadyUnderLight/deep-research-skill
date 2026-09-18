@@ -432,7 +432,7 @@ def load_run_state_file(path: Path | str) -> tuple[dict | None, list[str]]:
     path = Path(path)
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         return None, [f"cannot read run state file {path}: {exc}"]
     try:
         data = json.loads(text)
@@ -481,7 +481,14 @@ KNOWN_AUDIT_STATUSES = frozenset(
 
 
 def _canonical_audit_helpers():
-    """Lazy-import canonical audit JSON checks; None on ImportError."""
+    """Lazy-import canonical audit JSON checks.
+
+    Returns ``(schema_version, overall, audits, expected_set, validators)``;
+    ``schema_version`` is ``None`` when the canonical module cannot be loaded
+    because the route/audit registries are corrupt (``run_forward_evals``
+    loads them at import time), so callers fail closed with a structured
+    error instead of leaking a ``RegistryError`` traceback (issue #434 B5).
+    """
     try:
         from run_forward_evals import (
             EXPECTED_AUDIT_JSON_SCHEMA_VERSION,
@@ -492,6 +499,8 @@ def _canonical_audit_helpers():
         )
     except ImportError:
         return 1, None, None, None, None
+    except _registry_error_types():
+        return None, None, None, None, None
     return (
         EXPECTED_AUDIT_JSON_SCHEMA_VERSION,
         _overall_consistency_details,
@@ -505,67 +514,261 @@ def _quiet_resolve_route(name: str | None) -> str | None:
     if not isinstance(name, str) or not name.strip():
         return None
     try:
-        from registry_loader import UnknownRouteError, load_route_registry
+        from registry_loader import RegistryError, load_route_registry
 
         return load_route_registry().resolve_route(name.strip())
-    except (UnknownRouteError, OSError, ImportError):
+    except (RegistryError, OSError, ImportError):
         return None
 
 
-def _quiet_pack_primary_route(pack_path: Path | str | None) -> str | None:
-    if pack_path is None:
-        return None
+def _registry_error_types() -> tuple[type[BaseException], ...]:
+    """Registry / parse failures delivered must surface as structured errors."""
     try:
-        cleaned = Path(pack_path).read_text(encoding="utf-8")
-    except OSError:
-        return None
-    line = _first_pack_section_line(cleaned, "Primary route")
-    return _quiet_resolve_route(line)
+        from registry_loader import RegistryError
+    except ImportError:  # pragma: no cover - standalone import guard
+        return (OSError, ValueError)
+    return (RegistryError, OSError, ValueError)
 
 
-def _report_contract(report_path: Path | str | None) -> dict | None:
-    if report_path is None:
-        return None
+def _sanitize_visible(raw: str) -> tuple[str | None, list[str]]:
+    """Canonical visible-Markdown view of already-read artifact text."""
     try:
-        from validate_contract import extract_contract_from_markdown
+        from validate_contract import sanitize_visible_markdown
+    except ImportError:
+        return None, ["cannot load canonical visible-Markdown sanitizer"]
+    return sanitize_visible_markdown(raw), []
 
-        return extract_contract_from_markdown(
-            Path(report_path).read_text(encoding="utf-8")
+
+def _read_artifact_text(
+    path: Path | str,
+    label: str,
+) -> tuple[str | None, str | None, list[str]]:
+    """Read an artifact once: raw text plus canonical visible text.
+
+    The raw text keeps the ```contract fence intact for canonical contract
+    extraction; the visible text is the sanitized body used to resolve
+    evidence locators (issue #434 B3: fenced/HTML-hidden headings and tables
+    must not count as evidence).
+    """
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        return None, None, [f"cannot read {label} {path}: {exc}"]
+    visible, errors = _sanitize_visible(raw)
+    return raw, visible, errors
+
+
+def _report_route_declaration(visible_report: str | None) -> tuple[str | None, list[str]]:
+    """Issue #434 B1: re-read the visible report route declaration.
+
+    Requires exactly one visible route-status block with exactly one route
+    declaration (same presence/cardinality/heading rules as the
+    ``audit_report`` producer: H2/H3, English or 附录：路由与审计状态), and
+    reuses the canonical parser with ``unknown_route_is_error`` so a
+    post-audit edit of the block — changing, deleting, or duplicating it —
+    cannot disagree with the contract, Pack, or audit result route unnoticed.
+    """
+    if visible_report is None:
+        return None, []
+    try:
+        from validate_contract import (
+            count_report_route_blocks,
+            extract_report_route_declaration,
         )
-    except (OSError, UnicodeError, ImportError):
-        return None
+    except ImportError:
+        return None, ["cannot load canonical report route parser"]
+    block_count = count_report_route_blocks(visible_report)
+    if block_count == 0:
+        return None, [
+            "delivered report requires exactly one visible route-status block "
+            "('## Route and audit status' / '### Route and audit status' / "
+            "'附录：路由与审计状态')"
+        ]
+    if block_count > 1:
+        return None, [
+            f"delivered report has {block_count} route-status blocks "
+            "('## Route and audit status' / '### Route and audit status' / "
+            "'附录：路由与审计状态') — exactly one is required (issue #378)"
+        ]
+    try:
+        route, malformed = extract_report_route_declaration(
+            visible_report, unknown_route_is_error=True
+        )
+    except _registry_error_types() as exc:
+        return None, [f"cannot parse report route declaration: {exc}"]
+    if malformed:
+        return None, [f"delivered {item}" for item in malformed]
+    if route is None:
+        return None, [
+            "delivered report requires a visible route declaration "
+            "('**Primary route**' or '**Route**') in the route-status block"
+        ]
+    return route, []
+
+
+def _pack_declarations(
+    pack_path: Path | str,
+    visible_pack: str | None,
+) -> tuple[str | None, str | None, dict | None, list[str]]:
+    """Issue #434 B1: canonical Pack declarations from the single read.
+
+    Consumes the already-read visible Pack body through the public
+    ``parse_pack_declarations()`` API (same parser the ``audit_report``
+    producer consumes), so one delivered validation cannot mix Pack
+    versions and the accepted surfaces cannot drift (issue #434 review).
+    """
+    if visible_pack is None:
+        return None, None, None, []
+    try:
+        from validate_contract import parse_pack_declarations
+    except ImportError:
+        return None, None, None, ["cannot load canonical Research Pack parsers"]
+    try:
+        declarations = parse_pack_declarations(
+            visible_pack, require_exactly_one=True
+        )
+    except _registry_error_types() as exc:
+        return None, None, None, [f"cannot parse Research Pack declarations: {exc}"]
+    errors = [
+        f"Research Pack {pack_path} {item}" for item in declarations.errors
+    ]
+    if declarations.artifact_id is None and not any(
+        "'## Artifact id'" in item for item in declarations.errors
+    ):
+        errors.append(
+            f"Research Pack {pack_path} has no '## Artifact id' declaration — "
+            "phase=delivered requires the artifact identity binding"
+        )
+    return (
+        declarations.primary_route,
+        declarations.artifact_id,
+        declarations.activation_snapshot,
+        errors,
+    )
+
+
+def _activation_reference_errors(
+    run_state: dict, expected: dict, label: str
+) -> list[str]:
+    """Issue #434: Run State activation_reference must match *expected*."""
+    reference = run_state.get("activation_reference")
+    if not isinstance(reference, dict):
+        return []
+    errors: list[str] = []
+    for field in ("activation_id", "snapshot_version", "decision_tree_version"):
+        if reference.get(field) != expected.get(field):
+            errors.append(
+                f"Run State activation_reference does not match the {label}: "
+                f"{field} {reference.get(field)!r} != {expected.get(field)!r}"
+            )
+    return errors
+
+
+def _validated_delivered_contract(
+    raw_report: str | None,
+    visible_report: str | None,
+    *,
+    report_supplied: bool,
+    pack_provided: bool,
+    report_primary_route: str | None,
+    pack_artifact_id: str | None,
+    pack_activation_snapshot: dict | None,
+) -> tuple[dict | None, list[str]]:
+    """Issue #434 B1: the report contract must be single, canonical and complete.
+
+    ``extract_contract_from_markdown()`` parsing success is not contract
+    validity.  The delivered consumer runs the same canonical
+    ``validate_contract()`` boundary the ``audit_report`` producer runs
+    (report status route, Pack artifact id, Pack activation snapshot) against
+    the visible report body, before any expected audit id is derived.
+    ``strict=True`` mirrors ``validate_contract.py --require-contract
+    --strict``: contract errors (including stable artifact identity) fail
+    closed, while pure advisory warnings (e.g. more than two secondary
+    routes) stay non-blocking so a strict producer ``conditional-pass`` is
+    not rejected here.  The delivered-specific structural requirements
+    (route declaration, Pack artifact id, duplicate secondary severity) live
+    in the helpers above / the canonical validator.
+    Route agreement with the Pack/audit result stays in
+    ``_derive_expected_audit_ids`` (single locatable error per mismatch).
+    """
+    if not report_supplied or raw_report is None:
+        return None, []
+    try:
+        from validate_contract import (
+            PROJECT_ROOT,
+            extract_contract_blocks,
+            validate_contract,
+        )
+    except ImportError:
+        return None, ["cannot load canonical contract validator"]
+    contracts, contract_errors = extract_contract_blocks(raw_report)
+    if contract_errors:
+        return None, [f"delivered report contract: {item}" for item in contract_errors]
+    if not contracts:
+        return None, [
+            "phase=delivered requires a route activation contract in --report"
+        ]
+    contract = contracts[0]
+    try:
+        result = validate_contract(
+            contract,
+            report_primary_route=report_primary_route,
+            pack_artifact_id=pack_artifact_id,
+            pack_activation_snapshot=pack_activation_snapshot,
+            research_pack_provided=pack_provided,
+            strict=True,
+            report_text=visible_report,
+            evidence_base_dir=PROJECT_ROOT,
+        )
+    except _registry_error_types() as exc:
+        return contract, [f"delivered report contract validation failed: {exc}"]
+    return contract, [f"delivered report contract: {item}" for item in result.errors]
 
 
 def _derive_expected_audit_ids(
     audit: dict,
     *,
-    report_path: Path | str | None,
-    pack_path: Path | str | None,
+    contract: dict | None,
+    contract_errors: list[str],
+    report_supplied: bool,
+    pack_route: str | None,
     expected_set_fn,
 ) -> tuple[list[str] | None, str | None, list[str]]:
-    """从 route / contract / registry 外算完整 expected audit set。
+    """从 canonical contract / route registry 外算完整 expected audit set。
 
-    不信任 payload 自己的 audits[] 列表。顶层 ``route`` 必须存在并与
-    报告 contract / Pack 一致，这样删掉 JSON 里的 route 不能蒙混过关。
+    不信任 payload 自己的 audits[] 列表。contract 已经过
+    ``_validated_delivered_contract`` strict 边界：blocking errors 已阻断，
+    advisory warnings 非阻断；这里只消费其 canonical ``primary_route`` /
+    ``secondary_routes``，不重复解释 contract 语义（issue #434 review）。
+    顶层 ``route`` 必须存在并与报告 contract / Pack 一致。
     """
-    errors: list[str] = []
-    contract = _report_contract(report_path)
-    if report_path is not None and contract is None:
-        errors.append(
-            "phase=delivered requires a route activation contract in --report"
-        )
+    errors = list(contract_errors)
     contract_route = None
     secondaries: list[str] = []
-    if isinstance(contract, dict):
-        raw = contract.get("primary_route")
-        if isinstance(raw, str) and raw.strip():
-            contract_route = _quiet_resolve_route(raw) or raw.strip()
-        secondaries = [
-            str(item).strip()
-            for item in (contract.get("secondary_routes") or [])
-            if isinstance(item, str) and item.strip()
-        ]
-    pack_route = _quiet_pack_primary_route(pack_path)
+    if report_supplied:
+        if contract is None or errors:
+            return None, None, errors
+        raw_primary = contract.get("primary_route")
+        if isinstance(raw_primary, str) and raw_primary.strip():
+            contract_route = raw_primary.strip()
+        else:
+            errors.append(
+                "delivered report contract requires a non-empty primary_route"
+            )
+        raw_secondaries = contract.get("secondary_routes")
+        if isinstance(raw_secondaries, list):
+            secondaries = [
+                item.strip()
+                for item in raw_secondaries
+                if isinstance(item, str) and item.strip()
+            ]
+        else:
+            errors.append(
+                "delivered report contract secondary_routes must be an array"
+            )
+        if errors:
+            return None, contract_route, errors
+
     raw_audit_route = audit.get("route")
     if not isinstance(raw_audit_route, str) or not raw_audit_route.strip():
         errors.append("audit result requires top-level route")
@@ -579,10 +782,11 @@ def _derive_expected_audit_ids(
 
     route = contract_route or pack_route or audit_route
     if route is None:
-        errors.append(
-            "phase=delivered cannot derive the expected audit set: "
-            "need a primary route from the report contract or Research Pack"
-        )
+        if not errors:
+            errors.append(
+                "phase=delivered cannot derive the expected audit set: "
+                "need a primary route from the report contract or Research Pack"
+            )
         return None, None, errors
 
     for label, other in (
@@ -596,10 +800,19 @@ def _derive_expected_audit_ids(
                 f"declares {other!r}"
             )
 
+    if errors:
+        return None, route, errors
+
     if expected_set_fn is None:
         errors.append("cannot load canonical expected audit set helper")
         return None, route, errors
-    expected = expected_set_fn(route, secondaries)
+    try:
+        expected = expected_set_fn(route, secondaries)
+    except _registry_error_types() as exc:
+        errors.append(
+            f"cannot derive expected audit set for route {route!r}: {exc}"
+        )
+        return None, route, errors
     if expected is None:
         errors.append(
             f"cannot derive expected audit set for route {route!r} "
@@ -624,10 +837,10 @@ def _delivered_validator_errors(
     if route is None:
         return ["cannot bind validators[] without a resolved route"]
     try:
-        from registry_loader import UnknownRouteError, load_route_registry
+        from registry_loader import RegistryError, load_route_registry
 
         expected = load_route_registry().validators_for(route)
-    except (UnknownRouteError, OSError, ImportError) as exc:
+    except (RegistryError, OSError, ImportError) as exc:
         return [f"cannot load canonical validator set for route {route!r}: {exc}"]
 
     audited_path = str(report_path) if report_path is not None else None
@@ -716,6 +929,7 @@ def check_audit_result_for_delivered(
     *,
     report_path: Path | str | None = None,
     pack_path: Path | str | None = None,
+    pack_text: str | None = None,
     claim_alignment_bundle_path: Path | str | None = None,
     require_opt_in_binding: bool = False,
 ) -> list[str]:
@@ -723,6 +937,12 @@ def check_audit_result_for_delivered(
 
     Issue #426: 绑定是显式路径/ID/route/validator/状态，不做字节 hash
     比较；报告与 Pack 也只做路径存在与流程门禁，不互相冒充。
+    Issue #434: report contract 走 canonical ``validate_contract()`` 边界，
+    并重验可见 report route declaration、Pack ``## Primary route`` /
+    ``## Artifact id`` 基数与 Pack ``## Activation snapshot``（与
+    activation_reference 对齐）；expected audit set 只从 canonical
+    route/contract 派生；report/Pack evidence locator 对可见正文重新定位；
+    registry/parse 失败返回结构化 delivered 错误而不是 traceback。
     """
     require_opt_in_binding = (
         require_opt_in_binding or claim_alignment_bundle_path is not None
@@ -738,7 +958,105 @@ def check_audit_result_for_delivered(
         validators_ok_fn,
     ) = _canonical_audit_helpers()
 
-    if audit.get("schema_version") != schema_version:
+    # Issue #434: read report/Pack once; raw text keeps the contract fence,
+    # visible text is what evidence locators must resolve against.
+    raw_report = visible_report = None
+    if report_path is not None:
+        raw_report, visible_report, read_errors = _read_artifact_text(
+            report_path, "report"
+        )
+        errors.extend(read_errors)
+    raw_pack = visible_pack = None
+    if pack_path is not None:
+        if pack_text is not None:
+            # Issue #434 review P3: --chain already read the Pack; consume the
+            # same snapshot instead of re-reading it for this validation.
+            raw_pack = pack_text
+            visible_pack, sanitize_errors = _sanitize_visible(pack_text)
+            errors.extend(sanitize_errors)
+        else:
+            raw_pack, visible_pack, read_errors = _read_artifact_text(
+                pack_path, "Research Pack"
+            )
+            errors.extend(read_errors)
+
+    report_route, route_errors = _report_route_declaration(visible_report)
+    errors.extend(route_errors)
+
+    pack_route = None
+    pack_artifact_id = None
+    pack_snapshot = None
+    pack_provided = pack_path is not None and raw_pack is not None
+    if pack_provided:
+        (
+            pack_route,
+            pack_artifact_id,
+            pack_snapshot,
+            pack_errors,
+        ) = _pack_declarations(pack_path, visible_pack)
+        errors.extend(pack_errors)
+
+    contract, contract_errors = _validated_delivered_contract(
+        raw_report,
+        visible_report,
+        report_supplied=report_path is not None,
+        pack_provided=pack_provided,
+        report_primary_route=report_route,
+        pack_artifact_id=pack_artifact_id,
+        pack_activation_snapshot=pack_snapshot,
+    )
+
+    # Issue #434: Run State identity is bound to the canonical report
+    # contract / Pack, not only contract ↔ Pack.  An artifact A report+Pack
+    # cannot support an artifact B Run State, and the contract activation
+    # reference is compared even when the Pack has no activation snapshot.
+    expected_artifact_id = pack_artifact_id
+    if isinstance(contract, dict) and not contract_errors:
+        raw_artifact = contract.get("artifact_id")
+        if isinstance(raw_artifact, str) and raw_artifact.strip():
+            expected_artifact_id = raw_artifact.strip()
+        contract_activation = contract.get("activation_snapshot")
+        if not isinstance(contract_activation, dict):
+            errors.append(
+                "phase=delivered requires report contract activation_snapshot "
+                "to bind Run State activation_reference"
+            )
+        else:
+            try:
+                canonical_ref = validate_activation_reference(
+                    contract_activation, label="contract activation_snapshot"
+                )
+            except ActivationSnapshotError as exc:
+                errors.append(
+                    "delivered report contract activation_snapshot is "
+                    f"invalid: {exc}"
+                )
+            else:
+                errors.extend(
+                    _activation_reference_errors(
+                        run_state,
+                        canonical_ref,
+                        "report contract activation_snapshot",
+                    )
+                )
+    if expected_artifact_id is not None:
+        run_artifact_id = run_state.get("artifact_id")
+        if run_artifact_id != expected_artifact_id:
+            errors.append(
+                "delivered artifact_id mismatch: Run State declares "
+                f"{run_artifact_id!r} but the report contract/Pack declare "
+                f"{expected_artifact_id!r}"
+            )
+    if pack_snapshot is not None:
+        errors.extend(
+            _activation_reference_errors(
+                run_state, pack_snapshot, "Research Pack activation_snapshot"
+            )
+        )
+
+    if schema_version is None:
+        errors.append("cannot load canonical audit helpers (registry failure)")
+    elif audit.get("schema_version") != schema_version:
         errors.append(
             f"audit result schema_version must be {schema_version}, "
             f"got {audit.get('schema_version')!r}"
@@ -783,8 +1101,10 @@ def check_audit_result_for_delivered(
     ]
     expected_ids, route, expected_errors = _derive_expected_audit_ids(
         audit,
-        report_path=report_path,
-        pack_path=pack_path,
+        contract=contract,
+        contract_errors=contract_errors,
+        report_supplied=report_path is not None,
+        pack_route=pack_route,
         expected_set_fn=expected_set_fn,
     )
     errors.extend(expected_errors)
@@ -807,6 +1127,9 @@ def check_audit_result_for_delivered(
             expected_ids,
             audited_path=str(report_path) if report_path is not None else None,
             research_pack_path=str(pack_path) if pack_path is not None else None,
+            report_text=visible_report,
+            pack_text=visible_pack,
+            expected_route=route,
             claim_alignment_bundle_path=(
                 str(claim_alignment_bundle_path)
                 if claim_alignment_bundle_path is not None
@@ -865,6 +1188,7 @@ def require_delivered_audit(
     *,
     artifact_path: Path | str | None = None,
     report_path: Path | str | None = None,
+    pack_text: str | None = None,
     claim_alignment_bundle_path: Path | str | None = None,
     require_opt_in_binding: bool = False,
 ) -> list[str]:
@@ -897,14 +1221,24 @@ def require_delivered_audit(
     if err is not None:
         return [err]
     assert audit is not None
-    return check_audit_result_for_delivered(
-        audit,
-        state,
-        report_path=report_path,
-        pack_path=artifact_path,
-        claim_alignment_bundle_path=claim_alignment_bundle_path,
-        require_opt_in_binding=require_opt_in_binding,
-    )
+    try:
+        return check_audit_result_for_delivered(
+            audit,
+            state,
+            report_path=report_path,
+            pack_path=artifact_path,
+            pack_text=pack_text,
+            claim_alignment_bundle_path=claim_alignment_bundle_path,
+            require_opt_in_binding=require_opt_in_binding,
+        )
+    except Exception as exc:  # noqa: BLE001 — last-resort fail-closed guard
+        # Issue #434 B5: no delivered path may leak an unhandled traceback.
+        # The specific type/registry/read failures are handled at their
+        # boundaries; this only catches unforeseen shapes.
+        return [
+            "delivered validation failed unexpectedly: "
+            f"{type(exc).__name__}: {exc}"
+        ]
 
 
 def _unreadable_error(label: str, path: Path | str) -> str | None:
@@ -925,7 +1259,7 @@ def _load_json_object(path: Path | str, label: str) -> tuple[dict | None, list[s
     path = Path(path)
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         return None, [f"cannot read {label} {path}: {exc}"]
     except json.JSONDecodeError as exc:
         return None, [f"{label} {path} is not valid JSON: {exc}"]
@@ -1150,12 +1484,11 @@ def resolve_declared_run_state_path(
 def check_pack_run_state(pack_path: Path | str, cleaned: str | None = None) -> list[str]:
     """Pack 出现 ``## Run state`` 时 fail-closed；缺省节不增加负担。"""
     pack_path = Path(pack_path)
-    try:
-        text = pack_path.read_text(encoding="utf-8")
-    except OSError as exc:
-        return [f"cannot read Research Pack {pack_path}: {exc}"]
     if cleaned is None:
-        cleaned = text
+        try:
+            cleaned = pack_path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            return [f"cannot read Research Pack {pack_path}: {exc}"]
     ref, sidecar, errors = resolve_declared_run_state_path(pack_path, cleaned)
     if errors:
         return errors
@@ -1263,9 +1596,25 @@ def validate_chain(
     errors: list[str] = []
     state, state_errors = load_run_state_file(run_state_path)
     errors.extend(state_errors)
-    ref, sidecar, ref_errors = resolve_declared_run_state_path(pack_path)
+    # Issue #434 review P3: read the Pack once and thread the same snapshot
+    # through the whole chain instead of re-reading it per helper.
+    try:
+        pack_raw: str | None = Path(pack_path).read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        pack_raw = None
+        errors.append(f"cannot read Research Pack {pack_path}: {exc}")
+    pack_visible: str | None = None
+    if pack_raw is not None:
+        pack_visible, sanitize_errors = _sanitize_visible(pack_raw)
+        errors.extend(sanitize_errors)
+    if pack_raw is None:
+        ref, sidecar, ref_errors = None, None, []
+    else:
+        ref, sidecar, ref_errors = resolve_declared_run_state_path(
+            pack_path, pack_visible
+        )
     errors.extend(ref_errors)
-    if ref is None and not ref_errors:
+    if ref is None and not ref_errors and pack_raw is not None:
         errors.append(
             "--chain requires the Research Pack to declare ## Run state"
         )
@@ -1290,7 +1639,8 @@ def validate_chain(
                 f"--chain run_id mismatch: pack declares {ref.get('run_id')!r}, "
                 f"CLI run-state has {state.get('run_id')!r}"
             )
-    errors.extend(check_pack_run_state(pack_path))
+    if pack_raw is not None:
+        errors.extend(check_pack_run_state(pack_path, pack_visible))
     if state is not None:
         errors.extend(bind_listed_handoffs(state, handoff_paths))
     if state is not None and state["phase"] == "delivered":
@@ -1300,6 +1650,7 @@ def validate_chain(
                 audit_result_path,
                 artifact_path=pack_path,
                 report_path=report_path,
+                pack_text=pack_raw,
                 claim_alignment_bundle_path=claim_alignment_bundle_path,
                 require_opt_in_binding=require_opt_in_binding,
             )
