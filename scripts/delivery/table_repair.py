@@ -5,15 +5,34 @@ from __future__ import annotations
 import re
 
 from .fences import iter_fence_aware_lines
+from .markdown_rows import split_markdown_row
+
+# Values that carry no information in a leading layout column.  Status
+# values such as ``N/A``/``TBD`` and numbering such as ``#1`` are data and
+# must never justify dropping a column (issue #435 review round 4).
+LAYOUT_ONLY_VALUES = frozenset(
+    {"", "#", "-", "*", "+", "•", "●", "▪", "◦", "—", "–", "--", "——", "/", "｜"}
+)
 
 
-def repair_markdown_tables(md_text: str) -> str:
+def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -> str:
+    """Normalize table rows without ever truncating data columns.
+
+    The repaired width is ``max(header width, widest data row)``; short rows
+    and short headers are padded with empty cells.  A leading layout-only
+    column is dropped only when the header and every data cell in that
+    column are strictly layout values, and the drop is reported through
+    ``warnings`` (issue #435 review round 4).
+    """
+
+    warning_sink = warnings if warnings is not None else []
+
     def normalize_table_candidate(line: str) -> str:
         line = line.strip().replace("｜", "|")
         return re.sub(r"^[-*+]\s+(?=\|)", "", line)
 
     def parse_cells(row: str) -> list[str]:
-        return [cell.strip() for cell in row.strip("|").split("|")]
+        return split_markdown_row(row)
 
     def is_separator_row(row: str) -> bool:
         cells = parse_cells(row)
@@ -22,8 +41,8 @@ def repair_markdown_tables(md_text: str) -> str:
             for cell in cells
         )
 
-    def is_bullet_placeholder(value: str) -> bool:
-        return value.strip().lower() in {"", "-", "*", "+", "•", "●", "▪", "◦"}
+    def is_layout_only(value: str) -> bool:
+        return value.strip() in LAYOUT_ONLY_VALUES
 
     lines = md_text.split("\n")
     fence_flags = [in_fence for _, in_fence in iter_fence_aware_lines(md_text)]
@@ -57,25 +76,29 @@ def repair_markdown_tables(md_text: str) -> str:
             continue
 
         parsed_rows = [parse_cells(row) for row in group]
-        if len(parsed_rows[0]) >= 2 and is_bullet_placeholder(parsed_rows[0][0]):
-            first_col_values = [row[0] if row else "" for row in parsed_rows[2:]]
-            second_header = parsed_rows[0][1].strip().lower()
-            if (
-                first_col_values
-                and all(is_bullet_placeholder(value) for value in first_col_values)
-            ) or second_header in {"#", "no", "no.", "序号", "编号"}:
-                parsed_rows = [row[1:] if len(row) > 1 else [""] for row in parsed_rows]
+        if len(parsed_rows[0]) >= 2 and is_layout_only(parsed_rows[0][0]):
+            data_rows = parsed_rows[2:]
+            first_col_values = [row[0] if row else "" for row in data_rows]
+            if first_col_values and all(
+                is_layout_only(value) for value in first_col_values
+            ):
+                warning_sink.append(
+                    "table repair dropped a leading layout-only column (no data)"
+                )
+                parsed_rows = [
+                    row[1:] if len(row) > 1 else [""] for row in parsed_rows
+                ]
 
-        first_cells = parsed_rows[0]
         if not is_separator_row(group[1]):
-            parsed_rows.insert(1, ["---"] * len(first_cells))
-        else:
-            parsed_rows[1] = ["---"] * len(first_cells)
+            parsed_rows.insert(1, [])
+        width = max((len(row) for row in parsed_rows), default=1)
+        width = max(width, 1)
+        parsed_rows = [row + [""] * (width - len(row)) for row in parsed_rows]
+        parsed_rows[1] = ["---"] * width
 
-        normalized_group: list[str] = []
-        for cells in parsed_rows:
-            cells = cells[: len(first_cells)] + [""] * max(0, len(first_cells) - len(cells))
-            normalized_group.append("| " + " | ".join(cells) + " |")
+        normalized_group = [
+            "| " + " | ".join(cells) + " |" for cells in parsed_rows
+        ]
 
         if repaired and repaired[-1] != "":
             repaired.append("")

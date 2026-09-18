@@ -47,6 +47,14 @@ Before running the pipeline, verify:
 
 ## Known failure patterns and mitigations
 
+### Markdown table repair
+
+Malformed or LLM-produced Markdown tables are repaired to
+`max(header width, widest data row)`; a wider data row is never sliced, and
+escaped pipes (`\|`) or pipes inside inline code spans stay in one cell.
+A leading layout-only column is dropped only when the header and every data
+cell are strictly layout values, and the drop is reported as a warning.
+
 ### Table degradation
 Very wide or deeply nested tables do not render well in PDF. The pipeline converts multi-column comparison tables into card/list blocks automatically, but extremely dense source tables still need manual simplification before delivery.
 
@@ -67,13 +75,17 @@ Mitigation: for local PDF delivery, avoid remote resource dependencies. If remot
 A delivery invoked with the input Markdown as its output, a hardlink alias,
 or any non-`.pdf` output path (`.md`, `.html`, `.txt`, `.json`, or no
 extension) is rejected with an explicit error and `not_run`; `--keep-html`
-additionally rejects an HTML path that collides with the PDF. Nothing is
-written before these checks, and staged artifacts are replaced atomically,
-so a rejected or crashed render cannot truncate the source or a previously
-delivered PDF. With `--keep-html`, the HTML is committed before PDF
-rendering (so a failed render still leaves a readable HTML) while the
-previous PDF stays untouched. Diagnostics name the conflicting path; fix
-the command instead of deleting files.
+additionally rejects an HTML path that collides with the PDF, and
+`--write-status` rejects a status path that resolves to the input Markdown,
+the PDF, or the retained HTML. Nothing is written before these checks, and
+staged artifacts are replaced atomically, so a rejected or crashed render
+cannot truncate the source or a previously delivered PDF. Output-directory
+preparation failures return a structured `not_run` result instead of a
+traceback, so `--json` consumers always receive parseable JSON. With
+`--keep-html`, the HTML is committed before PDF rendering (so a failed
+render still leaves a readable HTML) while the previous PDF stays
+untouched; `kept_html` is true only after that commit succeeds. Diagnostics
+name the conflicting path; fix the command instead of deleting files.
 
 ### Placeholder leakage
 Internal generator hints, render-hint text, or template markers can survive into the final HTML if they appear outside of code fences or table structures.

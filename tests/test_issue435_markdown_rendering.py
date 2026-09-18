@@ -126,6 +126,65 @@ def test_repair_still_normalizes_visible_tables() -> None:
     assert "| --- | --- |" in repaired
 
 
+def test_repair_keeps_data_wider_than_header() -> None:
+    repaired = repair_markdown_tables("| A | B |\n|---|---|\n| 1 | 2 | 3 |\n")
+    assert "3" in repaired
+    assert repaired.splitlines()[1].count("---") == 3
+
+
+def test_process_markdown_keeps_data_wider_than_header() -> None:
+    body = process_markdown("| A | B |\n|---|---|\n| 1 | 2 | 3 |\n")
+    assert "<td>3</td>" in body
+    assert body.count("<th>") == 3
+
+
+def test_repair_keeps_data_column_before_no_header() -> None:
+    md = (
+        "|        | No. | Item |\n"
+        "|--------|-----|------|\n"
+        "| urgent | 1   | A    |\n"
+        "| normal | 2   | B    |\n"
+    )
+    repaired = repair_markdown_tables(md)
+    assert "urgent" in repaired
+    assert "normal" in repaired
+
+
+def test_repair_reports_dropped_layout_column() -> None:
+    warnings: list[str] = []
+    repaired = repair_markdown_tables(
+        "|   | # | Item |\n"
+        "|---|---|---|\n"
+        "| - | 1 | A |\n"
+        "| * | 2 | B |\n",
+        warnings=warnings,
+    )
+    assert warnings
+    assert any("column" in warning for warning in warnings)
+    assert "Item" in repaired
+
+
+def test_normalize_keeps_escaped_pipe_in_one_cell() -> None:
+    normalized = normalize_text_for_pdf(
+        "| Expr | Note |\n|---|---|\n| a \\| b | keep-me |\n"
+    )
+    assert "| a \\| b | keep-me |" in normalized
+
+
+def test_process_markdown_keeps_escaped_pipe_and_last_cell() -> None:
+    body = process_markdown("| Expr | Note |\n|---|---|\n| a \\| b | keep-me |\n")
+    assert "keep-me" in body
+    assert "a | b" in body
+    assert body.count("<td>") == 2
+
+
+def test_process_markdown_keeps_inline_code_pipe_in_one_cell() -> None:
+    body = process_markdown("| Expression | Meaning |\n|---|---|\n| `a|b` | union |\n")
+    assert "union" in body
+    assert "<code>a|b</code>" in body
+    assert body.count("<td>") == 2
+
+
 def test_process_markdown_keeps_fenced_table_like_content_as_code() -> None:
     body = process_markdown("```text\nA | B | C\n---|---|---\n```\n")
     assert "A | B | C\n---|---|---" in body
@@ -230,6 +289,24 @@ NESTED_TABLE = (
     "<td><table><tbody><tr><td>inner</td></tr></tbody></table></td>"
     "</tr></tbody></table>"
 )
+
+
+def test_mismatched_cell_closing_tag_preserves_original_markup() -> None:
+    html = (
+        "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
+        "<tbody><tr><td>1</td><th>2</td></tr></tbody></table>"
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
+def test_zero_colspan_preserves_original_markup() -> None:
+    html = (
+        "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
+        "<tbody><tr><td colspan='0'>x</td><td>y</td></tr></tbody></table>"
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
 
 
 def test_nested_table_is_preserved_intact() -> None:

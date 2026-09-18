@@ -39,20 +39,22 @@ def _span_attrs(attributes: dict[str, str | None]) -> dict[str, int] | None:
         if name == "rowspan":
             if value != 1:
                 spans[name] = value
-        elif value > 1:
-            if value > MAX_TABLE_SPAN:
-                return None
+            continue
+        if value < 1 or value > MAX_TABLE_SPAN:
+            return None
+        if value > 1:
             spans[name] = value
     return spans
 
 
 class _TableStructureParser(HTMLParser):
-    """Parse one table into sections/rows with byte-accurate cell HTML.
+    """Parse one table into sections/rows with raw-string exact cell HTML.
 
-    Start tags, attributes, and cell boundaries all come from the stdlib
-    parser, so quoted ``>`` values, single/double/unquoted attributes, and
-    unclosed cells follow HTML rules instead of a regex (issue #435 review
-    round 2).
+    Cell content is sliced from ``rawdata`` using character offsets, so it
+    round-trips exactly what the input contained.  Start tags, attributes,
+    and cell boundaries all come from the stdlib parser, so quoted ``>``
+    values, single/double/unquoted attributes, mismatched or unclosed cells
+    follow HTML rules instead of a regex (issue #435 review rounds 2-4).
     """
 
     def __init__(self) -> None:
@@ -114,6 +116,10 @@ class _TableStructureParser(HTMLParser):
                 self.unsupported = True
                 return
             cell_tag, spans, content_start = self._cell
+            if tag != cell_tag:
+                self.unsupported = True
+                self._cell = None
+                return
             content = self.rawdata[content_start:self._offset()]
             if self._row is None:
                 self.unsupported = True

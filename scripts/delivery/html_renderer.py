@@ -196,7 +196,7 @@ def style_generated_html(html_text: str, *, warnings: list[str] | None = None) -
 def process_markdown(md_text: str, *, warnings: list[str] | None = None) -> str:
     """Convert normalized Markdown into sanitized, styled body HTML."""
 
-    repaired = repair_markdown_tables(md_text)
+    repaired = repair_markdown_tables(md_text, warnings=warnings)
     generated = markdown.markdown(
         repaired,
         extensions=["extra", "tables", "fenced_code", "sane_lists", "nl2br"],

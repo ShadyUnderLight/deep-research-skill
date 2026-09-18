@@ -8,8 +8,10 @@ artifact behind.
 
 from __future__ import annotations
 
+import json
 import os
 import stat
+import subprocess
 import sys
 from pathlib import Path
 
@@ -256,6 +258,143 @@ def test_delivery_keeps_metadata_columns_and_emits_no_fold_warning(
     html_text = result.html_path.read_text(encoding="utf-8")
     assert "<th>Source</th>" in html_text
     assert "example.com" in html_text
+
+
+def test_write_status_rejects_input_collision(tmp_path: Path) -> None:
+    report = _write_report(tmp_path)
+
+    result = run_delivery(report, tmp_path / "out.pdf", write_status_to=report)
+
+    assert result.ok is False
+    assert report.read_bytes() == ORIGINAL.encode()
+    assert any("status" in error.lower() for error in result.errors)
+
+
+def test_write_status_rejects_hardlink_alias(tmp_path: Path) -> None:
+    report = _write_report(tmp_path)
+    alias = tmp_path / "alias.md"
+    os.link(report, alias)
+
+    result = run_delivery(report, tmp_path / "out.pdf", write_status_to=alias)
+
+    assert result.ok is False
+    assert alias.read_bytes() == ORIGINAL.encode()
+    assert report.read_bytes() == ORIGINAL.encode()
+
+
+def test_write_status_rejects_pdf_collision(tmp_path: Path) -> None:
+    report = _write_report(tmp_path)
+    pdf = tmp_path / "out.pdf"
+
+    result = run_delivery(report, pdf, write_status_to=pdf)
+
+    assert result.ok is False
+    assert not pdf.exists()
+
+
+def test_write_status_rejects_kept_html_collision(tmp_path: Path) -> None:
+    report = _write_report(tmp_path)
+    html = tmp_path / "out.html"
+
+    result = run_delivery(
+        report,
+        tmp_path / "out.pdf",
+        keep_html=True,
+        write_status_to=html,
+    )
+
+    assert result.ok is False
+    assert not html.exists()
+
+
+def test_output_dir_preparation_failure_returns_structured_result(tmp_path: Path) -> None:
+    report = _write_report(tmp_path)
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory", encoding="utf-8")
+
+    result = run_delivery(report, blocker / "out.pdf")
+
+    assert result.ok is False
+    assert result.delivery_status is DeliveryStatus.NOT_RUN
+    assert any("output directory" in error.lower() for error in result.errors)
+
+
+@pytest.mark.skipif(
+    os.name != "posix" or os.geteuid() == 0,
+    reason="POSIX permission semantics, non-root only",
+)
+def test_unwritable_output_dir_returns_structured_result(tmp_path: Path) -> None:
+    report = _write_report(tmp_path)
+    readonly = tmp_path / "readonly"
+    readonly.mkdir()
+    os.chmod(readonly, 0o500)
+    try:
+        result = run_delivery(report, readonly / "out.pdf")
+    finally:
+        os.chmod(readonly, 0o700)
+
+    assert result.ok is False
+    assert any("output directory" in error.lower() for error in result.errors)
+
+
+def test_cli_json_survives_output_dir_failure(tmp_path: Path) -> None:
+    report = _write_report(tmp_path)
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory", encoding="utf-8")
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "md_to_pdf.py"),
+            str(report),
+            str(blocker / "out.pdf"),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 1, completed.stdout + completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["delivery_status"] == "not_run"
+    assert any("output directory" in error.lower() for error in payload["errors"])
+
+
+def test_kept_html_reflects_actual_commit(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    report = _write_report(tmp_path)
+
+    def failing_convert(*args, **kwargs):
+        raise RuntimeError("simulated markdown failure")
+
+    monkeypatch.setattr("markdown_to_html.convert", failing_convert)
+
+    result = run_delivery(report, tmp_path / "out.pdf", keep_html=True)
+
+    assert result.kept_html is False
+    assert result.html_path is None
+
+
+def test_delivery_keeps_data_wider_than_header_in_kept_html(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = tmp_path / "report.md"
+    report.write_text(
+        "# Report\n\n| A | B |\n|---|---|\n| 1 | 2 | 3 |\n",
+        encoding="utf-8",
+    )
+    pdf = tmp_path / "out.pdf"
+
+    def fake_renderer(html_path, pdf_path, **kwargs):
+        Path(pdf_path).write_bytes(b"%PDF-1.7\nwide row\n")
+
+    monkeypatch.setattr("delivery.pipeline._render_pdf", fake_renderer)
+
+    result = run_delivery(report, pdf, keep_html=True)
+
+    assert result.delivery_status is DeliveryStatus.PDF_READY
+    assert result.kept_html is True
+    assert result.html_path is not None
+    assert "<td>3</td>" in result.html_path.read_text(encoding="utf-8")
 
 
 def test_keep_html_failure_updates_html_but_preserves_previous_pdf(

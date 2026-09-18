@@ -6,6 +6,7 @@ import re
 import unicodedata
 
 from .fences import fence_aware_runs, iter_fence_aware_lines
+from .markdown_rows import split_markdown_row
 
 
 def _format_plain_markdown(text: str) -> str:
@@ -109,8 +110,8 @@ def normalize_text_for_pdf(text: str) -> str:
             in_table = False
             continue
 
-        if "|" in stripped and stripped.count("|") >= 2:
-            cells = [cell.strip() for cell in stripped.strip("|").split("|")]
+        cells = split_markdown_row(stripped) if "|" in stripped else []
+        if len(cells) >= 2:
             if not in_table and lines and lines[-1] != "":
                 lines.append("")
             lines.append("| " + " | ".join(cells) + " |")

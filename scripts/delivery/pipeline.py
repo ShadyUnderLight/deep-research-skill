@@ -84,7 +84,8 @@ def run_delivery(
     ``keep_html``, the intermediate HTML is committed atomically *before*
     PDF rendering so a failed render still leaves a diagnosable HTML, while a
     previously delivered PDF stays untouched (issue #435).  Status writeback
-    is opt-in and never mutates the input Markdown implicitly.
+    is opt-in, validated against input/PDF/HTML path collisions, and never
+    mutates the input Markdown implicitly.
     """
 
     input_path = Path(input_path).resolve()
@@ -95,6 +96,7 @@ def run_delivery(
         )
 
     pdf_path = Path(output_path).resolve() if output_path else input_path.with_suffix(".pdf")
+    status_path = Path(write_status_to).resolve() if write_status_to else None
 
     if paths_collide(pdf_path, input_path):
         return DeliveryResult(
@@ -130,16 +132,44 @@ def run_delivery(
                 ],
             )
 
-    pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    if status_path is not None:
+        status_targets: list[tuple[str, Path]] = [
+            ("input Markdown", input_path),
+            ("PDF output", pdf_path),
+        ]
+        if final_html_path is not None:
+            status_targets.append(("retained HTML", final_html_path))
+        for label, target in status_targets:
+            if paths_collide(status_path, target):
+                return DeliveryResult(
+                    input_path=input_path,
+                    pdf_path=pdf_path,
+                    errors=[
+                        "Refusing write_status_to: status path "
+                        f"{status_path} resolves to the {label} ({target})"
+                    ],
+                )
+
     result = DeliveryResult(
         input_path=input_path,
         pdf_path=pdf_path,
-        kept_html=keep_html,
     )
 
-    with tempfile.TemporaryDirectory(
-        prefix=f".{pdf_path.stem}-delivery-", dir=pdf_path.parent
-    ) as temp_dir:
+    try:
+        pdf_path.parent.mkdir(parents=True, exist_ok=True)
+        staging_context = tempfile.TemporaryDirectory(
+            prefix=f".{pdf_path.stem}-delivery-", dir=pdf_path.parent
+        )
+    except OSError as exc:
+        result.errors.append(f"Unable to prepare delivery output directory: {exc}")
+        if status_path is not None:
+            try:
+                write_delivery_status(status_path, result)
+            except Exception as exc:
+                result.errors.append(f"Delivery status writeback failed: {exc}")
+        return result
+
+    with staging_context as temp_dir:
         staging = Path(temp_dir)
         html_work = staging / f"{input_path.stem}.html"
         pdf_work = staging / "output.pdf"
@@ -152,11 +182,12 @@ def run_delivery(
             if final_html_path is not None:
                 commit_staged_file(html_work, final_html_path)
                 result.html_path = final_html_path
+                result.kept_html = True
         except Exception as exc:
             result.errors.append(f"Markdown to HTML failed: {exc}")
-            if write_status_to:
+            if status_path is not None:
                 try:
-                    write_delivery_status(Path(write_status_to), result)
+                    write_delivery_status(status_path, result)
                 except Exception as exc:
                     result.errors.append(f"Delivery status writeback failed: {exc}")
             return result
@@ -182,9 +213,9 @@ def run_delivery(
             result.delivery_status = DeliveryStatus.PDF_FAILED
             result.errors.append(f"HTML to PDF failed (Chromium/PDF renderer): {exc}")
 
-    if write_status_to:
+    if status_path is not None:
         try:
-            write_delivery_status(Path(write_status_to), result)
+            write_delivery_status(status_path, result)
         except Exception as exc:
             result.errors.append(f"Delivery status writeback failed: {exc}")
     return result
