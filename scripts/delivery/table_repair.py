@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 
+from .fences import iter_fence_aware_lines
+
 
 def repair_markdown_tables(md_text: str) -> str:
     def normalize_table_candidate(line: str) -> str:
@@ -24,9 +26,15 @@ def repair_markdown_tables(md_text: str) -> str:
         return value.strip().lower() in {"", "-", "*", "+", "•", "●", "▪", "◦"}
 
     lines = md_text.split("\n")
+    fence_flags = [in_fence for _, in_fence in iter_fence_aware_lines(md_text)]
     repaired: list[str] = []
     index = 0
     while index < len(lines):
+        if fence_flags[index]:
+            repaired.append(lines[index])
+            index += 1
+            continue
+
         stripped = normalize_table_candidate(lines[index])
         if "|" not in stripped or stripped.count("|") < 2:
             repaired.append(lines[index])
@@ -35,7 +43,7 @@ def repair_markdown_tables(md_text: str) -> str:
 
         group = [stripped]
         end = index + 1
-        while end < len(lines):
+        while end < len(lines) and not fence_flags[end]:
             candidate = normalize_table_candidate(lines[end])
             if candidate and "|" in candidate and candidate.count("|") >= 2:
                 group.append(candidate)

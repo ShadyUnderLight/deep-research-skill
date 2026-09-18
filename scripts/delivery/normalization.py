@@ -5,16 +5,12 @@ from __future__ import annotations
 import re
 import unicodedata
 
+from .fences import fence_aware_runs, iter_fence_aware_lines
 
-def normalize_text_for_pdf(text: str) -> str:
-    """Clean common Markdown artifacts without crossing block boundaries."""
 
-    if not text:
-        return text
+def _format_plain_markdown(text: str) -> str:
+    """Apply the non-structural formatting passes to fence-free text."""
 
-    text = unicodedata.normalize("NFC", text)
-    text = "".join(ch for ch in text if ch in ("\n", "\r", "\t") or ord(ch) >= 32)
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
 
@@ -32,10 +28,34 @@ def normalize_text_for_pdf(text: str) -> str:
         + match.group(2).strip(),
         text,
     )
-
     text = re.sub(r"(?m)^[\x00-\x08\x0b\x0c\x0e-\x1f\u2022\u25aa\u25cf\uf0b7]\s*", "- ", text)
     text = re.sub(r"(?m)^[•●▪◦]\s*", "- ", text)
     text = re.sub(r"(?m)(?<=\S)[ \t]{2,}(?=\S)", " ", text)
+    return text
+
+
+def normalize_text_for_pdf(text: str) -> str:
+    """Clean common Markdown artifacts without crossing block boundaries.
+
+    Fenced code (backtick or tilde, closed or not) is copied verbatim: it is
+    never treated as headings, lists, tables, or run through the CJK/space
+    formatting passes (issue #435).
+    """
+
+    if not text:
+        return text
+
+    text = unicodedata.normalize("NFC", text)
+    text = "".join(ch for ch in text if ch in ("\n", "\r", "\t") or ord(ch) >= 32)
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+
+    processed: list[str] = []
+    for run_lines, in_fence in fence_aware_runs(text):
+        if in_fence:
+            processed.extend(run_lines)
+        else:
+            processed.extend(_format_plain_markdown("\n".join(run_lines)).split("\n"))
+    text = "\n".join(processed)
 
     lines: list[str] = []
     in_table = False
@@ -47,7 +67,15 @@ def normalize_text_for_pdf(text: str) -> str:
             lines.append("")
         pending_blank = False
 
-    for raw in text.split("\n"):
+    for raw, in_fence in iter_fence_aware_lines(text):
+        if in_fence:
+            if in_table and lines and lines[-1] != "":
+                lines.append("")
+            in_table = False
+            flush_blank()
+            lines.append(raw)
+            continue
+
         line = raw.rstrip()
         stripped = line.strip()
         if not stripped:
@@ -102,4 +130,10 @@ def normalize_text_for_pdf(text: str) -> str:
 
     if in_table and lines and lines[-1] != "":
         lines.append("")
-    return re.sub(r"\n{3,}", "\n\n", "\n".join(lines))
+
+    return "\n".join(
+        "\n".join(run_lines)
+        if in_fence
+        else re.sub(r"\n{3,}", "\n\n", "\n".join(run_lines))
+        for run_lines, in_fence in fence_aware_runs("\n".join(lines))
+    )

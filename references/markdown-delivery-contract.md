@@ -25,6 +25,10 @@ GitHub, or a similar reader.
   the applicable validator or route contract requires them; place them after
   the narrative as appendices so they remain discoverable without taking over
   the opening.
+- The `.md` file remains the source of truth after PDF delivery: the pipeline
+  must never write back to it. Same-path, hardlink, and reserved
+  `.md`/`.html` output conflicts fail closed, fenced code is preserved
+  verbatim, and table columns are never silently truncated.
 
 ## Reader goals
 

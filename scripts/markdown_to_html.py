@@ -33,6 +33,7 @@ from delivery.html_renderer import (  # noqa: E402
 )
 from delivery.metadata import extract_cover_meta  # noqa: E402
 from delivery.normalization import normalize_text_for_pdf  # noqa: E402
+from delivery.paths import atomic_write_text, paths_collide  # noqa: E402
 from delivery.sanitizer import sanitize_html  # noqa: E402
 from delivery.table_repair import repair_markdown_tables  # noqa: E402
 from delivery.tables import maybe_wrap_wide_tables_in_html  # noqa: E402
@@ -53,25 +54,33 @@ def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta="
     )
 
 
-def convert(input_path, output_path=None, title=None):
-    """Convert Markdown to HTML through the modular delivery stages."""
+def convert(input_path, output_path=None, title=None, *, warnings=None):
+    """Convert Markdown to HTML through the modular delivery stages.
+
+    Refuses to use the input Markdown as its own output and writes through a
+    sibling temp file, so a conflicted or failed conversion cannot truncate
+    an existing artifact (issue #435).
+    """
 
     md_path = Path(input_path)
     if not md_path.exists():
         raise FileNotFoundError(f"Input file not found: {input_path}")
+
+    out_path = Path(output_path) if output_path is not None else md_path.with_suffix(".html")
+    if paths_collide(md_path, out_path):
+        raise ValueError(f"Refusing to overwrite input Markdown: {out_path}")
 
     md_text = normalize_text_for_pdf(md_path.read_text(encoding="utf-8", errors="replace"))
     cover_title, cover_subtitle, meta_lines, body_text = extract_cover_meta(md_text)
     report_title = title or cover_title or md_path.stem
     full_html = build_html(
         title=report_title,
-        body_html=process_markdown(body_text),
+        body_html=process_markdown(body_text, warnings=warnings),
         cover_title=cover_title,
         cover_subtitle=cover_subtitle,
         meta_lines=meta_lines,
     )
-    out_path = Path(output_path) if output_path is not None else md_path.with_suffix(".html")
-    out_path.write_text(full_html, encoding="utf-8")
+    atomic_write_text(out_path, full_html)
     print(f"HTML written: {out_path}")
     return str(out_path)
 
@@ -79,7 +88,11 @@ def convert(input_path, output_path=None, title=None):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Convert Deep Research markdown report to styled HTML')
     parser.add_argument('input', help='Input markdown file')
-    parser.add_argument('output', nargs='?', help='Output HTML file (default: same name, .html)')
+    parser.add_argument(
+        'output',
+        nargs='?',
+        help='Output HTML file (default: same name, .html; must differ from input)',
+    )
     parser.add_argument('--title', help='Report title (overrides frontmatter)')
     args = parser.parse_args()
     convert(args.input, args.output, args.title)
