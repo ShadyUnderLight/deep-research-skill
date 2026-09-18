@@ -76,6 +76,14 @@ def test_normalize_preserves_tilde_fence_content_verbatim() -> None:
     assert _fence_content(normalized, "~~~python") == _fence_content(TILDE_FENCED, "~~~python")
 
 
+def test_normalize_preserves_fence_unicode_and_line_endings_verbatim() -> None:
+    text = "# T\r\n\r\n```text\r\ne\u0301 += 1\r\n\r\ntail\r\n```\r\n"
+    normalized = normalize_text_for_pdf(text)
+    assert "e\u0301" in normalized
+    assert "\r\n" in normalized
+    assert normalize_text_for_pdf("e\u0301") == "é"
+
+
 def test_normalize_preserves_unclosed_fence_tail() -> None:
     normalized = normalize_text_for_pdf(UNCLOSED)
     assert "A | B | C\n# still code\n``` not closed\nC | D" in normalized
@@ -160,28 +168,103 @@ def test_rowspan_table_is_preserved_without_rebuild() -> None:
     assert html in rendered
 
 
-def test_process_markdown_collects_fold_warnings() -> None:
+def test_single_quoted_colspan_expands_columns() -> None:
+    html = (
+        "<table><thead><tr><th colspan='2'>Group</th><th>B</th></tr></thead>"
+        "<tbody><tr><td>1</td><td colspan='2'>2</td></tr></tbody></table>"
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert "Group" in rendered
+    assert rendered.count("<th>") == 3
+    assert rendered.count("<td>") == 3
+
+
+def test_single_quoted_rowspan_preserves_original_markup() -> None:
+    html = (
+        "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
+        "<tbody><tr><td rowspan='2'>x</td><td>1</td></tr><tr><td>2</td></tr></tbody></table>"
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
+def test_data_colspan_attribute_is_not_treated_as_colspan() -> None:
+    html = (
+        '<table><thead><tr><th>A</th><th>B</th></tr></thead>'
+        '<tbody><tr><td data-colspan="2">x</td><td>y</td></tr></tbody></table>'
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert rendered.count("<th>") == 2
+    assert rendered.count("<td>") == 2
+
+
+METADATA_TABLE = (
+    "<table><thead><tr><th>Name</th><th>Source</th><th>Notes</th><th>Type</th></tr></thead>"
+    "<tbody><tr><td>A</td><td>https://example.com/a</td><td>ok</td><td>source</td></tr></tbody></table>"
+)
+
+
+def test_metadata_column_fold_requires_explicit_opt_in() -> None:
     warnings: list[str] = []
-    process_markdown(
+    rendered = maybe_wrap_wide_tables_in_html(METADATA_TABLE, warnings=warnings)
+    assert "<th>Source</th>" in rendered
+    assert not any("folded" in warning for warning in warnings)
+
+    opt_in_warnings: list[str] = []
+    folded = maybe_wrap_wide_tables_in_html(
+        METADATA_TABLE,
+        warnings=opt_in_warnings,
+        fold_metadata_columns=True,
+    )
+    assert any("Source" in warning for warning in opt_in_warnings)
+    assert "<th>Source</th>" not in folded
+    assert "<th>Notes</th>" in folded
+
+
+def test_process_markdown_keeps_metadata_columns_by_default() -> None:
+    warnings: list[str] = []
+    body = process_markdown(
         "| Name | Source | Notes | Type |\n"
         "|---|---|---|---|\n"
         "| A | https://example.com/a | ok | source |\n",
         warnings=warnings,
     )
-    assert warnings
-    assert any("Source" in warning for warning in warnings)
+    assert "<th>Source</th>" in body
+    assert "example.com" in body
+    assert not any("folded" in warning for warning in warnings)
 
 
-def test_metadata_column_fold_reports_warning() -> None:
-    html = (
-        "<table><thead><tr><th>Name</th><th>Source</th><th>Notes</th><th>Type</th></tr></thead>"
-        "<tbody><tr><td>A</td><td>https://example.com/a</td><td>ok</td><td>source</td></tr></tbody></table>"
+def test_comparison_table_with_url_source_keeps_all_columns() -> None:
+    body = process_markdown(
+        "| Metric | A | B | Source |\n"
+        "|---|---|---|---|\n"
+        "| Revenue | 10 | 12 | https://example.com/1 |\n"
+        "| Cost | 5 | 6 | https://example.com/2 |\n"
     )
-    warnings: list[str] = []
-    rendered = maybe_wrap_wide_tables_in_html(html, warnings=warnings)
-    assert warnings
-    assert any("Source" in warning for warning in warnings)
-    assert "<th>Notes</th>" in rendered
+    assert "<th>Source</th>" in body
+    assert "example.com" in body
+
+
+def test_monitoring_table_with_url_source_keeps_all_columns() -> None:
+    body = process_markdown(
+        "| Indicator | Threshold | Current | Source |\n"
+        "|---|---|---|---|\n"
+        "| FX rate | < 7.2 | 7.1 | https://example.com/fx |\n"
+        "| Spread | < 120bp | 110bp | https://example.com/spread |\n"
+    )
+    assert "<th>Source</th>" in body
+    assert "example.com" in body
+
+
+def test_scoring_table_with_url_source_keeps_all_columns() -> None:
+    body = process_markdown(
+        "| Criterion | Weight | Score | Source |\n"
+        "|---|---|---|---|\n"
+        "| Moat | 30% | 4 | https://example.com/moat |\n"
+        "| Growth | 20% | 3 | https://example.com/growth |\n"
+    )
+    assert "<th>Source</th>" in body
+    assert "example.com" in body
 
 
 SOURCE_REGISTER = (

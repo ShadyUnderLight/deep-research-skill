@@ -19,15 +19,17 @@ Use `--json` to emit this result. Use `--write-status PATH` only when an
 explicit Research Pack/report writeback is intended; the input Markdown is
 never mutated implicitly.
 
-Path conflicts fail closed before any write: the output PDF must not
-resolve to the input Markdown (including hardlink aliases), must not use a
-reserved `.md`/`.html` target, and `--keep-html` must not collide with the
-PDF path. Intermediate HTML and the PDF are staged next to the output and
-validated (non-empty, `%PDF` header) before atomic replacement, so a failed
-render leaves the input and any previous artifact untouched. Fenced code
-(backtick or tilde, closed or not) is copied verbatim through normalization
-and table repair, and every table column the layout rules fold is reported
-as a warning instead of being changed silently.
+Path conflicts fail closed before any write: the output must be a `.pdf`
+path (case-insensitive), must not resolve to the input Markdown (including
+hardlink aliases), and `--keep-html` must not collide with the PDF path.
+Intermediate HTML and the PDF are staged next to the output and validated
+(non-empty, `%PDF` header) before atomic replacement, so a rejected or
+failed render leaves the input and any existing PDF untouched; replaced
+files keep their previous permission mode. Fenced code (backtick or tilde,
+closed or not) is copied byte-for-byte through normalization and table
+repair, including its Unicode form, control characters, and line endings.
+Data-bearing table columns are never dropped: genuinely empty columns and
+columns removed by the optional metadata fold are reported as warnings.
 
 ## Pre-delivery checks
 
@@ -59,12 +61,15 @@ Mitigation: for local PDF delivery, avoid remote resource dependencies. If remot
 ### Path conflicts and overwrites
 
 A delivery invoked with the input Markdown as its output, a hardlink alias,
-or an `.md`/`.html` output suffix is rejected with an explicit error and
-`not_run`; `--keep-html` additionally rejects an HTML path that collides
-with the PDF. Nothing is written before these checks, and staged artifacts
-are replaced atomically, so a rejected or crashed render cannot truncate
-the source or a previously delivered PDF. Diagnostics name the conflicting
-path; fix the command instead of deleting files.
+or any non-`.pdf` output path (`.md`, `.html`, `.txt`, `.json`, or no
+extension) is rejected with an explicit error and `not_run`; `--keep-html`
+additionally rejects an HTML path that collides with the PDF. Nothing is
+written before these checks, and staged artifacts are replaced atomically,
+so a rejected or crashed render cannot truncate the source or a previously
+delivered PDF. With `--keep-html`, the HTML is committed before PDF
+rendering (so a failed render still leaves a readable HTML) while the
+previous PDF stays untouched. Diagnostics name the conflicting path; fix
+the command instead of deleting files.
 
 ### Placeholder leakage
 Internal generator hints, render-hint text, or template markers can survive into the final HTML if they appear outside of code fences or table structures.

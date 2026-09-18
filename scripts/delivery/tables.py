@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from html.parser import HTMLParser
 
 # Real tag boundaries matter here: a prefix regex like ``<th[^>]*>`` also
 # matches ``<thead>`` and silently shifts the whole header row (issue #435).
@@ -10,18 +11,50 @@ THEAD_RE = re.compile(r"<thead\b[^>]*>(.*?)</thead>", re.S | re.I)
 TBODY_RE = re.compile(r"<tbody\b[^>]*>(.*?)</tbody>", re.S | re.I)
 TR_RE = re.compile(r"<tr\b[^>]*>(.*?)</tr>", re.S | re.I)
 CELL_RE = re.compile(r"<t([dh])\b([^>]*)>(.*?)</t\1>", re.S | re.I)
-SPAN_ATTR_RE = re.compile(r"(colspan|rowspan)\s*=\s*\"?(\d+)\"?", re.I)
 
 
-def _span_attrs(attributes: str) -> dict[str, int]:
-    return {name.lower(): int(value) for name, value in SPAN_ATTR_RE.findall(attributes)}
+class _StartTagAttributes(HTMLParser):
+    """Collect attributes from one start tag with the stdlib HTML parser.
+
+    The parser accepts single-, double-, and unquoted values and keeps
+    attribute-name boundaries, so ``data-colspan="2"`` can never be mistaken
+    for a real ``colspan`` (issue #435 review round 1).
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.attributes: dict[str, str | None] = {}
+
+    def handle_starttag(self, tag, attrs):
+        self.attributes = {name.lower(): value for name, value in attrs}
+
+
+def _span_attrs(tag: str, attribute_text: str) -> dict[str, int]:
+    parser = _StartTagAttributes()
+    try:
+        parser.feed(f"<{tag} {attribute_text}>")
+    except Exception:
+        return {}
+    spans: dict[str, int] = {}
+    for name in ("colspan", "rowspan"):
+        raw = parser.attributes.get(name)
+        if raw is None:
+            continue
+        try:
+            value = int(raw)
+        except ValueError:
+            continue
+        if value > 1:
+            spans[name] = value
+    return spans
 
 
 def _table_cells(row_html: str) -> list[tuple[str, dict[str, int], str]]:
-    return [
-        (match.group(1).lower(), _span_attrs(match.group(2)), match.group(3))
-        for match in CELL_RE.finditer(row_html)
-    ]
+    cells: list[tuple[str, dict[str, int], str]] = []
+    for match in CELL_RE.finditer(row_html):
+        tag = match.group(1).lower()
+        cells.append((tag, _span_attrs(tag, match.group(2)), match.group(3)))
+    return cells
 
 
 def _expand_cells(
@@ -102,12 +135,19 @@ def extract_table_structure(
     return headers, header_synthetic, rows
 
 
-def maybe_wrap_wide_tables_in_html(html: str, *, warnings: list[str] | None = None) -> str:
+def maybe_wrap_wide_tables_in_html(
+    html: str,
+    *,
+    warnings: list[str] | None = None,
+    fold_metadata_columns: bool = False,
+) -> str:
     """Normalize dense tables and split wide tables into readable chunks.
 
-    ``warnings`` optionally collects human-readable notes for every column
-    the layout rules fold or drop, so callers can surface them instead of
-    silently changing the table (issue #435).
+    Data-bearing columns are never deleted by default: a column is only
+    dropped when it has no data at all (empty header and empty cells).
+    Metadata/URL columns are folded only when ``fold_metadata_columns`` is
+    explicitly enabled, and every drop/fold is reported through ``warnings``
+    (issue #435).
     """
 
     warning_sink = warnings if warnings is not None else []
@@ -174,10 +214,12 @@ def maybe_wrap_wide_tables_in_html(html: str, *, warnings: list[str] | None = No
             len(headers) == min_row_width + 1
             and is_placeholder(headers[0])
             and not header_synthetic[0]
+            and all(is_placeholder(row[0]) for row in rows)
         ):
-            warning_sink.append("table column dropped: leading placeholder header column")
+            warning_sink.append("table column dropped: leading empty column (no data)")
             headers = headers[1:]
             header_synthetic = header_synthetic[1:]
+            rows = [row[1:] for row in rows]
 
         width = max(len(headers), *(len(row) for row in rows))
         if width > len(headers):
@@ -191,45 +233,33 @@ def maybe_wrap_wide_tables_in_html(html: str, *, warnings: list[str] | None = No
         for index in range(width):
             header_text = plain_text(headers[index])
             column_values = [plain_text(row[index]) for row in rows]
-            if (
-                not protected[index]
-                and is_placeholder(header_text)
-                and all(is_placeholder(value) for value in column_values)
-            ):
-                continue
-            if is_metadata_header(header_text):
-                urlish = [value for value in column_values if is_urlish(value)]
-                if len(urlish) >= max(1, int(len(column_values) * 0.6)):
-                    metadata_cols.append(index)
+            if not protected[index]:
+                if is_placeholder(header_text) and all(
+                    is_placeholder(value) for value in column_values
+                ):
+                    warning_sink.append(
+                        f"table column dropped: empty column {index + 1} (no data)"
+                    )
+                    continue
+                if fold_metadata_columns and is_metadata_header(header_text):
+                    urlish = [value for value in column_values if is_urlish(value)]
+                    if len(urlish) >= max(1, int(len(column_values) * 0.6)):
+                        metadata_cols.append(index)
             keep.append(index)
 
-        non_meta_keep = [index for index in keep if index not in metadata_cols]
-        if len(non_meta_keep) >= 2 and len(keep) >= 4:
-            for index in metadata_cols:
-                warning_sink.append(
-                    f"table column folded: metadata column {plain_text(headers[index])!r}"
-                )
-            keep = non_meta_keep
+        if metadata_cols:
+            non_meta_keep = [index for index in keep if index not in metadata_cols]
+            if len(non_meta_keep) >= 2 and len(keep) >= 4:
+                for index in metadata_cols:
+                    warning_sink.append(
+                        f"table column folded: metadata column {plain_text(headers[index])!r}"
+                    )
+                keep = non_meta_keep
         if not keep:
             keep = list(range(width))
 
         headers = [headers[index] for index in keep]
         rows = [[row[index] for index in keep] for row in rows]
-        protected = [protected[index] for index in keep]
-
-        placeholder_headers = [
-            index
-            for index, header in enumerate(headers)
-            if is_placeholder(header) and not protected[index]
-        ]
-        if placeholder_headers and len(headers) > 1:
-            for index in placeholder_headers:
-                warning_sink.append(
-                    f"table column dropped: empty placeholder header at column {index + 1}"
-                )
-            keep = [index for index in range(len(headers)) if index not in placeholder_headers]
-            headers = [headers[index] for index in keep]
-            rows = [[row[index] for index in keep] for row in rows]
 
         cleaned_rows: list[list[str]] = []
         for row in rows:

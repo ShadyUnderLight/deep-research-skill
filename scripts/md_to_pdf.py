@@ -43,7 +43,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "output",
         nargs="?",
-        help="Output PDF file (default: same name, .pdf; must differ from input)",
+        help="Output PDF file (default: same name, .pdf; must be a .pdf path different from input)",
     )
     parser.add_argument("--title", help="Report title (overrides frontmatter)")
     parser.add_argument("--landscape", action="store_true", help="Render in landscape orientation")

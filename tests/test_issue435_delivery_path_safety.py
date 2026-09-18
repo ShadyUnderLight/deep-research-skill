@@ -9,6 +9,7 @@ artifact behind.
 from __future__ import annotations
 
 import os
+import stat
 import sys
 from pathlib import Path
 
@@ -56,16 +57,35 @@ def test_run_delivery_rejects_hardlink_alias_output(tmp_path: Path) -> None:
     assert report.read_bytes() == ORIGINAL.encode()
 
 
-@pytest.mark.parametrize("suffix", [".md", ".markdown", ".html", ".htm"])
-def test_run_delivery_rejects_reserved_output_suffixes(tmp_path: Path, suffix: str) -> None:
+@pytest.mark.parametrize(
+    "name", ["target.md", "target.markdown", "target.html", "target.htm", "target.txt", "target.json", "target"]
+)
+def test_run_delivery_rejects_non_pdf_output_targets(tmp_path: Path, name: str) -> None:
     report = _write_report(tmp_path)
-    output = tmp_path / f"target{suffix}"
+    output = tmp_path / name
 
     result = run_delivery(report, output)
 
     assert result.ok is False
     assert not output.exists()
     assert report.read_bytes() == ORIGINAL.encode()
+
+
+def test_run_delivery_accepts_uppercase_pdf_suffix(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = _write_report(tmp_path)
+    output = tmp_path / "target.PDF"
+
+    def fake_renderer(html_path, pdf_path, **kwargs):
+        Path(pdf_path).write_bytes(b"%PDF-1.7\nuppercase\n")
+
+    monkeypatch.setattr("delivery.pipeline._render_pdf", fake_renderer)
+
+    result = run_delivery(report, output)
+
+    assert result.delivery_status is DeliveryStatus.PDF_READY
+    assert output.read_bytes() == b"%PDF-1.7\nuppercase\n"
 
 
 def test_keep_html_rejects_intermediate_collision(tmp_path: Path) -> None:
@@ -86,6 +106,30 @@ def test_convert_rejects_identical_paths(tmp_path: Path) -> None:
         convert(report, report)
 
     assert report.read_bytes() == ORIGINAL.encode()
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission semantics")
+def test_atomic_html_write_preserves_existing_mode(tmp_path: Path) -> None:
+    report = _write_report(tmp_path)
+    target = tmp_path / "existing.html"
+    target.write_text("old", encoding="utf-8")
+    os.chmod(target, 0o640)
+
+    convert(report, target)
+
+    assert stat.S_IMODE(target.stat().st_mode) == 0o640
+
+
+@pytest.mark.skipif(os.name != "posix", reason="POSIX permission semantics")
+def test_atomic_html_write_uses_umask_default_for_new_files(tmp_path: Path) -> None:
+    report = _write_report(tmp_path)
+    target = tmp_path / "new.html"
+    current_umask = os.umask(0)
+    os.umask(current_umask)
+
+    convert(report, target)
+
+    assert stat.S_IMODE(target.stat().st_mode) == 0o666 & ~current_umask
 
 
 def test_partial_pdf_failure_preserves_existing_artifact(
@@ -125,7 +169,7 @@ def test_failed_first_delivery_leaves_no_pdf(
     assert not pdf.exists()
 
 
-def test_delivery_result_surfaces_table_fold_warnings(
+def test_delivery_keeps_metadata_columns_and_emits_no_fold_warning(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     report = tmp_path / "report.md"
@@ -139,15 +183,40 @@ def test_delivery_result_surfaces_table_fold_warnings(
     pdf = tmp_path / "out.pdf"
 
     def fake_renderer(html_path, pdf_path, **kwargs):
-        Path(pdf_path).write_bytes(b"%PDF-1.7\nwarned delivery\n")
+        Path(pdf_path).write_bytes(b"%PDF-1.7\nkept delivery\n")
 
     monkeypatch.setattr("delivery.pipeline._render_pdf", fake_renderer)
 
-    result = run_delivery(report, pdf)
+    result = run_delivery(report, pdf, keep_html=True)
 
     assert result.delivery_status is DeliveryStatus.PDF_READY
-    assert any("Source" in warning for warning in result.warnings)
-    assert "warnings" in result.to_json()
+    assert not any("folded" in warning for warning in result.warnings)
+    assert result.html_path is not None
+    html_text = result.html_path.read_text(encoding="utf-8")
+    assert "<th>Source</th>" in html_text
+    assert "example.com" in html_text
+
+
+def test_keep_html_failure_updates_html_but_preserves_previous_pdf(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = _write_report(tmp_path)
+    pdf = tmp_path / "out.pdf"
+    pdf.write_bytes(b"%PDF-1.7\nprevious pdf\n")
+    html = tmp_path / "out.html"
+    html.write_text("previous html", encoding="utf-8")
+
+    def partial_renderer(html_path, pdf_path, **kwargs):
+        Path(pdf_path).write_bytes(b"%PDF-1.7\npartial")
+        raise RuntimeError("simulated crash after partial write")
+
+    monkeypatch.setattr("delivery.pipeline._render_pdf", partial_renderer)
+
+    result = run_delivery(report, pdf, keep_html=True)
+
+    assert result.delivery_status is DeliveryStatus.PDF_FAILED
+    assert pdf.read_bytes() == b"%PDF-1.7\nprevious pdf\n"
+    assert html.read_text(encoding="utf-8").lstrip().startswith("<!DOCTYPE")
 
 
 def test_renderer_receives_staged_paths_and_commits_atomically(

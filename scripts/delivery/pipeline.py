@@ -8,7 +8,7 @@ import tempfile
 from pathlib import Path
 
 from .models import DeliveryResult, DeliveryStatus
-from .paths import paths_collide, reserved_output_reason
+from .paths import paths_collide, pdf_output_reason
 from .status import write_delivery_status
 
 
@@ -78,12 +78,14 @@ def run_delivery(
 ) -> DeliveryResult:
     """Run the delivery pipeline and return a structured, auditable result.
 
-    Path conflicts (same file, hardlink alias, reserved .md/.html target) are
-    rejected before any write.  HTML and PDF are staged in a private
+    Path conflicts (same file, hardlink alias) and non-``.pdf`` output
+    targets are rejected before any write.  The PDF is staged in a private
     directory next to the output, validated, and only then moved into place,
-    so a failed render can never truncate the input or an existing artifact
-    (issue #435).  Status writeback is opt-in and never mutates the input
-    Markdown implicitly.
+    so a failed render can never truncate the input or an existing PDF.  With
+    ``keep_html``, the intermediate HTML is committed atomically *before*
+    PDF rendering so a failed render still leaves a diagnosable HTML, while a
+    previously delivered PDF stays untouched (issue #435).  Status writeback
+    is opt-in and never mutates the input Markdown implicitly.
     """
 
     input_path = Path(input_path).resolve()
@@ -104,9 +106,9 @@ def run_delivery(
                 f"output path {pdf_path} resolves to the input file"
             ],
         )
-    reserved = reserved_output_reason(pdf_path)
-    if reserved:
-        return DeliveryResult(input_path=input_path, pdf_path=pdf_path, errors=[reserved])
+    non_pdf = pdf_output_reason(pdf_path)
+    if non_pdf:
+        return DeliveryResult(input_path=input_path, pdf_path=pdf_path, errors=[non_pdf])
 
     final_html_path = pdf_path.with_suffix(".html") if keep_html else None
     if final_html_path is not None:

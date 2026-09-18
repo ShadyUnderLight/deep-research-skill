@@ -37,24 +37,25 @@ def _format_plain_markdown(text: str) -> str:
 def normalize_text_for_pdf(text: str) -> str:
     """Clean common Markdown artifacts without crossing block boundaries.
 
-    Fenced code (backtick or tilde, closed or not) is copied verbatim: it is
-    never treated as headings, lists, tables, or run through the CJK/space
-    formatting passes (issue #435).
+    Fenced code (backtick or tilde, closed or not) is copied byte-for-byte,
+    including its Unicode normalization form, control characters, and line
+    endings.  NFC/control-character cleanup and the Markdown/CJK formatting
+    passes only ever run on fence-free runs (issue #435).
     """
 
     if not text:
         return text
 
-    text = unicodedata.normalize("NFC", text)
-    text = "".join(ch for ch in text if ch in ("\n", "\r", "\t") or ord(ch) >= 32)
-    text = text.replace("\r\n", "\n").replace("\r", "\n")
-
     processed: list[str] = []
     for run_lines, in_fence in fence_aware_runs(text):
         if in_fence:
             processed.extend(run_lines)
-        else:
-            processed.extend(_format_plain_markdown("\n".join(run_lines)).split("\n"))
+            continue
+        joined = "\n".join(run_lines)
+        joined = unicodedata.normalize("NFC", joined)
+        joined = "".join(ch for ch in joined if ch in ("\n", "\r", "\t") or ord(ch) >= 32)
+        joined = joined.replace("\r\n", "\n").replace("\r", "\n")
+        processed.extend(_format_plain_markdown(joined).split("\n"))
     text = "\n".join(processed)
 
     lines: list[str] = []

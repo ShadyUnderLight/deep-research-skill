@@ -26,9 +26,10 @@ GitHub, or a similar reader.
   the narrative as appendices so they remain discoverable without taking over
   the opening.
 - The `.md` file remains the source of truth after PDF delivery: the pipeline
-  must never write back to it. Same-path, hardlink, and reserved
-  `.md`/`.html` output conflicts fail closed, fenced code is preserved
-  verbatim, and table columns are never silently truncated.
+  must never write back to it. The PDF output must be a `.pdf` path, and
+  same-path or hardlink conflicts fail closed. Fenced code is preserved
+  byte-for-byte, and data-bearing table columns are never dropped (only
+  genuinely empty columns, and any explicit metadata fold, with warnings).
 
 ## Reader goals
 

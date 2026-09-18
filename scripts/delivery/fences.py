@@ -42,20 +42,23 @@ def iter_fence_aware_lines(text: str) -> Iterator[tuple[str, bool]]:
 
     Fence opener, content, and closer lines are all reported as
     ``in_fence=True``.  An unclosed fence marks the rest of the text as code.
+    A trailing carriage return is ignored for fence *detection* (so CRLF
+    input is recognized) while the yielded line stays byte-identical.
     """
 
     fence_char = ""
     fence_length = 0
     in_fence = False
-    for line in text.split("\n"):
+    for raw in text.split("\n"):
+        line = raw[:-1] if raw.endswith("\r") else raw
         if not in_fence:
             opener = fence_open(line)
             if opener is not None:
                 fence_char, fence_length = opener
                 in_fence = True
-            yield line, in_fence
+            yield raw, in_fence
             continue
-        yield line, True
+        yield raw, True
         if fence_close_re(fence_char, fence_length).match(line):
             in_fence = False
 
