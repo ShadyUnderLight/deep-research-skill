@@ -972,3 +972,99 @@ def test_cross_line_pack_heading_does_not_count_as_declaration() -> None:
     )
     assert declarations.primary_route == "market-outlook", declarations
     assert not any("times" in error for error in declarations.errors), declarations
+
+
+def _minimal_contract(**overrides) -> dict:
+    contract = {
+        "primary_route": "market-outlook",
+        "secondary_routes": [],
+        "disciplines": [],
+        "audits": [
+            {"id": "market-outlook-audit", "status": "passed",
+             "evidence": "report-section:Findings"},
+            {"id": "forward-looking-claims", "status": "passed",
+             "evidence": "report-section:Findings"},
+            {"id": "source-traceability", "status": "passed",
+             "evidence": "report-section:Findings"},
+            {"id": "final-audit", "status": "passed",
+             "evidence": "report-section:Findings"},
+        ],
+        "artifact_id": "fixture-market-outlook-pos",
+        "contract_version": "2.0.0",
+        "created_at": "2026-08-13",
+    }
+    contract.update(overrides)
+    return contract
+
+
+def test_contract_audit_execution_source_non_string_is_structured() -> None:
+    from validate_contract import validate_contract  # noqa: PLC0415
+
+    contract = _minimal_contract()
+    contract["audits"][0]["execution_source"] = []
+
+    result = validate_contract(contract)  # must not raise TypeError
+
+    assert any("execution_source" in error for error in result.errors), result.errors
+
+
+def test_shared_workflow_unhashable_audit_id_is_structured() -> None:
+    from validate_contract import validate_contract  # noqa: PLC0415
+
+    contract = _minimal_contract(
+        primary_route="shared-workflow",
+        audits=[
+            {"id": [], "status": "passed", "evidence": "report-section:Findings"},
+            {"id": "workflow-spine-audit", "status": "passed",
+             "evidence": "report-section:Findings"},
+        ],
+    )
+
+    result = validate_contract(contract)  # must not raise TypeError
+
+    assert result.errors, result
+
+
+def test_boundary_checked_conditions_non_string_is_structured() -> None:
+    from validate_contract import validate_contract  # noqa: PLC0415
+
+    contract = _minimal_contract(
+        closest_alternative="shared-workflow",
+        boundary_judgment={
+            "checked_conditions": [{}],
+            "why_not_alternative": "scope mismatch",
+            "switch_conditions": "if monitoring is dropped",
+        },
+    )
+
+    result = validate_contract(contract)
+
+    assert any(
+        "checked_conditions" in error for error in result.errors
+    ), result.errors
+
+
+def test_delivered_execution_source_non_string_is_structured(tmp_path: Path) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+
+    def add_bad_execution_source(contract: dict) -> None:
+        contract["audits"][0]["execution_source"] = []
+
+    _edit_contract(report, add_bad_execution_source)
+
+    proc = _run_delivered(tmp_path, report, pack, audit_path)
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("execution_source" in error for error in payload["errors"]), payload
+    assert not any(
+        "failed unexpectedly" in error for error in payload["errors"]
+    ), payload
+
+    import validate_research_run_state as vrs  # noqa: PLC0415
+
+    state = json.loads(DELIVERED_STATE.read_text(encoding="utf-8"))
+    audit = json.loads(audit_path.read_text(encoding="utf-8"))
+    errors = vrs.check_audit_result_for_delivered(
+        audit, state, report_path=report, pack_path=pack
+    )
+    assert any("execution_source" in error for error in errors), errors

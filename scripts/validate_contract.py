@@ -671,6 +671,14 @@ def validate_contract(
                     "boundary_judgment.checked_conditions is empty. "
                     "Must list which hard-fail conditions of the alternative were checked."
                 )
+            elif any(
+                not isinstance(item, str) or not item.strip()
+                for item in checked
+            ):
+                errors.append(
+                    "boundary_judgment.checked_conditions must be a list of "
+                    "non-empty strings"
+                )
 
             why_not = boundary.get("why_not_alternative")
             if not isinstance(why_not, str):
@@ -804,21 +812,33 @@ def validate_contract(
             reason = ""
 
         execution_source = audit.get("execution_source")
-        if execution_source is not None and execution_source not in {
-            "automated_validator",
-            "manual_checklist_attestation",
-            "process_node_evidence",
-            "legacy_self_attested",
-        }:
-            errors.append(
-                f"Audit '{audit_id}' has invalid execution_source "
-                f"'{execution_source}'"
-            )
+        # Type-check before the membership test: an unhashable JSON value
+        # (list / dict) would otherwise raise TypeError out of the canonical
+        # validator (issue #434 review round 7).
+        if execution_source is not None:
+            if not isinstance(execution_source, str):
+                errors.append(
+                    f"Audit '{audit_id}' execution_source must be a string, "
+                    f"got {type(execution_source).__name__}"
+                )
+            elif execution_source not in {
+                "automated_validator",
+                "manual_checklist_attestation",
+                "process_node_evidence",
+                "legacy_self_attested",
+            }:
+                errors.append(
+                    f"Audit '{audit_id}' has invalid execution_source "
+                    f"'{execution_source}'"
+                )
         # Issue #402: execution_source must be derived from the registry
         # execution_type, not arbitrarily overridden by the report.
         # legacy_self_attested is a compatibility label allowed only on the
         # non-strict path (where legacy free-form evidence is tolerated).
-        if execution_source is not None and audit_execution_type is not None:
+        if (
+            isinstance(execution_source, str)
+            and audit_execution_type is not None
+        ):
             derived_source = _execution_source(audit_execution_type)
             if execution_source != derived_source:
                 if strict or execution_source != "legacy_self_attested":
@@ -967,16 +987,19 @@ def validate_contract(
 
     # 7. Shared-workflow must have at least workflow-spine-audit or final-audit
     if primary == "shared-workflow":
-        audit_ids = {a.get("id", "") for a in audits if isinstance(a, dict)}
+        # Reuse the type-filtered id list from 6b: raw audit ids can be any
+        # JSON value (list/dict/int), and hashing/sorting them here would
+        # raise TypeError out of the canonical validator (issue #434 review).
+        declared_audit_ids = set(audit_id_list)
         required = {"workflow-spine-audit", "final-audit"}
-        if not (audit_ids & required):
+        if not (declared_audit_ids & required):
             errors.append(
                 f"Shared-workflow contract must include at least one of: {sorted(required)}. "
-                f"Found audits: {sorted(audit_ids)}"
+                f"Found audits: {sorted(declared_audit_ids)}"
             )
-        elif audit_ids & required and len(audit_ids) > 3:
+        elif declared_audit_ids & required and len(declared_audit_ids) > 3:
             warnings.append(
-                f"Shared-workflow has {len(audit_ids)} audits (unusually many). "
+                f"Shared-workflow has {len(declared_audit_ids)} audits (unusually many). "
                 f"Consider if a specialized route is more appropriate."
             )
 
