@@ -914,3 +914,61 @@ def test_prose_pack_heading_does_not_count_as_declaration(tmp_path: Path) -> Non
     assert proc.returncode == 2, proc.stdout + proc.stderr
     payload = _payload(proc)
     assert any("Primary route" in error for error in payload["errors"]), payload
+
+
+def test_noncanonical_activation_decision_tree_version_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+
+    def bump_tree_version(contract: dict) -> None:
+        contract["activation_snapshot"]["decision_tree_version"] = 999
+
+    _edit_contract(report, bump_tree_version)
+    state = json.loads(DELIVERED_STATE.read_text(encoding="utf-8"))
+    state["activation_reference"]["decision_tree_version"] = 999
+
+    proc = _run_delivered(
+        tmp_path, report, pack, audit_path, state_data=state
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any(
+        "decision_tree_version" in error for error in payload["errors"]
+    ), payload
+
+
+def test_noncanonical_activation_snapshot_version_cannot_support_delivered(
+    tmp_path: Path,
+) -> None:
+    report, pack, audit_path = _write_real_pass_audit(tmp_path)
+
+    def bump_snapshot_version(contract: dict) -> None:
+        contract["activation_snapshot"]["snapshot_version"] = 1
+
+    _edit_contract(report, bump_snapshot_version)
+    state = json.loads(DELIVERED_STATE.read_text(encoding="utf-8"))
+    state["activation_reference"]["snapshot_version"] = 1
+
+    proc = _run_delivered(
+        tmp_path, report, pack, audit_path, state_data=state
+    )
+    assert proc.returncode == 2, proc.stdout + proc.stderr
+    payload = _payload(proc)
+    assert any("snapshot_version" in error for error in payload["errors"]), payload
+
+
+def test_cross_line_pack_heading_does_not_count_as_declaration() -> None:
+    from validate_contract import parse_pack_declarations  # noqa: PLC0415
+
+    declarations = parse_pack_declarations(
+        "## Objective\n\n"
+        "##\n"
+        "Primary route\n\n"
+        "## Primary route\n\n"
+        "Market Outlook\n\n"
+        "## Artifact id\n\n"
+        "fixture-market-outlook-pos\n"
+    )
+    assert declarations.primary_route == "market-outlook", declarations
+    assert not any("times" in error for error in declarations.errors), declarations

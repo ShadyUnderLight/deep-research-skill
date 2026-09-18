@@ -164,7 +164,9 @@ route must independently be canonical and carry its exact
 `<secondary>-secondary-hard-fail` audit; the Pack must declare
 `## Primary route` and `## Artifact id` exactly once (required H2 sections),
 with the artifact id matching the contract and the Run State `artifact_id`;
-the report contract must declare a valid `activation_snapshot` and it must
+the report contract must declare a valid `activation_snapshot` (canonical
+`snapshot_version` and `decision_tree_version`, with the contract's top-level
+`decision_tree_version` agreeing with it) and it must
 match the Run State `activation_reference` (a missing contract snapshot is a
 delivered error, not a legacy skip), and the Pack `## Activation snapshot`
 (when present) must match both;

@@ -51,6 +51,7 @@ from registry_loader import (
 )
 from audit_evidence import validate_evidence_reference
 from activation_snapshot import (
+    SNAPSHOT_VERSION,
     ActivationSnapshotError,
     activation_reference,
     extract_activation_snapshot_reference,
@@ -483,6 +484,45 @@ def validate_contract(
                 "contract with activation_snapshot must declare contract_version "
                 f"'{ACTIVATION_CONTRACT_VERSION}' (route-activation-contract schema v2)"
             )
+        if contract_activation_ref is not None:
+            # Issue #434 review round 6: a reference is only canonical when its
+            # versions are the ones this implementation supports, and the
+            # contract's top-level decision_tree_version must agree with the
+            # nested reference regardless of whether a full snapshot is
+            # supplied.  Shape-only validation let a self-contradictory
+            # contract (top-level 1, nested 999) reach delivered.
+            ref_snapshot_version = contract_activation_ref["snapshot_version"]
+            if ref_snapshot_version != SNAPSHOT_VERSION:
+                errors.append(
+                    "contract activation_snapshot.snapshot_version "
+                    f"{ref_snapshot_version} does not match the supported "
+                    f"snapshot version {SNAPSHOT_VERSION}"
+                )
+            try:
+                canonical_tree = load_decision_tree_registry()
+            except RegistryError as exc:
+                errors.append(
+                    f"Cannot load canonical decision-tree registry: {exc}"
+                )
+            else:
+                ref_tree_version = contract_activation_ref["decision_tree_version"]
+                if ref_tree_version != canonical_tree.version:
+                    errors.append(
+                        "contract activation_snapshot.decision_tree_version "
+                        f"{ref_tree_version} does not match canonical version "
+                        f"{canonical_tree.version}"
+                    )
+                top_tree_version = contract.get("decision_tree_version")
+                if (
+                    isinstance(top_tree_version, int)
+                    and not isinstance(top_tree_version, bool)
+                    and top_tree_version != ref_tree_version
+                ):
+                    errors.append(
+                        f"contract decision_tree_version {top_tree_version} does "
+                        "not match activation_snapshot.decision_tree_version "
+                        f"{ref_tree_version}"
+                    )
     if pack_activation_snapshot is not None:
         try:
             pack_activation_snapshot = validate_activation_reference(
@@ -1201,12 +1241,22 @@ def main(argv: list[str] | None = None) -> int:
     return 0
 
 
+def _pack_h2_heading_pattern(heading: str) -> str:
+    """Strict H2 heading grammar shared by the Pack counter and extractors.
+
+    ``[ \\t]`` (not ``\\s``) after the hashes, so a ``##`` followed by a
+    newline can never be counted as a heading; the cardinality counter and
+    ``_pack_h2_section_body`` consume the same grammar (issue #434 review).
+    """
+    return rf"^##[ \t]+{re.escape(heading)}[ \t]*$"
+
+
 def _count_pack_sections(text: str, heading: str) -> int:
     """Number of visible (non-fenced) occurrences of a pack heading."""
     cleaned = _strip_fences(text)
-    return len(re.findall(
-        rf"^##\s+{re.escape(heading)}\s*$", cleaned, re.MULTILINE
-    ))
+    return len(
+        re.findall(_pack_h2_heading_pattern(heading), cleaned, re.MULTILINE)
+    )
 
 
 def validate_pack_sections_text(
@@ -1244,7 +1294,7 @@ def _pack_h2_section_body(cleaned: str, heading: str) -> str | None:
     the next visible H2 / end of document.
     """
     match = re.search(
-        rf"^##[ \t]+{re.escape(heading)}[ \t]*\n(.*?)(?=^##[ \t]|\Z)",
+        _pack_h2_heading_pattern(heading) + r"\n(.*?)(?=^##[ \t]|\Z)",
         cleaned,
         re.MULTILINE | re.DOTALL,
     )
