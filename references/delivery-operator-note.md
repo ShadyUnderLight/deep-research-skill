@@ -52,10 +52,14 @@ Before running the pipeline, verify:
 Malformed or LLM-produced Markdown tables are repaired to
 `max(header width, widest data row)`; a wider data row is never sliced, and
 escaped pipes (`\|`) or pipes inside inline code spans stay in one cell —
-including when deciding whether a line is a table row at all. A leading
-layout-only column is dropped only when the header and every real data cell
-are strictly layout values (also when the separator is missing), and the
-drop is reported as a warning.
+including when deciding whether a line is a table row at all (a candidate
+needs at least two structural pipes, so single-pipe prose is never promoted
+to a table). Code spans follow CommonMark rules: backslash is ordinary
+inside a span and an unmatched backtick is literal. A leading layout-only
+column is dropped only when the header and every real data cell are
+strictly layout values (also when the separator is missing), and the drop
+is reported as a warning; warnings reach `--json` and are printed to
+stderr in human mode.
 
 ### Table degradation
 Very wide or deeply nested tables do not render well in PDF. The pipeline converts multi-column comparison tables into card/list blocks automatically, but extremely dense source tables still need manual simplification before delivery.

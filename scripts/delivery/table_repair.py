@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 
 from .fences import iter_fence_aware_lines
-from .markdown_rows import split_markdown_row
+from .markdown_rows import count_structural_pipes, split_markdown_row
 
 # Values that carry no information in a leading layout column.  Status
 # values such as ``N/A``/``TBD`` and numbering such as ``#1`` are data and
@@ -45,15 +45,15 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
         return value.strip() in LAYOUT_ONLY_VALUES
 
     def table_candidate(line: str) -> str | None:
-        """Return the normalized line when it has >= 2 structural cells.
+        """Return the normalized line when it has >= 2 structural pipes.
 
         Candidate detection goes through the shared tokenizer so prose with
-        escaped pipes or inline-code pipes is never mistaken for a table
-        (issue #435 review round 5).
+        a single pipe, escaped pipes, or inline-code pipes is never mistaken
+        for a table (issue #435 review rounds 5-6).
         """
 
         candidate = normalize_table_candidate(line)
-        if len(split_markdown_row(candidate)) < 2:
+        if count_structural_pipes(candidate) < 2:
             return None
         return candidate
 

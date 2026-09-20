@@ -46,21 +46,21 @@ def iter_fence_aware_lines(text: str) -> Iterator[tuple[str, bool]]:
     input is recognized) while the yielded line stays byte-identical.
     """
 
-    fence_char = ""
-    fence_length = 0
+    close_re: re.Pattern[str] | None = None
     in_fence = False
     for raw in text.split("\n"):
         line = raw[:-1] if raw.endswith("\r") else raw
         if not in_fence:
             opener = fence_open(line)
             if opener is not None:
-                fence_char, fence_length = opener
+                close_re = fence_close_re(*opener)
                 in_fence = True
             yield raw, in_fence
             continue
         yield raw, True
-        if fence_close_re(fence_char, fence_length).match(line):
+        if close_re is not None and close_re.match(line):
             in_fence = False
+            close_re = None
 
 
 def fence_aware_runs(text: str) -> list[tuple[list[str], bool]]:

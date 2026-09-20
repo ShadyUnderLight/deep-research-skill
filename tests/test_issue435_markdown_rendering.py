@@ -15,6 +15,7 @@ SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
+from delivery.markdown_rows import split_markdown_row  # noqa: E402
 from delivery.normalization import normalize_text_for_pdf  # noqa: E402
 from delivery.table_repair import repair_markdown_tables  # noqa: E402
 from delivery.tables import maybe_wrap_wide_tables_in_html  # noqa: E402
@@ -167,6 +168,65 @@ def test_repair_does_not_turn_escaped_pipe_prose_into_table() -> None:
     assert repair_markdown_tables(md) == md
 
 
+def test_single_structural_pipe_prose_is_not_promoted_to_table() -> None:
+    md = "Alpha | Beta\nGamma | Delta\n"
+    assert repair_markdown_tables(md) == md
+
+
+def test_normalize_does_not_promote_single_pipe_prose() -> None:
+    normalized = normalize_text_for_pdf("Alpha | Beta\nGamma | Delta\n")
+    assert normalized == "Alpha | Beta\nGamma | Delta"
+
+
+def test_process_markdown_does_not_promote_single_pipe_prose() -> None:
+    body = process_markdown("Alpha | Beta\nGamma | Delta\n")
+    assert "<table" not in body
+    assert "Alpha | Beta" in body
+
+
+def test_tokenizer_backslash_before_closing_backtick() -> None:
+    cells = split_markdown_row("| `a\\` | keep |")
+    assert cells == ["`a\\`", "keep"]
+
+
+def test_tokenizer_unmatched_backtick_keeps_structural_pipes() -> None:
+    cells = split_markdown_row("| `literal | B | C |")
+    assert cells == ["`literal", "B", "C"]
+
+
+def test_tokenizer_different_length_backtick_run_stays_inside_code_span() -> None:
+    cells = split_markdown_row("| ``a`b`` | x |")
+    assert cells == ["``a`b``", "x"]
+
+
+def test_process_markdown_unmatched_backtick_keeps_columns() -> None:
+    body = process_markdown(
+        "| A | B | C |\n|---|---|---|\n| `literal | B | C |\n"
+    )
+    assert "<td>B</td>" in body
+    assert "<td>C</td>" in body
+    assert body.count("<td>") == 3
+
+
+def test_table_attributes_preserve_original_markup() -> None:
+    html = (
+        '<table id="metrics" class="compact">'
+        "<thead><tr><th>A</th><th>B</th></tr></thead>"
+        "<tbody><tr><td>1</td><td>2</td></tr></tbody></table>"
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
+def test_cell_attributes_preserve_original_markup() -> None:
+    html = (
+        "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
+        '<tbody><tr><td class="important">1</td><td>2</td></tr></tbody></table>'
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
 def test_repair_does_not_turn_inline_code_pipe_prose_into_table() -> None:
     md = "`a|b|c`\n`x|y|z`\n"
     assert repair_markdown_tables(md) == md
@@ -301,8 +361,10 @@ def test_data_colspan_attribute_is_not_treated_as_colspan() -> None:
         '<tbody><tr><td data-colspan="2">x</td><td>y</td></tr></tbody></table>'
     )
     rendered = maybe_wrap_wide_tables_in_html(html)
-    assert rendered.count("<th>") == 2
-    assert rendered.count("<td>") == 2
+    # Non-span cell attributes are not rebuildable, so the original markup is
+    # preserved verbatim and ``data-colspan`` can never expand a column.
+    assert html in rendered
+    assert rendered.count("<td") == 2
 
 
 NESTED_TABLE = (
@@ -367,16 +429,16 @@ def test_quoted_gt_rowspan_preserves_original_markup() -> None:
     assert html in rendered
 
 
-def test_quoted_gt_colspan_expands_without_content_loss() -> None:
+def test_quoted_gt_colspan_preserves_original_markup() -> None:
     html = (
         '<table><thead><tr><th>A</th><th>B</th><th>C</th></tr></thead>'
         '<tbody><tr><td title="a > b" colspan="2">x</td><td>y</td></tr></tbody></table>'
     )
     rendered = maybe_wrap_wide_tables_in_html(html)
-    assert "<td>x</td>" in rendered
-    assert "<td>y</td>" in rendered
-    assert rendered.count("<th>") == 3
-    assert rendered.count("<td>") == 3
+    # The quoted ``>`` must not hide the colspan or cut the cell content; the
+    # cell also carries a non-span attribute, so the table is preserved.
+    assert html in rendered
+    assert 'colspan="2"' in rendered
 
 
 def test_semantic_placeholder_values_do_not_delete_columns() -> None:

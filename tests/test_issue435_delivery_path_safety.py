@@ -307,6 +307,28 @@ def test_write_status_rejects_kept_html_collision(tmp_path: Path) -> None:
     assert not html.exists()
 
 
+def test_cli_prints_warnings_in_human_mode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys
+) -> None:
+    report = _write_report(tmp_path)
+    from delivery.models import DeliveryResult, DeliveryStatus
+    from md_to_pdf import main
+
+    result = DeliveryResult(
+        input_path=report,
+        delivery_status=DeliveryStatus.PDF_READY,
+        markdown_status=DeliveryStatus.MD_READY,
+        warnings=["table column dropped: empty column 2 (no data)"],
+    )
+    monkeypatch.setattr("delivery.pipeline.run_delivery", lambda *args, **kwargs: result)
+
+    code = main([str(report), str(tmp_path / "out.pdf")])
+    captured = capsys.readouterr()
+
+    assert code == 0
+    assert "table column dropped" in captured.err
+
+
 def test_output_dir_preparation_failure_returns_structured_result(tmp_path: Path) -> None:
     report = _write_report(tmp_path)
     blocker = tmp_path / "blocker"

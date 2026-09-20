@@ -108,6 +108,8 @@ def main(argv: list[str] | None = None) -> int:
         if result.errors:
             for error in result.errors:
                 print(f"❌ {error}", file=sys.stderr)
+        for warning in result.warnings:
+            print(f"⚠️ {warning}", file=sys.stderr)
         if result.ok:
             print(f"\n✅ Complete: {result.pdf_path or result.input_path}")
 

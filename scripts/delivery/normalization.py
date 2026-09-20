@@ -6,7 +6,7 @@ import re
 import unicodedata
 
 from .fences import fence_aware_runs, iter_fence_aware_lines
-from .markdown_rows import split_markdown_row
+from .markdown_rows import count_structural_pipes, split_markdown_row
 
 
 def _format_plain_markdown(text: str) -> str:
@@ -110,8 +110,8 @@ def normalize_text_for_pdf(text: str) -> str:
             in_table = False
             continue
 
-        cells = split_markdown_row(stripped) if "|" in stripped else []
-        if len(cells) >= 2:
+        if count_structural_pipes(stripped) >= 2:
+            cells = split_markdown_row(stripped)
             if not in_table and lines and lines[-1] != "":
                 lines.append("")
             lines.append("| " + " | ".join(cells) + " |")

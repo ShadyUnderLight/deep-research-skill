@@ -81,19 +81,26 @@ class _TableStructureParser(HTMLParser):
     def handle_starttag(self, tag, attrs):
         if tag == "table":
             self._table_depth += 1
-            if self._table_depth > 1:
+            if self._table_depth > 1 or attrs:
                 self.unsupported = True
             return
         if tag in ("thead", "tbody", "tfoot"):
+            if attrs:
+                self.unsupported = True
             self._section = "thead" if tag == "thead" else "tbody"
             return
         if tag == "tr":
+            if attrs:
+                self.unsupported = True
             if self._row is not None:
                 self.unsupported = True
             self._row = []
             return
         if tag in ("td", "th"):
             if self._row is None or self._cell is not None:
+                self.unsupported = True
+                return
+            if any(name not in ("colspan", "rowspan") for name, _ in attrs):
                 self.unsupported = True
                 return
             spans = _span_attrs(dict(attrs))
