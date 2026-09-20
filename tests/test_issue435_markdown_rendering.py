@@ -218,6 +218,37 @@ def test_table_attributes_preserve_original_markup() -> None:
     assert html in rendered
 
 
+def test_alignment_styles_are_rebuild_safe() -> None:
+    html = (
+        '<table><thead><tr><th style="text-align: left;">A</th>'
+        '<th style="text-align: right;">B</th></tr></thead>'
+        '<tbody><tr><td style="text-align: left;">1</td>'
+        '<td style="text-align: right;">2</td></tr></tbody></table>'
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert "<th>A</th>" in rendered
+    assert "<td>1</td>" in rendered
+
+
+def test_other_inline_styles_still_preserve_original_markup() -> None:
+    html = (
+        '<table><thead><tr><th style="color: red;">A</th><th>B</th></tr></thead>'
+        "<tbody><tr><td>1</td><td>2</td></tr></tbody></table>"
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
+def test_aligned_markdown_table_keeps_wide_processing() -> None:
+    body = process_markdown(
+        "| A | B | C | D | E |\n"
+        "|:--|--:|:--:|---|---:|\n"
+        "| 1 | 2 | 3 | 4 | 5 |\n"
+    )
+    assert "split-table-group" in body
+    assert body.count("<table>") >= 2
+
+
 def test_cell_attributes_preserve_original_markup() -> None:
     html = (
         "<table><thead><tr><th>A</th><th>B</th></tr></thead>"

@@ -33,7 +33,10 @@ Data-bearing table columns are never dropped, including columns holding
 `N/A`/`TBD`/`#1` style status values; only strictly empty layout columns
 and columns removed by the optional metadata fold are dropped, with
 warnings. Nested tables, non-default rowspans, and oversized colspans are
-kept as original markup instead of being rebuilt.
+kept as original markup instead of being rebuilt, as are tables or cells
+with attributes beyond spans — except Python-Markdown's renderer-owned
+alignment `style="text-align: ..."`, which stays rebuild-safe so aligned
+wide tables still get split and cleaned up.
 
 ## Pre-delivery checks
 

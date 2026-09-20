@@ -17,6 +17,22 @@ from html.parser import HTMLParser
 # round 3).
 MAX_TABLE_SPAN = 64
 
+# Python-Markdown emits alignment markers (`:---`, `---:`, `:--:`) as
+# ``style="text-align: left|right|center;"`` on th/td.  Those renderer-owned
+# attributes are safe to drop during a rebuild; every other non-span
+# attribute still triggers the fail-safe path (issue #435 review round 7).
+ALIGNMENT_STYLE_RE = re.compile(
+    r"^text-align:\s*(left|right|center);?$", re.IGNORECASE
+)
+
+
+def _is_rebuild_safe_cell_attribute(name: str, value: str | None) -> bool:
+    if name in ("colspan", "rowspan"):
+        return True
+    if name == "style" and value is not None:
+        return bool(ALIGNMENT_STYLE_RE.fullmatch(value.strip()))
+    return False
+
 
 def _span_attrs(attributes: dict[str, str | None]) -> dict[str, int] | None:
     """Return normalized colspan/rowspan values, or None when unsupported.
@@ -100,7 +116,10 @@ class _TableStructureParser(HTMLParser):
             if self._row is None or self._cell is not None:
                 self.unsupported = True
                 return
-            if any(name not in ("colspan", "rowspan") for name, _ in attrs):
+            if any(
+                not _is_rebuild_safe_cell_attribute(name, value)
+                for name, value in attrs
+            ):
                 self.unsupported = True
                 return
             spans = _span_attrs(dict(attrs))
