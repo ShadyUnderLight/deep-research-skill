@@ -51,9 +51,11 @@ Before running the pipeline, verify:
 
 Malformed or LLM-produced Markdown tables are repaired to
 `max(header width, widest data row)`; a wider data row is never sliced, and
-escaped pipes (`\|`) or pipes inside inline code spans stay in one cell.
-A leading layout-only column is dropped only when the header and every data
-cell are strictly layout values, and the drop is reported as a warning.
+escaped pipes (`\|`) or pipes inside inline code spans stay in one cell —
+including when deciding whether a line is a table row at all. A leading
+layout-only column is dropped only when the header and every real data cell
+are strictly layout values (also when the separator is missing), and the
+drop is reported as a warning.
 
 ### Table degradation
 Very wide or deeply nested tables do not render well in PDF. The pipeline converts multi-column comparison tables into card/list blocks automatically, but extremely dense source tables still need manual simplification before delivery.

@@ -44,6 +44,19 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
     def is_layout_only(value: str) -> bool:
         return value.strip() in LAYOUT_ONLY_VALUES
 
+    def table_candidate(line: str) -> str | None:
+        """Return the normalized line when it has >= 2 structural cells.
+
+        Candidate detection goes through the shared tokenizer so prose with
+        escaped pipes or inline-code pipes is never mistaken for a table
+        (issue #435 review round 5).
+        """
+
+        candidate = normalize_table_candidate(line)
+        if len(split_markdown_row(candidate)) < 2:
+            return None
+        return candidate
+
     lines = md_text.split("\n")
     fence_flags = [in_fence for _, in_fence in iter_fence_aware_lines(md_text)]
     repaired: list[str] = []
@@ -54,8 +67,8 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
             index += 1
             continue
 
-        stripped = normalize_table_candidate(lines[index])
-        if "|" not in stripped or stripped.count("|") < 2:
+        stripped = table_candidate(lines[index])
+        if stripped is None:
             repaired.append(lines[index])
             index += 1
             continue
@@ -63,8 +76,8 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
         group = [stripped]
         end = index + 1
         while end < len(lines) and not fence_flags[end]:
-            candidate = normalize_table_candidate(lines[end])
-            if candidate and "|" in candidate and candidate.count("|") >= 2:
+            candidate = table_candidate(lines[end])
+            if candidate is not None:
                 group.append(candidate)
                 end += 1
                 continue
@@ -76,8 +89,9 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
             continue
 
         parsed_rows = [parse_cells(row) for row in group]
+        has_separator = is_separator_row(group[1])
         if len(parsed_rows[0]) >= 2 and is_layout_only(parsed_rows[0][0]):
-            data_rows = parsed_rows[2:]
+            data_rows = parsed_rows[2:] if has_separator else parsed_rows[1:]
             first_col_values = [row[0] if row else "" for row in data_rows]
             if first_col_values and all(
                 is_layout_only(value) for value in first_col_values
@@ -89,7 +103,7 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
                     row[1:] if len(row) > 1 else [""] for row in parsed_rows
                 ]
 
-        if not is_separator_row(group[1]):
+        if not has_separator:
             parsed_rows.insert(1, [])
         width = max((len(row) for row in parsed_rows), default=1)
         width = max(width, 1)

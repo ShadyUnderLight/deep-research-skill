@@ -150,6 +150,28 @@ def test_repair_keeps_data_column_before_no_header() -> None:
     assert "normal" in repaired
 
 
+def test_repair_checks_first_data_row_when_separator_missing() -> None:
+    md = "|   | Item |\n| urgent | A |\n| - | B |\n"
+    repaired = repair_markdown_tables(md)
+    assert "urgent" in repaired
+    assert "| urgent | A |" in repaired
+
+
+def test_process_markdown_keeps_first_data_row_when_separator_missing() -> None:
+    body = process_markdown("|   | Item |\n| urgent | A |\n| - | B |\n")
+    assert "<td>urgent</td>" in body
+
+
+def test_repair_does_not_turn_escaped_pipe_prose_into_table() -> None:
+    md = "a \\| b \\| c\nx \\| y \\| z\n"
+    assert repair_markdown_tables(md) == md
+
+
+def test_repair_does_not_turn_inline_code_pipe_prose_into_table() -> None:
+    md = "`a|b|c`\n`x|y|z`\n"
+    assert repair_markdown_tables(md) == md
+
+
 def test_repair_reports_dropped_layout_column() -> None:
     warnings: list[str] = []
     repaired = repair_markdown_tables(
