@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 
 from .models import DeliveryResult
+from .paths import atomic_write_text
 
 
 STATUS_HEADING = "## Delivery status"
@@ -92,5 +93,5 @@ def write_delivery_status(path: Path, result: DeliveryResult) -> Path:
                 break
         prefix = [] if insert_at == 0 or not lines[insert_at - 1].strip() else [""]
         lines[insert_at:insert_at] = prefix + replacement + [""]
-    path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+    atomic_write_text(path, "\n".join(lines).rstrip() + "\n")
     return path

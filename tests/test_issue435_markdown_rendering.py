@@ -168,6 +168,37 @@ def test_repair_does_not_turn_escaped_pipe_prose_into_table() -> None:
     assert repair_markdown_tables(md) == md
 
 
+def test_fullwidth_pipe_cell_data_is_preserved() -> None:
+    md = "| Name | Symbol |\n|---|---|\n| foo | ｜ |\n"
+    repaired = repair_markdown_tables(md)
+    assert "｜" in repaired
+    assert "| foo | ｜ |" in repaired
+
+
+def test_fullwidth_pipe_inside_inline_code_is_preserved() -> None:
+    md = "| Expr | Note |\n|---|---|\n| `a｜b` | keep |\n"
+    repaired = repair_markdown_tables(md)
+    assert "`a｜b`" in repaired
+    assert "a|b" not in repaired
+
+
+def test_process_markdown_keeps_fullwidth_pipe_cell_data() -> None:
+    body = process_markdown("| Name | Symbol |\n|---|---|\n| foo | ｜ |\n")
+    assert "｜" in body
+    assert "<td>foo</td>" in body
+
+
+def test_fullwidth_delimiters_still_repair_legacy_tables() -> None:
+    repaired = repair_markdown_tables("｜ A ｜ B ｜\n｜ 1 ｜ 2 ｜\n")
+    assert "| A | B |" in repaired
+    assert "| 1 | 2 |" in repaired
+
+
+def test_repair_preserves_alignment_separators() -> None:
+    repaired = repair_markdown_tables("| A | B |\n|:---|---:|\n| 1 | 2 |\n")
+    assert "| :--- | ---: |" in repaired
+
+
 def test_single_structural_pipe_prose_is_not_promoted_to_table() -> None:
     md = "Alpha | Beta\nGamma | Delta\n"
     assert repair_markdown_tables(md) == md
@@ -213,6 +244,55 @@ def test_table_attributes_preserve_original_markup() -> None:
         '<table id="metrics" class="compact">'
         "<thead><tr><th>A</th><th>B</th></tr></thead>"
         "<tbody><tr><td>1</td><td>2</td></tr></tbody></table>"
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
+def test_caption_is_preserved_via_fail_safe() -> None:
+    html = (
+        "<table><caption>Important title</caption>"
+        "<thead><tr><th>A</th><th>B</th></tr></thead>"
+        "<tbody><tr><td>1</td><td>2</td></tr></tbody></table>"
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+    assert "Important title" in rendered
+
+
+def test_colgroup_is_preserved_via_fail_safe() -> None:
+    html = (
+        "<table><colgroup><col span='1'><col span='1'></colgroup>"
+        "<thead><tr><th>A</th><th>B</th></tr></thead>"
+        "<tbody><tr><td>1</td><td>2</td></tr></tbody></table>"
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
+def test_tfoot_is_preserved_via_fail_safe() -> None:
+    html = (
+        "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
+        "<tfoot><tr><td>f1</td><td>f2</td></tr></tfoot>"
+        "<tbody><tr><td>1</td><td>2</td></tr></tbody></table>"
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
+def test_malformed_span_value_preserves_original_markup() -> None:
+    html = (
+        "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
+        '<tbody><tr><td colspan="abc">x</td><td>y</td></tr></tbody></table>'
+    )
+    rendered = maybe_wrap_wide_tables_in_html(html)
+    assert html in rendered
+
+
+def test_duplicate_span_attributes_preserve_original_markup() -> None:
+    html = (
+        "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
+        '<tbody><tr><td colspan="2" colspan="1">x</td><td>y</td></tr></tbody></table>'
     )
     rendered = maybe_wrap_wide_tables_in_html(html)
     assert html in rendered

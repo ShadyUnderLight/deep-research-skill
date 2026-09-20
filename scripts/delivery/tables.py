@@ -51,7 +51,7 @@ def _span_attrs(attributes: dict[str, str | None]) -> dict[str, int] | None:
         try:
             value = int(raw)
         except (TypeError, ValueError):
-            continue
+            return None
         if name == "rowspan":
             if value != 1:
                 spans[name] = value
@@ -101,8 +101,12 @@ class _TableStructureParser(HTMLParser):
                 self.unsupported = True
             return
         if tag in ("thead", "tbody", "tfoot"):
-            if attrs:
+            if attrs or tag == "tfoot":
+                # A footer changes the row order semantics this rebuild
+                # cannot represent; preserve the original markup.
                 self.unsupported = True
+            if tag == "tfoot":
+                return
             self._section = "thead" if tag == "thead" else "tbody"
             return
         if tag == "tr":
@@ -122,15 +126,36 @@ class _TableStructureParser(HTMLParser):
             ):
                 self.unsupported = True
                 return
+            attribute_names = [name for name, _ in attrs]
+            if len(attribute_names) != len(set(attribute_names)):
+                self.unsupported = True
+                return
             spans = _span_attrs(dict(attrs))
             if spans is None:
                 self.unsupported = True
                 return
             start_tag = self.get_starttag_text() or ""
             self._cell = (tag, spans, self._offset() + len(start_tag))
+            return
+        if self._table_depth >= 1 and self._cell is None:
+            # caption / colgroup / col / any other table-level element is
+            # outside the lossless rebuild model: keep the original markup.
+            self.unsupported = True
 
     def handle_startendtag(self, tag, attrs):
-        if tag in ("td", "th"):
+        if tag in ("td", "th") or (self._table_depth >= 1 and self._cell is None):
+            self.unsupported = True
+
+    def handle_data(self, data):
+        if self._table_depth >= 1 and self._cell is None and data.strip():
+            self.unsupported = True
+
+    def handle_entityref(self, name):
+        if self._table_depth >= 1 and self._cell is None:
+            self.unsupported = True
+
+    def handle_charref(self, name):
+        if self._table_depth >= 1 and self._cell is None:
             self.unsupported = True
 
     def handle_endtag(self, tag):
@@ -343,7 +368,7 @@ def maybe_wrap_wide_tables_in_html(
         """
 
         text = plain_text(value)
-        return not text or text in {"#", "—", "-", "–", "--", "——", "— —", "/", "｜"}
+        return not text or text in {"#", "—", "-", "–", "--", "——", "— —", "/"}
 
     def normalize_meta_key(value: str) -> str:
         return re.sub(r"[\s:：\-_]+", "", plain_text(value).lower())

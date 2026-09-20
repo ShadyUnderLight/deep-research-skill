@@ -22,7 +22,7 @@ SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-from delivery.models import DeliveryStatus  # noqa: E402
+from delivery.models import DeliveryResult, DeliveryStatus  # noqa: E402
 from delivery.pipeline import run_delivery  # noqa: E402
 from markdown_to_html import convert  # noqa: E402
 
@@ -357,6 +357,120 @@ def test_unwritable_output_dir_returns_structured_result(tmp_path: Path) -> None
 
     assert result.ok is False
     assert any("output directory" in error.lower() for error in result.errors)
+
+
+def test_pdf_size_bytes_only_after_successful_commit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = _write_report(tmp_path)
+    pdf = tmp_path / "out.pdf"
+
+    def failing_commit(staged, target):
+        raise OSError("simulated commit failure")
+
+    monkeypatch.setattr("delivery.pipeline.commit_staged_file", failing_commit)
+
+    result = run_delivery(report, pdf)
+
+    assert result.delivery_status is DeliveryStatus.PDF_FAILED
+    assert result.pdf_size_bytes is None
+
+
+def test_non_file_pdf_target_is_rejected_before_render(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = _write_report(tmp_path)
+    pdf = tmp_path / "out.pdf"
+    pdf.mkdir()
+    render_calls: list[Path] = []
+
+    def renderer(html_path, pdf_path, **kwargs):
+        render_calls.append(Path(pdf_path))
+
+    monkeypatch.setattr("delivery.pipeline._render_pdf", renderer)
+
+    result = run_delivery(report, pdf)
+
+    assert result.ok is False
+    assert result.pdf_size_bytes is None
+    assert render_calls == []
+    assert any("non-file" in error.lower() for error in result.errors)
+
+
+def test_cli_json_missing_input_is_structured(tmp_path: Path) -> None:
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "md_to_pdf.py"),
+            str(tmp_path / "missing.md"),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+
+    assert completed.returncode == 1, completed.stdout + completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["delivery_status"] == "not_run"
+    assert any("Input file not found" in error for error in payload["errors"])
+
+
+def test_cli_json_missing_dependency_is_structured(tmp_path: Path) -> None:
+    report = _write_report(tmp_path)
+    shim_dir = tmp_path / "_shims"
+    shim_dir.mkdir()
+    (shim_dir / "nh3.py").write_text('raise ImportError("simulated missing nh3")')
+    env = os.environ.copy()
+    pythonpath = str(shim_dir)
+    if env.get("PYTHONPATH"):
+        pythonpath += os.pathsep + env["PYTHONPATH"]
+    env["PYTHONPATH"] = pythonpath
+
+    completed = subprocess.run(
+        [
+            sys.executable,
+            str(SCRIPTS / "md_to_pdf.py"),
+            str(report),
+            str(tmp_path / "out.pdf"),
+            "--json",
+        ],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+    assert completed.returncode == 1, completed.stdout + completed.stderr
+    payload = json.loads(completed.stdout)
+    assert payload["delivery_status"] == "not_run"
+    assert any("nh3" in error for error in payload["errors"])
+
+
+def test_status_writeback_uses_atomic_write(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    pack = tmp_path / "pack.md"
+    pack.write_text("## Required audits\n\n- final-audit — passed\n", encoding="utf-8")
+    from delivery import status as status_module
+
+    calls: list[Path] = []
+    real_atomic = status_module.atomic_write_text
+
+    def spy(path, text):
+        calls.append(Path(path))
+        return real_atomic(path, text)
+
+    monkeypatch.setattr(status_module, "atomic_write_text", spy)
+
+    status_module.write_delivery_status(
+        pack,
+        DeliveryResult(
+            input_path=pack,
+            delivery_status=DeliveryStatus.PDF_READY,
+            markdown_status=DeliveryStatus.MD_READY,
+        ),
+    )
+
+    assert calls == [pack]
 
 
 def test_cli_json_survives_output_dir_failure(tmp_path: Path) -> None:

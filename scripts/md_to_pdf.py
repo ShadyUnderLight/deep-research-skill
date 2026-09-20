@@ -16,8 +16,8 @@ from pathlib import Path
 _REQUIREMENTS_FILE = str(Path(__file__).resolve().parent.parent / "requirements.txt")
 
 
-def _check_runtime_deps() -> None:
-    """Check Markdown-stage packages before producing a delivery result.
+def _missing_runtime_deps() -> list[str]:
+    """Return Markdown-stage packages that are unavailable.
 
     Chromium is intentionally checked by the PDF stage. That lets the
     pipeline preserve ``md_ready`` and report ``pdf_failed`` as JSON when the
@@ -30,11 +30,7 @@ def _check_runtime_deps() -> None:
             __import__(module)
         except ImportError:
             missing.append(module)
-
-    if missing:
-        print("Error: missing required Python packages: " + ", ".join(missing), file=sys.stderr)
-        print(f"Run: {sys.executable} -m pip install -r {_REQUIREMENTS_FILE}", file=sys.stderr)
-        raise SystemExit(1)
+    return missing
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -76,10 +72,37 @@ def main(argv: list[str] | None = None) -> int:
 
     md_path = Path(args.input).resolve()
     if not md_path.exists():
+        if args.json:
+            from delivery.models import DeliveryResult
+
+            print(
+                DeliveryResult(
+                    input_path=md_path,
+                    errors=[f"Input file not found: {md_path}"],
+                ).to_json()
+            )
+            return 1
         print(f"File not found: {md_path}")
         return 1
 
-    _check_runtime_deps()
+    missing = _missing_runtime_deps()
+    if missing:
+        if args.json:
+            from delivery.models import DeliveryResult
+
+            print(
+                DeliveryResult(
+                    input_path=md_path,
+                    errors=["missing required Python packages: " + ", ".join(missing)],
+                ).to_json()
+            )
+            return 1
+        print(
+            "Error: missing required Python packages: " + ", ".join(missing),
+            file=sys.stderr,
+        )
+        print(f"Run: {sys.executable} -m pip install -r {_REQUIREMENTS_FILE}", file=sys.stderr)
+        return 1
 
     from delivery.pipeline import run_delivery
 

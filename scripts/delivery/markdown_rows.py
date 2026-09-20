@@ -38,12 +38,15 @@ def _has_closing_backtick_run(row: str, start: int, run_length: int) -> bool:
     return False
 
 
-def _scan_row(row: str) -> tuple[list[str], int]:
-    """Return ``(cells, structural_pipe_count)`` for one table row."""
+def _delimiter_positions(row: str) -> tuple[list[int], list[int]]:
+    """Return structural ``(ascii_pipe, fullwidth_pipe)`` character indices.
 
-    cells: list[str] = []
-    current: list[str] = []
-    structural_pipes = 0
+    Escaped pipes and pipes inside code spans are excluded; an unmatched
+    backtick is literal, so the pipes after it stay structural.
+    """
+
+    ascii_positions: list[int] = []
+    fullwidth_positions: list[int] = []
     code_fence = 0
     index = 0
     length = len(row)
@@ -51,42 +54,50 @@ def _scan_row(row: str) -> tuple[list[str], int]:
         char = row[index]
         if code_fence == 0:
             if char == "\\" and index + 1 < length:
-                current.append(char)
-                current.append(row[index + 1])
                 index += 2
                 continue
             if char == "`":
                 run = _backtick_run_length(row, index)
                 if _has_closing_backtick_run(row, index + run, run):
                     code_fence = run
-                current.append("`" * run)
                 index += run
                 continue
             if char == "|":
-                cells.append("".join(current))
-                current = []
-                structural_pipes += 1
+                ascii_positions.append(index)
                 index += 1
                 continue
-            current.append(char)
+            if char == "｜":
+                fullwidth_positions.append(index)
+                index += 1
+                continue
             index += 1
             continue
         if char == "`":
             run = _backtick_run_length(row, index)
-            current.append("`" * run)
             index += run
             if run == code_fence:
                 code_fence = 0
             continue
-        current.append(char)
         index += 1
-    cells.append("".join(current))
+    return ascii_positions, fullwidth_positions
+
+
+def _scan_row(row: str) -> tuple[list[str], int]:
+    """Return ``(cells, structural_pipe_count)`` for one table row."""
+
+    ascii_positions, _ = _delimiter_positions(row)
+    cells: list[str] = []
+    start = 0
+    for position in ascii_positions:
+        cells.append(row[start:position])
+        start = position + 1
+    cells.append(row[start:])
 
     if cells and cells[0].strip() == "":
         cells = cells[1:]
     if cells and cells[-1].strip() == "":
         cells = cells[:-1]
-    return [cell.strip() for cell in cells], structural_pipes
+    return [cell.strip() for cell in cells], len(ascii_positions)
 
 
 def split_markdown_row(row: str) -> list[str]:
@@ -112,3 +123,22 @@ def count_structural_pipes(row: str) -> int:
 
     _, structural_pipes = _scan_row(row)
     return structural_pipes
+
+
+def normalize_fullwidth_table_delimiters(row: str) -> str:
+    """Convert fullwidth ``｜`` separators only for legacy delimiter rows.
+
+    A row that already has ASCII structural pipes keeps every ``｜`` as
+    data, and code-span ``｜`` is never touched.  Only a row with no ASCII
+    structural pipes and at least two structural ``｜`` candidates is
+    treated as a legacy fullwidth-delimited table row (issue #435 review
+    round 8).
+    """
+
+    ascii_positions, fullwidth_positions = _delimiter_positions(row)
+    if ascii_positions or len(fullwidth_positions) < 2:
+        return row
+    characters = list(row)
+    for position in fullwidth_positions:
+        characters[position] = "|"
+    return "".join(characters)

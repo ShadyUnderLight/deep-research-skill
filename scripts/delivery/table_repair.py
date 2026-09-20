@@ -5,13 +5,17 @@ from __future__ import annotations
 import re
 
 from .fences import iter_fence_aware_lines
-from .markdown_rows import count_structural_pipes, split_markdown_row
+from .markdown_rows import (
+    count_structural_pipes,
+    normalize_fullwidth_table_delimiters,
+    split_markdown_row,
+)
 
 # Values that carry no information in a leading layout column.  Status
 # values such as ``N/A``/``TBD`` and numbering such as ``#1`` are data and
 # must never justify dropping a column (issue #435 review round 4).
 LAYOUT_ONLY_VALUES = frozenset(
-    {"", "#", "-", "*", "+", "•", "●", "▪", "◦", "—", "–", "--", "——", "/", "｜"}
+    {"", "#", "-", "*", "+", "•", "●", "▪", "◦", "—", "–", "--", "——", "/"}
 )
 
 
@@ -28,7 +32,7 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
     warning_sink = warnings if warnings is not None else []
 
     def normalize_table_candidate(line: str) -> str:
-        line = line.strip().replace("｜", "|")
+        line = normalize_fullwidth_table_delimiters(line.strip())
         return re.sub(r"^[-*+]\s+(?=\|)", "", line)
 
     def parse_cells(row: str) -> list[str]:
@@ -108,7 +112,11 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
         width = max((len(row) for row in parsed_rows), default=1)
         width = max(width, 1)
         parsed_rows = [row + [""] * (width - len(row)) for row in parsed_rows]
-        parsed_rows[1] = ["---"] * width
+        separator: list[str] = []
+        for cell in parsed_rows[1]:
+            cleaned = cell.strip()
+            separator.append(cleaned if re.fullmatch(r":?-+:?", cleaned) else "---")
+        parsed_rows[1] = separator + ["---"] * (width - len(separator))
 
         normalized_group = [
             "| " + " | ".join(cells) + " |" for cells in parsed_rows

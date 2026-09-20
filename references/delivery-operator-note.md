@@ -32,11 +32,13 @@ stages unchanged (the downstream Markdown/HTML serializer renders LF).
 Data-bearing table columns are never dropped, including columns holding
 `N/A`/`TBD`/`#1` style status values; only strictly empty layout columns
 and columns removed by the optional metadata fold are dropped, with
-warnings. Nested tables, non-default rowspans, and oversized colspans are
-kept as original markup instead of being rebuilt, as are tables or cells
-with attributes beyond spans — except Python-Markdown's renderer-owned
-alignment `style="text-align: ..."`, which stays rebuild-safe so aligned
-wide tables still get split and cleaned up.
+warnings. Nested tables, non-default rowspans, oversized colspans, and table-level
+content outside the lossless model (`<caption>`, `<colgroup>`/`<col>`,
+`<tfoot>`, stray text between cells) are kept as original markup instead
+of being rebuilt, as are tables or cells with attributes beyond spans —
+except Python-Markdown's renderer-owned alignment `style="text-align: ..."`,
+which stays rebuild-safe so aligned wide tables still get split and cleaned
+up. Malformed or duplicate span attributes also fail closed.
 
 ## Pre-delivery checks
 
@@ -58,7 +60,10 @@ escaped pipes (`\|`) or pipes inside inline code spans stay in one cell —
 including when deciding whether a line is a table row at all (a candidate
 needs at least two structural pipes, so single-pipe prose is never promoted
 to a table). Code spans follow CommonMark rules: backslash is ordinary
-inside a span and an unmatched backtick is literal. A leading layout-only
+inside a span and an unmatched backtick is literal. Fullwidth `｜` is data
+inside normal rows and code spans; it is only converted to a delimiter for
+legacy rows that have no ASCII structural pipes. Existing alignment
+separators (`:---`/`---:`/`:---:`) are preserved. A leading layout-only
 column is dropped only when the header and every real data cell are
 strictly layout values (also when the separator is missing), and the drop
 is reported as a warning; warnings reach `--json` and are printed to
@@ -89,8 +94,11 @@ additionally rejects an HTML path that collides with the PDF, and
 the PDF, or the retained HTML. Nothing is written before these checks, and
 staged artifacts are replaced atomically, so a rejected or crashed render
 cannot truncate the source or a previously delivered PDF. Output-directory
-preparation failures return a structured `not_run` result instead of a
-traceback, so `--json` consumers always receive parseable JSON. With
+preparation failures, missing inputs, and missing Markdown-stage
+dependencies all return a structured `not_run` result instead of a
+traceback or plain text, so `--json` consumers always receive parseable
+JSON; `pdf_size_bytes` is recorded only after the PDF commit succeeds, and
+status writeback is atomic and mode-preserving. With
 `--keep-html`, the HTML is committed before PDF rendering (so a failed
 render still leaves a readable HTML) while the previous PDF stays
 untouched; `kept_html` is true only after that commit succeeds. Diagnostics

@@ -110,6 +110,12 @@ def run_delivery(
     non_pdf = pdf_output_reason(pdf_path)
     if non_pdf:
         return DeliveryResult(input_path=input_path, pdf_path=pdf_path, errors=[non_pdf])
+    if pdf_path.exists() and not pdf_path.is_file():
+        return DeliveryResult(
+            input_path=input_path,
+            pdf_path=pdf_path,
+            errors=[f"Refusing non-file PDF output target: {pdf_path}"],
+        )
 
     final_html_path = pdf_path.with_suffix(".html") if keep_html else None
     if final_html_path is not None:
@@ -206,8 +212,9 @@ def run_delivery(
                 margin_left=margin_left,
                 allow_remote=allow_remote,
             )
-            result.pdf_size_bytes = _validate_pdf_artifact(pdf_work)
+            pdf_size = _validate_pdf_artifact(pdf_work)
             commit_staged_file(pdf_work, pdf_path)
+            result.pdf_size_bytes = pdf_size
             result.delivery_status = DeliveryStatus.PDF_READY
         except Exception as exc:
             result.delivery_status = DeliveryStatus.PDF_FAILED
