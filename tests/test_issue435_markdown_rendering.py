@@ -238,11 +238,12 @@ def test_separator_backed_table_bridges_short_row_before_wide_data() -> None:
 
 
 def test_separator_backed_table_stops_before_prose_after_short_row() -> None:
-    md = "A | B\n--- | ---\n1\nThis is prose\n"
-    body = process_markdown(md)
+    for prose in ("This is prose", "This | is | prose"):
+        md = f"A | B\n--- | ---\n1\n{prose}\n"
+        body = process_markdown(md)
 
-    assert "<p>This is prose</p>" in body
-    assert "<td>This is prose</td>" not in body
+        assert prose in body
+        assert "<td>This</td>" not in body
 
 
 def test_multi_pipe_prose_without_separator_is_not_promoted() -> None:

@@ -180,6 +180,8 @@ def can_bridge_short_data_row(
         return False
     if count_structural_pipes(next_row) < 1:
         return False
+    if is_textual_unbordered_wide_row(next_row, expected_width):
+        return False
     return len(split_markdown_row(next_row)) >= expected_width
 
 
@@ -194,6 +196,22 @@ def is_simple_short_data_row(row: str) -> bool:
     if re.match(r"^\d+[.)]\s", stripped) or "`" in stripped or "\\" in stripped:
         return False
     return len(stripped.split()) == 1
+
+
+def is_textual_unbordered_wide_row(row: str, expected_width: int) -> bool:
+    """Return True for an ambiguous unbordered, all-text width expansion."""
+
+    if has_outer_structural_pipe(row):
+        return False
+    cells = split_markdown_row(row)
+    if len(cells) <= expected_width:
+        return False
+    return all(
+        cell
+        and not any(char.isdigit() for char in cell)
+        and re.fullmatch(r"[\w\u3400-\u4dbf\u4e00-\u9fff'’ -]+", cell)
+        for cell in cells
+    )
 
 
 def normalize_fullwidth_table_delimiters(row: str) -> str:

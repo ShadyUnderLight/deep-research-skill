@@ -12,6 +12,7 @@ from .markdown_rows import (
     is_simple_short_data_row,
     is_separator_row,
     normalize_fullwidth_table_delimiters,
+    is_textual_unbordered_wide_row,
     split_markdown_row,
 )
 
@@ -89,6 +90,13 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
         while end < len(lines) and not fence_flags[end]:
             candidate = table_candidate(lines[end])
             if candidate is not None:
+                if (
+                    separator_backed
+                    and group
+                    and is_simple_short_data_row(group[-1])
+                    and is_textual_unbordered_wide_row(candidate, expected_width)
+                ):
+                    break
                 group.append(candidate)
                 end += 1
                 continue

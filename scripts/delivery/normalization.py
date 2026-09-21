@@ -12,6 +12,7 @@ from .markdown_rows import (
     is_repairable_table_group,
     is_simple_short_data_row,
     is_separator_row,
+    is_textual_unbordered_wide_row,
     split_markdown_row,
 )
 
@@ -99,6 +100,13 @@ def normalize_text_for_pdf(text: str) -> str:
         while end < len(source_lines) and not fence_flags[end]:
             next_candidate = table_candidate(source_lines[end])
             if next_candidate is not None:
+                if (
+                    separator_backed
+                    and group
+                    and is_simple_short_data_row(group[-1])
+                    and is_textual_unbordered_wide_row(next_candidate, expected_width)
+                ):
+                    break
                 group.append(next_candidate)
                 end += 1
                 continue

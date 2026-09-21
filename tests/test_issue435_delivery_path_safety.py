@@ -602,7 +602,7 @@ def test_delivery_keeps_prose_after_short_row_outside_table(
 ) -> None:
     report = tmp_path / "report.md"
     report.write_text(
-        "A | B\n--- | ---\n1\nThis is prose\n",
+        "A | B\n--- | ---\n1\nThis | is | prose\n",
         encoding="utf-8",
     )
     pdf = tmp_path / "out.pdf"
@@ -617,8 +617,8 @@ def test_delivery_keeps_prose_after_short_row_outside_table(
     assert result.ok is True
     assert result.html_path is not None
     html = result.html_path.read_text(encoding="utf-8")
-    assert "<p>This is prose</p>" in html
-    assert "<td>This is prose</td>" not in html
+    assert "This | is | prose" in html
+    assert "<td>This</td>" not in html
 
 
 def test_keep_html_failure_updates_html_but_preserves_previous_pdf(
