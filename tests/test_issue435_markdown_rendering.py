@@ -103,6 +103,26 @@ def test_convert_reads_crlf_without_universal_newline_translation(
     assert "line2" in html
 
 
+def test_convert_stops_after_one_short_row_before_later_prose(
+    tmp_path: Path,
+) -> None:
+    report = tmp_path / "report.md"
+    report.write_text(
+        "A | B\n--- | ---\n1\nThis\n1 | 2 | 3\n",
+        encoding="utf-8",
+    )
+    output = tmp_path / "out.html"
+
+    import markdown_to_html
+
+    markdown_to_html.convert(report, output)
+
+    html = output.read_text(encoding="utf-8")
+    assert "<td>This</td>" not in html
+    assert "This" in html
+    assert "1 | 2 | 3" in html
+
+
 def test_normalize_preserves_fence_unicode_and_line_endings_verbatim() -> None:
     text = "# T\r\n\r\n```text\r\ne\u0301 += 1\r\n\r\ntail\r\n```\r\n"
     normalized = normalize_text_for_pdf(text)
@@ -260,6 +280,23 @@ def test_separator_backed_table_stops_before_prose_after_short_row() -> None:
 
         assert prose in body
         assert "<td>This</td>" not in body
+
+
+def test_separator_backed_table_stops_after_one_short_row() -> None:
+    md = "A | B\n--- | ---\n1\nThis\n1 | 2 | 3\n"
+    body = process_markdown(md)
+
+    assert "<td>This</td>" not in body
+    assert "<p>This<br>" in body
+    assert "1 | 2 | 3" in body
+
+
+def test_empty_separator_cells_do_not_promote_a_table() -> None:
+    md = "A | B | C\n| | |\nD | E | F\n"
+
+    assert normalize_text_for_pdf(md) == md.rstrip("\n")
+    assert repair_markdown_tables(md) == md
+    assert "<table" not in process_markdown(md)
 
 
 def test_multi_pipe_prose_without_separator_is_not_promoted() -> None:

@@ -13,6 +13,7 @@ from .markdown_rows import (
     is_separator_row,
     normalize_fullwidth_table_delimiters,
     is_ambiguous_unbordered_wide_row,
+    is_short_table_data_row,
     split_markdown_row,
 )
 
@@ -79,6 +80,7 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
         end = index + 1
         separator_backed = False
         expected_width = 0
+        short_row_bridged = False
         if end < len(lines) and not fence_flags[end]:
             second = table_candidate(lines[end])
             if second is not None:
@@ -99,23 +101,33 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
                     break
                 group.append(candidate)
                 end += 1
+                if (
+                    separator_backed
+                    and not short_row_bridged
+                    and is_short_table_data_row(candidate, expected_width)
+                ):
+                    short_row_bridged = True
                 continue
             if (
                 separator_backed
+                and not short_row_bridged
                 and is_simple_short_data_row(lines[end])
                 and end == index + 2
             ):
                 group.append(lines[end].strip())
                 end += 1
+                short_row_bridged = True
                 continue
             if (
                 separator_backed
+                and not short_row_bridged
                 and end + 1 < len(lines)
                 and not fence_flags[end + 1]
                 and can_bridge_short_data_row(lines[end], lines[end + 1], expected_width)
             ):
                 group.append(lines[end].strip())
                 end += 1
+                short_row_bridged = True
                 continue
             break
 

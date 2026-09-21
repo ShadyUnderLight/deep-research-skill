@@ -13,6 +13,7 @@ from .markdown_rows import (
     is_simple_short_data_row,
     is_separator_row,
     is_ambiguous_unbordered_wide_row,
+    is_short_table_data_row,
     split_markdown_row,
 )
 
@@ -89,6 +90,7 @@ def normalize_text_for_pdf(text: str) -> str:
         end = index + 1
         separator_backed = False
         expected_width = 0
+        short_row_bridged = False
         if end < len(source_lines) and not fence_flags[end]:
             second = table_candidate(source_lines[end])
             if second is not None:
@@ -109,17 +111,26 @@ def normalize_text_for_pdf(text: str) -> str:
                     break
                 group.append(next_candidate)
                 end += 1
+                if (
+                    separator_backed
+                    and not short_row_bridged
+                    and is_short_table_data_row(next_candidate, expected_width)
+                ):
+                    short_row_bridged = True
                 continue
             if (
                 separator_backed
+                and not short_row_bridged
                 and is_simple_short_data_row(source_lines[end])
                 and end == index + 2
             ):
                 group.append(source_lines[end].strip())
                 end += 1
+                short_row_bridged = True
                 continue
             if (
                 separator_backed
+                and not short_row_bridged
                 and end + 1 < len(source_lines)
                 and not fence_flags[end + 1]
                 and can_bridge_short_data_row(
@@ -128,6 +139,7 @@ def normalize_text_for_pdf(text: str) -> str:
             ):
                 group.append(source_lines[end].strip())
                 end += 1
+                short_row_bridged = True
                 continue
             break
         if is_repairable_table_group(group):

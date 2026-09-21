@@ -133,7 +133,7 @@ def is_separator_row(row: str) -> bool:
 
     cells = split_markdown_row(row)
     return bool(cells) and all(
-        not cell or re.fullmatch(r":?-+:?", re.sub(r"\s+", "", cell))
+        re.fullmatch(r":?-+:?", re.sub(r"\s+", "", cell))
         for cell in cells
     )
 
@@ -196,6 +196,14 @@ def is_simple_short_data_row(row: str) -> bool:
     if re.match(r"^\d+[.)]\s", stripped) or "`" in stripped or "\\" in stripped:
         return False
     return len(stripped.split()) == 1
+
+
+def is_short_table_data_row(row: str, expected_width: int) -> bool:
+    """Return True for a short row already admitted to a table group."""
+
+    if is_simple_short_data_row(row):
+        return True
+    return count_structural_pipes(row) >= 1 and len(split_markdown_row(row)) < expected_width
 
 
 def is_ambiguous_unbordered_wide_row(row: str, expected_width: int) -> bool:

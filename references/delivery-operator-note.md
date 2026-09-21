@@ -67,7 +67,8 @@ sentence-shaped width expansion with pipes — terminate the block. A
 consistent label/number-shaped row such as `North | Sales | Forecast` remains
 data even when it is wider than the separator. Lowercase or CJK wide rows in
 this ambiguous position fail closed as prose; use outer pipes when they are
-intended as data.
+intended as data. Every separator cell must contain at least one hyphen;
+empty separator cells do not create a table.
 Multi-pipe prose without a separator and standalone single-pipe prose are
 never promoted to a table. Code spans follow CommonMark rules: backslash is ordinary
 inside a span and an unmatched backtick is literal. Fullwidth `｜` is data
