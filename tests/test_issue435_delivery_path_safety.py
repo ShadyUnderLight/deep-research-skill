@@ -101,6 +101,48 @@ def test_keep_html_rejects_intermediate_collision(tmp_path: Path) -> None:
     assert report.read_bytes() == ORIGINAL.encode()
 
 
+@pytest.mark.skipif(sys.platform != "darwin", reason="case-insensitive alias semantics")
+def test_case_insensitive_status_alias_is_rejected_before_delivery(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = _write_report(tmp_path)
+    pdf = tmp_path / "out.PDF"
+    status_alias = tmp_path / "out.HTML"
+
+    def fake_renderer(html_path, pdf_path, **kwargs):
+        Path(pdf_path).write_bytes(b"%PDF-1.7\nvalid\n")
+
+    monkeypatch.setattr("delivery.pipeline._render_pdf", fake_renderer)
+
+    result = run_delivery(
+        report,
+        pdf,
+        keep_html=True,
+        write_status_to=status_alias,
+    )
+
+    assert result.ok is False
+    assert result.delivery_status is DeliveryStatus.NOT_RUN
+    assert not pdf.exists()
+    assert any("write_status_to" in error for error in result.errors)
+
+
+def test_preflight_failure_updates_explicit_status(tmp_path: Path) -> None:
+    report = _write_report(tmp_path)
+    pack = tmp_path / "pack.md"
+    pack.write_text(
+        "## Delivery status\n\npdf_ready\n\n## Required audits\n\n- ok\n",
+        encoding="utf-8",
+    )
+
+    result = run_delivery(report, report, write_status_to=pack)
+
+    assert result.delivery_status is DeliveryStatus.NOT_RUN
+    status = pack.read_text(encoding="utf-8")
+    assert "\nnot_run\n" in status
+    assert "\npdf_ready\n" not in status
+
+
 def test_convert_rejects_identical_paths(tmp_path: Path) -> None:
     report = _write_report(tmp_path)
 

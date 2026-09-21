@@ -28,8 +28,10 @@ GitHub, or a similar reader.
 - The `.md` file remains the source of truth after PDF delivery: the pipeline
   must never write back to it, including through `--write-status` (status
   paths that resolve to the input, the PDF, or the retained HTML fail
-  closed). The PDF output must be a `.pdf` path, and same-path or hardlink
-  conflicts fail closed. Fenced code is not rewritten by the delivery
+  closed). Planned case-only aliases on Windows/macOS fail closed as well.
+  Safe explicit status writeback records `not_run` for preflight failures.
+  The PDF output must be a `.pdf` path, and same-path or hardlink conflicts
+  fail closed. Fenced code is not rewritten by the delivery
   normalization/table passes, and data-bearing table columns are never
   dropped — including `N/A`/`TBD` status columns and rows wider than the
   header (only strictly empty columns, and any explicit metadata fold, with

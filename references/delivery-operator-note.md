@@ -22,6 +22,8 @@ never mutated implicitly.
 Path conflicts fail closed before any write: the output must be a `.pdf`
 path (case-insensitive), must not resolve to the input Markdown (including
 hardlink aliases), and `--keep-html` must not collide with the PDF path.
+On Windows and macOS, planned output/status aliases that differ only by case
+are also rejected before delivery starts.
 Intermediate HTML and the PDF are staged next to the output and validated
 (non-empty, `%PDF` header) before atomic replacement, so a rejected or
 failed render leaves the input and any existing PDF untouched; replaced

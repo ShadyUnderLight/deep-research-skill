@@ -311,13 +311,21 @@ def extract_table_structure(
             return None
         header_cells = header_rows[0]
         body_cell_rows = [cells for section, cells in parsed_rows if section != "thead"]
+        if any(tag != "th" for tag, _, _ in header_cells):
+            return None
     else:
         if not parsed_rows:
             return None
         header_cells = parsed_rows[0][1]
-        if not any(tag == "th" for tag, _, _ in header_cells):
+        if not header_cells or not all(tag == "th" for tag, _, _ in header_cells):
             return None
         body_cell_rows = [cells for _, cells in parsed_rows[1:]]
+
+    # A body <th> is a row-header semantic, and a second <th> row without an
+    # explicit <thead> is a multi-row header.  The flattened rebuild cannot
+    # represent either shape without changing the table's meaning.
+    if any(tag == "th" for row in body_cell_rows for tag, _, _ in row):
+        return None
 
     if not header_cells or not body_cell_rows:
         return None

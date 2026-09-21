@@ -11,20 +11,31 @@ from __future__ import annotations
 import os
 import secrets
 import stat
+import sys
 from pathlib import Path
+
+
+def _resolved_path_key(path: Path) -> str:
+    """Return a conservative key for paths on case-insensitive platforms."""
+
+    resolved = Path(path).resolve()
+    if os.name == "nt" or sys.platform == "darwin":
+        return str(resolved).casefold()
+    return str(resolved)
 
 
 def paths_collide(left: Path, right: Path) -> bool:
     """Return True when two paths denote the same file.
 
     Resolved equality catches ``a/../b`` and symlinked directories; the
+    case-insensitive key covers planned aliases on Windows/macOS; the
     ``samefile`` check additionally catches hardlink aliases, which resolve
     to different paths but share one inode.
     """
 
     left = Path(left)
     right = Path(right)
-    if left.resolve() == right.resolve():
+    if _resolved_path_key(left) == _resolved_path_key(right):
         return True
     if left.exists() and right.exists():
         try:

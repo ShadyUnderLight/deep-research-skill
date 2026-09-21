@@ -89,54 +89,64 @@ def run_delivery(
     """
 
     input_path = Path(input_path).resolve()
-    if not input_path.is_file():
-        return DeliveryResult(
-            input_path=input_path,
-            errors=[f"Input file not found: {input_path}"],
-        )
-
-    pdf_path = Path(output_path).resolve() if output_path else input_path.with_suffix(".pdf")
     status_path = Path(write_status_to).resolve() if write_status_to else None
 
+    def finish(result: DeliveryResult) -> DeliveryResult:
+        if status_path is None:
+            return result
+        try:
+            write_delivery_status(status_path, result)
+        except Exception as exc:
+            result.errors.append(f"Delivery status writeback failed: {exc}")
+        return result
+
+    if not input_path.is_file():
+        return finish(DeliveryResult(
+            input_path=input_path,
+            errors=[f"Input file not found: {input_path}"],
+        ))
+
+    pdf_path = Path(output_path).resolve() if output_path else input_path.with_suffix(".pdf")
+
     if paths_collide(pdf_path, input_path):
-        return DeliveryResult(
+        return finish(DeliveryResult(
             input_path=input_path,
             pdf_path=pdf_path,
             errors=[
                 "Refusing to overwrite input Markdown: "
                 f"output path {pdf_path} resolves to the input file"
             ],
-        )
+        ))
     non_pdf = pdf_output_reason(pdf_path)
     if non_pdf:
-        return DeliveryResult(input_path=input_path, pdf_path=pdf_path, errors=[non_pdf])
+        return finish(DeliveryResult(input_path=input_path, pdf_path=pdf_path, errors=[non_pdf]))
     if pdf_path.exists() and not pdf_path.is_file():
-        return DeliveryResult(
+        return finish(DeliveryResult(
             input_path=input_path,
             pdf_path=pdf_path,
             errors=[f"Refusing non-file PDF output target: {pdf_path}"],
-        )
+        ))
 
     final_html_path = pdf_path.with_suffix(".html") if keep_html else None
     if final_html_path is not None:
         if paths_collide(final_html_path, pdf_path):
-            return DeliveryResult(
+            return finish(DeliveryResult(
                 input_path=input_path,
                 pdf_path=pdf_path,
                 errors=[
                     "Refusing keep_html: HTML intermediate path collides "
                     f"with the PDF path: {final_html_path}"
                 ],
-            )
+            ))
         if paths_collide(final_html_path, input_path):
-            return DeliveryResult(
+            return finish(DeliveryResult(
                 input_path=input_path,
                 pdf_path=pdf_path,
                 errors=[
                     "Refusing keep_html: HTML intermediate path collides "
                     f"with the input Markdown: {final_html_path}"
                 ],
-            )
+            ))
 
     if status_path is not None:
         status_targets: list[tuple[str, Path]] = [
@@ -168,12 +178,7 @@ def run_delivery(
         )
     except OSError as exc:
         result.errors.append(f"Unable to prepare delivery output directory: {exc}")
-        if status_path is not None:
-            try:
-                write_delivery_status(status_path, result)
-            except Exception as exc:
-                result.errors.append(f"Delivery status writeback failed: {exc}")
-        return result
+        return finish(result)
 
     with staging_context as temp_dir:
         staging = Path(temp_dir)
@@ -191,12 +196,7 @@ def run_delivery(
                 result.kept_html = True
         except Exception as exc:
             result.errors.append(f"Markdown to HTML failed: {exc}")
-            if status_path is not None:
-                try:
-                    write_delivery_status(status_path, result)
-                except Exception as exc:
-                    result.errors.append(f"Delivery status writeback failed: {exc}")
-            return result
+            return finish(result)
 
         html_for_pdf = final_html_path if final_html_path is not None else html_work
         try:
@@ -220,9 +220,4 @@ def run_delivery(
             result.delivery_status = DeliveryStatus.PDF_FAILED
             result.errors.append(f"HTML to PDF failed (Chromium/PDF renderer): {exc}")
 
-    if status_path is not None:
-        try:
-            write_delivery_status(status_path, result)
-        except Exception as exc:
-            result.errors.append(f"Delivery status writeback failed: {exc}")
-    return result
+    return finish(result)

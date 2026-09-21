@@ -280,6 +280,40 @@ def test_tfoot_is_preserved_via_fail_safe() -> None:
     assert html in rendered
 
 
+def test_table_fail_safe_markup_survives_full_renderer() -> None:
+    html = (
+        "<table><caption>Important title</caption>"
+        "<colgroup><col span='1'><col span='1'></colgroup>"
+        "<thead><tr><th>A</th><th>B</th></tr></thead>"
+        "<tfoot><tr><td>f1</td><td>f2</td></tr></tfoot>"
+        "<tbody><tr><td>1</td><td>2</td></tr></tbody></table>"
+    )
+    rendered = process_markdown(html)
+    assert "<caption>Important title</caption>" in rendered
+    assert "<colgroup>" in rendered
+    assert "<col span=\"1\">" in rendered
+    assert "<tfoot>" in rendered
+
+
+def test_multi_row_header_without_thead_is_preserved() -> None:
+    html = (
+        "<table><tr><th>Group</th><th>Metric</th></tr>"
+        "<tr><th>North</th><th>Sales</th></tr>"
+        "<tr><td>A</td><td>1</td></tr></table>"
+    )
+    rendered = process_markdown(html)
+    assert "<tr><th>North</th><th>Sales</th></tr>" in rendered
+
+
+def test_body_header_cell_is_preserved() -> None:
+    html = (
+        "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
+        "<tbody><tr><th>row-1</th><td>1</td></tr></tbody></table>"
+    )
+    rendered = process_markdown(html)
+    assert "<tr><th>row-1</th><td>1</td></tr>" in rendered
+
+
 def test_malformed_span_value_preserves_original_markup() -> None:
     html = (
         "<table><thead><tr><th>A</th><th>B</th></tr></thead>"
