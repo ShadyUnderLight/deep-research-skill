@@ -237,8 +237,18 @@ def test_separator_backed_table_bridges_short_row_before_wide_data() -> None:
     assert body.count("<tr>") == 3
 
 
+def test_separator_backed_table_bridges_textual_wide_data_after_short_row() -> None:
+    md = "A | B\n--- | ---\n1\nNorth | Sales | Forecast\n"
+    body = process_markdown(md)
+
+    assert "<td>North</td>" in body
+    assert "<td>Sales</td>" in body
+    assert "<td>Forecast</td>" in body
+    assert body.count("<tr>") == 3
+
+
 def test_separator_backed_table_stops_before_prose_after_short_row() -> None:
-    for prose in ("This is prose", "This | is | prose"):
+    for prose in ("This is prose", "This | is | prose", "This | is | prose 2026"):
         md = f"A | B\n--- | ---\n1\n{prose}\n"
         body = process_markdown(md)
 

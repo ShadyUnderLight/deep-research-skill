@@ -63,7 +63,9 @@ including when deciding whether a line is a table row at all. A separator-
 backed unbordered two-column block may use one structural pipe per row;
 an unbordered one-token short row can bridge directly to a following
 structural row, while prose-shaped boundaries — including an unbordered
-all-text width expansion with pipes — terminate the block.
+sentence-shaped width expansion with pipes — terminate the block. A
+consistent label/number-shaped row such as `North | Sales | Forecast` remains
+data even when it is wider than the separator.
 Multi-pipe prose without a separator and standalone single-pipe prose are
 never promoted to a table. Code spans follow CommonMark rules: backslash is ordinary
 inside a span and an unmatched backtick is literal. Fullwidth `｜` is data

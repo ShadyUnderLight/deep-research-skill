@@ -180,7 +180,7 @@ def can_bridge_short_data_row(
         return False
     if count_structural_pipes(next_row) < 1:
         return False
-    if is_textual_unbordered_wide_row(next_row, expected_width):
+    if is_ambiguous_unbordered_wide_row(next_row, expected_width):
         return False
     return len(split_markdown_row(next_row)) >= expected_width
 
@@ -198,20 +198,51 @@ def is_simple_short_data_row(row: str) -> bool:
     return len(stripped.split()) == 1
 
 
-def is_textual_unbordered_wide_row(row: str, expected_width: int) -> bool:
-    """Return True for an ambiguous unbordered, all-text width expansion."""
+def is_ambiguous_unbordered_wide_row(row: str, expected_width: int) -> bool:
+    """Return True when a wide unbordered row lacks a table-shaped profile.
+
+    A separator-backed table can contain an unbordered row wider than its
+    separator, but a one-token no-pipe row immediately before that candidate
+    makes sentence prose syntactically indistinguishable from data.  Accept
+    only cells whose tokens have a consistent label/number shape; this avoids
+    classifying rows by a narrow character allowlist, so digits and ordinary
+    punctuation do not change the decision by themselves.
+    """
 
     if has_outer_structural_pipe(row):
         return False
     cells = split_markdown_row(row)
     if len(cells) <= expected_width:
         return False
-    return all(
-        cell
-        and not any(char.isdigit() for char in cell)
-        and re.fullmatch(r"[\w\u3400-\u4dbf\u4e00-\u9fff'’ -]+", cell)
-        for cell in cells
-    )
+    profiles = {_cell_case_profile(cell) for cell in cells}
+    return "mixed" in profiles or len(profiles) > 1
+
+
+def _cell_case_profile(cell: str) -> str:
+    """Return the first-letter case profile for the words in one cell."""
+
+    words = cell.split()
+    if not words:
+        return "empty"
+    markers: list[bool] = []
+    for word in words:
+        first_cased = next(
+            (
+                char
+                for char in word
+                if char.isalpha() and (char.islower() or char.isupper())
+            ),
+            None,
+        )
+        if first_cased is not None:
+            markers.append(first_cased.isupper())
+    if not markers:
+        return "uncased"
+    if all(markers):
+        return "upper"
+    if not any(markers):
+        return "lower"
+    return "mixed"
 
 
 def normalize_fullwidth_table_delimiters(row: str) -> str:

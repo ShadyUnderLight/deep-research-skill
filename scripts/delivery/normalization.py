@@ -12,7 +12,7 @@ from .markdown_rows import (
     is_repairable_table_group,
     is_simple_short_data_row,
     is_separator_row,
-    is_textual_unbordered_wide_row,
+    is_ambiguous_unbordered_wide_row,
     split_markdown_row,
 )
 
@@ -104,7 +104,7 @@ def normalize_text_for_pdf(text: str) -> str:
                     separator_backed
                     and group
                     and is_simple_short_data_row(group[-1])
-                    and is_textual_unbordered_wide_row(next_candidate, expected_width)
+                    and is_ambiguous_unbordered_wide_row(next_candidate, expected_width)
                 ):
                     break
                 group.append(next_candidate)

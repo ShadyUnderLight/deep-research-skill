@@ -597,28 +597,38 @@ def test_delivery_keeps_wide_row_after_unbordered_short_row(
     assert "<td>3</td>" in result.html_path.read_text(encoding="utf-8")
 
 
-def test_delivery_keeps_prose_after_short_row_outside_table(
+def test_delivery_distinguishes_pipe_prose_and_textual_wide_row(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    report = tmp_path / "report.md"
-    report.write_text(
-        "A | B\n--- | ---\n1\nThis | is | prose\n",
-        encoding="utf-8",
-    )
-    pdf = tmp_path / "out.pdf"
-
     def fake_renderer(html_path, pdf_path, **kwargs):
         Path(pdf_path).write_bytes(b"%PDF-1.7\nprose boundary\n")
 
     monkeypatch.setattr("delivery.pipeline._render_pdf", fake_renderer)
 
-    result = run_delivery(report, pdf, keep_html=True)
+    cases = (
+        ("This | is | prose 2026", False),
+        ("North | Sales | Forecast", True),
+    )
+    for index, (tail, is_table_row) in enumerate(cases):
+        report = tmp_path / f"report-{index}.md"
+        report.write_text(
+            f"A | B\n--- | ---\n1\n{tail}\n",
+            encoding="utf-8",
+        )
+        pdf = tmp_path / f"out-{index}.pdf"
 
-    assert result.ok is True
-    assert result.html_path is not None
-    html = result.html_path.read_text(encoding="utf-8")
-    assert "This | is | prose" in html
-    assert "<td>This</td>" not in html
+        result = run_delivery(report, pdf, keep_html=True)
+
+        assert result.ok is True
+        assert result.html_path is not None
+        html = result.html_path.read_text(encoding="utf-8")
+        if is_table_row:
+            assert "<td>North</td>" in html
+            assert "<td>Sales</td>" in html
+            assert "<td>Forecast</td>" in html
+        else:
+            assert tail in html
+            assert "<td>This</td>" not in html
 
 
 def test_keep_html_failure_updates_html_but_preserves_previous_pdf(
