@@ -6,8 +6,10 @@ import re
 
 from .fences import iter_fence_aware_lines
 from .markdown_rows import (
+    can_bridge_short_data_row,
     count_structural_pipes,
     is_repairable_table_group,
+    is_simple_short_data_row,
     is_separator_row,
     normalize_fullwidth_table_delimiters,
     split_markdown_row,
@@ -74,10 +76,37 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
 
         group = [stripped]
         end = index + 1
+        separator_backed = False
+        expected_width = 0
+        if end < len(lines) and not fence_flags[end]:
+            second = table_candidate(lines[end])
+            if second is not None:
+                group.append(second)
+                end += 1
+                separator_backed = is_separator_row(second)
+                if separator_backed:
+                    expected_width = len(parse_cells(second))
         while end < len(lines) and not fence_flags[end]:
             candidate = table_candidate(lines[end])
             if candidate is not None:
                 group.append(candidate)
+                end += 1
+                continue
+            if (
+                separator_backed
+                and is_simple_short_data_row(lines[end])
+                and end == index + 2
+            ):
+                group.append(lines[end].strip())
+                end += 1
+                continue
+            if (
+                separator_backed
+                and end + 1 < len(lines)
+                and not fence_flags[end + 1]
+                and can_bridge_short_data_row(lines[end], lines[end + 1], expected_width)
+            ):
+                group.append(lines[end].strip())
                 end += 1
                 continue
             break

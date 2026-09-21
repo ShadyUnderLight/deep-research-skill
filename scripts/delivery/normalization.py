@@ -7,8 +7,11 @@ import unicodedata
 
 from .fences import fence_aware_runs, iter_fence_aware_lines
 from .markdown_rows import (
+    can_bridge_short_data_row,
     count_structural_pipes,
     is_repairable_table_group,
+    is_simple_short_data_row,
+    is_separator_row,
     split_markdown_row,
 )
 
@@ -83,12 +86,42 @@ def normalize_text_for_pdf(text: str) -> str:
             continue
         group = [candidate]
         end = index + 1
+        separator_backed = False
+        expected_width = 0
+        if end < len(source_lines) and not fence_flags[end]:
+            second = table_candidate(source_lines[end])
+            if second is not None:
+                group.append(second)
+                end += 1
+                separator_backed = is_separator_row(second)
+                if separator_backed:
+                    expected_width = len(split_markdown_row(second))
         while end < len(source_lines) and not fence_flags[end]:
             next_candidate = table_candidate(source_lines[end])
-            if next_candidate is None:
-                break
-            group.append(next_candidate)
-            end += 1
+            if next_candidate is not None:
+                group.append(next_candidate)
+                end += 1
+                continue
+            if (
+                separator_backed
+                and is_simple_short_data_row(source_lines[end])
+                and end == index + 2
+            ):
+                group.append(source_lines[end].strip())
+                end += 1
+                continue
+            if (
+                separator_backed
+                and end + 1 < len(source_lines)
+                and not fence_flags[end + 1]
+                and can_bridge_short_data_row(
+                    source_lines[end], source_lines[end + 1], expected_width
+                )
+            ):
+                group.append(source_lines[end].strip())
+                end += 1
+                continue
+            break
         if is_repairable_table_group(group):
             table_lines.update(range(index, end))
         index = end

@@ -575,6 +575,52 @@ def test_delivery_keeps_data_wider_than_header_in_kept_html(
     assert "<td>3</td>" in result.html_path.read_text(encoding="utf-8")
 
 
+def test_delivery_keeps_wide_row_after_unbordered_short_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = tmp_path / "report.md"
+    report.write_text(
+        "A | B\n--- | ---\n1\n1 | 2 | 3\n",
+        encoding="utf-8",
+    )
+    pdf = tmp_path / "out.pdf"
+
+    def fake_renderer(html_path, pdf_path, **kwargs):
+        Path(pdf_path).write_bytes(b"%PDF-1.7\nwide row after short row\n")
+
+    monkeypatch.setattr("delivery.pipeline._render_pdf", fake_renderer)
+
+    result = run_delivery(report, pdf, keep_html=True)
+
+    assert result.ok is True
+    assert result.html_path is not None
+    assert "<td>3</td>" in result.html_path.read_text(encoding="utf-8")
+
+
+def test_delivery_keeps_prose_after_short_row_outside_table(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = tmp_path / "report.md"
+    report.write_text(
+        "A | B\n--- | ---\n1\nThis is prose\n",
+        encoding="utf-8",
+    )
+    pdf = tmp_path / "out.pdf"
+
+    def fake_renderer(html_path, pdf_path, **kwargs):
+        Path(pdf_path).write_bytes(b"%PDF-1.7\nprose boundary\n")
+
+    monkeypatch.setattr("delivery.pipeline._render_pdf", fake_renderer)
+
+    result = run_delivery(report, pdf, keep_html=True)
+
+    assert result.ok is True
+    assert result.html_path is not None
+    html = result.html_path.read_text(encoding="utf-8")
+    assert "<p>This is prose</p>" in html
+    assert "<td>This is prose</td>" not in html
+
+
 def test_keep_html_failure_updates_html_but_preserves_previous_pdf(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -229,6 +229,22 @@ def test_unbordered_two_column_table_keeps_wide_data_row() -> None:
     assert "<td>3</td>" in body
 
 
+def test_separator_backed_table_bridges_short_row_before_wide_data() -> None:
+    md = "A | B\n--- | ---\n1\n1 | 2 | 3\n"
+    body = process_markdown(md)
+
+    assert "<td>3</td>" in body
+    assert body.count("<tr>") == 3
+
+
+def test_separator_backed_table_stops_before_prose_after_short_row() -> None:
+    md = "A | B\n--- | ---\n1\nThis is prose\n"
+    body = process_markdown(md)
+
+    assert "<p>This is prose</p>" in body
+    assert "<td>This is prose</td>" not in body
+
+
 def test_multi_pipe_prose_without_separator_is_not_promoted() -> None:
     md = "Operating A | B | C\nOperating D | E | F\n"
 

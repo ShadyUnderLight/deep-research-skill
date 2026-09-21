@@ -164,6 +164,38 @@ def is_repairable_table_group(rows: list[str]) -> bool:
     return len(rows) >= 2 and all(has_outer_structural_pipe(row) for row in rows)
 
 
+def can_bridge_short_data_row(
+    row: str,
+    next_row: str,
+    expected_width: int,
+) -> bool:
+    """Return True for a conservative one-cell bridge inside a table block.
+
+    A no-pipe row is ambiguous with prose.  Only a single-token row directly
+    before another structural row wide enough for the separator is bridged;
+    blank/block-markup/prose-shaped lines still terminate the table group.
+    """
+
+    if not is_simple_short_data_row(row):
+        return False
+    if count_structural_pipes(next_row) < 1:
+        return False
+    return len(split_markdown_row(next_row)) >= expected_width
+
+
+def is_simple_short_data_row(row: str) -> bool:
+    """Return True for a conservative one-token, no-pipe data row."""
+
+    stripped = row.strip()
+    if not stripped or count_structural_pipes(stripped) != 0:
+        return False
+    if stripped.startswith(("#", ">", "- ", "* ", "+ ")):
+        return False
+    if re.match(r"^\d+[.)]\s", stripped) or "`" in stripped or "\\" in stripped:
+        return False
+    return len(stripped.split()) == 1
+
+
 def normalize_fullwidth_table_delimiters(row: str) -> str:
     """Convert fullwidth ``｜`` separators only for legacy delimiter rows.
 

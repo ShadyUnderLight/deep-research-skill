@@ -61,7 +61,9 @@ Malformed or LLM-produced Markdown tables are repaired to
 escaped pipes (`\|`) or pipes inside inline code spans stay in one cell —
 including when deciding whether a line is a table row at all. A separator-
 backed unbordered two-column block may use one structural pipe per row;
-multi-pipe prose without a separator and standalone single-pipe prose are
+an unbordered one-token short row can bridge directly to a following
+structural row, while prose-shaped boundaries terminate the block.
+Multi-pipe prose without a separator and standalone single-pipe prose are
 never promoted to a table. Code spans follow CommonMark rules: backslash is ordinary
 inside a span and an unmatched backtick is literal. Fullwidth `｜` is data
 inside normal rows and code spans; it is only converted to a delimiter for
