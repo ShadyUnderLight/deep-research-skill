@@ -14,6 +14,8 @@ text (so the pipes after it stay structural).
 
 from __future__ import annotations
 
+import re
+
 
 def _backtick_run_length(row: str, start: int) -> int:
     run = 0
@@ -116,13 +118,50 @@ def split_markdown_row(row: str) -> list[str]:
 def count_structural_pipes(row: str) -> int:
     """Number of structural ``|`` separators (escapes and code spans excluded).
 
-    Candidate detection uses this instead of the raw pipe count so prose
-    with a single pipe, escaped pipes, or code-span pipes is never promoted
-    to a table (issue #435 review round 6).
+    Candidate detection uses this instead of the raw pipe count. The
+    group-level table gate decides whether a one-pipe row belongs to a
+    separator-backed two-column table; escaped pipes and code-span pipes
+    never contribute (issue #435 review round 9).
     """
 
     _, structural_pipes = _scan_row(row)
     return structural_pipes
+
+
+def is_separator_row(row: str) -> bool:
+    """Return True when every cell is a Markdown table separator cell."""
+
+    cells = split_markdown_row(row)
+    return bool(cells) and all(
+        not cell or re.fullmatch(r":?-+:?", re.sub(r"\s+", "", cell))
+        for cell in cells
+    )
+
+
+def has_outer_structural_pipe(row: str) -> bool:
+    """Return True when a row has a leading or trailing structural pipe."""
+
+    ascii_positions, _ = _delimiter_positions(row)
+    if not ascii_positions:
+        return False
+    return (
+        not row[: ascii_positions[0]].strip()
+        or not row[ascii_positions[-1] + 1 :].strip()
+    )
+
+
+def is_repairable_table_group(rows: list[str]) -> bool:
+    """Gate repair to a separator-backed or explicitly delimited table block.
+
+    A standard unbordered table may omit outer pipes but must have a separator
+    row and at least one data row. Missing-separator repair remains available
+    for explicitly pipe-delimited rows, while ordinary multi-pipe prose stays
+    prose (issue #435 C2).
+    """
+
+    if len(rows) >= 3 and is_separator_row(rows[1]):
+        return True
+    return len(rows) >= 2 and all(has_outer_structural_pipe(row) for row in rows)
 
 
 def normalize_fullwidth_table_delimiters(row: str) -> str:

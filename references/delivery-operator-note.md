@@ -59,9 +59,10 @@ Before running the pipeline, verify:
 Malformed or LLM-produced Markdown tables are repaired to
 `max(header width, widest data row)`; a wider data row is never sliced, and
 escaped pipes (`\|`) or pipes inside inline code spans stay in one cell —
-including when deciding whether a line is a table row at all (a candidate
-needs at least two structural pipes, so single-pipe prose is never promoted
-to a table). Code spans follow CommonMark rules: backslash is ordinary
+including when deciding whether a line is a table row at all. A separator-
+backed unbordered two-column block may use one structural pipe per row;
+multi-pipe prose without a separator and standalone single-pipe prose are
+never promoted to a table. Code spans follow CommonMark rules: backslash is ordinary
 inside a span and an unmatched backtick is literal. Fullwidth `｜` is data
 inside normal rows and code spans; it is only converted to a delimiter for
 legacy rows that have no ASCII structural pipes. Existing alignment

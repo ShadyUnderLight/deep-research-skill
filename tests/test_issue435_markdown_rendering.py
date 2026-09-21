@@ -215,6 +215,28 @@ def test_process_markdown_does_not_promote_single_pipe_prose() -> None:
     assert "Alpha | Beta" in body
 
 
+def test_unbordered_two_column_table_keeps_wide_data_row() -> None:
+    md = "A | B\n--- | ---\n1 | 2 | 3\n"
+
+    normalized = normalize_text_for_pdf(md)
+    assert "| A | B |" in normalized
+    assert "| 1 | 2 | 3 |" in normalized
+
+    repaired = repair_markdown_tables(md)
+    assert "| 1 | 2 | 3 |" in repaired
+
+    body = process_markdown(md)
+    assert "<td>3</td>" in body
+
+
+def test_multi_pipe_prose_without_separator_is_not_promoted() -> None:
+    md = "Operating A | B | C\nOperating D | E | F\n"
+
+    assert normalize_text_for_pdf(md) == md.rstrip("\n")
+    assert repair_markdown_tables(md) == md
+    assert "<table" not in process_markdown(md)
+
+
 def test_tokenizer_backslash_before_closing_backtick() -> None:
     cells = split_markdown_row("| `a\\` | keep |")
     assert cells == ["`a\\`", "keep"]

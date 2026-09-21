@@ -7,6 +7,8 @@ import re
 from .fences import iter_fence_aware_lines
 from .markdown_rows import (
     count_structural_pipes,
+    is_repairable_table_group,
+    is_separator_row,
     normalize_fullwidth_table_delimiters,
     split_markdown_row,
 )
@@ -38,26 +40,19 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
     def parse_cells(row: str) -> list[str]:
         return split_markdown_row(row)
 
-    def is_separator_row(row: str) -> bool:
-        cells = parse_cells(row)
-        return bool(cells) and all(
-            not cell or re.fullmatch(r":?-+:?", re.sub(r"\s+", "", cell))
-            for cell in cells
-        )
-
     def is_layout_only(value: str) -> bool:
         return value.strip() in LAYOUT_ONLY_VALUES
 
     def table_candidate(line: str) -> str | None:
-        """Return the normalized line when it has >= 2 structural pipes.
+        """Return the normalized line when it has at least one structural pipe.
 
-        Candidate detection goes through the shared tokenizer so prose with
-        a single pipe, escaped pipes, or inline-code pipes is never mistaken
-        for a table (issue #435 review rounds 5-6).
+        The group-level gate below decides whether a one-pipe row belongs to
+        a separator-backed two-column table; escaped pipes and code-span pipes
+        remain excluded from this count (issue #435 review round 9).
         """
 
         candidate = normalize_table_candidate(line)
-        if count_structural_pipes(candidate) < 2:
+        if count_structural_pipes(candidate) < 1:
             return None
         return candidate
 
@@ -87,7 +82,7 @@ def repair_markdown_tables(md_text: str, *, warnings: list[str] | None = None) -
                 continue
             break
 
-        if len(group) < 2:
+        if not is_repairable_table_group(group):
             repaired.append(lines[index])
             index += 1
             continue

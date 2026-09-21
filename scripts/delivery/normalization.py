@@ -6,7 +6,11 @@ import re
 import unicodedata
 
 from .fences import fence_aware_runs, iter_fence_aware_lines
-from .markdown_rows import count_structural_pipes, split_markdown_row
+from .markdown_rows import (
+    count_structural_pipes,
+    is_repairable_table_group,
+    split_markdown_row,
+)
 
 
 def _format_plain_markdown(text: str) -> str:
@@ -59,6 +63,36 @@ def normalize_text_for_pdf(text: str) -> str:
         processed.extend(_format_plain_markdown(joined).split("\n"))
     text = "\n".join(processed)
 
+    source_lines = text.split("\n")
+    fence_flags = [in_fence for _, in_fence in iter_fence_aware_lines(text)]
+    table_lines: set[int] = set()
+
+    def table_candidate(line: str) -> str | None:
+        candidate = line.strip()
+        candidate = re.sub(r"^[-*+]\s+(?=\|)", "", candidate)
+        return candidate if count_structural_pipes(candidate) >= 1 else None
+
+    index = 0
+    while index < len(source_lines):
+        if fence_flags[index]:
+            index += 1
+            continue
+        candidate = table_candidate(source_lines[index])
+        if candidate is None:
+            index += 1
+            continue
+        group = [candidate]
+        end = index + 1
+        while end < len(source_lines) and not fence_flags[end]:
+            next_candidate = table_candidate(source_lines[end])
+            if next_candidate is None:
+                break
+            group.append(next_candidate)
+            end += 1
+        if is_repairable_table_group(group):
+            table_lines.update(range(index, end))
+        index = end
+
     lines: list[str] = []
     in_table = False
     pending_blank = False
@@ -69,7 +103,8 @@ def normalize_text_for_pdf(text: str) -> str:
             lines.append("")
         pending_blank = False
 
-    for raw, in_fence in iter_fence_aware_lines(text):
+    for line_index, raw in enumerate(source_lines):
+        in_fence = fence_flags[line_index]
         if in_fence:
             if in_table and lines and lines[-1] != "":
                 lines.append("")
@@ -110,7 +145,7 @@ def normalize_text_for_pdf(text: str) -> str:
             in_table = False
             continue
 
-        if count_structural_pipes(stripped) >= 2:
+        if line_index in table_lines:
             cells = split_markdown_row(stripped)
             if not in_table and lines and lines[-1] != "":
                 lines.append("")
