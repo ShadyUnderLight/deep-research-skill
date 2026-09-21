@@ -248,7 +248,13 @@ def test_separator_backed_table_bridges_textual_wide_data_after_short_row() -> N
 
 
 def test_separator_backed_table_stops_before_prose_after_short_row() -> None:
-    for prose in ("This is prose", "This | is | prose", "This | is | prose 2026"):
+    for prose in (
+        "This is prose",
+        "This | is | prose",
+        "This | is | prose 2026",
+        "this | is | prose 2026",
+        "这是 | 一段 | 纯文本",
+    ):
         md = f"A | B\n--- | ---\n1\n{prose}\n"
         body = process_markdown(md)
 

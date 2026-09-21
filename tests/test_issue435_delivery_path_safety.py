@@ -606,7 +606,8 @@ def test_delivery_distinguishes_pipe_prose_and_textual_wide_row(
     monkeypatch.setattr("delivery.pipeline._render_pdf", fake_renderer)
 
     cases = (
-        ("This | is | prose 2026", False),
+        ("this | is | prose 2026", False),
+        ("这是 | 一段 | 纯文本", False),
         ("North | Sales | Forecast", True),
     )
     for index, (tail, is_table_row) in enumerate(cases):
@@ -628,7 +629,8 @@ def test_delivery_distinguishes_pipe_prose_and_textual_wide_row(
             assert "<td>Forecast</td>" in html
         else:
             assert tail in html
-            assert "<td>This</td>" not in html
+            assert "<td>this</td>" not in html
+            assert "<td>这是</td>" not in html
 
 
 def test_keep_html_failure_updates_html_but_preserves_previous_pdf(

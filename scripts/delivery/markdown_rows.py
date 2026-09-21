@@ -215,7 +215,7 @@ def is_ambiguous_unbordered_wide_row(row: str, expected_width: int) -> bool:
     if len(cells) <= expected_width:
         return False
     profiles = {_cell_case_profile(cell) for cell in cells}
-    return "mixed" in profiles or len(profiles) > 1
+    return bool(profiles & {"lower", "cjk", "mixed"})
 
 
 def _cell_case_profile(cell: str) -> str:
@@ -224,6 +224,13 @@ def _cell_case_profile(cell: str) -> str:
     words = cell.split()
     if not words:
         return "empty"
+    if any(
+        "\u3400" <= char <= "\u4dbf"
+        or "\u4e00" <= char <= "\u9fff"
+        or "\uf900" <= char <= "\ufaff"
+        for char in cell
+    ):
+        return "cjk"
     markers: list[bool] = []
     for word in words:
         first_cased = next(
