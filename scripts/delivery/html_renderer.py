@@ -148,7 +148,7 @@ def _mark_methods_notes(html_text: str) -> str:
     )
 
 
-def style_generated_html(html_text: str) -> str:
+def style_generated_html(html_text: str, *, warnings: list[str] | None = None) -> str:
     """Apply report-specific post-processing before sanitization."""
 
     html_text = re.sub(
@@ -157,7 +157,7 @@ def style_generated_html(html_text: str) -> str:
         html_text,
         flags=re.I,
     )
-    html_text = maybe_wrap_wide_tables_in_html(html_text)
+    html_text = maybe_wrap_wide_tables_in_html(html_text, warnings=warnings)
     html_text = re.sub(
         r"<li>\s*(<(?:h1|h2|h3|h4)[^>]*>.*?</(?:h1|h2|h3|h4)>)\s*</li>",
         r"\1",
@@ -193,13 +193,13 @@ def style_generated_html(html_text: str) -> str:
     return re.sub(r"<blockquote>\s*(.*?)\s*</blockquote>", quote_repl, html_text, flags=re.S | re.I)
 
 
-def process_markdown(md_text: str) -> str:
+def process_markdown(md_text: str, *, warnings: list[str] | None = None) -> str:
     """Convert normalized Markdown into sanitized, styled body HTML."""
 
-    repaired = repair_markdown_tables(md_text)
+    repaired = repair_markdown_tables(md_text, warnings=warnings)
     generated = markdown.markdown(
         repaired,
         extensions=["extra", "tables", "fenced_code", "sane_lists", "nl2br"],
         output_format="html5",
     )
-    return sanitize_html(style_generated_html(generated))
+    return sanitize_html(style_generated_html(generated, warnings=warnings))

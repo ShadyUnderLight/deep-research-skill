@@ -43,9 +43,11 @@ NETWORK_SIGNAL_PATTERNS: dict[str, re.Pattern[str]] = {
 
 WRITE_SIGNAL_PATTERNS: dict[str, re.Pattern[str]] = {
     "delivery_temp_dir": re.compile(
-        r'tempfile\.TemporaryDirectory\(\s*prefix\s*=\s*["\']deep-research-delivery-'
+        r'tempfile\.TemporaryDirectory\(\s*prefix\s*=\s*f["\']\.[^"\']*-delivery-'
     ),
-    "markdown_html_write": re.compile(r"out_path\.write_text\(\s*full_html"),
+    "markdown_html_write": re.compile(
+        r"atomic_write_text\(\s*out_path\s*,\s*full_html"
+    ),
     "delivery_status_write": re.compile(r"write_delivery_status\("),
     "route_cards_write": re.compile(
         r"ROUTE_INDEX_PATH\.write_text|target\.write_text\(\s*content"
