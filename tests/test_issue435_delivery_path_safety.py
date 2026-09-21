@@ -634,6 +634,31 @@ def test_delivery_distinguishes_pipe_prose_and_textual_wide_row(
             assert f"<td>{prose_marker}</td>" not in html
 
 
+def test_delivery_stops_prose_after_existing_wide_row(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    report = tmp_path / "report.md"
+    report.write_text(
+        "A | B\n--- | ---\n1 | 2 | 3\nThis\n4 | 5 | 6\n",
+        encoding="utf-8",
+    )
+    pdf = tmp_path / "out.pdf"
+
+    def fake_renderer(html_path, pdf_path, **kwargs):
+        Path(pdf_path).write_bytes(b"%PDF-1.7\nwide prose boundary\n")
+
+    monkeypatch.setattr("delivery.pipeline._render_pdf", fake_renderer)
+
+    result = run_delivery(report, pdf, keep_html=True)
+
+    assert result.ok is True
+    assert result.html_path is not None
+    html = result.html_path.read_text(encoding="utf-8")
+    assert "<td>3</td>" in html
+    assert "<td>This</td>" not in html
+    assert "4 | 5 | 6" in html
+
+
 def test_keep_html_failure_updates_html_but_preserves_previous_pdf(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -291,6 +291,15 @@ def test_separator_backed_table_stops_after_one_short_row() -> None:
     assert "1 | 2 | 3" in body
 
 
+def test_separator_backed_table_stops_prose_after_existing_wide_row() -> None:
+    md = "A | B\n--- | ---\n1 | 2 | 3\nThis\n4 | 5 | 6\n"
+    body = process_markdown(md)
+
+    assert "<td>3</td>" in body
+    assert "<td>This</td>" not in body
+    assert "4 | 5 | 6" in body
+
+
 def test_empty_separator_cells_do_not_promote_a_table() -> None:
     md = "A | B | C\n| | |\nD | E | F\n"
 

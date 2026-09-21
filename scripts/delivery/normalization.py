@@ -91,6 +91,7 @@ def normalize_text_for_pdf(text: str) -> str:
         separator_backed = False
         expected_width = 0
         short_row_bridged = False
+        data_row_seen = False
         if end < len(source_lines) and not fence_flags[end]:
             second = table_candidate(source_lines[end])
             if second is not None:
@@ -117,9 +118,12 @@ def normalize_text_for_pdf(text: str) -> str:
                     and is_short_table_data_row(next_candidate, expected_width)
                 ):
                     short_row_bridged = True
+                elif separator_backed:
+                    data_row_seen = True
                 continue
             if (
                 separator_backed
+                and not data_row_seen
                 and not short_row_bridged
                 and is_simple_short_data_row(source_lines[end])
                 and end == index + 2
@@ -130,6 +134,7 @@ def normalize_text_for_pdf(text: str) -> str:
                 continue
             if (
                 separator_backed
+                and not data_row_seen
                 and not short_row_bridged
                 and end + 1 < len(source_lines)
                 and not fence_flags[end + 1]
