@@ -465,3 +465,64 @@ def test_cadence_with_explicit_frequency_and_this_year_passes(tmp_path: Path) ->
     p = _write(tmp_path, _monitoring_report(rows))
     result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
     assert not result.errors, result.errors
+
+
+
+# ── Review round 4: value-cell parsing / review action / segment isolation / cadence frequency ──
+
+
+def test_snapshot_source_id_not_counted_as_value(tmp_path: Path) -> None:
+    """A placeholder value next to a [S01] source id must not count."""
+    snapshot = (
+        "## 市场快照\n\n| 指标 | 值 | 来源 |\n|------|-----|------|\n"
+        "| 当前股价 | __x | [S01] |\n"
+        "| 市值 | __x | [S02] |\n"
+        "| PE (TTM) | __x | [S03] |\n"
+        "| PB | __x | [S01] |\n"
+        "| 52周区间 | __x | [S02] |\n"
+    )
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n" + _anchor_block()
+        + "\n" + snapshot + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("market snapshot" in e or "market-snapshot" in e for e in errors), errors
+
+
+def test_vague_action_review_not_counted(tmp_path: Path) -> None:
+    """trigger-to-action = 'review' is not a concrete action."""
+    rows = [
+        "| Margin | below 30% | weekly | S01 | review |",
+        "| Demand | below 5% | monthly | S02 | 看情况 |",
+        "| PE | above 40x | quarterly | S03 | 视情况 |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "review/看情况/视情况 actions must not count"
+
+
+def test_fy_value_does_not_leak_from_quarter_segment(tmp_path: Path) -> None:
+    """FY segment must not borrow the quarter report date as its value."""
+    anchor = "研究锚定：最新完整财年：待补充｜最新季度：2026Q1（2026-03-31）｜市场快照：待补充\n"
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n\n" + anchor + "\n"
+        + _snapshot_table() + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("anchor" in e for e in errors), (
+        "FY value placeholder + quarter only = 1 layer; must fail", errors
+    )
+
+
+def test_cadence_with_frequency_and_vague_phrase_passes(tmp_path: Path) -> None:
+    """'weekly later this year' has an explicit frequency → valid cadence."""
+    rows = [
+        "| Margin | below 30% | weekly later this year | S01 | cut production |",
+        "| Demand | below 5% | monthly | S02 | reduce headcount |",
+        "| PE | above 40x | quarterly | S03 | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert not result.errors, result.errors

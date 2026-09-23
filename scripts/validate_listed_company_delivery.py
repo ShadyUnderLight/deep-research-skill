@@ -56,13 +56,17 @@ LISTED_COMPANY_ROUTE_RE = re.compile(
 # Research-anchor block patterns
 # FY / quarter layers must be backed by an actual value, not just the label —
 # "最新完整财年：待补充" / "最新季度：待补充" do not lock a time layer (review P2).
+# In the single-line form the fields are separated by "｜"; a label must only
+# look at its own value segment, not scan into the next field (e.g. a quarter
+# report date must not be mistaken for the FY value) — review P2.
+_SEGMENT = r"[^｜\n]"
 ANCHOR_FY_RE = re.compile(
-    r"(?:最新完整财年|latest\s+FY|latest\s+full[-\s]year)[^\n]*?(?:FY\d{4}|\b\d{4}\b)"
+    r"(?:最新完整财年|latest\s+FY|latest\s+full[-\s]year)" + _SEGMENT + r"*?(?:FY\d{4}|\b\d{4}\b)"
     r"|FY\d{4}",
     re.IGNORECASE,
 )
 ANCHOR_QUARTER_RE = re.compile(
-    r"(?:最新季度|最新半年报|latest\s+quarter|interim)[^\n]*?Q[1-4]"
+    r"(?:最新季度|最新半年报|latest\s+quarter|interim)" + _SEGMENT + r"*?Q[1-4]"
     r"|Q[1-4]\s*\d{4}",
     re.IGNORECASE,
 )
@@ -70,7 +74,7 @@ ANCHOR_SNAPSHOT_RE = re.compile(
     # The snapshot label must be on the same line as an actual date — a bare
     # label such as "市场快照：待补充" does not lock a time layer (review P2).
     r"(?:快照日期|市场快照|snapshot\s+date|market\s+snapshot\s+date)"
-    r"[^\n\d]*\d{4}[-/]\d{1,2}[-/]\d{1,2}",
+    r"[^｜\n\d]*\d{4}[-/]\d{1,2}[-/]\d{1,2}",
     re.IGNORECASE,
 )
 
@@ -345,14 +349,22 @@ def check_market_snapshot(text: str, path: Path) -> list[str]:
     lines = text.splitlines()
     scan_lines = lines[start:end]
 
-    # A field counts only when its row carries a real numeric value.  The empty
-    # template table lists all eight labels but fills them with $__, __x, __% /
-    # YYYY-MM-DD placeholders, which contain no digit — so a label alone must
-    # not satisfy the snapshot (review P1).
+    # A field counts only when its *value cell* (the cell right after the label)
+    # holds a real number.  We parse table cells rather than scanning the whole
+    # row, so that the label itself (e.g. "52周区间" contains digits) and the
+    # source column (e.g. "[S01]") are not mistaken for a filled value.  The
+    # empty template table fills values with $__, __x, __% / YYYY-MM-DD (no
+    # digit) and must not satisfy the snapshot (review P1).
     def _field_filled(pat) -> bool:
         for ln in scan_lines:
-            if pat.search(ln) and re.search(r"\d", ln):
-                return True
+            if "|" not in ln:
+                continue
+            cells = [c.strip() for c in ln.split("|")]
+            for i, cell in enumerate(cells):
+                if pat.search(cell) and i + 1 < len(cells):
+                    value = cells[i + 1]
+                    if value and re.search(r"\d", value):
+                        return True
         return False
 
     matched = sum(1 for pat in SNAPSHOT_FIELD_PATTERNS if _field_filled(pat))

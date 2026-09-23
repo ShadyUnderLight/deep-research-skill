@@ -201,9 +201,9 @@ _MONITORING_THRESHOLD_NUMERIC_RE = re.compile(r"\d")
 # this also catches multi-word fillers such as "TBD Q3", "maybe EIA report" or
 # "observe weekly", not only exact-match cells (review P1).
 _MONITORING_VAGUE_WORD_RE = re.compile(
-    r"\b(?:tbd|n/?a|na|unknown|maybe|perhaps|foo|bar|test|later|soon|asap|"
-    r"eventually|sometime|whenever|observe|watch|monitor|follow|track|see)\b"
-    r"|待补充|待填写|待定|待确认|暂无|关注|观察|留意|跟踪",
+    r"\b(?:tbd|n/?a|na|unknown|maybe|perhaps|foo|bar|test|observe|watch|monitor|"
+    r"follow|track|see|review)\b"
+    r"|待补充|待填写|待定|待确认|暂无|关注|观察|留意|跟踪|看情况|视情况",
     re.IGNORECASE,
 )
 # Explicit frequency tokens — when present, "this year" / "later" style phrases
@@ -233,13 +233,19 @@ def _monitoring_field_actionable(field: str, value: str) -> bool:
     "later this year" only disqualifies when no explicit frequency is present
     (issue #436 D3, review P1/P2).
     """
+    # Cadence: an explicit frequency wins, so "weekly later this year" counts
+    # even though it contains a vague phrase (review P2).
+    if field == "cadence":
+        if _MONITORING_FREQUENCY_RE.search(value):
+            return True
+        if _MONITORING_VAGUE_WORD_RE.search(value):
+            return False
+        return not _MONITORING_CADENCE_VAGUE_RE.search(value)
+
     if _MONITORING_VAGUE_WORD_RE.search(value):
         return False
     if field == "threshold":
         return bool(_MONITORING_THRESHOLD_NUMERIC_RE.search(value))
-    if field == "cadence":
-        if _MONITORING_CADENCE_VAGUE_RE.search(value) and not _MONITORING_FREQUENCY_RE.search(value):
-            return False
     return True
 
 
