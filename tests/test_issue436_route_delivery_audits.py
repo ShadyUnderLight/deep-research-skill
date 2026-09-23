@@ -274,3 +274,69 @@ def test_external_citation_is_global_delivery_audit() -> None:
     assert audit.execution_type == "automated"
     assert audit.validator_binding == "external-citation-hygiene"
     assert "external-citation-hygiene" in audit_report._AUDIT_VALIDATOR_REGISTRY
+
+
+
+# ── Review round 1: anchor single-line form / vague monitoring / CLI fail-closed ──
+
+
+def test_single_line_anchor_form_passes(tmp_path: Path) -> None:
+    """The template's heading-less single-line anchor must satisfy the gate.
+
+    The report template (references/templates/listed-company-report.md) allows a
+    one-line form: 研究锚定：最新FY：FY2025｜最新季度：2026Q1｜市场快照：…
+    The checker must not demand a '## 研究锚定块' heading (review P1).
+    """
+    report = (
+        "# TSMC\n\n"
+        + _route_block("listed-company")
+        + "\n\n研究锚定：最新FY：FY2025｜最新季度：2026Q1｜市场快照：2026-05-29\n\n"
+        + _snapshot_table()
+        + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert not any("anchor" in e for e in errors), errors
+
+
+def test_vague_monitoring_values_not_counted(tmp_path: Path) -> None:
+    """Meaningless non-empty cells must not count (review P1).
+
+    threshold=foo / cadence=later / source=maybe / action=observe are non-empty
+    but carry no executable info; three such rows must fail the gate.
+    """
+    rows = [
+        "| Margin | foo | later | maybe | observe |",
+        "| Demand | bar | soon | perhaps | watch |",
+        "| PE | test | later | unknown | monitor |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "vague monitoring values must not reach the signal gate"
+
+
+def test_cli_missing_route_declaration_fails(tmp_path: Path) -> None:
+    """No declared primary route is a blocking failure, not a silent pass (P2)."""
+    report = "# TSMC\n\n## 投资判断\n\nGrowth intact [S01].\n\n" + _source_register()
+    proc = subprocess.run(
+        [sys.executable, VLC_SCRIPT, str(_write(tmp_path, report))],
+        capture_output=True, text=True,
+    )
+    assert proc.returncode == 2, proc.stdout
+    assert "route" in proc.stdout.lower(), proc.stdout
+
+
+def test_cli_unknown_route_declaration_fails(tmp_path: Path) -> None:
+    """An unresolvable declared route is a blocking failure, not a silent pass."""
+    report = (
+        "# TSMC\n\n"
+        + _route_block("Totally Bogus Route Name")
+        + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    proc = subprocess.run(
+        [sys.executable, VLC_SCRIPT, str(_write(tmp_path, report))],
+        capture_output=True, text=True,
+    )
+    assert proc.returncode == 2, proc.stdout
+    assert "route" in proc.stdout.lower(), proc.stdout

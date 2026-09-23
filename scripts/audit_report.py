@@ -181,14 +181,48 @@ MIN_MONITORING_SIGNALS = 3
 # a fully-defined monitoring signal (issue #436 D3).  A "filled" threshold,
 # cadence, source or trigger-to-action must be executable and verifiable.
 _MONITORING_PLACEHOLDERS = {
-    "tbd", "n/a", "na", "none", "unknown", "-", "—", "--", "—",
+    "tbd", "n/a", "na", "none", "unknown", "-", "—", "--",
     "待补充", "待填写", "待定", "待确认", "暂无", "无",
+}
+
+# Per-field minimum actionability (issue #436 D3): a non-empty cell is only
+# "fully defined" when it is actually executable/verifiable, not merely present.
+# We reject *meaningless* cells rather than imposing a rigid positive format, so
+# that legitimate values like cadence "Per project" or source "EIA report" still
+# count.  Two layers:
+#   1. a vague-token denylist catches threshold=foo / cadence=later /
+#      source=maybe / action=observe;
+#   2. threshold additionally needs a judgeable number/range/comparison.
+_MONITORING_THRESHOLD_NUMERIC_RE = re.compile(
+    r"\d|<|>|≤|≥|=|~|%|below|above|under|over|less|greater|lower|higher|"
+    r"以下|以上|以内|超过|低于|高于|大于|小于|升至|降至",
+    re.IGNORECASE,
+)
+_MONITORING_VAGUE = {
+    "foo", "bar", "test", "later", "soon", "maybe", "perhaps", "unknown",
+    "observe", "watch", "monitor", "follow", "track", "see", "review",
+    "关注", "观察", "留意", "跟踪", "待定", "看情况", "视情况",
 }
 
 
 def _is_monitoring_placeholder(value: str) -> bool:
     """True when a monitoring cell is non-empty but carries no actionable info."""
     return value.strip().strip("*:：.。").lower() in _MONITORING_PLACEHOLDERS
+
+
+def _monitoring_field_actionable(field: str, value: str) -> bool:
+    """Per-field minimum actionability beyond non-empty / not-placeholder.
+
+    A vague token (e.g. threshold=foo, cadence=later, source=maybe,
+    action=observe) never counts.  For threshold, a judgeable number/range/
+    comparison is additionally required (issue #436 D3).
+    """
+    v = value.strip().strip("*:：.。").lower()
+    if v in _MONITORING_VAGUE:
+        return False
+    if field == "threshold":
+        return bool(_MONITORING_THRESHOLD_NUMERIC_RE.search(value))
+    return True
 
 
 def _normalize_route(name: str) -> str:
@@ -472,6 +506,11 @@ def _run_market_outlook_monitoring_actionability(
                             # Non-empty but a placeholder: not actionable (issue #436 D3)
                             all_filled = False
                             missing_fields.append(f"{field} (placeholder)")
+                        elif not _monitoring_field_actionable(field, cells[col_idx]):
+                            # Non-empty but meaningless (e.g. threshold=foo,
+                            # cadence=later, source=maybe, action=observe).
+                            all_filled = False
+                            missing_fields.append(f"{field} (not actionable)")
                     if all_filled:
                         fully_defined += 1
                     else:

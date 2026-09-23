@@ -63,7 +63,7 @@ ANCHOR_QUARTER_RE = re.compile(
     re.IGNORECASE,
 )
 ANCHOR_SNAPSHOT_RE = re.compile(
-    r"(?:快照日期|snapshot\s+date|market\s+snapshot\s+date|当前股价|share\s+price)",
+    r"(?:快照日期|市场快照|snapshot\s+date|market\s+snapshot\s+date|当前股价|share\s+price)",
     re.IGNORECASE,
 )
 
@@ -73,6 +73,12 @@ ANCHOR_SNAPSHOT_RE = re.compile(
 ANCHOR_BLOCK_RE = re.compile(
     r"研究锚定|research[\s-]*anchor|current[\s-]*state[\s-]*anchor",
     re.IGNORECASE,
+)
+
+# Heading-less single-line anchor form allowed by the report template:
+#   研究锚定：最新FY：FY2025｜最新季度：2026Q1｜市场快照：2026-05-29
+ANCHOR_LINE_RE = re.compile(
+    r"^\s*(?:研究锚定|research\s*anchor)\s*[:：]", re.IGNORECASE
 )
 
 # Market snapshot table field patterns
@@ -231,6 +237,33 @@ def _has_inline_citation(text_block: str) -> bool:
     return False
 
 
+def _anchor_block_text(text: str) -> str | None:
+    """Locate the visible research-anchor block.
+
+    Returns the anchor section text whether the report uses a ``## 研究锚定块``
+    heading or the template's heading-less single-line ``研究锚定：…`` form.
+    Returns ``None`` when neither form is present.
+    """
+    section = section_text(text, ANCHOR_BLOCK_RE)
+    if section is not None:
+        return section
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if ANCHOR_LINE_RE.match(line):
+            # Collect the label line plus immediately following continuation
+            # lines (bullet sub-fields) until a blank line or new heading.
+            collected = [line]
+            j = i + 1
+            while j < len(lines):
+                nxt = lines[j]
+                if not nxt.strip() or nxt.lstrip().startswith("#"):
+                    break
+                collected.append(nxt)
+                j += 1
+            return "\n".join(collected)
+    return None
+
+
 def check_research_anchor_block(text: str, path: Path) -> list[str]:
     """Check that a Listed-Company report has a visible research-anchor block.
 
@@ -238,17 +271,19 @@ def check_research_anchor_block(text: str, path: Path) -> list[str]:
     data reference}.  The anchor block is the current-state lock that prevents
     stale-anchor drift (see ROUTING-MATRIX.md Listed Company hard-fail).
 
-    Time-layer references are counted ONLY inside the visible anchor section
-    (``## 研究锚定块`` / ``Research anchor``).  Keywords that only appear in
-    other sections, the Source Register or body prose do not satisfy the gate
-    (issue #436 D2).
+    Time-layer references are counted ONLY inside the visible anchor block.
+    The anchor block may be either a heading section (``## 研究锚定块`` /
+    ``Research anchor``) or the heading-less single-line form allowed by the
+    report template (``研究锚定：最新FY：…｜最新季度：…｜市场快照：…``).  Keywords
+    that only appear in other sections, the Source Register or body prose do
+    not satisfy the gate (issue #436 D2).
     """
-    block = section_text(text, ANCHOR_BLOCK_RE)
+    block = _anchor_block_text(text)
     if block is None:
         return [
             f"{path}: Listed-Company report has no research-anchor block "
-            "(expected a visible section such as '## 研究锚定块' / "
-            "'Research anchor' locking latest FY, latest quarter/interim and "
+            "(expected a visible '## 研究锚定块' section or a single-line "
+            "'研究锚定：…' anchor locking latest FY, latest quarter/interim and "
             "current market snapshot date)"
         ]
 
@@ -470,26 +505,32 @@ def validate_file(
 # ── CLI entry point ──────────────────────────────────────────────────────────
 
 
-def _resolve_route_id(path: Path) -> str | None:
+def _resolve_route_id(path: Path) -> tuple[str | None, str | None]:
     """Resolve the report's declared primary route to a canonical route id.
 
     Standalone CLI adapter (issue #436 D1): extract the declared primary route
     name and resolve it through the route manifest, so that canonical forms such
     as ``listed-company`` are trusted instead of re-guessed from display text.
-    Returns ``None`` when no route is declared or it cannot be resolved.
+
+    Returns ``(canonical_id, error)``:
+    - ``(None, "…")`` when no primary route is declared or it cannot be
+      resolved — the CLI must fail closed instead of silently passing;
+    - ``(canon, None)`` on success (canon may be a non-listed route, in which
+      case ``validate_file`` skips the listed-company checks).
     """
     try:
         text = path.read_text(encoding="utf-8", errors="replace")
-    except (OSError, UnicodeError):
-        return None
+    except (OSError, UnicodeError) as exc:
+        return None, f"cannot read file — {exc}"
     cleaned = sanitize_visible_markdown(text)
     raw = get_route_name(cleaned)
     if not raw:
-        return None
+        return None, "no primary route declared in the report"
     try:
-        return registry_loader.load_route_registry().resolve_route(raw)
-    except UnknownRouteError:
-        return None
+        canonical = registry_loader.load_route_registry().resolve_route(raw)
+    except UnknownRouteError as exc:
+        return None, f"declared primary route '{raw}' cannot be resolved — {exc}"
+    return canonical, None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -507,8 +548,13 @@ def main(argv: list[str] | None = None) -> int:
             all_errors.append(f"{path}: not a regular file")
             continue
         # Resolve the declared route once so canonical 'listed-company' runs the
-        # dedicated checks instead of being silently skipped (issue #436 D1).
-        route_id = _resolve_route_id(path)
+        # dedicated checks instead of being silently skipped.  A missing or
+        # unresolvable route is a blocking failure, not a silent pass
+        # (issue #436 D1).
+        route_id, route_err = _resolve_route_id(path)
+        if route_err is not None:
+            all_errors.append(f"{path}: {route_err}")
+            continue
         errors, warnings = validate_file(path, route_id=route_id)
         all_errors.extend(errors)
         all_warnings.extend(warnings)
