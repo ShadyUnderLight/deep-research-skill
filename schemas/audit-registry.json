@@ -141,6 +141,15 @@
       "description": "Research Pack validation gate: pack headings, fields, statuses and cross-references must satisfy the pack contract. Delivery-scope audit — no human checklist.",
       "automation_reference": "scripts/validate_research_pack.py",
       "validator_binding": "research-pack"
+    },
+    {
+      "id": "external-citation-hygiene",
+      "checklist": null,
+      "scope": "delivery",
+      "execution_type": "automated",
+      "description": "External citation hygiene gate: visible report text must not contain unreachable deep-research internal citation artifacts (turnNviewN / turnNsourceN / turnNsearchN, sandbox: paths, cite placeholders, file-... temp IDs). Delivery-scope audit — blocks in strict mode, advisory outside strict (issue #436 D4).",
+      "automation_reference": "scripts/validate_external_citation_hygiene.py",
+      "validator_binding": "external-citation-hygiene"
     }
   ]
 }

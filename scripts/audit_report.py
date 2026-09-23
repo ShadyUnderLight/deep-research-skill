@@ -84,6 +84,10 @@ from validate_contract import (
 # Validators executed only through required-audit bindings (issue #378).
 from validate_markdown_delivery import validate_markdown_delivery as vmd_validate
 from validate_forward_looking_labels import validate_file as vfl_validate_file
+from validate_external_citation_hygiene import (
+    check_external_citation_hygiene,
+    strip_fenced_code_blocks as vch_strip_fences,
+)
 from validate_research_pack import (
     find_missing_headings as vrp_find_missing_headings,
     run_strict_checks as vrp_run_strict_checks,
@@ -171,6 +175,20 @@ if _DEFAULT_ROUTE not in _ROUTE_REGISTRY.route_ids():
 # Minimum number of fully-defined monitoring signals required for
 # market-outlook reports to pass the actionability gate.
 MIN_MONITORING_SIGNALS = 3
+
+
+# Cells that are non-empty but carry no actionable information do NOT count as
+# a fully-defined monitoring signal (issue #436 D3).  A "filled" threshold,
+# cadence, source or trigger-to-action must be executable and verifiable.
+_MONITORING_PLACEHOLDERS = {
+    "tbd", "n/a", "na", "none", "unknown", "-", "—", "--", "—",
+    "待补充", "待填写", "待定", "待确认", "暂无", "无",
+}
+
+
+def _is_monitoring_placeholder(value: str) -> bool:
+    """True when a monitoring cell is non-empty but carries no actionable info."""
+    return value.strip().strip("*:：.。").lower() in _MONITORING_PLACEHOLDERS
 
 
 def _normalize_route(name: str) -> str:
@@ -291,9 +309,15 @@ def _run_source_label_consistency(path: Path, **kwargs: bool) -> CheckResult:
 
 
 def _run_listed_company_delivery(path: Path, **kwargs: bool) -> CheckResult:
-    """Run validate_listed_company_delivery checks."""
+    """Run validate_listed_company_delivery checks.
+
+    The orchestrator has already resolved the primary route to a canonical id;
+    forward it so the dedicated checks run on the canonical ``listed-company``
+    route instead of being re-guessed from display text (issue #436 D1).
+    """
+    route_id = kwargs.get("route_id")
     try:
-        errors, warnings = vlc_validate_file(path)
+        errors, warnings = vlc_validate_file(path, route_id=route_id)
     except Exception as exc:
         return CheckResult(
             name="listed-company-delivery",
@@ -444,6 +468,10 @@ def _run_market_outlook_monitoring_actionability(
                         if col_idx >= len(cells) or not cells[col_idx]:
                             all_filled = False
                             missing_fields.append(field)
+                        elif _is_monitoring_placeholder(cells[col_idx]):
+                            # Non-empty but a placeholder: not actionable (issue #436 D3)
+                            all_filled = False
+                            missing_fields.append(f"{field} (placeholder)")
                     if all_filled:
                         fully_defined += 1
                     else:
@@ -793,6 +821,29 @@ def _run_forward_looking(path: Path, **kwargs: bool) -> CheckResult:
     return CheckResult(name="forward-looking-claims", errors=list(hits), warnings=[])
 
 
+def _run_external_citation_hygiene(path: Path, **kwargs: bool) -> CheckResult:
+    """Block unreachable deep-research internal citation artifacts (issue #436 D4).
+
+    Operates on visible Markdown only (fences stripped), so internal refs that
+    appear inside fenced code examples do not pollute the gate while real
+    visible text still blocks.  Findings are returned as errors so the
+    delivery-scope loop blocks them in strict mode and records them advisory
+    outside strict.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        return CheckResult(
+            name="external-citation-hygiene",
+            errors=[f"{path}: cannot read file — {exc}"],
+        )
+    cleaned = vch_strip_fences(text)
+    findings = check_external_citation_hygiene(cleaned)
+    return CheckResult(
+        name="external-citation-hygiene", errors=list(findings), warnings=[]
+    )
+
+
 def _run_claim_alignment(path: Path, **kwargs: object) -> CheckResult:
     """Run offline claim–source alignment on a bundle (issue #419)."""
     bundle_arg = kwargs.get("claim_alignment_bundle")
@@ -912,6 +963,7 @@ _AUDIT_VALIDATOR_REGISTRY: dict[str, ValidatorFn] = {
     "research-pack": _run_research_pack,
     "forward-looking-claims": _run_forward_looking,
     "claim-alignment": _run_claim_alignment,
+    "external-citation-hygiene": _run_external_citation_hygiene,
 }
 
 _missing_audit_fns = registry_loader.AUDIT_VALIDATOR_IDS - set(_AUDIT_VALIDATOR_REGISTRY)
@@ -2174,7 +2226,9 @@ def _audit_report_impl(
     # without a contract fails by definition instead of silently skipping.
     effective_require_contract = require_contract or strict
 
-    # Run each validator with shared flags as keyword arguments
+    # Run each validator with shared flags as keyword arguments.
+    # route_id is the orchestrator-resolved canonical route (issue #436 D1):
+    # route-specific validators trust it instead of re-guessing from display text.
     results: list[CheckResult] = []
     for validator in validators:
         result = validator(
@@ -2183,6 +2237,7 @@ def _audit_report_impl(
             require_contract=effective_require_contract,
             research_pack=research_pack,
             activation_snapshot=activation_snapshot,
+            route_id=resolved_route,
         )
         results.append(result)
 

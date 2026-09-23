@@ -64,6 +64,7 @@ AUDIT_VALIDATOR_IDS: frozenset[str] = frozenset({
     "research-pack",
     "forward-looking-claims",
     "claim-alignment",
+    "external-citation-hygiene",
 })
 
 # All ids an audit's validator_binding may reference.

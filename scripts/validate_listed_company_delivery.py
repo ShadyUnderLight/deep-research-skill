@@ -35,8 +35,12 @@ from validate_report_quality import (
     section_text,
     parse_table,
     find_col_index,
+    get_route_name,
 )
 from validate_contract import sanitize_visible_markdown
+
+import registry_loader
+from registry_loader import UnknownRouteError
 
 EXIT_PASS = 0
 EXIT_ISSUES = 2
@@ -60,6 +64,14 @@ ANCHOR_QUARTER_RE = re.compile(
 )
 ANCHOR_SNAPSHOT_RE = re.compile(
     r"(?:快照日期|snapshot\s+date|market\s+snapshot\s+date|当前股价|share\s+price)",
+    re.IGNORECASE,
+)
+
+# The visible research-anchor block heading.  Anchor time-layers must be found
+# inside this section — keywords in other sections, the Source Register or body
+# prose do not count (issue #436 D2).
+ANCHOR_BLOCK_RE = re.compile(
+    r"研究锚定|research[\s-]*anchor|current[\s-]*state[\s-]*anchor",
     re.IGNORECASE,
 )
 
@@ -131,11 +143,13 @@ PRIMARY_ROUTE_RE = re.compile(r"\*\*Primary\s+route\*\*", re.IGNORECASE)
 
 
 def _is_listed_company(text: str) -> bool:
-    """Check whether the report declares a Listed-Company Primary route.
+    """Legacy display-text adapter: does the report declare Listed-Company?
 
-    Only checks the Primary route line (not Secondary route or fallback),
-    to avoid false positives when Listed Company is a secondary attachment
-    to a different primary route.
+    Only used when the caller has NOT supplied an orchestrator-resolved
+    canonical ``route_id``.  When the orchestrator runs this validator it
+    already resolved the route (issue #436 D1) and passes the canonical id,
+    so this display-text guess must never be allowed to silently skip the
+    dedicated checks.
     """
     sec = section_text(text, ROUTE_AUDIT_HEADING)
     if sec is None:
@@ -223,20 +237,35 @@ def check_research_anchor_block(text: str, path: Path) -> list[str]:
     Required: at least 2 of {FY reference, latest quarter, snapshot date/market
     data reference}.  The anchor block is the current-state lock that prevents
     stale-anchor drift (see ROUTING-MATRIX.md Listed Company hard-fail).
+
+    Time-layer references are counted ONLY inside the visible anchor section
+    (``## 研究锚定块`` / ``Research anchor``).  Keywords that only appear in
+    other sections, the Source Register or body prose do not satisfy the gate
+    (issue #436 D2).
     """
+    block = section_text(text, ANCHOR_BLOCK_RE)
+    if block is None:
+        return [
+            f"{path}: Listed-Company report has no research-anchor block "
+            "(expected a visible section such as '## 研究锚定块' / "
+            "'Research anchor' locking latest FY, latest quarter/interim and "
+            "current market snapshot date)"
+        ]
+
     hits = 0
-    if ANCHOR_FY_RE.search(text):
+    if ANCHOR_FY_RE.search(block):
         hits += 1
-    if ANCHOR_QUARTER_RE.search(text):
+    if ANCHOR_QUARTER_RE.search(block):
         hits += 1
-    if ANCHOR_SNAPSHOT_RE.search(text):
+    if ANCHOR_SNAPSHOT_RE.search(block):
         hits += 1
 
     if hits < 2:
         return [
-            f"{path}: Listed-Company report lacks a complete research-anchor block "
-            f"(found {hits}/3 required time-layer references: latest FY, "
-            f"latest quarter/interim, current market snapshot date)"
+            f"{path}: research-anchor block only locks {hits}/3 required "
+            "time-layer references (latest FY, latest quarter/interim, "
+            "current market snapshot date); keywords outside the anchor block "
+            "do not count"
         ]
     return []
 
@@ -253,18 +282,26 @@ def check_market_snapshot(text: str, path: Path) -> list[str]:
     We use a warning threshold at <5 fields because some reports split
     the snapshot across sections.
     """
-    # Find the market snapshot section — look for heading patterns
-    # and scan the surrounding text for field indicators
+    # Find the market snapshot section — look for heading patterns and scan
+    # ONLY within that section.  The previous whole-document fallback let
+    # reports satisfy the field count from keywords scattered elsewhere, so it
+    # is removed (issue #436 D2): a missing snapshot section is reported
+    # instead of being silently papered over.
     snapshot_heading = re.compile(
         r"(?:市场快照|market snapshot|financial snapshot|关键指标|key metrics)",
         re.IGNORECASE,
     )
     bounds = section_bounds(text, snapshot_heading)
-    scan_region = text  # fallback: scan entire document
-    if bounds is not None:
-        start, end = bounds
-        lines = text.splitlines()
-        scan_region = "\n".join(lines[start : min(end, start + 60)])
+    if bounds is None:
+        return [
+            f"{path}: Listed-Company report has no market-snapshot section "
+            "(expected a visible section such as '## 市场快照' / "
+            "'Market snapshot' with share price, market cap, PE(TTM/Forward), "
+            "PB, PS, 52-week range, dividend yield)"
+        ]
+    start, end = bounds
+    lines = text.splitlines()
+    scan_region = "\n".join(lines[start:end])
 
     # Count matched field patterns
     matched = sum(1 for pat in SNAPSHOT_FIELD_PATTERNS if pat.search(scan_region))
@@ -378,8 +415,19 @@ def check_secondary_route_hard_fail(text: str, path: Path) -> list[str]:
 # ── Main validate function ───────────────────────────────────────────────────
 
 
-def validate_file(path: Path) -> tuple[list[str], list[str]]:
+def validate_file(
+    path: Path, route_id: str | None = None
+) -> tuple[list[str], list[str]]:
     """Run all Listed-Company delivery checks on a report file.
+
+    Args:
+        path: report markdown file.
+        route_id: canonical route id already resolved by the orchestrator
+            (e.g. ``"listed-company"``).  When supplied, the listed-company
+            checks run iff this is the listed-company canonical id; the
+            display-text re-guess is NOT used to decide whether to run
+            (issue #436 D1).  When ``None`` (legacy/standalone callers that do
+            not resolve the route), fall back to the display-text adapter.
 
     Returns (errors, warnings):
     - errors — blocking; must be fixed before delivery
@@ -392,9 +440,11 @@ def validate_file(path: Path) -> tuple[list[str], list[str]]:
 
     cleaned = sanitize_visible_markdown(text)
 
-    # Only run Listed-Company-specific checks if the report declares
-    # this route.  Non-listed-company reports pass through silently.
-    if not _is_listed_company(cleaned):
+    # Route dispatch: trust the orchestrator-resolved canonical id.  Only when
+    # no route id is supplied do we fall back to the legacy display-text guess.
+    if route_id is None:
+        route_id = "listed-company" if _is_listed_company(cleaned) else None
+    if route_id != "listed-company":
         return [], []
 
     errors: list[str] = []
@@ -420,6 +470,28 @@ def validate_file(path: Path) -> tuple[list[str], list[str]]:
 # ── CLI entry point ──────────────────────────────────────────────────────────
 
 
+def _resolve_route_id(path: Path) -> str | None:
+    """Resolve the report's declared primary route to a canonical route id.
+
+    Standalone CLI adapter (issue #436 D1): extract the declared primary route
+    name and resolve it through the route manifest, so that canonical forms such
+    as ``listed-company`` are trusted instead of re-guessed from display text.
+    Returns ``None`` when no route is declared or it cannot be resolved.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError):
+        return None
+    cleaned = sanitize_visible_markdown(text)
+    raw = get_route_name(cleaned)
+    if not raw:
+        return None
+    try:
+        return registry_loader.load_route_registry().resolve_route(raw)
+    except UnknownRouteError:
+        return None
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         description="Listed-Company delivery-time validator.",
@@ -434,7 +506,10 @@ def main(argv: list[str] | None = None) -> int:
         if not path.is_file():
             all_errors.append(f"{path}: not a regular file")
             continue
-        errors, warnings = validate_file(path)
+        # Resolve the declared route once so canonical 'listed-company' runs the
+        # dedicated checks instead of being silently skipped (issue #436 D1).
+        route_id = _resolve_route_id(path)
+        errors, warnings = validate_file(path, route_id=route_id)
         all_errors.extend(errors)
         all_warnings.extend(warnings)
 
