@@ -54,12 +54,16 @@ LISTED_COMPANY_ROUTE_RE = re.compile(
 )
 
 # Research-anchor block patterns
+# FY / quarter layers must be backed by an actual value, not just the label —
+# "最新完整财年：待补充" / "最新季度：待补充" do not lock a time layer (review P2).
 ANCHOR_FY_RE = re.compile(
-    r"(?:最新完整财年|latest\s+FY|latest\s+full[-\s]year|FY\d{4})",
+    r"(?:最新完整财年|latest\s+FY|latest\s+full[-\s]year)[^\n]*?(?:FY\d{4}|\b\d{4}\b)"
+    r"|FY\d{4}",
     re.IGNORECASE,
 )
 ANCHOR_QUARTER_RE = re.compile(
-    r"(?:最新季度|最新[半]?年[度报]|latest\s+quarter|Q[1-4]\s*\d{4}|interim)",
+    r"(?:最新季度|最新半年报|latest\s+quarter|interim)[^\n]*?Q[1-4]"
+    r"|Q[1-4]\s*\d{4}",
     re.IGNORECASE,
 )
 ANCHOR_SNAPSHOT_RE = re.compile(
@@ -339,10 +343,19 @@ def check_market_snapshot(text: str, path: Path) -> list[str]:
         ]
     start, end = bounds
     lines = text.splitlines()
-    scan_region = "\n".join(lines[start:end])
+    scan_lines = lines[start:end]
 
-    # Count matched field patterns
-    matched = sum(1 for pat in SNAPSHOT_FIELD_PATTERNS if pat.search(scan_region))
+    # A field counts only when its row carries a real numeric value.  The empty
+    # template table lists all eight labels but fills them with $__, __x, __% /
+    # YYYY-MM-DD placeholders, which contain no digit — so a label alone must
+    # not satisfy the snapshot (review P1).
+    def _field_filled(pat) -> bool:
+        for ln in scan_lines:
+            if pat.search(ln) and re.search(r"\d", ln):
+                return True
+        return False
+
+    matched = sum(1 for pat in SNAPSHOT_FIELD_PATTERNS if _field_filled(pat))
     if matched < REQUIRED_SNAPSHOT_FIELDS:
         return [
             f"{path}: Listed-Company market snapshot has only {matched}/8 "

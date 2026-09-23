@@ -399,3 +399,69 @@ def test_placeholder_anchor_snapshot_label_not_a_layer(tmp_path: Path) -> None:
     assert any("anchor" in e for e in errors), (
         "FY + placeholder snapshot only locks 1/3 layers; must fail", errors
     )
+
+
+
+# ── Review round 3: snapshot placeholder values / multi-word fillers / quarter value / cadence positive ──
+
+
+def test_snapshot_table_labels_with_placeholder_values_fail(tmp_path: Path) -> None:
+    """All 8 labels present but template placeholder values must not pass."""
+    snapshot = (
+        "## 市场快照\n\n"
+        "| 指标 | 值 | 来源 |\n|------|-----|------|\n"
+        "| 当前股价 | $__ | [数据源](URL) |\n"
+        "| 快照日期 | YYYY-MM-DD | — |\n"
+        "| 市值 | $__ | [数据源](URL) |\n"
+        "| PE (TTM) | __x | [数据源](URL) |\n"
+        "| PE (Forward) | __x | [数据源](URL) |\n"
+        "| PB | __x | [数据源](URL) |\n"
+        "| PS | __x | [数据源](URL) |\n"
+        "| 52周区间 | $__ - $__ | [数据源](URL) |\n"
+        "| 股息率 | __% | [数据源](URL) |\n"
+    )
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n" + _anchor_block()
+        + "\n" + snapshot + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("market snapshot" in e or "market-snapshot" in e for e in errors), errors
+
+
+def test_multiword_placeholder_phrases_not_counted(tmp_path: Path) -> None:
+    """'TBD Q3' / 'maybe EIA report' / 'observe weekly' still count as fillers."""
+    rows = [
+        "| Margin | TBD Q3 | weekly | S01 | cut production |",
+        "| Demand | below 5% | monthly | maybe EIA report | reduce headcount |",
+        "| PE | above 40x | quarterly | S03 | observe weekly |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "multi-word placeholder fillers must not count"
+
+
+def test_quarter_label_with_placeholder_value_not_a_layer(tmp_path: Path) -> None:
+    """'最新季度：待补充' must not count as a quarter time layer."""
+    anchor = "研究锚定：最新完整财年：FY2025｜最新季度：待补充\n"
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n\n" + anchor + "\n"
+        + _snapshot_table() + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("anchor" in e for e in errors), (
+        "FY only + placeholder quarter locks 1/3; must fail", errors
+    )
+
+
+def test_cadence_with_explicit_frequency_and_this_year_passes(tmp_path: Path) -> None:
+    """'monthly through this year' has an explicit frequency → valid cadence."""
+    rows = [
+        "| Margin | below 30% | monthly through this year | S01 | cut production |",
+        "| Demand | below 5% | weekly | S02 | reduce headcount |",
+        "| PE | above 40x | quarterly | S03 | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert not result.errors, result.errors

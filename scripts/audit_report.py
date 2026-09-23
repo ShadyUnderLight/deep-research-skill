@@ -193,20 +193,31 @@ _MONITORING_PLACEHOLDERS = {
 #   1. a vague-token denylist catches threshold=foo / cadence=later /
 #      source=maybe / action=observe;
 #   2. threshold additionally needs a judgeable number/range/comparison.
-# A threshold must carry a judgeable number/range — a bare comparison operator
-# such as "≥" or ">" with no value does not count (review P1).
+# A threshold must carry a judgeable number — a bare comparison operator such
+# as "≥" / ">" with no value does not count (review P1).
 _MONITORING_THRESHOLD_NUMERIC_RE = re.compile(r"\d")
-# Cadence phrases that name no real frequency/period (review P1).
+
+# A cell that contains a placeholder/vague token *as a word* does not count —
+# this also catches multi-word fillers such as "TBD Q3", "maybe EIA report" or
+# "observe weekly", not only exact-match cells (review P1).
+_MONITORING_VAGUE_WORD_RE = re.compile(
+    r"\b(?:tbd|n/?a|na|unknown|maybe|perhaps|foo|bar|test|later|soon|asap|"
+    r"eventually|sometime|whenever|observe|watch|monitor|follow|track|see)\b"
+    r"|待补充|待填写|待定|待确认|暂无|关注|观察|留意|跟踪",
+    re.IGNORECASE,
+)
+# Explicit frequency tokens — when present, "this year" / "later" style phrases
+# are not treated as vague (review P2).
+_MONITORING_FREQUENCY_RE = re.compile(
+    r"daily|weekly|biweekly|monthly|quarterly|annual|yearly|hourly|intraday|"
+    r"每[日周季年]|每天",
+    re.IGNORECASE,
+)
 _MONITORING_CADENCE_VAGUE_RE = re.compile(
     r"later this|later|soon|asap|eventually|sometime|whenever|in the future|"
     r"this year|待定",
     re.IGNORECASE,
 )
-_MONITORING_VAGUE = {
-    "foo", "bar", "test", "later", "soon", "maybe", "perhaps", "unknown",
-    "observe", "watch", "monitor", "follow", "track", "see", "review",
-    "关注", "观察", "留意", "跟踪", "待定", "看情况", "视情况",
-}
 
 
 def _is_monitoring_placeholder(value: str) -> bool:
@@ -217,18 +228,18 @@ def _is_monitoring_placeholder(value: str) -> bool:
 def _monitoring_field_actionable(field: str, value: str) -> bool:
     """Per-field minimum actionability beyond non-empty / not-placeholder.
 
-    A vague token (e.g. threshold=foo, cadence=later, source=maybe,
-    action=observe) never counts.  For threshold, a judgeable number/range/
-    comparison is additionally required (issue #436 D3).
+    Any cell containing a placeholder/vague word never counts.  threshold
+    additionally needs a judgeable number.  For cadence, a vague phrase such as
+    "later this year" only disqualifies when no explicit frequency is present
+    (issue #436 D3, review P1/P2).
     """
-    v = value.strip().strip("*:：.。").lower()
-    if v in _MONITORING_VAGUE:
+    if _MONITORING_VAGUE_WORD_RE.search(value):
         return False
     if field == "threshold":
-        # A number is required; a bare "≥" / ">" is not a threshold.
         return bool(_MONITORING_THRESHOLD_NUMERIC_RE.search(value))
     if field == "cadence":
-        return not _MONITORING_CADENCE_VAGUE_RE.search(value)
+        if _MONITORING_CADENCE_VAGUE_RE.search(value) and not _MONITORING_FREQUENCY_RE.search(value):
+            return False
     return True
 
 
