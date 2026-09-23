@@ -193,9 +193,13 @@ _MONITORING_PLACEHOLDERS = {
 #   1. a vague-token denylist catches threshold=foo / cadence=later /
 #      source=maybe / action=observe;
 #   2. threshold additionally needs a judgeable number/range/comparison.
-_MONITORING_THRESHOLD_NUMERIC_RE = re.compile(
-    r"\d|<|>|≤|≥|=|~|%|below|above|under|over|less|greater|lower|higher|"
-    r"以下|以上|以内|超过|低于|高于|大于|小于|升至|降至",
+# A threshold must carry a judgeable number/range — a bare comparison operator
+# such as "≥" or ">" with no value does not count (review P1).
+_MONITORING_THRESHOLD_NUMERIC_RE = re.compile(r"\d")
+# Cadence phrases that name no real frequency/period (review P1).
+_MONITORING_CADENCE_VAGUE_RE = re.compile(
+    r"later this|later|soon|asap|eventually|sometime|whenever|in the future|"
+    r"this year|待定",
     re.IGNORECASE,
 )
 _MONITORING_VAGUE = {
@@ -221,7 +225,10 @@ def _monitoring_field_actionable(field: str, value: str) -> bool:
     if v in _MONITORING_VAGUE:
         return False
     if field == "threshold":
+        # A number is required; a bare "≥" / ">" is not a threshold.
         return bool(_MONITORING_THRESHOLD_NUMERIC_RE.search(value))
+    if field == "cadence":
+        return not _MONITORING_CADENCE_VAGUE_RE.search(value)
     return True
 
 

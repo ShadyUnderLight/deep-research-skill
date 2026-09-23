@@ -63,7 +63,10 @@ ANCHOR_QUARTER_RE = re.compile(
     re.IGNORECASE,
 )
 ANCHOR_SNAPSHOT_RE = re.compile(
-    r"(?:快照日期|市场快照|snapshot\s+date|market\s+snapshot\s+date|当前股价|share\s+price)",
+    # The snapshot label must be on the same line as an actual date — a bare
+    # label such as "市场快照：待补充" does not lock a time layer (review P2).
+    r"(?:快照日期|市场快照|snapshot\s+date|market\s+snapshot\s+date)"
+    r"[^\n\d]*\d{4}[-/]\d{1,2}[-/]\d{1,2}",
     re.IGNORECASE,
 )
 
@@ -488,8 +491,10 @@ def validate_file(
     # 1. Research-anchor block
     errors.extend(check_research_anchor_block(cleaned, path))
 
-    # 2. Market snapshot completeness
-    warnings.extend(check_market_snapshot(cleaned, path))
+    # 2. Market snapshot completeness — a missing section or insufficient
+    # fields is a hard failure (issue #436), not a warning that collapses to
+    # conditional-pass.
+    errors.extend(check_market_snapshot(cleaned, path))
 
     # 3. Strong wording scan
     e, w = check_strong_wording(cleaned, path)

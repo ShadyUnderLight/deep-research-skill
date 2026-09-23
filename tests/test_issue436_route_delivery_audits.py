@@ -340,3 +340,62 @@ def test_cli_unknown_route_declaration_fails(tmp_path: Path) -> None:
     )
     assert proc.returncode == 2, proc.stdout
     assert "route" in proc.stdout.lower(), proc.stdout
+
+
+
+# ── Review round 2: snapshot hard-fail / bare-operator threshold / placeholder anchor ──
+
+
+def test_market_snapshot_missing_is_error(tmp_path: Path) -> None:
+    """No market-snapshot section must be a blocking error, not conditional-pass."""
+    report = (
+        "# TSMC\n\n"
+        + _route_block("listed-company")
+        + "\n"
+        + _anchor_block()
+        + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, warnings = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("market-snapshot" in e for e in errors), (errors, warnings)
+
+
+def test_bare_comparison_threshold_not_counted(tmp_path: Path) -> None:
+    """A bare '≥' with no number is not a judgeable threshold."""
+    rows = [
+        "| Margin | ≥ | weekly | S01 | cut production |",
+        "| Demand | > | monthly | S02 | reduce headcount |",
+        "| PE | ~ | quarterly | S03 | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "bare comparison operators must not count as thresholds"
+
+
+def test_vague_cadence_phrase_not_counted(tmp_path: Path) -> None:
+    """'later this year' / 'soon' cadence phrases are not real frequencies."""
+    rows = [
+        "| Margin | below 30% | later this year | S01 | cut production |",
+        "| Demand | below 5% | soon | S02 | reduce headcount |",
+        "| PE | above 40x | asap | S03 | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "vague cadence phrases must not count"
+
+
+def test_placeholder_anchor_snapshot_label_not_a_layer(tmp_path: Path) -> None:
+    """'市场快照：待补充' must not count as a locked snapshot time layer."""
+    anchor = "研究锚定：最新FY：FY2025｜市场快照：待补充\n"
+    report = (
+        "# TSMC\n\n"
+        + _route_block("listed-company")
+        + "\n\n" + anchor + "\n"
+        + _snapshot_table()
+        + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("anchor" in e for e in errors), (
+        "FY + placeholder snapshot only locks 1/3 layers; must fail", errors
+    )
