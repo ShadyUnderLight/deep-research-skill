@@ -878,8 +878,8 @@ def test_generic_report_and_data_are_not_monitoring_sources(tmp_path: Path) -> N
     """Generic capitalized nouns do not identify a monitoring data source."""
     rows = [
         "| Margin | below 30% | weekly | Report | cut production |",
-        "| Demand | below 5% | monthly | Public Data | reduce headcount |",
-        "| PE | above 40x | quarterly | Industry data | take profit |",
+        "| Demand | below 5% | monthly | 行业报告 | reduce headcount |",
+        "| PE | above 40x | quarterly | 政府报告 | take profit |",
     ]
     p = _write(tmp_path, _monitoring_report(rows))
     result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
@@ -889,6 +889,9 @@ def test_generic_report_and_data_are_not_monitoring_sources(tmp_path: Path) -> N
     assert not audit_report._monitoring_field_actionable("source", "Public Data")
     assert not audit_report._monitoring_field_actionable("source", "Public Data Report")
     assert not audit_report._monitoring_field_actionable("source", "行业数据")
+    assert not audit_report._monitoring_field_actionable("source", "行业报告")
+    assert not audit_report._monitoring_field_actionable("source", "政府报告")
+    assert not audit_report._monitoring_field_actionable("source", "Industry data")
 
 
 def test_chinese_monitoring_values_are_actionable(tmp_path: Path) -> None:

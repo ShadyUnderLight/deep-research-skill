@@ -232,7 +232,8 @@ _MONITORING_SOURCE_UNSPECIFIED_RE = re.compile(
     r"^(?:(?:some|any|various|generic|unspecified)\s+)?"
     r"(?:data\s+)?sources?(?:\s+(?:name|report|details?))?$|"
     r"^(?:some|any|various|generic|unspecified)\s+.*$|"
-    r"^(?:行业|市场|公开|公共|一般|通用|政府|公司)数据$",
+    r"^(?:行业|市场|公开|公共|一般|通用|政府|公司|官方)"
+    r"(?:数据|报告|新闻|公告|月报|季报|年报|日报|来源|资料)$",
     re.IGNORECASE,
 )
 _MONITORING_SOURCE_LOCATOR_RE = re.compile(r"\bS\d+\b|https?://\S+", re.IGNORECASE)
