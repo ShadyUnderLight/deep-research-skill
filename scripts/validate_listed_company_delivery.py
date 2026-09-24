@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 # Reuse shared helpers from validate_report_quality
@@ -53,34 +54,40 @@ LISTED_COMPANY_ROUTE_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Research-anchor block patterns
-# FY / quarter layers must be backed by an actual value, not just the label —
-# "最新完整财年：待补充" / "最新季度：待补充" do not lock a time layer (review P2).
-# In the single-line form the fields are separated by "｜"; a label must only
-# look at its own value segment, not scan into the next field (e.g. a quarter
-# report date must not be mistaken for the FY value) — review P2.
-_SEGMENT = r"[^｜\n]"
-# The value MUST sit in its own labeled field segment — a bare "FY2025" /
-# "2026Q1" mentioned in historical comparison prose must not count as a current
-# time layer (review P1).
-ANCHOR_FY_RE = re.compile(
-    r"(?:最新完整财年|最新FY|最新财年|latest\s+FY|latest\s+full[-\s]year)"
-    + _SEGMENT + r"*?(?:FY\d{4}|\b\d{4}\b)",
+# Research-anchor fields are parsed as labeled values, rather than searching
+# the whole field segment: a period/date in a note after "待补充" must not
+# masquerade as the current anchor (review P1).
+ANCHOR_FY_LABEL_RE = re.compile(
+    r"(?:最新完整财年|最新FY|最新财年|latest\s+FY|latest\s+full[-\s]year)\s*[:：]\s*(.*)$",
     re.IGNORECASE,
 )
-# A quarter/interim value must carry a year (2026Q1 / Q1 2026 / 2026H1) — a bare
-# "Q1" cannot pin down the period (review P1).
-ANCHOR_QUARTER_RE = re.compile(
-    r"(?:最新季度|最新半年报|latest\s+quarter|interim)"
-    + _SEGMENT + r"*?(?:20\d{2}\s*[Qq][1-4]|[Qq][1-4]\s*20\d{2}|"
-    r"20\d{2}\s*H[12]|H[12]\s*20\d{2}|20\d{2}年[一二三四]季(报|度)?)",
+ANCHOR_QUARTER_LABEL_RE = re.compile(
+    r"(?:最新季度|最新半年报|latest\s+quarter|interim)\s*[:：]\s*(.*)$",
     re.IGNORECASE,
 )
-ANCHOR_SNAPSHOT_RE = re.compile(
-    # The snapshot label must be on the same line as an actual date — a bare
-    # label such as "市场快照：待补充" does not lock a time layer (review P2).
-    r"(?:快照日期|市场快照|snapshot\s+date|market\s+snapshot\s+date)"
-    r"[^｜\n\d]*\d{4}[-/]\d{1,2}[-/]\d{1,2}",
+ANCHOR_SNAPSHOT_LABEL_RE = re.compile(
+    r"(?:快照日期|市场快照|snapshot\s+date|market\s+snapshot\s+date)\s*[:：]\s*(.*)$",
+    re.IGNORECASE,
+)
+ANCHOR_VALUE_PLACEHOLDER_RE = re.compile(
+    r"\b(?:tbd|n/?a|none|unknown|pending|maybe|perhaps|not provided|"
+    r"not available|unavailable)\b"
+    r"|待补充|待填写|待定|待确认|待核实|待更新|暂无",
+    re.IGNORECASE,
+)
+ANCHOR_FY_VALUE_RE = re.compile(
+    r"^(?:FY\s*20\d{2}|20\d{2}(?:年(?:年报|报|年度|年)?)?)(?=$|[\s（(,，。；;])",
+    re.IGNORECASE,
+)
+ANCHOR_QUARTER_VALUE_RE = re.compile(
+    r"^(?:20\d{2}\s*[Qq][1-4]|[Qq][1-4]\s*20\d{2}|"
+    r"20\d{2}\s*[Hh][12]|[Hh][12]\s*20\d{2}|"
+    r"20\d{2}年[一二三四]季(?:报|度)?)(?=$|[\s（(,，。；;])",
+    re.IGNORECASE,
+)
+ANCHOR_SNAPSHOT_VALUE_RE = re.compile(
+    r"^(?:(?:as\s+of|截至|截至日期)\s*)?"
+    r"\d{4}[-/]\d{1,2}[-/]\d{1,2}(?=$|[\sTt（(,，。；;])",
     re.IGNORECASE,
 )
 
@@ -98,19 +105,92 @@ ANCHOR_LINE_RE = re.compile(
     r"^\s*(?:研究锚定|research\s*anchor)\s*[:：]", re.IGNORECASE
 )
 
-# Market snapshot table field patterns
-SNAPSHOT_FIELD_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"(?:当前股价|share price|股价)", re.IGNORECASE),
-    re.compile(r"(?:市值|market cap|market capitalization)", re.IGNORECASE),
-    re.compile(r"PE\s*\(TTM\)", re.IGNORECASE),
-    re.compile(r"PE\s*\(Forward\)|PE\s*\(Fwd\)|forward\s+PE", re.IGNORECASE),
-    re.compile(r"PB\b", re.IGNORECASE),
-    re.compile(r"PS\b", re.IGNORECASE),
-    re.compile(r"(?:52周|52[-\s]week|52W)", re.IGNORECASE),
-    re.compile(r"(?:股息率|dividend yield)", re.IGNORECASE),
-]
-
 REQUIRED_SNAPSHOT_FIELDS = 5
+_SNAPSHOT_NUMBER = r"\d+(?:,\d{3})*(?:\.\d+)?"
+_SNAPSHOT_CURRENCY = (
+    r"(?:(?:USD|EUR|GBP|JPY|CNY|NTD|TWD|HKD|CAD|AUD|RMB)\s*|"
+    r"(?:US|NT|HK|CN)\s*[$€£¥￥]\s*|[$€£¥￥]\s*)?"
+)
+_SNAPSHOT_APPROX = r"(?:~|≈|约)?\s*"
+_SNAPSHOT_VALUE_END = (
+    r"(?=\s*(?:$|[（(\[,，；;]|"
+    r"(?:USD|EUR|GBP|JPY|CNY|NTD|TWD|HKD|CAD|AUD|RMB)\b|"
+    r"元|美元|台币|新台币))"
+)
+SNAPSHOT_PRICE_RE = re.compile(
+    r"^\s*" + _SNAPSHOT_APPROX + _SNAPSHOT_CURRENCY
+    + _SNAPSHOT_NUMBER + _SNAPSHOT_VALUE_END,
+    re.IGNORECASE,
+)
+SNAPSHOT_MARKET_CAP_RE = re.compile(
+    r"^\s*" + _SNAPSHOT_APPROX + _SNAPSHOT_CURRENCY + r"(?:"
+    + _SNAPSHOT_NUMBER
+    + r"\s*(?:[KMBT](?:n)?\b|thousand\b|million\b|billion\b|"
+    r"trillion\b|万|亿|兆)"
+    + r"|(?:\d{1,3}(?:,\d{3}){2,}|\d{7,})"
+    + r")"
+    + _SNAPSHOT_VALUE_END,
+    re.IGNORECASE,
+)
+SNAPSHOT_RATIO_RE = re.compile(
+    r"^\s*" + _SNAPSHOT_APPROX + _SNAPSHOT_NUMBER
+    + r"\s*(?:x|倍)?" + _SNAPSHOT_VALUE_END,
+    re.IGNORECASE,
+)
+SNAPSHOT_PERCENT_RE = re.compile(
+    r"^\s*" + _SNAPSHOT_APPROX + _SNAPSHOT_NUMBER
+    + r"\s*(?:%|percent|百分比)"
+    + _SNAPSHOT_VALUE_END,
+    re.IGNORECASE,
+)
+SNAPSHOT_DATE_PREFIX_RE = re.compile(
+    r"^\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}(?=\s|$|[Tt]|[（(,，；;])"
+)
+SNAPSHOT_CURRENCY_MARKER_RE = re.compile(
+    r"[$€£¥￥]|\b(?:USD|EUR|GBP|JPY|CNY|NTD|TWD|HKD|CAD|AUD|RMB)\b|"
+    r"元|美元|台币|新台币",
+    re.IGNORECASE,
+)
+SNAPSHOT_PLACEHOLDER_RE = re.compile(
+    r"\b(?:tbd|n/?a|none|unknown|pending|maybe|perhaps|not provided|"
+    r"not available|unavailable)\b"
+    r"|待补充|待填写|待定|待确认|暂无|__",
+    re.IGNORECASE,
+)
+SNAPSHOT_RANGE_RE = re.compile(
+    r"^\s*" + _SNAPSHOT_APPROX + _SNAPSHOT_CURRENCY + _SNAPSHOT_NUMBER
+    + r"\s*(?:-|–|—|~|至|到|to)\s*"
+    + _SNAPSHOT_CURRENCY + _SNAPSHOT_NUMBER + _SNAPSHOT_VALUE_END,
+    re.IGNORECASE,
+)
+SNAPSHOT_FIELD_RULES: tuple[
+    tuple[re.Pattern[str], re.Pattern[str], bool], ...
+] = (
+    (re.compile(r"(?:当前股价|share price|股价)", re.IGNORECASE), SNAPSHOT_PRICE_RE, False),
+    (
+        re.compile(r"(?:市值|market cap|market capitalization)", re.IGNORECASE),
+        SNAPSHOT_MARKET_CAP_RE,
+        False,
+    ),
+    (re.compile(r"PE\s*\(TTM\)", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
+    (
+        re.compile(r"PE\s*\(Forward\)|PE\s*\(Fwd\)|forward\s+PE", re.IGNORECASE),
+        SNAPSHOT_RATIO_RE,
+        False,
+    ),
+    (re.compile(r"PB\b", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
+    (re.compile(r"PS\b", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
+    (
+        re.compile(r"(?:52周|52[-\s]week|52W)", re.IGNORECASE),
+        SNAPSHOT_RANGE_RE,
+        True,
+    ),
+    (
+        re.compile(r"(?:股息率|dividend yield)", re.IGNORECASE),
+        SNAPSHOT_PERCENT_RE,
+        False,
+    ),
+)
 
 # Strong wording patterns — words that require explicit evidence
 # Covers both Chinese and English, per ROUTING-MATRIX.md Listed Company hard-fail
@@ -281,6 +361,58 @@ def _anchor_block_text(text: str) -> str | None:
     return None
 
 
+def _anchor_field_value(
+    block: str, label_pattern: re.Pattern[str]
+) -> str | None:
+    """Return the value immediately attached to one anchor label.
+
+    The compact template uses fullwidth separators; the detailed form uses one
+    labeled field per line. Splitting before matching keeps a neighboring field
+    or an unrelated note from supplying this field's value.
+    """
+    for line in block.splitlines():
+        for segment in re.split(r"[｜|]", line):
+            visible = re.sub(r"[`*_~]", "", segment).strip()
+            visible = re.sub(r"^\s*(?:[-+]|\d+[.)])\s+", "", visible)
+            visible = re.sub(
+                r"^(?:研究锚定|research\s*anchor)\s*[:：]\s*",
+                "",
+                visible,
+                flags=re.IGNORECASE,
+            )
+            match = label_pattern.match(visible)
+            if match:
+                return match.group(1).strip()
+    return None
+
+
+def _anchor_value_is_valid(
+    value: str | None,
+    value_pattern: re.Pattern[str],
+    *,
+    calendar_date: bool = False,
+) -> bool:
+    """Validate the leading value of an anchor field, not dates in annotations."""
+    if value is None:
+        return False
+    visible = re.sub(r"[`*_~]", "", value).strip()
+    if not visible or ANCHOR_VALUE_PLACEHOLDER_RE.search(visible):
+        return False
+    match = value_pattern.match(visible)
+    if match is None:
+        return False
+    if calendar_date:
+        date_match = re.search(r"\d{4}[-/]\d{1,2}[-/]\d{1,2}", match.group())
+        if date_match is None:
+            return False
+        year, month, day = map(int, re.split(r"[-/]", date_match.group()))
+        try:
+            date(year, month, day)
+        except ValueError:
+            return False
+    return True
+
+
 def check_research_anchor_block(text: str, path: Path) -> list[str]:
     """Check that a Listed-Company report has a visible research-anchor block.
 
@@ -304,13 +436,17 @@ def check_research_anchor_block(text: str, path: Path) -> list[str]:
             "current market snapshot date)"
         ]
 
-    hits = 0
-    if ANCHOR_FY_RE.search(block):
-        hits += 1
-    if ANCHOR_QUARTER_RE.search(block):
-        hits += 1
-    if ANCHOR_SNAPSHOT_RE.search(block):
-        hits += 1
+    field_rules = (
+        (ANCHOR_FY_LABEL_RE, ANCHOR_FY_VALUE_RE, False),
+        (ANCHOR_QUARTER_LABEL_RE, ANCHOR_QUARTER_VALUE_RE, False),
+        (ANCHOR_SNAPSHOT_LABEL_RE, ANCHOR_SNAPSHOT_VALUE_RE, True),
+    )
+    hits = sum(
+        _anchor_value_is_valid(
+            _anchor_field_value(block, label), value, calendar_date=is_date
+        )
+        for label, value, is_date in field_rules
+    )
 
     if hits < 2:
         return [
@@ -355,25 +491,37 @@ def check_market_snapshot(text: str, path: Path) -> list[str]:
     lines = text.splitlines()
     scan_lines = lines[start:end]
 
-    # A field counts only when its *value cell* (the cell right after the label)
-    # holds a real number.  We parse table cells rather than scanning the whole
-    # row, so that the label itself (e.g. "52周区间" contains digits) and the
-    # source column (e.g. "[S01]") are not mistaken for a filled value.  The
-    # empty template table fills values with $__, __x, __% / YYYY-MM-DD (no
-    # digit) and must not satisfy the snapshot (review P1).
-    def _field_filled(pat) -> bool:
+    # A field counts only when its *value cell* matches that metric's value
+    # format. Parsing cells prevents the label itself (e.g. "52周区间" contains
+    # digits) and the source column (e.g. "[S01]") from filling the metric.
+    def _field_filled(
+        label_pattern: re.Pattern[str],
+        value_pattern: re.Pattern[str],
+        require_currency: bool,
+    ) -> bool:
         for ln in scan_lines:
             if "|" not in ln:
                 continue
             cells = [c.strip() for c in ln.split("|")]
             for i, cell in enumerate(cells):
-                if pat.search(cell) and i + 1 < len(cells):
-                    value = cells[i + 1]
-                    if value and re.search(r"\d", value):
+                if label_pattern.search(cell) and i + 1 < len(cells):
+                    value = re.sub(r"[`*_~]", "", cells[i + 1]).strip()
+                    if (
+                        not value
+                        or SNAPSHOT_PLACEHOLDER_RE.search(value)
+                        or SNAPSHOT_DATE_PREFIX_RE.match(value)
+                    ):
+                        continue
+                    if value_pattern.match(value) and (
+                        not require_currency or SNAPSHOT_CURRENCY_MARKER_RE.search(value)
+                    ):
                         return True
         return False
 
-    matched = sum(1 for pat in SNAPSHOT_FIELD_PATTERNS if _field_filled(pat))
+    matched = sum(
+        _field_filled(label_pattern, value_pattern, require_currency)
+        for label_pattern, value_pattern, require_currency in SNAPSHOT_FIELD_RULES
+    )
     if matched < REQUIRED_SNAPSHOT_FIELDS:
         return [
             f"{path}: Listed-Company market snapshot has only {matched}/8 "

@@ -730,3 +730,160 @@ def test_quarter_reversed_year_order_q1_2026_isolated(tmp_path: Path) -> None:
     )
     errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
     assert not any("anchor" in e for e in errors), errors
+
+
+def test_anchor_placeholder_annotations_do_not_count_periods(tmp_path: Path) -> None:
+    """Dates in notes beside placeholder values must not fill anchor fields."""
+    anchor = (
+        "## 研究锚定块\n\n"
+        "- **最新完整财年**: 待补充（历史对照 FY2025）\n"
+        "- **最新季度**: 待补充（历史期间 2025Q4）\n"
+        "- **快照日期**: 待补充（历史快照 2026-09-24）\n"
+    )
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n" + anchor
+        + "\n" + _snapshot_table() + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("anchor" in e.lower() for e in errors), errors
+
+
+def test_invalid_calendar_date_does_not_fill_snapshot_anchor(tmp_path: Path) -> None:
+    """A date-shaped but impossible snapshot date is not an anchor layer."""
+    anchor = (
+        "## 研究锚定块\n\n"
+        "- **最新完整财年**: FY2025\n"
+        "- **最新季度**: 待补充\n"
+        "- **快照日期**: 2026-02-30\n"
+    )
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n" + anchor
+        + "\n" + _snapshot_table() + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("anchor" in e.lower() for e in errors), errors
+
+
+def test_anchor_labels_inside_notes_do_not_count_as_fields(tmp_path: Path) -> None:
+    """Anchor labels embedded in prose are not parsed as declared field values."""
+    anchor = (
+        "## 研究锚定块\n\n"
+        "- 历史注释：最新完整财年：FY2025；最新季度：2026Q1；"
+        "快照日期：2026-09-24\n"
+    )
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n" + anchor
+        + "\n" + _snapshot_table() + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("anchor" in e.lower() for e in errors), errors
+
+
+def test_snapshot_dates_in_placeholder_values_do_not_count(tmp_path: Path) -> None:
+    """A date annotation cannot make a placeholder metric look numeric."""
+    snapshot = (
+        "## 市场快照\n\n| 指标 | 值 | 来源 |\n|------|-----|------|\n"
+        "| 当前股价 | 待补充（截至 2026-09-24） | [S01] |\n"
+        "| 市值 | 待补充（截至 2026-09-24） | [S01] |\n"
+        "| PE (TTM) | 待补充（截至 2026-09-24） | [S01] |\n"
+        "| PB | 待补充（截至 2026-09-24） | [S01] |\n"
+        "| PS | 待补充（截至 2026-09-24） | [S01] |\n"
+    )
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n" + _anchor_block()
+        + "\n" + snapshot + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("market snapshot" in e.lower() for e in errors), errors
+
+
+def test_snapshot_metrics_reject_wrong_numeric_formats(tmp_path: Path) -> None:
+    """A number or date only counts when it has the metric's value format."""
+    snapshot = (
+        "## 市场快照\n\n| 指标 | 值 | 来源 |\n|------|-----|------|\n"
+        "| 当前股价 | 2026Q1 | [S01] |\n"
+        "| 市值 | 10 | [S01] |\n"
+        "| PE (TTM) | 2026-09-24 | [S01] |\n"
+        "| PE (Forward) | FY2025 | [S01] |\n"
+        "| PB | maybe 3 | [S01] |\n"
+        "| PS | N/A 5 | [S01] |\n"
+        "| 52周区间 | 2026-2027 | [S01] |\n"
+        "| 股息率 | 5x | [S01] |\n"
+    )
+    errors = vlc.check_market_snapshot(snapshot, tmp_path / "snapshot.md")
+    assert errors and "only 0/8" in errors[0], errors
+
+
+def test_period_and_source_ids_do_not_satisfy_threshold(tmp_path: Path) -> None:
+    """Years, quarters and source ids are not numeric monitoring thresholds."""
+    rows = [
+        "| Margin | FY2025 | weekly | EIA report | cut production |",
+        "| Demand | Q1 2026 | monthly | S02 | reduce headcount |",
+        "| PE | S01 | quarterly | S03 | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "periods and source IDs must not count as thresholds"
+    assert not audit_report._monitoring_field_actionable("threshold", "revisit in 2027")
+
+
+def test_unspecified_source_and_revisit_plan_are_partial(tmp_path: Path) -> None:
+    """Generic source/action prose must not count as fully-defined signals."""
+    rows = [
+        "| Margin | below 30% | weekly | some source | cut production |",
+        "| Demand | below 5% | monthly | EIA report | revisit plan |",
+        "| PE | above 40x | quarterly | S03 | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "unspecified source/action text must remain partial"
+    assert not audit_report._monitoring_field_actionable(
+        "trigger_to_action", "take another look"
+    )
+
+
+def test_stress_test_is_not_a_placeholder_token(tmp_path: Path) -> None:
+    """A domain term containing 'test' remains usable in an actionable row."""
+    rows = [
+        "| Margin | below 30% | weekly | Stress-test report | stress-test downside |",
+        "| Demand | below 5% | monthly | EIA report | reduce headcount |",
+        "| PE | above 40x | quarterly | S03 | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert not result.errors, result.errors
+
+
+def test_inline_code_route_name_resolves_to_canonical_id(tmp_path: Path) -> None:
+    """Backticks around a declared route do not change route identity."""
+    assert audit_report._normalize_route("`listed-company`") == "listed-company"
+    report = (
+        "# TSMC\n\n" + _route_block("`listed-company`")
+        + "\n## 投资判断\n\nGrowth intact [S01].\n\n" + _source_register()
+    )
+    p = _write(tmp_path, report)
+    proc = subprocess.run(
+        [sys.executable, VLC_SCRIPT, str(p)], capture_output=True, text=True
+    )
+    assert proc.returncode == 2, proc.stdout
+    assert "research-anchor" in proc.stdout.lower(), proc.stdout
+    assert "cannot be resolved" not in proc.stdout.lower(), proc.stdout
+
+
+def test_route_registry_error_is_a_blocking_cli_resolution_error(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Registry corruption is reported as a route error, not an uncaught crash."""
+    report = _write(tmp_path, _route_block("listed-company"))
+
+    def broken_registry():
+        raise vlc.registry_loader.RegistryError("invalid test registry")
+
+    monkeypatch.setattr(vlc.registry_loader, "load_route_registry", broken_registry)
+    route_id, error = vlc._resolve_route_id(report)
+    assert route_id is None
+    assert error is not None and "route registry is invalid" in error

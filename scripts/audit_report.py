@@ -181,51 +181,58 @@ MIN_MONITORING_SIGNALS = 3
 # a fully-defined monitoring signal (issue #436 D3).  A "filled" threshold,
 # cadence, source or trigger-to-action must be executable and verifiable.
 _MONITORING_PLACEHOLDERS = {
-    "tbd", "n/a", "na", "none", "unknown", "-", "—", "--",
+    "tbd", "n/a", "na", "none", "unknown", "foo", "bar", "test", "-", "—", "--",
     "待补充", "待填写", "待定", "待确认", "暂无", "无",
 }
 
-# Per-field minimum actionability (issue #436 D3): a non-empty cell is only
-# "fully defined" when it is actually executable/verifiable, not merely present.
-# We reject *meaningless* cells rather than imposing a rigid positive format, so
-# that legitimate values like cadence "Per project" or source "EIA report" still
-# count.  Two layers:
-#   1. a vague-token denylist catches threshold=foo / cadence=later /
-#      source=maybe / action=observe;
-#   2. threshold additionally needs a judgeable number/range/comparison.
-# A threshold must carry a judgeable number — a bare comparison operator such
-# as "≥" / ">" with no value does not count (review P1).
-_MONITORING_THRESHOLD_NUMERIC_RE = re.compile(r"\d")
+# Each monitoring field needs evidence in its own shape: a measurable threshold,
+# a cadence, an identifiable source, or an operational action (issue #436 D3).
+_MONITORING_THRESHOLD_NUMBER = r"(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?"
+_MONITORING_THRESHOLD_RE = re.compile(
+    r"(?:"
+    r"(?:<=|>=|<|>|≤|≥|≈|~)\s*\$?\s*" + _MONITORING_THRESHOLD_NUMBER
+    + r"|\b(?:below|above|under|over|at\s+least|at\s+most|less\s+than|"
+    r"greater\s+than)\s*\$?\s*" + _MONITORING_THRESHOLD_NUMBER
+    + r"|" + _MONITORING_THRESHOLD_NUMBER
+    + r"\s*(?:-|–|—|to|至)\s*" + _MONITORING_THRESHOLD_NUMBER
+    + r"\s*(?:%|x\b|bps?\b|months?\b|weeks?\b|days?\b|years?\b)?"
+    + r")",
+    re.IGNORECASE,
+)
 # Periods and citation ids contain digits but are not measurable thresholds.
 _MONITORING_THRESHOLD_REFERENCE_RE = re.compile(
     r"\b20\d{2}[-/]\d{1,2}[-/]\d{1,2}\b|"
     r"\b(?:FY\s*20\d{2}|20\d{2}\s*FY|"
     r"Q[1-4]\s*20\d{2}|20\d{2}\s*Q[1-4]|"
-    r"H[1-2]\s*20\d{2}|20\d{2}\s*H[1-2]|S\d+)\b",
+    r"H[1-2]\s*20\d{2}|20\d{2}\s*H[1-2]|S\d+)\b|"
+    r"\b20\d{2}\s*(?:-|–|—|to)\s*20\d{2}\b",
     re.IGNORECASE,
 )
 
 # Hard placeholders that disqualify ANY field — catches multi-word fillers such
 # as "TBD Q3" / "maybe EIA report" (review P1).  These are not domain words.
 _MONITORING_PLACEHOLDER_WORD_RE = re.compile(
-    r"\b(?:tbd|n/?a|none|unknown|maybe|perhaps|foo|bar|test|not provided|"
+    r"\b(?:tbd|n/?a|none|unknown|maybe|perhaps|foo|bar|not provided|"
     r"no source|not available|unavailable)\b"
     r"|无来源|未提供|待补充|待填写|待定|待确认|暂无|看情况|视情况",
     re.IGNORECASE,
 )
-# Vague *action* verbs that only apply to trigger-to-action — e.g. "weekly
-# review" is a valid cadence, so these must not be applied to cadence (review P2).
-_MONITORING_ACTION_VAGUE_RE = re.compile(
-    r"\b(?:observe|watch|monitor|follow|track|see|review)\b"
-    r"|关注|观察|留意|跟踪",
+# A source must identify a locator or named source, not an unspecified phrase.
+_MONITORING_SOURCE_UNSPECIFIED_RE = re.compile(
+    r"^(?:(?:some|any|various|generic|unspecified)\s+)?"
+    r"(?:data\s+)?sources?(?:\s+(?:name|report|details?))?$|"
+    r"^(?:some|any|various|generic|unspecified)\s+.*$",
     re.IGNORECASE,
 )
-# A concrete trigger+measure overrides a vague verb: "monitor margin and cut
-# production if it falls below 30%" is actionable even though it contains
-# "monitor".  Only a bare vague verb (a cell that is basically "review") is
-# rejected (review P2).
+_MONITORING_SOURCE_LOCATOR_RE = re.compile(r"\bS\d+\b|https?://\S+", re.IGNORECASE)
+_MONITORING_SOURCE_NAME_RE = re.compile(
+    r"^(?:[A-Z]{2,}|[A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Za-z][A-Za-z0-9&.'-]*)*)$"
+)
+# Require a concrete operation. This includes the action forms used in project
+# monitoring examples; a generic "revisit plan" remains partial.
 _MONITORING_CONCRETE_ACTION_RE = re.compile(
-    r"\b(?:cut|reduce|take|notify|explore|hedge|sell|buy|trim|raise|lower|exit|enter)\b|"
+    r"\b(?:cut|reduce|notify|explore|hedge|sell|buy|trim|raise|lower|exit|enter|"
+    r"reassess|rebalance|reallocate)\b|\btake\s+profit\b|\bstress[- ]test\b|"
     r"削减|降低|卖出|买入|加仓|减仓|止盈|止损|对冲|持有|增持|减持|清仓",
     re.IGNORECASE,
 )
@@ -249,13 +256,7 @@ def _is_monitoring_placeholder(value: str) -> bool:
 
 
 def _monitoring_field_actionable(field: str, value: str) -> bool:
-    """Per-field minimum actionability beyond non-empty / not-placeholder.
-
-    Any cell containing a placeholder/vague word never counts.  threshold
-    additionally needs a judgeable number.  For cadence, a vague phrase such as
-    "later this year" only disqualifies when no explicit frequency is present
-    (issue #436 D3, review P1/P2).
-    """
+    """Require field-specific evidence instead of treating arbitrary text as filled."""
     # Cadence: reject hard placeholders first, then let an explicit frequency
     # override time-vague phrases ("weekly later this year" / "weekly review"
     # are valid; "TBD weekly" / "later this year" are not).
@@ -268,13 +269,19 @@ def _monitoring_field_actionable(field: str, value: str) -> bool:
 
     if _MONITORING_PLACEHOLDER_WORD_RE.search(value):
         return False
-    if field == "trigger_to_action" and _MONITORING_ACTION_VAGUE_RE.search(value):
-        # Only reject when the cell has no concrete trigger/measure.
-        if not _MONITORING_CONCRETE_ACTION_RE.search(value):
-            return False
     if field == "threshold":
-        measurable_text = _MONITORING_THRESHOLD_REFERENCE_RE.sub("", value)
-        return bool(_MONITORING_THRESHOLD_NUMERIC_RE.search(measurable_text))
+        measurable = _MONITORING_THRESHOLD_REFERENCE_RE.sub("", value)
+        return bool(_MONITORING_THRESHOLD_RE.search(measurable))
+    if field == "source":
+        source = value.strip().strip("*:：.。[] ")
+        if _MONITORING_SOURCE_UNSPECIFIED_RE.fullmatch(source):
+            return False
+        return bool(
+            _MONITORING_SOURCE_LOCATOR_RE.search(source)
+            or _MONITORING_SOURCE_NAME_RE.fullmatch(source)
+        )
+    if field == "trigger_to_action":
+        return bool(_MONITORING_CONCRETE_ACTION_RE.search(value))
     return True
 
 
