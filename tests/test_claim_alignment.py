@@ -21,6 +21,17 @@ if str(SCRIPTS) not in sys.path:
 
 from claim_alignment import (  # noqa: E402
     BindingContext,
+    _contains_direction_word,
+    _direction_conflict,
+    _extract_periods,
+    _has_negation,
+    _judge_claim_text,
+    _negation_conflict,
+    _NEGATIVE_DIRECTION,
+    _period_ambiguous,
+    _POSITIVE_DIRECTION,
+    _uncertain_aspect_present,
+    _year_mismatch,
     compute_per_class_one_vs_rest,
     judge_entry,
     load_and_run_bundle,
@@ -445,3 +456,211 @@ class TestPerClassMetrics:
         assert per_class["SUPPORTED"]["fp"] == 1
         assert per_class["SUPPORTED"]["fpr"] == 1.0
         assert per_class["UNSUPPORTED"]["fn"] == 1
+
+
+class TestClaimAlignmentHeuristicFixes437:
+    """Issue #437: multi-language semantic heuristics must not create false
+    UNSUPPORTED verdicts, while genuine conflicts still do."""
+
+    # --- E1: English direction words are whole-token, not substring ---
+
+    def test_direction_words_match_whole_tokens_only(self) -> None:
+        # Substring false positives from issue #437.
+        assert not _contains_direction_word("downstream demand", _NEGATIVE_DIRECTION)
+        assert not _contains_direction_word("lossless encoding", _NEGATIVE_DIRECTION)
+        assert not _contains_direction_word("a clear fallacy", _NEGATIVE_DIRECTION)
+        # Genuine tokens still match.
+        assert _contains_direction_word("revenue declined", _NEGATIVE_DIRECTION)
+        assert _contains_direction_word("revenue grew", _POSITIVE_DIRECTION)
+        # CJK direction phrases still match as substrings.
+        assert _contains_direction_word("市场增长", _POSITIVE_DIRECTION)
+
+    def test_no_false_direction_conflict_from_subwords(self) -> None:
+        # "startup" (contains up) vs "downstream" (contains down) must not
+        # create a direction conflict.
+        assert not _direction_conflict("startup revenue grew", "downstream demand")
+
+    # --- E2: CJK negation excludes time/uncertain words ---
+
+    def test_future_market_not_flagged_as_negation(self) -> None:
+        assert not _has_negation("未来市场增长")
+        assert not _has_negation("市场增长")
+        assert not _negation_conflict("未来市场增长", "市场增长")
+
+    def test_genuine_cjk_negation_still_conflicts(self) -> None:
+        assert _has_negation("收入没有增长")
+        assert _negation_conflict("收入没有增长", "收入增长")
+
+    def test_uncertain_cjk_markers_are_not_hard_negation(self) -> None:
+        # 未来/未來 (future), 未必 (not necessarily) and 尚未 (not yet) are
+        # complete non-negation phrases; a bare/productive 未 + verb (e.g.
+        # 未增长, 未实现) remains a genuine negation.
+        assert not _has_negation("未必增长")
+        assert not _has_negation("尚未增长")
+        assert not _has_negation("尚未启动")
+        assert _has_negation("未增长")
+        assert _has_negation("未实现盈利")
+
+    def test_shangwei_does_not_create_negation_conflict(self) -> None:
+        # Reviewer P2: 尚未 is a *prefix* structure (尚 + 未); a lookahead on the
+        # char after 未 cannot exclude it. "收入尚未增长" must not be treated as
+        # a hard negation of "收入增长".
+        assert not _negation_conflict("收入尚未增长", "收入增长")
+        assert not _negation_conflict("收入增长", "收入尚未增长")
+        # A genuine bare-未 negation still conflicts.
+        assert _negation_conflict("收入未增长", "收入增长")
+
+    def test_judge_shangwei_is_ambiguous(self) -> None:
+        # Full judgment path (review): 尚未 is an uncertainty marker with no
+        # comparable period, so the safe verdict is AMBIGUOUS — never a
+        # confident SUPPORTED and never a hard UNSUPPORTED.
+        assert _judge_claim_text(
+            "收入尚未增长但趋势向上",
+            "收入增长强劲，趋势向上。",
+            None,
+            "",
+        ) == "AMBIGUOUS"
+
+    def test_uncertain_marker_not_escalated_to_conflict(self) -> None:
+        # Reviewer P2 (round 3): the uncertainty marker must take part in the
+        # conflict decision. 收入未必增长 carries no hard negation while
+        # 收入没有增长 does, so the negation heuristic alone would return
+        # UNSUPPORTED — but the hedge means the pair is not a certain
+        # contradiction.
+        assert _judge_claim_text("收入未必增长", "收入没有增长。", None, "") == "AMBIGUOUS"
+        assert _judge_claim_text("收入尚未增长", "收入没有增长。", None, "") == "AMBIGUOUS"
+        # Without a hedge the same kind of conflict stays definite.
+        assert _judge_claim_text("收入增长", "收入下降。", None, "") == "UNSUPPORTED"
+        assert _judge_claim_text("收入没有增长", "收入增长。", None, "") == "UNSUPPORTED"
+
+    def test_uncertain_markers_force_ambiguous(self) -> None:
+        assert _uncertain_aspect_present("收入尚未增长")
+        assert _uncertain_aspect_present("未必增长")
+        # 未来/未來 are time words, not uncertainty markers: a matching excerpt
+        # may still be SUPPORTED.
+        assert not _uncertain_aspect_present("未来市场增长")
+        assert _judge_claim_text(
+            "未来市场增长预期乐观",
+            "市场增长预期乐观，未来市场增长符合预期。",
+            None,
+            "",
+        ) == "SUPPORTED"
+
+    # --- E3: FY and calendar years normalize to the same natural year ---
+
+    def test_fy_and_calendar_year_do_not_mismatch(self) -> None:
+        assert not _year_mismatch("Revenue grew in FY2024", "Revenue grew in 2024")
+        assert not _year_mismatch("Revenue in 2024", "Revenue in 2024")
+
+    def test_different_years_still_mismatch(self) -> None:
+        assert _year_mismatch("Revenue grew in FY2024", "Revenue grew in FY2025")
+
+    # --- E3b: explicit quarters are compared when both sides pin one ---
+
+    def test_quarter_conflict_is_a_period_mismatch(self) -> None:
+        # Reviewer P2: 2024Q1 vs 2024Q2 shares a year and direction but is a
+        # definite period mismatch.
+        assert _year_mismatch(
+            "Revenue grew 15% in 2024Q1", "Revenue grew 15% in 2024Q2"
+        )
+        assert _judge_claim_text(
+            "Revenue grew 15% in 2024Q1",
+            "Revenue grew 15% in 2024Q2.",
+            None,
+            "",
+        ) == "UNSUPPORTED"
+
+    def test_same_quarter_does_not_mismatch(self) -> None:
+        assert not _year_mismatch(
+            "Revenue grew 15% in 2024Q1", "Revenue grew 15% in 2024Q1"
+        )
+
+    def test_one_sided_quarter_is_ambiguous(self) -> None:
+        # Only one side pins a quarter -> periods cannot be reliably compared.
+        assert _period_ambiguous("Revenue grew 15% in 2024Q1", "Revenue grew 15% in 2024")
+        assert _period_ambiguous("Revenue grew 15% in 2024", "Revenue grew 15% in 2024Q1")
+        assert not _period_ambiguous(
+            "Revenue grew 15% in 2024", "Revenue grew 15% in 2024"
+        )
+        assert _judge_claim_text(
+            "Revenue grew 15% in 2024Q1",
+            "Revenue grew 15% in 2024.",
+            None,
+            "",
+        ) == "AMBIGUOUS"
+
+    def test_quarter_first_format_is_parsed(self) -> None:
+        # Reviewer P2: "Q1 2024" (quarter before year) must not degrade to the
+        # bare year.
+        assert _extract_periods("Q1 2024") == [("2024", "1")]
+        assert _year_mismatch("Revenue grew 15% in Q1 2024", "Revenue grew 15% in Q2 2024")
+        assert _judge_claim_text(
+            "Revenue grew 15% in Q1 2024",
+            "Revenue grew 15% in Q2 2024.",
+            None,
+            "",
+        ) == "UNSUPPORTED"
+
+    def test_quarters_compared_with_their_year(self) -> None:
+        # Reviewer P2: quarter sets must not be compared across years. These two
+        # both have the quarter set {Q1, Q2} but pair different quarters with
+        # different years, so they conflict.
+        assert _year_mismatch(
+            "Revenue grew in 2023Q1 and 2024Q2",
+            "Revenue grew in 2023Q2 and 2024Q1",
+        )
+        # Same (year, quarter) pairs do not conflict.
+        assert not _year_mismatch(
+            "Revenue grew in 2023Q1 and 2024Q2",
+            "Revenue grew in 2023Q1 and 2024Q2",
+        )
+
+    def test_one_sided_quarter_in_multiyear_text_is_ambiguous(self) -> None:
+        # Reviewer P2 (round 3): both sides carry a quarter globally, but they
+        # belong to different years, so no shared year pins a quarter on both
+        # sides and the periods cannot be compared -> AMBIGUOUS, not SUPPORTED.
+        claim = "Revenue grew in Q1 2024 and 2025"
+        excerpt = "Revenue grew in 2024 and Q2 2025"
+        assert _period_ambiguous(claim, excerpt)
+        assert _judge_claim_text(claim, excerpt + ".", None, "") == "AMBIGUOUS"
+        # When each shared year is pinned consistently on both sides, there is
+        # nothing ambiguous.
+        assert not _period_ambiguous(claim, claim)
+        assert not _period_ambiguous("Revenue grew in 2024", "Revenue grew in 2024")
+
+    # --- End-to-end: the full judge must not emit false UNSUPPORTED ---
+
+    def test_judge_no_false_unsupported_for_fixed_heuristics(self) -> None:
+        # locator_kind=None exercises conflict heuristics + overlap only.
+        assert _judge_claim_text(
+            "The downstream demand stayed lossless after the startup launched",
+            "The downstream demand stayed lossless after the startup launched its product.",
+            None,
+            "",
+        ) != "UNSUPPORTED"
+        assert _judge_claim_text(
+            "未来市场增长预期乐观",
+            "市场增长预期乐观，未来市场增长符合预期。",
+            None,
+            "",
+        ) != "UNSUPPORTED"
+        assert _judge_claim_text(
+            "Revenue rose in FY2024",
+            "Revenue rose in 2024, beating expectations.",
+            None,
+            "",
+        ) != "UNSUPPORTED"
+
+    def test_judge_genuine_conflicts_still_unsupported(self) -> None:
+        assert _judge_claim_text(
+            "Revenue declined in FY2024",
+            "Revenue grew in FY2025, a strong year.",
+            None,
+            "",
+        ) == "UNSUPPORTED"
+        assert _judge_claim_text(
+            "收入没有增长",
+            "收入增长强劲。",
+            None,
+            "",
+        ) == "UNSUPPORTED"

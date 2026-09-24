@@ -649,9 +649,24 @@ _POSITIVE_DIRECTION = frozenset({
 })
 
 
+# Issue #437 (E1): English direction words must match whole tokens, not as
+# substrings — otherwise "up" in "startup", "down" in "downstream", "loss" in
+# "lossless", or "fall" in "fallacy" create false direction conflicts. CJK
+# direction phrases (e.g. 增长/下降) are kept as substring matches.
+_EN_WORD_TOKEN_RE = re.compile(r"[A-Za-z]+(?:['’-][A-Za-z]+)*")
+
+
 def _contains_direction_word(text: str, words: frozenset[str]) -> bool:
+    tokens = {tok.casefold() for tok in _EN_WORD_TOKEN_RE.findall(text)}
     text_cf = text.casefold()
-    return any(word.casefold() in text_cf for word in words)
+    for word in words:
+        w_cf = word.casefold()
+        if any("\u4e00" <= ch <= "\u9fff" for ch in w_cf):
+            if w_cf in text_cf:
+                return True
+        elif w_cf in tokens:
+            return True
+    return False
 
 
 _NEGATION_PATTERNS_EN = (
@@ -662,13 +677,36 @@ _NEGATION_PATTERNS_EN = (
     re.compile(r"\bdidn't\b", re.IGNORECASE),
     re.compile(r"\bdid not\b", re.IGNORECASE),
 )
-_NEGATION_MARKERS_CJK = ("没有", "未", "不再", "并非", "无")
+# Issue #437 (E2): a bare 未 is not a negation marker on its own — it appears in
+# time words (未来/未來) and aspectual/uncertain words (未必/尚未). Those complete
+# phrases are excluded from hard negation *before* the bare-未 rule runs, because
+# 尚未 = 尚 + 未 (the 未 is *preceded* by 尚, so a lookahead on the following char
+# cannot exclude it). Explicit hard-negation phrases are matched directly.
+_NEGATION_MARKERS_CJK = ("没有", "未能", "未曾", "未有", "不再", "并非", "无")
+_NEGATION_CJK_NON_NEGATION = ("未来", "未來", "未必", "尚未")
 
 
 def _has_negation(text: str) -> bool:
     if any(marker in text for marker in _NEGATION_MARKERS_CJK):
         return True
+    # Explicit non-negation 未-phrases take priority over the bare-未 rule below.
+    if any(non in text for non in _NEGATION_CJK_NON_NEGATION):
+        return False
+    # A bare/productive 未 (e.g. 未增长, 未实现) is a genuine negation.
+    if "未" in text:
+        return True
     return any(pattern.search(text) for pattern in _NEGATION_PATTERNS_EN)
+
+
+# Issue #437 (E2b, review): 尚未 (not yet) and 未必 (not necessarily) are
+# uncertainty markers — not hard negations, but they also must not yield a
+# confident SUPPORTED. When either side carries one without a comparable time
+# range, the safe verdict is AMBIGUOUS.
+_UNCERTAIN_ASPECT_MARKERS_CJK = ("尚未", "未必")
+
+
+def _uncertain_aspect_present(text: str) -> bool:
+    return any(marker in text for marker in _UNCERTAIN_ASPECT_MARKERS_CJK)
 
 
 def _direction_polarity_present(text: str) -> bool:
@@ -709,12 +747,75 @@ def _direction_conflict(claim: str, excerpt: str) -> bool:
     return (claim_neg and excerpt_pos) or (claim_pos and excerpt_neg)
 
 
+# Issue #437 (E3): strip the FY prefix so FY2024 and 2024 denote the same natural
+# year, and capture an explicit quarter in either order
+# (2024Q1 / 2024 Q1 / FY2024Q1 / Q1 2024 / Q1FY2024).
+_PERIOD_RE = re.compile(
+    r"(?:FY)?(?P<y1>20\d{2})(?:[-\s]?Q(?P<q1>[1-4]))?"
+    r"|"
+    r"Q(?P<q2>[1-4])[-\s]?(?:FY)?(?P<y2>20\d{2})",
+    re.IGNORECASE,
+)
+
+
+def _extract_periods(text: str) -> list[tuple[str, str | None]]:
+    periods: list[tuple[str, str | None]] = []
+    for match in _PERIOD_RE.finditer(text):
+        if match.group("y1"):
+            periods.append((match.group("y1"), match.group("q1")))
+        else:
+            periods.append((match.group("y2"), match.group("q2")))
+    return periods
+
+
+def _normalize_years(text: str) -> set[str]:
+    return {year for year, _ in _extract_periods(text)}
+
+
+def _quarters_by_year(periods: list[tuple[str, str | None]]) -> dict[str, set[str]]:
+    by_year: dict[str, set[str]] = {}
+    for year, quarter in periods:
+        if quarter:
+            by_year.setdefault(year, set()).add(quarter)
+    return by_year
+
+
 def _year_mismatch(claim: str, excerpt: str) -> bool:
-    claim_years = set(re.findall(r"(?:FY)?20\d{2}", claim, flags=re.IGNORECASE))
-    excerpt_years = set(re.findall(r"(?:FY)?20\d{2}", excerpt, flags=re.IGNORECASE))
+    claim_periods = _extract_periods(claim)
+    excerpt_periods = _extract_periods(excerpt)
+    claim_years = {year for year, _ in claim_periods}
+    excerpt_years = {year for year, _ in excerpt_periods}
     if claim_years and excerpt_years and not (claim_years & excerpt_years):
         return True
+    # For every shared year both sides pin a quarter for, the quarters must
+    # agree; a conflicting (year, quarter) pair is a definite period mismatch
+    # (2024Q1 vs 2024Q2, or 2023Q1/2024Q2 vs 2023Q2/2024Q1).
+    claim_q = _quarters_by_year(claim_periods)
+    excerpt_q = _quarters_by_year(excerpt_periods)
+    for year in claim_q.keys() & excerpt_q.keys():
+        if not (claim_q[year] & excerpt_q[year]):
+            return True
     return False
+
+
+def _period_ambiguous(claim: str, excerpt: str) -> bool:
+    # Years overlap (so not a definite year mismatch), but for some shared year
+    # only one side pins a quarter -> that period cannot be reliably compared.
+    # Checked per shared year, so "Q1 2024 and 2025" vs "2024 and Q2 2025" is
+    # ambiguous too: both sides carry a quarter globally, but for no shared year
+    # do *both* sides pin one.
+    claim_periods = _extract_periods(claim)
+    excerpt_periods = _extract_periods(excerpt)
+    shared_years = {year for year, _ in claim_periods} & {
+        year for year, _ in excerpt_periods
+    }
+    if not shared_years:
+        return False
+    claim_q = _quarters_by_year(claim_periods)
+    excerpt_q = _quarters_by_year(excerpt_periods)
+    return any(
+        bool(claim_q.get(year)) != bool(excerpt_q.get(year)) for year in shared_years
+    )
 
 
 def _cjk_char_overlap(claim: str, excerpt: str) -> float:
@@ -823,14 +924,24 @@ def _judge_claim_text(
         quote = locator_value.strip()
         if quote and quote not in excerpt:
             return "UNSUPPORTED"
-    if _direction_conflict(claim_text, excerpt):
-        return "UNSUPPORTED"
-    if _negation_conflict(claim_text, excerpt):
+    # A hedged claim/evidence (尚未 "not yet" / 未必 "not necessarily") must not be
+    # escalated into a definite contradiction by the coarse polarity heuristics:
+    # 未必增长 vs 没有增长 is not a certain conflict. Numeric/period evidence below
+    # stays definite regardless of the hedge.
+    uncertain = _uncertain_aspect_present(claim_text) or _uncertain_aspect_present(excerpt)
+    if not uncertain and (
+        _direction_conflict(claim_text, excerpt)
+        or _negation_conflict(claim_text, excerpt)
+    ):
         return "UNSUPPORTED"
     if _numeric_percent_conflict(claim_text, excerpt):
         return "UNSUPPORTED"
     if _year_mismatch(claim_text, excerpt):
         return "UNSUPPORTED"
+    if uncertain:
+        return "AMBIGUOUS"
+    if _period_ambiguous(claim_text, excerpt):
+        return "AMBIGUOUS"
     overlap = _lexical_overlap(claim_text, excerpt)
     if overlap >= 0.45:
         return "SUPPORTED"

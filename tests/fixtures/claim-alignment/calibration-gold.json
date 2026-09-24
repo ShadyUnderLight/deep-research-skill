@@ -1,5 +1,5 @@
 {
-  "fixture_version": "claim-alignment-calibration-v1",
+  "fixture_version": "claim-alignment-calibration-v3",
   "labels": {
     "C01": {
       "verdict": "SUPPORTED"
@@ -40,6 +40,36 @@
     },
     "C10": {
       "verdict": "UNSUPPORTED"
+    },
+    "C11": {
+      "verdict": "SUPPORTED"
+    },
+    "C12": {
+      "verdict": "SUPPORTED"
+    },
+    "C13": {
+      "verdict": "SUPPORTED"
+    },
+    "C14": {
+      "verdict": "UNSUPPORTED"
+    },
+    "C15": {
+      "verdict": "UNSUPPORTED"
+    },
+    "C16": {
+      "verdict": "AMBIGUOUS"
+    },
+    "C17": {
+      "verdict": "UNSUPPORTED"
+    },
+    "C18": {
+      "verdict": "AMBIGUOUS"
+    },
+    "C19": {
+      "verdict": "AMBIGUOUS"
+    },
+    "C20": {
+      "verdict": "AMBIGUOUS"
     }
   }
 }
