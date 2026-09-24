@@ -72,7 +72,7 @@ ANCHOR_FY_RE = re.compile(
 # "Q1" cannot pin down the period (review P1).
 ANCHOR_QUARTER_RE = re.compile(
     r"(?:最新季度|最新半年报|latest\s+quarter|interim)"
-    + _SEGMENT + r"*?(?:20\d{2}\s*[Qq][1-4]|[Qq][1-4]\s*20\d{2|"
+    + _SEGMENT + r"*?(?:20\d{2}\s*[Qq][1-4]|[Qq][1-4]\s*20\d{2}|"
     r"20\d{2}\s*H[12]|H[12]\s*20\d{2}|20\d{2}年[一二三四]季(报|度)?)",
     re.IGNORECASE,
 )

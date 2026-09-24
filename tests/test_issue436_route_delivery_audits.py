@@ -712,3 +712,21 @@ def test_review_execution_plan_fails(tmp_path: Path) -> None:
     p = _write(tmp_path, _monitoring_report(rows))
     result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
     assert result.errors, "review execution plan must not count"
+
+
+
+def test_quarter_reversed_year_order_q1_2026_isolated(tmp_path: Path) -> None:
+    """Isolated: FY empty, quarter='Q1 2026', snapshot valid → passes via quarter layer."""
+    anchor = (
+        "## 研究锚定块\n\n"
+        "- **最新完整财年**: 待补充\n"
+        "- **最新季度**: Q1 2026\n"
+        "- **快照日期**: 2026-09-24\n"
+    )
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n" + anchor
+        + "\n" + _snapshot_table() + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert not any("anchor" in e for e in errors), errors
