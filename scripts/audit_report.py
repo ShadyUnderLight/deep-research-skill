@@ -84,6 +84,10 @@ from validate_contract import (
 # Validators executed only through required-audit bindings (issue #378).
 from validate_markdown_delivery import validate_markdown_delivery as vmd_validate
 from validate_forward_looking_labels import validate_file as vfl_validate_file
+from validate_external_citation_hygiene import (
+    check_external_citation_hygiene,
+    strip_fenced_code_blocks as vch_strip_fences,
+)
 from validate_research_pack import (
     find_missing_headings as vrp_find_missing_headings,
     run_strict_checks as vrp_run_strict_checks,
@@ -171,6 +175,136 @@ if _DEFAULT_ROUTE not in _ROUTE_REGISTRY.route_ids():
 # Minimum number of fully-defined monitoring signals required for
 # market-outlook reports to pass the actionability gate.
 MIN_MONITORING_SIGNALS = 3
+
+
+# Cells that are non-empty but carry no actionable information do NOT count as
+# a fully-defined monitoring signal (issue #436 D3).  A "filled" threshold,
+# cadence, source or trigger-to-action must be executable and verifiable.
+_MONITORING_PLACEHOLDERS = {
+    "tbd", "n/a", "na", "none", "unknown", "foo", "bar", "test", "-", "—", "--",
+    "待补充", "待填写", "待定", "待确认", "暂无", "无",
+}
+
+# Each monitoring field needs evidence in its own shape: a measurable threshold,
+# a cadence, an identifiable source, or an operational action (issue #436 D3).
+_MONITORING_THRESHOLD_NUMBER = r"(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?"
+_MONITORING_THRESHOLD_RE = re.compile(
+    r"(?:"
+    r"(?:<=|>=|<|>|≤|≥|≈|~)\s*\$?\s*" + _MONITORING_THRESHOLD_NUMBER
+    + r"|\b(?:below|above|under|over|at\s+least|at\s+most|less\s+than|"
+    r"greater\s+than)\s*\$?\s*" + _MONITORING_THRESHOLD_NUMBER
+    + r"|(?:不低于|不少于|至少|不高于|不超过|至多|不多于|低于|低过|小于|少于|"
+    r"不足|未达|不及|高于|高过|大于|超过|超出|达到|跌破|升至)\s*"
+    + _MONITORING_THRESHOLD_NUMBER
+    + r"|" + _MONITORING_THRESHOLD_NUMBER + r"\s*(?:以上|以下|以内|及以上|及以下)"
+    + r"|" + _MONITORING_THRESHOLD_NUMBER
+    + r"\s*(?:-|–|—|to|至)\s*" + _MONITORING_THRESHOLD_NUMBER
+    + r"\s*(?:%|x\b|bps?\b|months?\b|weeks?\b|days?\b|years?\b)?"
+    + r")",
+    re.IGNORECASE,
+)
+# Periods and citation ids contain digits but are not measurable thresholds.
+_MONITORING_THRESHOLD_REFERENCE_RE = re.compile(
+    r"\b20\d{2}[-/]\d{1,2}[-/]\d{1,2}\b|"
+    r"\b(?:FY\s*20\d{2}|20\d{2}\s*FY|"
+    r"Q[1-4]\s*20\d{2}|20\d{2}\s*Q[1-4]|"
+    r"H[1-2]\s*20\d{2}|20\d{2}\s*H[1-2]|S\d+)\b|"
+    r"\b20\d{2}\s*(?:-|–|—|to)\s*20\d{2}\b",
+    re.IGNORECASE,
+)
+
+# Hard placeholders that disqualify ANY field — catches multi-word fillers such
+# as "TBD Q3" / "maybe EIA report" (review P1).  These are not domain words.
+_MONITORING_PLACEHOLDER_WORD_RE = re.compile(
+    r"\b(?:tbd|n/?a|none|unknown|maybe|perhaps|foo|bar|not provided|"
+    r"no source|not available|unavailable)\b"
+    r"|无来源|未提供|待补充|待填写|待定|待确认|暂无|看情况|视情况",
+    re.IGNORECASE,
+)
+# A source must identify a locator or named source, not an unspecified phrase.
+_MONITORING_SOURCE_UNSPECIFIED_RE = re.compile(
+    r"^(?:(?:public|private|industry|market|government|official|generic|general|"
+    r"company|corporate)\s+)?(?:report|data|source|dataset|publication|api|"
+    r"database|feed|website|press|provider|statistics|news)"
+    r"(?:\s+(?:data|report|source|dataset|publication|api|database|feed|"
+    r"website|press|provider|statistics|news))*$|"
+    r"^data\s+reports?$|"
+    r"^(?:(?:some|any|various|generic|unspecified)\s+)?"
+    r"(?:data\s+)?sources?(?:\s+(?:name|report|details?))?$|"
+    r"^(?:some|any|various|generic|unspecified)\s+.*$|"
+    r"^(?:行业|市场|公开|公共|一般|通用|政府|公司|官方)"
+    r"(?:数据|报告|新闻|公告|月报|季报|年报|日报|来源|资料)$",
+    re.IGNORECASE,
+)
+_MONITORING_SOURCE_LOCATOR_RE = re.compile(r"\bS\d+\b|https?://\S+", re.IGNORECASE)
+_MONITORING_SOURCE_NAME_RE = re.compile(
+    r"^(?:"
+    r"[A-Z]{2,}|"
+    r"[A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Za-z0-9][A-Za-z0-9&.'-]*)*|"
+    r"新华社|人民日报|中新社|央视新闻|"
+    r"[\u4e00-\u9fff]{2,}(?:统计局|研究院|研究所|交易所|协会|央行|银行|能源局|"
+    r"气象局|证监会|财政部|商务部|工信部|海关总署|数据中心)"
+    r"(?:月报|季报|年报|日报|公告|报告)?"
+    r")$"
+)
+# Require a concrete operation. This includes the action forms used in project
+# monitoring examples; a generic "revisit plan" remains partial.
+_MONITORING_CONCRETE_ACTION_RE = re.compile(
+    r"\b(?:cut|reduce|notify|explore|hedge|sell|buy|trim|raise|lower|exit|enter|"
+    r"reassess|rebalance|reallocate)\b|\btake\s+profit\b|\bstress[- ]test\b|"
+    r"削减(?:产能|产量|支出|预算)|降低(?:产能|持仓|杠杆)|减少(?:持仓|产能|支出)|"
+    r"暂停(?:扩产|采购|项目|建设|投资|招聘)|停止(?:扩产|生产|运营|项目)|"
+    r"延后(?:投资|建设|扩产)|推迟(?:投资|建设|扩产)|取消(?:项目|订单|建设|投资)|"
+    r"卖出|买入|加仓|减仓|止盈|止损|对冲|持有|增持|减持|清仓",
+    re.IGNORECASE,
+)
+# Explicit frequency tokens — when present, "this year" / "later" style phrases
+# are not treated as vague (review P2).
+_MONITORING_FREQUENCY_RE = re.compile(
+    r"daily|weekly|biweekly|monthly|quarterly|annual|yearly|hourly|intraday|"
+    r"每[日周月季年]|每天",
+    re.IGNORECASE,
+)
+_MONITORING_CADENCE_VAGUE_RE = re.compile(
+    r"later this|later|soon|asap|eventually|sometime|whenever|in the future|"
+    r"this year|待定",
+    re.IGNORECASE,
+)
+
+
+def _is_monitoring_placeholder(value: str) -> bool:
+    """True when a monitoring cell is non-empty but carries no actionable info."""
+    return value.strip().strip("*:：.。").lower() in _MONITORING_PLACEHOLDERS
+
+
+def _monitoring_field_actionable(field: str, value: str) -> bool:
+    """Require field-specific evidence instead of treating arbitrary text as filled."""
+    # Cadence: reject hard placeholders first, then let an explicit frequency
+    # override time-vague phrases ("weekly later this year" / "weekly review"
+    # are valid; "TBD weekly" / "later this year" are not).
+    if field == "cadence":
+        if _MONITORING_PLACEHOLDER_WORD_RE.search(value):
+            return False
+        if _MONITORING_FREQUENCY_RE.search(value):
+            return True
+        return not _MONITORING_CADENCE_VAGUE_RE.search(value)
+
+    if _MONITORING_PLACEHOLDER_WORD_RE.search(value):
+        return False
+    if field == "threshold":
+        measurable = _MONITORING_THRESHOLD_REFERENCE_RE.sub("", value)
+        return bool(_MONITORING_THRESHOLD_RE.search(measurable))
+    if field == "source":
+        source = value.strip().strip("*:：.。[] ")
+        if _MONITORING_SOURCE_UNSPECIFIED_RE.fullmatch(source):
+            return False
+        return bool(
+            _MONITORING_SOURCE_LOCATOR_RE.search(source)
+            or _MONITORING_SOURCE_NAME_RE.fullmatch(source)
+        )
+    if field == "trigger_to_action":
+        return bool(_MONITORING_CONCRETE_ACTION_RE.search(value))
+    return True
 
 
 def _normalize_route(name: str) -> str:
@@ -291,9 +425,15 @@ def _run_source_label_consistency(path: Path, **kwargs: bool) -> CheckResult:
 
 
 def _run_listed_company_delivery(path: Path, **kwargs: bool) -> CheckResult:
-    """Run validate_listed_company_delivery checks."""
+    """Run validate_listed_company_delivery checks.
+
+    The orchestrator has already resolved the primary route to a canonical id;
+    forward it so the dedicated checks run on the canonical ``listed-company``
+    route instead of being re-guessed from display text (issue #436 D1).
+    """
+    route_id = kwargs.get("route_id")
     try:
-        errors, warnings = vlc_validate_file(path)
+        errors, warnings = vlc_validate_file(path, route_id=route_id)
     except Exception as exc:
         return CheckResult(
             name="listed-company-delivery",
@@ -381,7 +521,7 @@ def _run_market_outlook_monitoring_actionability(
         "threshold": {"threshold", "阈值"},
         "cadence": {"cadence", "frequency", "频率"},
         "source": {"source", "来源"},
-        "trigger_to_action": {"trigger", "action", "应对"},
+        "trigger_to_action": {"trigger", "action", "应对", "触发", "动作"},
     }
 
     def _map_table_header(header_line: str) -> dict[str, int]:
@@ -444,6 +584,15 @@ def _run_market_outlook_monitoring_actionability(
                         if col_idx >= len(cells) or not cells[col_idx]:
                             all_filled = False
                             missing_fields.append(field)
+                        elif _is_monitoring_placeholder(cells[col_idx]):
+                            # Non-empty but a placeholder: not actionable (issue #436 D3)
+                            all_filled = False
+                            missing_fields.append(f"{field} (placeholder)")
+                        elif not _monitoring_field_actionable(field, cells[col_idx]):
+                            # Non-empty but meaningless (e.g. threshold=foo,
+                            # cadence=later, source=maybe, action=observe).
+                            all_filled = False
+                            missing_fields.append(f"{field} (not actionable)")
                     if all_filled:
                         fully_defined += 1
                     else:
@@ -793,6 +942,29 @@ def _run_forward_looking(path: Path, **kwargs: bool) -> CheckResult:
     return CheckResult(name="forward-looking-claims", errors=list(hits), warnings=[])
 
 
+def _run_external_citation_hygiene(path: Path, **kwargs: bool) -> CheckResult:
+    """Block unreachable deep-research internal citation artifacts (issue #436 D4).
+
+    Operates on visible Markdown only (fences stripped), so internal refs that
+    appear inside fenced code examples do not pollute the gate while real
+    visible text still blocks.  Findings are returned as errors so the
+    delivery-scope loop blocks them in strict mode and records them advisory
+    outside strict.
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        return CheckResult(
+            name="external-citation-hygiene",
+            errors=[f"{path}: cannot read file — {exc}"],
+        )
+    cleaned = vch_strip_fences(text)
+    findings = check_external_citation_hygiene(cleaned)
+    return CheckResult(
+        name="external-citation-hygiene", errors=list(findings), warnings=[]
+    )
+
+
 def _run_claim_alignment(path: Path, **kwargs: object) -> CheckResult:
     """Run offline claim–source alignment on a bundle (issue #419)."""
     bundle_arg = kwargs.get("claim_alignment_bundle")
@@ -912,6 +1084,7 @@ _AUDIT_VALIDATOR_REGISTRY: dict[str, ValidatorFn] = {
     "research-pack": _run_research_pack,
     "forward-looking-claims": _run_forward_looking,
     "claim-alignment": _run_claim_alignment,
+    "external-citation-hygiene": _run_external_citation_hygiene,
 }
 
 _missing_audit_fns = registry_loader.AUDIT_VALIDATOR_IDS - set(_AUDIT_VALIDATOR_REGISTRY)
@@ -2174,7 +2347,9 @@ def _audit_report_impl(
     # without a contract fails by definition instead of silently skipping.
     effective_require_contract = require_contract or strict
 
-    # Run each validator with shared flags as keyword arguments
+    # Run each validator with shared flags as keyword arguments.
+    # route_id is the orchestrator-resolved canonical route (issue #436 D1):
+    # route-specific validators trust it instead of re-guessing from display text.
     results: list[CheckResult] = []
     for validator in validators:
         result = validator(
@@ -2183,6 +2358,7 @@ def _audit_report_impl(
             require_contract=effective_require_contract,
             research_pack=research_pack,
             activation_snapshot=activation_snapshot,
+            route_id=resolved_route,
         )
         results.append(result)
 

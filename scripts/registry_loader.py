@@ -64,6 +64,7 @@ AUDIT_VALIDATOR_IDS: frozenset[str] = frozenset({
     "research-pack",
     "forward-looking-claims",
     "claim-alignment",
+    "external-citation-hygiene",
 })
 
 # All ids an audit's validator_binding may reference.
@@ -101,10 +102,20 @@ class UnknownRouteError(RegistryError):
     """Raised when a route name cannot be resolved to a canonical route id."""
 
 
+def _strip_inline_code(name: str) -> str:
+    """Remove a Markdown inline-code wrapper around a route label."""
+    value = name.strip()
+    while len(value) >= 2 and value.startswith("`") and value.endswith("`"):
+        value = value[1:-1].strip()
+    return value
+
+
 def _normalize_name(name: str) -> str:
-    """Lowercase, collapse whitespace, strip trailing parenthetical notes."""
-    normalized = " ".join(name.strip().lower().split())
-    no_paren = re.sub(r"\s*\([^)]*\)\s*$", "", normalized).strip()
+    """Lowercase, collapse whitespace, strip code markup and trailing notes."""
+    normalized = " ".join(_strip_inline_code(name).lower().split())
+    no_paren = _strip_inline_code(
+        re.sub(r"\s*\([^)]*\)\s*$", "", normalized).strip()
+    )
     return no_paren if no_paren else normalized
 
 
@@ -376,16 +387,18 @@ class RouteRegistry:
     def resolve_route(self, name: str) -> str:
         """Resolve a display name / alias / kebab-case id to a canonical route id.
 
-        Mirrors the previous _normalize_route behavior in audit_report.py:
-        lowercase + whitespace collapse, alias lookup, parenthetical-note
-        stripping, then a space→hyphen fallback against known route ids.
+        Normalize inline-code labels, lowercase and collapse whitespace, then
+        resolve aliases and parenthetical notes before the space→hyphen
+        fallback against known route ids.
         Raises UnknownRouteError when nothing matches.
         """
-        normalized = " ".join(name.strip().lower().split())
+        normalized = " ".join(_strip_inline_code(name).lower().split())
         canon = self._alias_map.get(normalized)
         if canon is not None:
             return canon
-        no_paren = re.sub(r"\s*\([^)]*\)\s*$", "", normalized).strip()
+        no_paren = _strip_inline_code(
+            re.sub(r"\s*\([^)]*\)\s*$", "", normalized).strip()
+        )
         if no_paren and no_paren != normalized:
             canon = self._alias_map.get(no_paren)
             if canon is not None:

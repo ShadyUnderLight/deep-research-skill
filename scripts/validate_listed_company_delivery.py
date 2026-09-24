@@ -27,6 +27,7 @@ from __future__ import annotations
 import argparse
 import re
 import sys
+from datetime import date
 from pathlib import Path
 
 # Reuse shared helpers from validate_report_quality
@@ -35,8 +36,12 @@ from validate_report_quality import (
     section_text,
     parse_table,
     find_col_index,
+    get_route_name,
 )
 from validate_contract import sanitize_visible_markdown
+
+import registry_loader
+from registry_loader import RegistryError, UnknownRouteError
 
 EXIT_PASS = 0
 EXIT_ISSUES = 2
@@ -49,33 +54,146 @@ LISTED_COMPANY_ROUTE_RE = re.compile(
     re.IGNORECASE,
 )
 
-# Research-anchor block patterns
-ANCHOR_FY_RE = re.compile(
-    r"(?:最新完整财年|latest\s+FY|latest\s+full[-\s]year|FY\d{4})",
+# Research-anchor fields are parsed as labeled values, rather than searching
+# the whole field segment: a period/date in a note after "待补充" must not
+# masquerade as the current anchor (review P1).
+ANCHOR_FY_LABEL_RE = re.compile(
+    r"(?:最新完整财年|最新FY|最新财年|latest\s+FY|latest\s+full[-\s]year)\s*[:：]\s*(.*)$",
     re.IGNORECASE,
 )
-ANCHOR_QUARTER_RE = re.compile(
-    r"(?:最新季度|最新[半]?年[度报]|latest\s+quarter|Q[1-4]\s*\d{4}|interim)",
+ANCHOR_QUARTER_LABEL_RE = re.compile(
+    r"(?:最新季度|最新半年报|latest\s+quarter|interim)\s*[:：]\s*(.*)$",
     re.IGNORECASE,
 )
-ANCHOR_SNAPSHOT_RE = re.compile(
-    r"(?:快照日期|snapshot\s+date|market\s+snapshot\s+date|当前股价|share\s+price)",
+ANCHOR_SNAPSHOT_LABEL_RE = re.compile(
+    r"(?:快照日期|市场快照|snapshot\s+date|market\s+snapshot\s+date)\s*[:：]\s*(.*)$",
+    re.IGNORECASE,
+)
+ANCHOR_VALUE_PLACEHOLDER_RE = re.compile(
+    r"\b(?:tbd|n/?a|none|unknown|pending|maybe|perhaps|not provided|"
+    r"not available|unavailable)\b"
+    r"|待补充|待填写|待定|待确认|待核实|待更新|暂无",
+    re.IGNORECASE,
+)
+ANCHOR_FY_VALUE_RE = re.compile(
+    r"^(?:FY\s*20\d{2}|20\d{2}(?:年(?:年报|报|年度|年)?)?)(?=$|[\s（(,，。；;])",
+    re.IGNORECASE,
+)
+ANCHOR_QUARTER_VALUE_RE = re.compile(
+    r"^(?:20\d{2}\s*[Qq][1-4]|[Qq][1-4]\s*20\d{2}|"
+    r"20\d{2}\s*[Hh][12]|[Hh][12]\s*20\d{2}|"
+    r"20\d{2}年[一二三四]季(?:报|度)?)(?=$|[\s（(,，。；;])",
+    re.IGNORECASE,
+)
+ANCHOR_SNAPSHOT_VALUE_RE = re.compile(
+    r"^(?:(?:as\s+of|截至|截至日期)\s*)?"
+    r"\d{4}[-/]\d{1,2}[-/]\d{1,2}(?=$|[\sTt（(,，。；;])",
     re.IGNORECASE,
 )
 
-# Market snapshot table field patterns
-SNAPSHOT_FIELD_PATTERNS: list[re.Pattern[str]] = [
-    re.compile(r"(?:当前股价|share price|股价)", re.IGNORECASE),
-    re.compile(r"(?:市值|market cap|market capitalization)", re.IGNORECASE),
-    re.compile(r"PE\s*\(TTM\)", re.IGNORECASE),
-    re.compile(r"PE\s*\(Forward\)|PE\s*\(Fwd\)|forward\s+PE", re.IGNORECASE),
-    re.compile(r"PB\b", re.IGNORECASE),
-    re.compile(r"PS\b", re.IGNORECASE),
-    re.compile(r"(?:52周|52[-\s]week|52W)", re.IGNORECASE),
-    re.compile(r"(?:股息率|dividend yield)", re.IGNORECASE),
-]
+# The visible research-anchor block heading.  Anchor time-layers must be found
+# inside this section — keywords in other sections, the Source Register or body
+# prose do not count (issue #436 D2).
+ANCHOR_BLOCK_RE = re.compile(
+    r"研究锚定|research[\s-]*anchor|current[\s-]*state[\s-]*anchor",
+    re.IGNORECASE,
+)
+
+# Heading-less single-line anchor form allowed by the report template:
+#   研究锚定：最新FY：FY2025｜最新季度：2026Q1｜市场快照：2026-05-29
+ANCHOR_LINE_RE = re.compile(
+    r"^\s*(?:研究锚定|research\s*anchor)\s*[:：]", re.IGNORECASE
+)
 
 REQUIRED_SNAPSHOT_FIELDS = 5
+_SNAPSHOT_NUMBER = r"\d+(?:,\d{3})*(?:\.\d+)?"
+_SNAPSHOT_CURRENCY = (
+    r"(?:(?:USD|EUR|GBP|JPY|CNY|NTD|TWD|HKD|CAD|AUD|RMB)\s*|"
+    r"(?:US|NT|HK|CN)\s*[$€£¥￥]\s*|[$€£¥￥]\s*)?"
+)
+_SNAPSHOT_APPROX = r"(?:~|≈|约)?\s*"
+_SNAPSHOT_VALUE_END = (
+    r"(?=\s*(?:$|[（(\[,，；;]|"
+    r"(?:USD|EUR|GBP|JPY|CNY|NTD|TWD|HKD|CAD|AUD|RMB)\b|"
+    r"元|美元|台币|新台币))"
+)
+SNAPSHOT_PRICE_RE = re.compile(
+    r"^\s*" + _SNAPSHOT_APPROX + _SNAPSHOT_CURRENCY
+    + _SNAPSHOT_NUMBER + _SNAPSHOT_VALUE_END,
+    re.IGNORECASE,
+)
+SNAPSHOT_MARKET_CAP_RE = re.compile(
+    r"^\s*" + _SNAPSHOT_APPROX + _SNAPSHOT_CURRENCY + r"(?:"
+    + _SNAPSHOT_NUMBER
+    + r"\s*(?:[KMBT](?:n)?\b|thousand\b|million\b|billion\b|"
+    r"trillion\b|万|亿|兆)"
+    + r"|(?:\d{1,3}(?:,\d{3}){2,}|\d{7,})"
+    + r")"
+    + _SNAPSHOT_VALUE_END,
+    re.IGNORECASE,
+)
+SNAPSHOT_RATIO_RE = re.compile(
+    r"^\s*" + _SNAPSHOT_APPROX + _SNAPSHOT_NUMBER
+    + r"\s*(?:x|倍)?" + _SNAPSHOT_VALUE_END,
+    re.IGNORECASE,
+)
+SNAPSHOT_PERCENT_RE = re.compile(
+    r"^\s*" + _SNAPSHOT_APPROX + _SNAPSHOT_NUMBER
+    + r"\s*(?:%|percent|百分比)"
+    + _SNAPSHOT_VALUE_END,
+    re.IGNORECASE,
+)
+SNAPSHOT_DATE_PREFIX_RE = re.compile(
+    r"^\s*\d{4}[-/]\d{1,2}[-/]\d{1,2}(?=\s|$|[Tt]|[（(,，；;])"
+)
+SNAPSHOT_CURRENCY_MARKER_RE = re.compile(
+    r"[$€£¥￥]|\b(?:USD|EUR|GBP|JPY|CNY|NTD|TWD|HKD|CAD|AUD|RMB)\b|"
+    r"元|美元|台币|新台币",
+    re.IGNORECASE,
+)
+SNAPSHOT_PLACEHOLDER_RE = re.compile(
+    r"\b(?:tbd|n/?a|none|unknown|pending|maybe|perhaps|not provided|"
+    r"not available|unavailable)\b"
+    r"|待补充|待填写|待定|待确认|待核实|待更新|暂无|__",
+    re.IGNORECASE,
+)
+SNAPSHOT_RANGE_RE = re.compile(
+    r"^\s*" + _SNAPSHOT_APPROX + _SNAPSHOT_CURRENCY + _SNAPSHOT_NUMBER
+    + r"\s*(?:-|–|—|~|至|到|to)\s*"
+    + _SNAPSHOT_CURRENCY + _SNAPSHOT_NUMBER + _SNAPSHOT_VALUE_END,
+    re.IGNORECASE,
+)
+SNAPSHOT_FIELD_RULES: tuple[
+    tuple[re.Pattern[str], re.Pattern[str], bool], ...
+] = (
+    (re.compile(r"(?:当前股价|share price|股价)", re.IGNORECASE), SNAPSHOT_PRICE_RE, False),
+    (
+        re.compile(r"(?:市值|market cap|market capitalization)", re.IGNORECASE),
+        SNAPSHOT_MARKET_CAP_RE,
+        False,
+    ),
+    (re.compile(r"\bPE\s*\(TTM\)", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
+    (
+        re.compile(
+            r"\bPE\s*\(Forward\)|\bPE\s*\(Fwd\)|\bforward\s+PE",
+            re.IGNORECASE,
+        ),
+        SNAPSHOT_RATIO_RE,
+        False,
+    ),
+    (re.compile(r"\bPB\b", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
+    (re.compile(r"\bPS\b", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
+    (
+        re.compile(r"(?:52周|52[-\s]week|52W)", re.IGNORECASE),
+        SNAPSHOT_RANGE_RE,
+        True,
+    ),
+    (
+        re.compile(r"(?:股息率|dividend yield)", re.IGNORECASE),
+        SNAPSHOT_PERCENT_RE,
+        False,
+    ),
+)
 
 # Strong wording patterns — words that require explicit evidence
 # Covers both Chinese and English, per ROUTING-MATRIX.md Listed Company hard-fail
@@ -131,11 +249,13 @@ PRIMARY_ROUTE_RE = re.compile(r"\*\*Primary\s+route\*\*", re.IGNORECASE)
 
 
 def _is_listed_company(text: str) -> bool:
-    """Check whether the report declares a Listed-Company Primary route.
+    """Legacy display-text adapter: does the report declare Listed-Company?
 
-    Only checks the Primary route line (not Secondary route or fallback),
-    to avoid false positives when Listed Company is a secondary attachment
-    to a different primary route.
+    Only used when the caller has NOT supplied an orchestrator-resolved
+    canonical ``route_id``.  When the orchestrator runs this validator it
+    already resolved the route (issue #436 D1) and passes the canonical id,
+    so this display-text guess must never be allowed to silently skip the
+    dedicated checks.
     """
     sec = section_text(text, ROUTE_AUDIT_HEADING)
     if sec is None:
@@ -217,26 +337,126 @@ def _has_inline_citation(text_block: str) -> bool:
     return False
 
 
+def _anchor_block_text(text: str) -> str | None:
+    """Locate the visible research-anchor block.
+
+    Returns the anchor section text whether the report uses a ``## 研究锚定块``
+    heading or the template's heading-less single-line ``研究锚定：…`` form.
+    Returns ``None`` when neither form is present.
+    """
+    section = section_text(text, ANCHOR_BLOCK_RE)
+    if section is not None:
+        return section
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if ANCHOR_LINE_RE.match(line):
+            # Collect the label line plus immediately following continuation
+            # lines (bullet sub-fields) until a blank line or new heading.
+            collected = [line]
+            j = i + 1
+            while j < len(lines):
+                nxt = lines[j]
+                if not nxt.strip() or nxt.lstrip().startswith("#"):
+                    break
+                collected.append(nxt)
+                j += 1
+            return "\n".join(collected)
+    return None
+
+
+def _anchor_field_value(
+    block: str, label_pattern: re.Pattern[str]
+) -> str | None:
+    """Return the value immediately attached to one anchor label.
+
+    The compact template uses fullwidth separators; the detailed form uses one
+    labeled field per line. Splitting before matching keeps a neighboring field
+    or an unrelated note from supplying this field's value.
+    """
+    for line in block.splitlines():
+        for segment in re.split(r"[｜|]", line):
+            visible = re.sub(r"[`*_~]", "", segment).strip()
+            visible = re.sub(r"^\s*(?:[-+]|\d+[.)])\s+", "", visible)
+            visible = re.sub(
+                r"^(?:研究锚定|research\s*anchor)\s*[:：]\s*",
+                "",
+                visible,
+                flags=re.IGNORECASE,
+            )
+            match = label_pattern.match(visible)
+            if match:
+                return match.group(1).strip()
+    return None
+
+
+def _anchor_value_is_valid(
+    value: str | None,
+    value_pattern: re.Pattern[str],
+    *,
+    calendar_date: bool = False,
+) -> bool:
+    """Validate the leading value of an anchor field, not dates in annotations."""
+    if value is None:
+        return False
+    visible = re.sub(r"[`*_~]", "", value).strip()
+    if not visible or ANCHOR_VALUE_PLACEHOLDER_RE.search(visible):
+        return False
+    match = value_pattern.match(visible)
+    if match is None:
+        return False
+    if calendar_date:
+        date_match = re.search(r"\d{4}[-/]\d{1,2}[-/]\d{1,2}", match.group())
+        if date_match is None:
+            return False
+        year, month, day = map(int, re.split(r"[-/]", date_match.group()))
+        try:
+            date(year, month, day)
+        except ValueError:
+            return False
+    return True
+
+
 def check_research_anchor_block(text: str, path: Path) -> list[str]:
     """Check that a Listed-Company report has a visible research-anchor block.
 
     Required: at least 2 of {FY reference, latest quarter, snapshot date/market
     data reference}.  The anchor block is the current-state lock that prevents
     stale-anchor drift (see ROUTING-MATRIX.md Listed Company hard-fail).
+
+    Time-layer references are counted ONLY inside the visible anchor block.
+    The anchor block may be either a heading section (``## 研究锚定块`` /
+    ``Research anchor``) or the heading-less single-line form allowed by the
+    report template (``研究锚定：最新FY：…｜最新季度：…｜市场快照：…``).  Keywords
+    that only appear in other sections, the Source Register or body prose do
+    not satisfy the gate (issue #436 D2).
     """
-    hits = 0
-    if ANCHOR_FY_RE.search(text):
-        hits += 1
-    if ANCHOR_QUARTER_RE.search(text):
-        hits += 1
-    if ANCHOR_SNAPSHOT_RE.search(text):
-        hits += 1
+    block = _anchor_block_text(text)
+    if block is None:
+        return [
+            f"{path}: Listed-Company report has no research-anchor block "
+            "(expected a visible '## 研究锚定块' section or a single-line "
+            "'研究锚定：…' anchor locking latest FY, latest quarter/interim and "
+            "current market snapshot date)"
+        ]
+
+    field_rules = (
+        (ANCHOR_FY_LABEL_RE, ANCHOR_FY_VALUE_RE, False),
+        (ANCHOR_QUARTER_LABEL_RE, ANCHOR_QUARTER_VALUE_RE, False),
+        (ANCHOR_SNAPSHOT_LABEL_RE, ANCHOR_SNAPSHOT_VALUE_RE, True),
+    )
+    hits = sum(
+        _anchor_value_is_valid(
+            _anchor_field_value(block, label), value, calendar_date=is_date
+        )
+        for label, value, is_date in field_rules
+    )
 
     if hits < 2:
         return [
-            f"{path}: Listed-Company report lacks a complete research-anchor block "
-            f"(found {hits}/3 required time-layer references: latest FY, "
-            f"latest quarter/interim, current market snapshot date)"
+            f"{path}: research-anchor block only locks {hits}/3 required "
+            "time-layer references (latest FY, latest quarter/interim, "
+            "current market snapshot date); keywords outside the anchor block "
+            "do not count"
         ]
     return []
 
@@ -248,26 +468,63 @@ def check_market_snapshot(text: str, path: Path) -> list[str]:
     share price, market cap, PE(TTM), PE(Forward), PB, PS, 52-week range,
     dividend yield.
 
-    Returns errors (warning-level: missing 2-4 fields; no error for 0-1)
-    since the ROUTING-MATRIX.md hard-fail requires a complete snapshot.
-    We use a warning threshold at <5 fields because some reports split
-    the snapshot across sections.
+    Returns errors (blocking): a missing market-snapshot section or fewer than
+    5 filled fields is a delivery failure (issue #436), not a warning.  Only
+    the value cell of each labeled field is counted; labels and source-column
+    ids do not count as a filled value.
     """
-    # Find the market snapshot section — look for heading patterns
-    # and scan the surrounding text for field indicators
+    # Find the market snapshot section — look for heading patterns and scan
+    # ONLY within that section.  The previous whole-document fallback let
+    # reports satisfy the field count from keywords scattered elsewhere, so it
+    # is removed (issue #436 D2): a missing snapshot section is reported
+    # instead of being silently papered over.
     snapshot_heading = re.compile(
         r"(?:市场快照|market snapshot|financial snapshot|关键指标|key metrics)",
         re.IGNORECASE,
     )
     bounds = section_bounds(text, snapshot_heading)
-    scan_region = text  # fallback: scan entire document
-    if bounds is not None:
-        start, end = bounds
-        lines = text.splitlines()
-        scan_region = "\n".join(lines[start : min(end, start + 60)])
+    if bounds is None:
+        return [
+            f"{path}: Listed-Company report has no market-snapshot section "
+            "(expected a visible section such as '## 市场快照' / "
+            "'Market snapshot' with share price, market cap, PE(TTM/Forward), "
+            "PB, PS, 52-week range, dividend yield)"
+        ]
+    start, end = bounds
+    lines = text.splitlines()
+    scan_lines = lines[start:end]
 
-    # Count matched field patterns
-    matched = sum(1 for pat in SNAPSHOT_FIELD_PATTERNS if pat.search(scan_region))
+    # A field counts only when its *value cell* matches that metric's value
+    # format. Parsing cells prevents the label itself (e.g. "52周区间" contains
+    # digits) and the source column (e.g. "[S01]") from filling the metric.
+    def _field_filled(
+        label_pattern: re.Pattern[str],
+        value_pattern: re.Pattern[str],
+        require_currency: bool,
+    ) -> bool:
+        for ln in scan_lines:
+            if "|" not in ln:
+                continue
+            cells = [c.strip() for c in ln.split("|")]
+            for i, cell in enumerate(cells):
+                if label_pattern.search(cell) and i + 1 < len(cells):
+                    value = re.sub(r"[`*_~]", "", cells[i + 1]).strip()
+                    if (
+                        not value
+                        or SNAPSHOT_PLACEHOLDER_RE.search(value)
+                        or SNAPSHOT_DATE_PREFIX_RE.match(value)
+                    ):
+                        continue
+                    if value_pattern.match(value) and (
+                        not require_currency or SNAPSHOT_CURRENCY_MARKER_RE.search(value)
+                    ):
+                        return True
+        return False
+
+    matched = sum(
+        _field_filled(label_pattern, value_pattern, require_currency)
+        for label_pattern, value_pattern, require_currency in SNAPSHOT_FIELD_RULES
+    )
     if matched < REQUIRED_SNAPSHOT_FIELDS:
         return [
             f"{path}: Listed-Company market snapshot has only {matched}/8 "
@@ -378,8 +635,19 @@ def check_secondary_route_hard_fail(text: str, path: Path) -> list[str]:
 # ── Main validate function ───────────────────────────────────────────────────
 
 
-def validate_file(path: Path) -> tuple[list[str], list[str]]:
+def validate_file(
+    path: Path, route_id: str | None = None
+) -> tuple[list[str], list[str]]:
     """Run all Listed-Company delivery checks on a report file.
+
+    Args:
+        path: report markdown file.
+        route_id: canonical route id already resolved by the orchestrator
+            (e.g. ``"listed-company"``).  When supplied, the listed-company
+            checks run iff this is the listed-company canonical id; the
+            display-text re-guess is NOT used to decide whether to run
+            (issue #436 D1).  When ``None`` (legacy/standalone callers that do
+            not resolve the route), fall back to the display-text adapter.
 
     Returns (errors, warnings):
     - errors — blocking; must be fixed before delivery
@@ -392,9 +660,11 @@ def validate_file(path: Path) -> tuple[list[str], list[str]]:
 
     cleaned = sanitize_visible_markdown(text)
 
-    # Only run Listed-Company-specific checks if the report declares
-    # this route.  Non-listed-company reports pass through silently.
-    if not _is_listed_company(cleaned):
+    # Route dispatch: trust the orchestrator-resolved canonical id.  Only when
+    # no route id is supplied do we fall back to the legacy display-text guess.
+    if route_id is None:
+        route_id = "listed-company" if _is_listed_company(cleaned) else None
+    if route_id != "listed-company":
         return [], []
 
     errors: list[str] = []
@@ -403,8 +673,10 @@ def validate_file(path: Path) -> tuple[list[str], list[str]]:
     # 1. Research-anchor block
     errors.extend(check_research_anchor_block(cleaned, path))
 
-    # 2. Market snapshot completeness
-    warnings.extend(check_market_snapshot(cleaned, path))
+    # 2. Market snapshot completeness — a missing section or insufficient
+    # fields is a hard failure (issue #436), not a warning that collapses to
+    # conditional-pass.
+    errors.extend(check_market_snapshot(cleaned, path))
 
     # 3. Strong wording scan
     e, w = check_strong_wording(cleaned, path)
@@ -418,6 +690,36 @@ def validate_file(path: Path) -> tuple[list[str], list[str]]:
 
 
 # ── CLI entry point ──────────────────────────────────────────────────────────
+
+
+def _resolve_route_id(path: Path) -> tuple[str | None, str | None]:
+    """Resolve the report's declared primary route to a canonical route id.
+
+    Standalone CLI adapter (issue #436 D1): extract the declared primary route
+    name and resolve it through the route manifest, so that canonical forms such
+    as ``listed-company`` are trusted instead of re-guessed from display text.
+
+    Returns ``(canonical_id, error)``:
+    - ``(None, "…")`` when no primary route is declared or it cannot be
+      resolved — the CLI must fail closed instead of silently passing;
+    - ``(canon, None)`` on success (canon may be a non-listed route, in which
+      case ``validate_file`` skips the listed-company checks).
+    """
+    try:
+        text = path.read_text(encoding="utf-8", errors="replace")
+    except (OSError, UnicodeError) as exc:
+        return None, f"cannot read file — {exc}"
+    cleaned = sanitize_visible_markdown(text)
+    raw = get_route_name(cleaned)
+    if not raw:
+        return None, "no primary route declared in the report"
+    try:
+        canonical = registry_loader.load_route_registry().resolve_route(raw)
+    except UnknownRouteError as exc:
+        return None, f"declared primary route '{raw}' cannot be resolved — {exc}"
+    except RegistryError as exc:
+        return None, f"route registry is invalid — {exc}"
+    return canonical, None
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -434,7 +736,15 @@ def main(argv: list[str] | None = None) -> int:
         if not path.is_file():
             all_errors.append(f"{path}: not a regular file")
             continue
-        errors, warnings = validate_file(path)
+        # Resolve the declared route once so canonical 'listed-company' runs the
+        # dedicated checks instead of being silently skipped.  A missing or
+        # unresolvable route is a blocking failure, not a silent pass
+        # (issue #436 D1).
+        route_id, route_err = _resolve_route_id(path)
+        if route_err is not None:
+            all_errors.append(f"{path}: {route_err}")
+            continue
+        errors, warnings = validate_file(path, route_id=route_id)
         all_errors.extend(errors)
         all_warnings.extend(warnings)
 

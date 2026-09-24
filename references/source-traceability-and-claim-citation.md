@@ -120,7 +120,7 @@ These hygiene rules supplement the existing traceability discipline:
 - Format equivalence exemptions (see §Format equivalence exemption) still apply — `(Author, Year)` or `据 FY2025 年报` are valid even in imported content
 - The `DISCOVERY` source type restriction (see §Source type classification) still applies: search-level output is not a register entry
 
-> **Automated scanning:** A standalone validator `scripts/validate_external_citation_hygiene.py` can check any report for these hygiene violations. Run `python scripts/validate_external_citation_hygiene.py <report.md>`. Warnings are advisory (exit 0); the script does not block delivery.
+> **Automated scanning:** A standalone validator `scripts/validate_external_citation_hygiene.py` can check any report for these hygiene violations. Run `python scripts/validate_external_citation_hygiene.py <report.md>`; the standalone CLI exits 0 (advisory). The same check is also registered as the global `external-citation-hygiene` delivery-scope audit in `audit_report.py`: visible internal references (`turnNviewN`, `sandbox:`, `file-...` temp IDs) block the report under `--strict`, and are recorded advisory outside strict mode (issue #436 D4). Fenced code examples are not scanned.
 
 ## Why this matters
 

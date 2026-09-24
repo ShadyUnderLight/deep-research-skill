@@ -53,7 +53,7 @@ class TestAuditRegistryDataIntegrity:
         """markdown-delivery / research-pack must be first-class registry
         entries with delivery scope, not hardcoded code identities (#393)."""
         registry = load_audit_registry()
-        for aid in ("markdown-delivery", "research-pack"):
+        for aid in ("markdown-delivery", "research-pack", "external-citation-hygiene"):
             audit = registry.get_audit(aid)
             assert audit is not None, (
                 f"Global audit '{aid}' is not registered in audit-registry.json"
@@ -65,7 +65,7 @@ class TestAuditRegistryDataIntegrity:
 
     def test_global_audit_ids_are_the_delivery_scope_audits(self) -> None:
         registry = load_audit_registry()
-        assert registry.global_audit_ids() == ["markdown-delivery", "research-pack"]
+        assert registry.global_audit_ids() == ["markdown-delivery", "research-pack", "external-citation-hygiene"]
 
     def test_every_route_required_audit_is_registered(self) -> None:
         """All route required_audits must resolve to registry entries."""

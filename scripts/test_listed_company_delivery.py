@@ -121,7 +121,7 @@ The company's AI-driven growth trajectory remains intact [S01].
 
 
 def _incomplete_market_snapshot() -> str:
-    """Listed-company report with only 3 snapshot fields → warning."""
+    """Listed-company report with only 3 snapshot fields → blocking error."""
     return """\
 # TSMC Valuation Report
 
@@ -447,9 +447,13 @@ def test_missing_anchor_block_fails() -> None:
     expect_fail("missing anchor block", _missing_anchor_block())
 
 
-def test_incomplete_market_snapshot_warns() -> None:
-    """Market snapshot with fewer than 5 required fields should warn."""
-    expect_warn("incomplete market snapshot", _incomplete_market_snapshot())
+def test_incomplete_market_snapshot_fails() -> None:
+    """Market snapshot with fewer than 5 required fields must hard-fail.
+
+    Issue #436: a missing/insufficient market snapshot is a delivery failure,
+    not a warning that collapses to conditional-pass.
+    """
+    expect_fail("incomplete market snapshot", _incomplete_market_snapshot())
 
 
 def test_strong_wording_uncited_with_audit_pass_fails() -> None:
@@ -562,7 +566,7 @@ def main() -> int:
     tests = [
         ("valid listed-company passes", test_valid_listed_company_passes),
         ("missing anchor block fails", test_missing_anchor_block_fails),
-        ("incomplete market snapshot warns", test_incomplete_market_snapshot_warns),
+        ("incomplete market snapshot fails", test_incomplete_market_snapshot_fails),
         (
             "strong wording uncited with audit pass fails",
             test_strong_wording_uncited_with_audit_pass_fails,
