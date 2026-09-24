@@ -679,3 +679,36 @@ def test_conditional_action_with_concrete_measure_passes(tmp_path: Path) -> None
     p = _write(tmp_path, _monitoring_report(rows))
     result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
     assert not result.errors, result.errors
+
+
+
+# ── Review round 8: Chinese quarter format, word-boundary action verbs ──
+
+
+def test_chinese_quarter_format_counts(tmp_path: Path) -> None:
+    """'最新季度：2026年一季报' (doc-allowed format) counts as the quarter layer."""
+    anchor = (
+        "## 研究锚定块\n\n"
+        "- **最新完整财年**: FY2025\n"
+        "- **最新季度**: 2026年一季报\n"
+        "- **快照日期**: 2026-09-24\n"
+    )
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n" + anchor
+        + "\n" + _snapshot_table() + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert not any("anchor" in e for e in errors), errors
+
+
+def test_review_execution_plan_fails(tmp_path: Path) -> None:
+    """'review execution plan' has no concrete measure (cut inside execution)."""
+    rows = [
+        "| Margin | below 30% | weekly | S01 | review execution plan |",
+        "| Demand | below 5% | monthly | S02 | observe |",
+        "| PE | above 40x | quarterly | S03 | 关注 |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "review execution plan must not count"

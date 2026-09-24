@@ -216,7 +216,7 @@ _MONITORING_ACTION_VAGUE_RE = re.compile(
 # "monitor".  Only a bare vague verb (a cell that is basically "review") is
 # rejected (review P2).
 _MONITORING_CONCRETE_ACTION_RE = re.compile(
-    r"cut|reduce|take|notify|explore|hedge|sell|buy|trim|raise|lower|exit|enter|"
+    r"\b(?:cut|reduce|take|notify|explore|hedge|sell|buy|trim|raise|lower|exit|enter)\b|"
     r"削减|降低|卖出|买入|加仓|减仓|止盈|止损|对冲|持有|增持|减持|清仓",
     re.IGNORECASE,
 )
