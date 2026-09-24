@@ -200,7 +200,7 @@ _MONITORING_THRESHOLD_NUMERIC_RE = re.compile(r"\d")
 # Hard placeholders that disqualify ANY field — catches multi-word fillers such
 # as "TBD Q3" / "maybe EIA report" (review P1).  These are not domain words.
 _MONITORING_PLACEHOLDER_WORD_RE = re.compile(
-    r"\b(?:tbd|n/?a|na|unknown|maybe|perhaps|foo|bar|test)\b"
+    r"\b(?:tbd|n/?a|na|none|unknown|maybe|perhaps|foo|bar|test)\b"
     r"|待补充|待填写|待定|待确认|暂无|看情况|视情况",
     re.IGNORECASE,
 )
