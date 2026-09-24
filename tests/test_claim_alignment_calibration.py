@@ -29,7 +29,7 @@ class TestClaimAlignmentCalibration:
             threshold=0.85,
         )
         assert result.aggregate_accuracy >= 0.85
-        assert result.fixture_version == "claim-alignment-calibration-v2"
+        assert result.fixture_version == "claim-alignment-calibration-v3"
         assert result.positive_samples > 0
         assert result.negative_samples > 0
         supported = result.per_class["SUPPORTED"]

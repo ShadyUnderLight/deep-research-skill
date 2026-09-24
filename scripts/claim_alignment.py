@@ -799,17 +799,23 @@ def _year_mismatch(claim: str, excerpt: str) -> bool:
 
 
 def _period_ambiguous(claim: str, excerpt: str) -> bool:
-    # Years overlap (so not a definite year mismatch) but only one side pins a
-    # quarter -> the periods cannot be reliably compared.
+    # Years overlap (so not a definite year mismatch), but for some shared year
+    # only one side pins a quarter -> that period cannot be reliably compared.
+    # Checked per shared year, so "Q1 2024 and 2025" vs "2024 and Q2 2025" is
+    # ambiguous too: both sides carry a quarter globally, but for no shared year
+    # do *both* sides pin one.
     claim_periods = _extract_periods(claim)
     excerpt_periods = _extract_periods(excerpt)
-    claim_years = {year for year, _ in claim_periods}
-    excerpt_years = {year for year, _ in excerpt_periods}
-    if not (claim_years and excerpt_years and (claim_years & excerpt_years)):
+    shared_years = {year for year, _ in claim_periods} & {
+        year for year, _ in excerpt_periods
+    }
+    if not shared_years:
         return False
-    claim_has_quarter = any(q for _, q in claim_periods)
-    excerpt_has_quarter = any(q for _, q in excerpt_periods)
-    return claim_has_quarter != excerpt_has_quarter
+    claim_q = _quarters_by_year(claim_periods)
+    excerpt_q = _quarters_by_year(excerpt_periods)
+    return any(
+        bool(claim_q.get(year)) != bool(excerpt_q.get(year)) for year in shared_years
+    )
 
 
 def _cjk_char_overlap(claim: str, excerpt: str) -> float:
@@ -918,17 +924,23 @@ def _judge_claim_text(
         quote = locator_value.strip()
         if quote and quote not in excerpt:
             return "UNSUPPORTED"
-    if _direction_conflict(claim_text, excerpt):
-        return "UNSUPPORTED"
-    if _negation_conflict(claim_text, excerpt):
+    # A hedged claim/evidence (尚未 "not yet" / 未必 "not necessarily") must not be
+    # escalated into a definite contradiction by the coarse polarity heuristics:
+    # 未必增长 vs 没有增长 is not a certain conflict. Numeric/period evidence below
+    # stays definite regardless of the hedge.
+    uncertain = _uncertain_aspect_present(claim_text) or _uncertain_aspect_present(excerpt)
+    if not uncertain and (
+        _direction_conflict(claim_text, excerpt)
+        or _negation_conflict(claim_text, excerpt)
+    ):
         return "UNSUPPORTED"
     if _numeric_percent_conflict(claim_text, excerpt):
         return "UNSUPPORTED"
     if _year_mismatch(claim_text, excerpt):
         return "UNSUPPORTED"
-    if _period_ambiguous(claim_text, excerpt):
+    if uncertain:
         return "AMBIGUOUS"
-    if _uncertain_aspect_present(claim_text) or _uncertain_aspect_present(excerpt):
+    if _period_ambiguous(claim_text, excerpt):
         return "AMBIGUOUS"
     overlap = _lexical_overlap(claim_text, excerpt)
     if overlap >= 0.45:

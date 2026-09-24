@@ -521,6 +521,18 @@ class TestClaimAlignmentHeuristicFixes437:
             "",
         ) == "AMBIGUOUS"
 
+    def test_uncertain_marker_not_escalated_to_conflict(self) -> None:
+        # Reviewer P2 (round 3): the uncertainty marker must take part in the
+        # conflict decision. 收入未必增长 carries no hard negation while
+        # 收入没有增长 does, so the negation heuristic alone would return
+        # UNSUPPORTED — but the hedge means the pair is not a certain
+        # contradiction.
+        assert _judge_claim_text("收入未必增长", "收入没有增长。", None, "") == "AMBIGUOUS"
+        assert _judge_claim_text("收入尚未增长", "收入没有增长。", None, "") == "AMBIGUOUS"
+        # Without a hedge the same kind of conflict stays definite.
+        assert _judge_claim_text("收入增长", "收入下降。", None, "") == "UNSUPPORTED"
+        assert _judge_claim_text("收入没有增长", "收入增长。", None, "") == "UNSUPPORTED"
+
     def test_uncertain_markers_force_ambiguous(self) -> None:
         assert _uncertain_aspect_present("收入尚未增长")
         assert _uncertain_aspect_present("未必增长")
@@ -602,6 +614,19 @@ class TestClaimAlignmentHeuristicFixes437:
             "Revenue grew in 2023Q1 and 2024Q2",
             "Revenue grew in 2023Q1 and 2024Q2",
         )
+
+    def test_one_sided_quarter_in_multiyear_text_is_ambiguous(self) -> None:
+        # Reviewer P2 (round 3): both sides carry a quarter globally, but they
+        # belong to different years, so no shared year pins a quarter on both
+        # sides and the periods cannot be compared -> AMBIGUOUS, not SUPPORTED.
+        claim = "Revenue grew in Q1 2024 and 2025"
+        excerpt = "Revenue grew in 2024 and Q2 2025"
+        assert _period_ambiguous(claim, excerpt)
+        assert _judge_claim_text(claim, excerpt + ".", None, "") == "AMBIGUOUS"
+        # When each shared year is pinned consistently on both sides, there is
+        # nothing ambiguous.
+        assert not _period_ambiguous(claim, claim)
+        assert not _period_ambiguous("Revenue grew in 2024", "Revenue grew in 2024")
 
     # --- End-to-end: the full judge must not emit false UNSUPPORTED ---
 
