@@ -200,7 +200,7 @@ _MONITORING_THRESHOLD_NUMERIC_RE = re.compile(r"\d")
 # Hard placeholders that disqualify ANY field — catches multi-word fillers such
 # as "TBD Q3" / "maybe EIA report" (review P1).  These are not domain words.
 _MONITORING_PLACEHOLDER_WORD_RE = re.compile(
-    r"\b(?:tbd|n/?a|na|none|unknown|maybe|perhaps|foo|bar|test)\b"
+    r"\b(?:tbd|n/?a|na|none|unknown|maybe|perhaps|foo|bar|test|not provided|no source|n/a)\b|无来源|未提供"
     r"|待补充|待填写|待定|待确认|暂无|看情况|视情况",
     re.IGNORECASE,
 )
@@ -209,6 +209,15 @@ _MONITORING_PLACEHOLDER_WORD_RE = re.compile(
 _MONITORING_ACTION_VAGUE_RE = re.compile(
     r"\b(?:observe|watch|monitor|follow|track|see|review)\b"
     r"|关注|观察|留意|跟踪",
+    re.IGNORECASE,
+)
+# A concrete trigger+measure overrides a vague verb: "monitor margin and cut
+# production if it falls below 30%" is actionable even though it contains
+# "monitor".  Only a bare vague verb (a cell that is basically "review") is
+# rejected (review P2).
+_MONITORING_CONCRETE_ACTION_RE = re.compile(
+    r"\d|cut|reduce|take|notify|explore|hedge|sell|buy|trim|raise|lower|exit|enter|"
+    r"削减|降低|卖出|买入|加仓|减仓|止盈|止损|对冲|持有|增持|减持|清仓",
     re.IGNORECASE,
 )
 # Explicit frequency tokens — when present, "this year" / "later" style phrases
@@ -251,7 +260,9 @@ def _monitoring_field_actionable(field: str, value: str) -> bool:
     if _MONITORING_PLACEHOLDER_WORD_RE.search(value):
         return False
     if field == "trigger_to_action" and _MONITORING_ACTION_VAGUE_RE.search(value):
-        return False
+        # Only reject when the cell has no concrete trigger/measure.
+        if not _MONITORING_CONCRETE_ACTION_RE.search(value):
+            return False
     if field == "threshold":
         return bool(_MONITORING_THRESHOLD_NUMERIC_RE.search(value))
     return True

@@ -565,3 +565,60 @@ def test_none_provided_source_not_counted(tmp_path: Path) -> None:
     p = _write(tmp_path, _monitoring_report(rows))
     result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
     assert result.errors, "none provided source must not count"
+
+
+
+# ── Review round 6: no untethered FY/quarter, concrete action override, missing-source phrases ──
+
+
+def test_historical_fy_quarter_refs_do_not_count_as_current_layers(tmp_path: Path) -> None:
+    """Historical FY/quarter prose must not satisfy the current-time-layer gate."""
+    anchor = (
+        "## 研究锚定块\n\n"
+        "- **最新完整财年**: 待补充\n"
+        "- **最新季度**: 待补充\n"
+        "- **快照日期**: 待补充\n\n"
+        "历史对比采用 FY2025 与 2025Q4 的基数。\n"
+    )
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n" + anchor
+        + "\n" + _snapshot_table() + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("anchor" in e for e in errors), (
+        "historical FY2025/2025Q4 must not count; must fail", errors
+    )
+
+
+def test_bare_review_action_fails_but_concrete_monitoring_action_passes(tmp_path: Path) -> None:
+    """Bare 'review' fails; 'monitor ... and cut ... if ...' passes."""
+    (tmp_path / "bare").mkdir()
+    bare = _write(tmp_path / "bare", _monitoring_report([
+        "| Margin | below 30% | weekly | S01 | review |",
+        "| Demand | below 5% | monthly | S02 | observe |",
+        "| PE | above 40x | quarterly | S03 | 关注 |",
+    ]))
+    r1 = audit_report._run_market_outlook_monitoring_actionability(bare, strict=True)
+    assert r1.errors, "bare vague actions must fail"
+
+    (tmp_path / "concrete").mkdir()
+    concrete = _write(tmp_path / "concrete", _monitoring_report([
+        "| Margin | below 30% | weekly | S01 | monitor margin and cut production if below 30% |",
+        "| Demand | below 5% | monthly | S02 | reduce headcount |",
+        "| PE | above 40x | quarterly | S03 | take profit |",
+    ]))
+    r2 = audit_report._run_market_outlook_monitoring_actionability(concrete, strict=True)
+    assert not r2.errors, r2.errors
+
+
+def test_missing_source_phrases_not_counted(tmp_path: Path) -> None:
+    """not provided / no source / 无来源 must not count as a source."""
+    rows = [
+        "| Margin | below 30% | weekly | not provided | cut production |",
+        "| Demand | below 5% | monthly | no source | reduce headcount |",
+        "| PE | above 40x | quarterly | 无来源 | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "missing-source phrases must not count"

@@ -60,14 +60,17 @@ LISTED_COMPANY_ROUTE_RE = re.compile(
 # look at its own value segment, not scan into the next field (e.g. a quarter
 # report date must not be mistaken for the FY value) — review P2.
 _SEGMENT = r"[^｜\n]"
+# The value MUST sit in its own labeled field segment — a bare "FY2025" /
+# "2026Q1" mentioned in historical comparison prose must not count as a current
+# time layer (review P1).
 ANCHOR_FY_RE = re.compile(
-    r"(?:最新完整财年|latest\s+FY|latest\s+full[-\s]year)" + _SEGMENT + r"*?(?:FY\d{4}|\b\d{4}\b)"
-    r"|FY\d{4}",
+    r"(?:最新完整财年|最新FY|最新财年|latest\s+FY|latest\s+full[-\s]year)"
+    + _SEGMENT + r"*?(?:FY\d{4}|\b\d{4}\b)",
     re.IGNORECASE,
 )
 ANCHOR_QUARTER_RE = re.compile(
-    r"(?:最新季度|最新半年报|latest\s+quarter|interim)" + _SEGMENT + r"*?Q[1-4]"
-    r"|Q[1-4]\s*\d{4}",
+    r"(?:最新季度|最新半年报|latest\s+quarter|interim)"
+    + _SEGMENT + r"*?Q[1-4]",
     re.IGNORECASE,
 )
 ANCHOR_SNAPSHOT_RE = re.compile(
@@ -323,10 +326,10 @@ def check_market_snapshot(text: str, path: Path) -> list[str]:
     share price, market cap, PE(TTM), PE(Forward), PB, PS, 52-week range,
     dividend yield.
 
-    Returns errors (warning-level: missing 2-4 fields; no error for 0-1)
-    since the ROUTING-MATRIX.md hard-fail requires a complete snapshot.
-    We use a warning threshold at <5 fields because some reports split
-    the snapshot across sections.
+    Returns errors (blocking): a missing market-snapshot section or fewer than
+    5 filled fields is a delivery failure (issue #436), not a warning.  Only
+    the value cell of each labeled field is counted; labels and source-column
+    ids do not count as a filled value.
     """
     # Find the market snapshot section — look for heading patterns and scan
     # ONLY within that section.  The previous whole-document fallback let

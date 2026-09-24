@@ -121,7 +121,7 @@ The company's AI-driven growth trajectory remains intact [S01].
 
 
 def _incomplete_market_snapshot() -> str:
-    """Listed-company report with only 3 snapshot fields → warning."""
+    """Listed-company report with only 3 snapshot fields → blocking error."""
     return """\
 # TSMC Valuation Report
 
