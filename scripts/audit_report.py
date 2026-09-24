@@ -197,13 +197,18 @@ _MONITORING_PLACEHOLDERS = {
 # as "≥" / ">" with no value does not count (review P1).
 _MONITORING_THRESHOLD_NUMERIC_RE = re.compile(r"\d")
 
-# A cell that contains a placeholder/vague token *as a word* does not count —
-# this also catches multi-word fillers such as "TBD Q3", "maybe EIA report" or
-# "observe weekly", not only exact-match cells (review P1).
-_MONITORING_VAGUE_WORD_RE = re.compile(
-    r"\b(?:tbd|n/?a|na|unknown|maybe|perhaps|foo|bar|test|observe|watch|monitor|"
-    r"follow|track|see|review)\b"
-    r"|待补充|待填写|待定|待确认|暂无|关注|观察|留意|跟踪|看情况|视情况",
+# Hard placeholders that disqualify ANY field — catches multi-word fillers such
+# as "TBD Q3" / "maybe EIA report" (review P1).  These are not domain words.
+_MONITORING_PLACEHOLDER_WORD_RE = re.compile(
+    r"\b(?:tbd|n/?a|na|unknown|maybe|perhaps|foo|bar|test)\b"
+    r"|待补充|待填写|待定|待确认|暂无|看情况|视情况",
+    re.IGNORECASE,
+)
+# Vague *action* verbs that only apply to trigger-to-action — e.g. "weekly
+# review" is a valid cadence, so these must not be applied to cadence (review P2).
+_MONITORING_ACTION_VAGUE_RE = re.compile(
+    r"\b(?:observe|watch|monitor|follow|track|see|review)\b"
+    r"|关注|观察|留意|跟踪",
     re.IGNORECASE,
 )
 # Explicit frequency tokens — when present, "this year" / "later" style phrases
@@ -233,20 +238,19 @@ def _monitoring_field_actionable(field: str, value: str) -> bool:
     "later this year" only disqualifies when no explicit frequency is present
     (issue #436 D3, review P1/P2).
     """
-    # Cadence: an explicit frequency wins, so "weekly later this year" counts
-    # even though it contains a vague phrase (review P2).
+    # Cadence: reject hard placeholders first, then let an explicit frequency
+    # override time-vague phrases ("weekly later this year" / "weekly review"
+    # are valid; "TBD weekly" / "later this year" are not).
     if field == "cadence":
-        # Hard placeholders (TBD / N/A / unknown) are rejected before the
-        # frequency override — "TBD weekly" must not pass just because it
-        # contains a frequency word.  The frequency override only covers
-        # time-vague phrases like "later this year" (review P1).
-        if _MONITORING_VAGUE_WORD_RE.search(value):
+        if _MONITORING_PLACEHOLDER_WORD_RE.search(value):
             return False
         if _MONITORING_FREQUENCY_RE.search(value):
             return True
         return not _MONITORING_CADENCE_VAGUE_RE.search(value)
 
-    if _MONITORING_VAGUE_WORD_RE.search(value):
+    if _MONITORING_PLACEHOLDER_WORD_RE.search(value):
+        return False
+    if field == "trigger_to_action" and _MONITORING_ACTION_VAGUE_RE.search(value):
         return False
     if field == "threshold":
         return bool(_MONITORING_THRESHOLD_NUMERIC_RE.search(value))

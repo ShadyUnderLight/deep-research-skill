@@ -539,3 +539,16 @@ def test_cadence_hard_placeholder_with_frequency_not_counted(tmp_path: Path) -> 
     p = _write(tmp_path, _monitoring_report(rows))
     result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
     assert result.errors, "TBD weekly / N/A monthly must not count"
+
+
+
+def test_cadence_weekly_review_is_valid(tmp_path: Path) -> None:
+    """'weekly review' names a real frequency and must not be rejected."""
+    rows = [
+        "| Margin | below 30% | weekly review | S01 | cut production |",
+        "| Demand | below 5% | monthly | S02 | reduce headcount |",
+        "| PE | above 40x | quarterly | S03 | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert not result.errors, result.errors
