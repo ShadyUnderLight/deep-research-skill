@@ -27,6 +27,7 @@ from claim_alignment import (  # noqa: E402
     _judge_claim_text,
     _negation_conflict,
     _NEGATIVE_DIRECTION,
+    _period_ambiguous,
     _POSITIVE_DIRECTION,
     _year_mismatch,
     compute_per_class_one_vs_rest,
@@ -489,10 +490,32 @@ class TestClaimAlignmentHeuristicFixes437:
         assert _negation_conflict("收入没有增长", "收入增长")
 
     def test_uncertain_cjk_markers_are_not_hard_negation(self) -> None:
-        # 未来/未來 (future) and 未必 (not necessarily) are not hard negations;
-        # 未 + verb (e.g. 未增长) remains a genuine negation.
+        # 未来/未來 (future), 未必 (not necessarily) and 尚未 (not yet) are
+        # complete non-negation phrases; a bare/productive 未 + verb (e.g.
+        # 未增长, 未实现) remains a genuine negation.
         assert not _has_negation("未必增长")
+        assert not _has_negation("尚未增长")
+        assert not _has_negation("尚未启动")
         assert _has_negation("未增长")
+        assert _has_negation("未实现盈利")
+
+    def test_shangwei_does_not_create_negation_conflict(self) -> None:
+        # Reviewer P2: 尚未 is a *prefix* structure (尚 + 未); a lookahead on the
+        # char after 未 cannot exclude it. "收入尚未增长" must not be treated as
+        # a hard negation of "收入增长".
+        assert not _negation_conflict("收入尚未增长", "收入增长")
+        assert not _negation_conflict("收入增长", "收入尚未增长")
+        # A genuine bare-未 negation still conflicts.
+        assert _negation_conflict("收入未增长", "收入增长")
+
+    def test_judge_shangwei_not_false_unsupported(self) -> None:
+        # Full judgment path: 尚未 must not turn a valid support into UNSUPPORTED.
+        assert _judge_claim_text(
+            "收入尚未增长但趋势向上",
+            "收入增长强劲，趋势向上。",
+            None,
+            "",
+        ) != "UNSUPPORTED"
 
     # --- E3: FY and calendar years normalize to the same natural year ---
 
@@ -502,6 +525,40 @@ class TestClaimAlignmentHeuristicFixes437:
 
     def test_different_years_still_mismatch(self) -> None:
         assert _year_mismatch("Revenue grew in FY2024", "Revenue grew in FY2025")
+
+    # --- E3b: explicit quarters are compared when both sides pin one ---
+
+    def test_quarter_conflict_is_a_period_mismatch(self) -> None:
+        # Reviewer P2: 2024Q1 vs 2024Q2 shares a year and direction but is a
+        # definite period mismatch.
+        assert _year_mismatch(
+            "Revenue grew 15% in 2024Q1", "Revenue grew 15% in 2024Q2"
+        )
+        assert _judge_claim_text(
+            "Revenue grew 15% in 2024Q1",
+            "Revenue grew 15% in 2024Q2.",
+            None,
+            "",
+        ) == "UNSUPPORTED"
+
+    def test_same_quarter_does_not_mismatch(self) -> None:
+        assert not _year_mismatch(
+            "Revenue grew 15% in 2024Q1", "Revenue grew 15% in 2024Q1"
+        )
+
+    def test_one_sided_quarter_is_ambiguous(self) -> None:
+        # Only one side pins a quarter -> periods cannot be reliably compared.
+        assert _period_ambiguous("Revenue grew 15% in 2024Q1", "Revenue grew 15% in 2024")
+        assert _period_ambiguous("Revenue grew 15% in 2024", "Revenue grew 15% in 2024Q1")
+        assert not _period_ambiguous(
+            "Revenue grew 15% in 2024", "Revenue grew 15% in 2024"
+        )
+        assert _judge_claim_text(
+            "Revenue grew 15% in 2024Q1",
+            "Revenue grew 15% in 2024.",
+            None,
+            "",
+        ) == "AMBIGUOUS"
 
     # --- End-to-end: the full judge must not emit false UNSUPPORTED ---
 

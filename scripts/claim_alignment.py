@@ -677,18 +677,23 @@ _NEGATION_PATTERNS_EN = (
     re.compile(r"\bdidn't\b", re.IGNORECASE),
     re.compile(r"\bdid not\b", re.IGNORECASE),
 )
-# Issue #437 (E2): a bare 未 is not a negation marker — it appears in time words
-# (未来/未來) and uncertain words (未必/尚未). Only treat 未 as negation when it is
-# followed by a CJK verb char that is not one of those boundary words. Explicit
-# negation phrases are matched directly.
+# Issue #437 (E2): a bare 未 is not a negation marker on its own — it appears in
+# time words (未来/未來) and aspectual/uncertain words (未必/尚未). Those complete
+# phrases are excluded from hard negation *before* the bare-未 rule runs, because
+# 尚未 = 尚 + 未 (the 未 is *preceded* by 尚, so a lookahead on the following char
+# cannot exclude it). Explicit hard-negation phrases are matched directly.
 _NEGATION_MARKERS_CJK = ("没有", "未能", "未曾", "未有", "不再", "并非", "无")
-_NEGATION_CJK_UNCERTAIN_EXCLUDE = re.compile(r"未(?!来|來|必|尚)")
+_NEGATION_CJK_NON_NEGATION = ("未来", "未來", "未必", "尚未")
 
 
 def _has_negation(text: str) -> bool:
     if any(marker in text for marker in _NEGATION_MARKERS_CJK):
         return True
-    if _NEGATION_CJK_UNCERTAIN_EXCLUDE.search(text):
+    # Explicit non-negation 未-phrases take priority over the bare-未 rule below.
+    if any(non in text for non in _NEGATION_CJK_NON_NEGATION):
+        return False
+    # A bare/productive 未 (e.g. 未增长, 未实现) is a genuine negation.
+    if "未" in text:
         return True
     return any(pattern.search(text) for pattern in _NEGATION_PATTERNS_EN)
 
@@ -731,18 +736,51 @@ def _direction_conflict(claim: str, excerpt: str) -> bool:
     return (claim_neg and excerpt_pos) or (claim_pos and excerpt_neg)
 
 
+# Issue #437 (E3): strip the FY prefix so FY2024 and 2024 denote the same natural
+# year, and additionally capture an explicit quarter (2024Q1 / 2024 Q1 / FY2024Q1).
+_PERIOD_RE = re.compile(r"(?:FY)?(20\d{2})(?:[-\s]?Q([1-4]))?", re.IGNORECASE)
+
+
+def _extract_periods(text: str) -> list[tuple[str, str | None]]:
+    return [(m.group(1), m.group(2)) for m in _PERIOD_RE.finditer(text)]
+
+
 def _normalize_years(text: str) -> set[str]:
-    # Issue #437 (E3): strip the FY prefix so FY2024 and 2024 denote the same
-    # natural year; keep only the captured 4-digit year.
-    return set(re.findall(r"(?:FY)?(20\d{2})", text, flags=re.IGNORECASE))
+    return {year for year, _ in _extract_periods(text)}
 
 
 def _year_mismatch(claim: str, excerpt: str) -> bool:
-    claim_years = _normalize_years(claim)
-    excerpt_years = _normalize_years(excerpt)
+    claim_periods = _extract_periods(claim)
+    excerpt_periods = _extract_periods(excerpt)
+    claim_years = {year for year, _ in claim_periods}
+    excerpt_years = {year for year, _ in excerpt_periods}
     if claim_years and excerpt_years and not (claim_years & excerpt_years):
         return True
+    # Both sides pin an explicit quarter for a shared year, but the quarters
+    # differ -> a definite period mismatch (2024Q1 vs 2024Q2).
+    claim_quarters = {(year, q) for year, q in claim_periods if q}
+    excerpt_quarters = {(year, q) for year, q in excerpt_periods if q}
+    shared_years = claim_years & excerpt_years
+    if claim_quarters and excerpt_quarters and shared_years:
+        claim_q = {q for year, q in claim_quarters if year in shared_years}
+        excerpt_q = {q for year, q in excerpt_quarters if year in shared_years}
+        if claim_q and excerpt_q and not (claim_q & excerpt_q):
+            return True
     return False
+
+
+def _period_ambiguous(claim: str, excerpt: str) -> bool:
+    # Years overlap (so not a definite year mismatch) but only one side pins a
+    # quarter -> the periods cannot be reliably compared.
+    claim_periods = _extract_periods(claim)
+    excerpt_periods = _extract_periods(excerpt)
+    claim_years = {year for year, _ in claim_periods}
+    excerpt_years = {year for year, _ in excerpt_periods}
+    if not (claim_years and excerpt_years and (claim_years & excerpt_years)):
+        return False
+    claim_has_quarter = any(q for _, q in claim_periods)
+    excerpt_has_quarter = any(q for _, q in excerpt_periods)
+    return claim_has_quarter != excerpt_has_quarter
 
 
 def _cjk_char_overlap(claim: str, excerpt: str) -> float:
@@ -859,6 +897,8 @@ def _judge_claim_text(
         return "UNSUPPORTED"
     if _year_mismatch(claim_text, excerpt):
         return "UNSUPPORTED"
+    if _period_ambiguous(claim_text, excerpt):
+        return "AMBIGUOUS"
     overlap = _lexical_overlap(claim_text, excerpt)
     if overlap >= 0.45:
         return "SUPPORTED"
