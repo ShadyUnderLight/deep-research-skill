@@ -23,12 +23,14 @@ from claim_alignment import (  # noqa: E402
     BindingContext,
     _contains_direction_word,
     _direction_conflict,
+    _extract_periods,
     _has_negation,
     _judge_claim_text,
     _negation_conflict,
     _NEGATIVE_DIRECTION,
     _period_ambiguous,
     _POSITIVE_DIRECTION,
+    _uncertain_aspect_present,
     _year_mismatch,
     compute_per_class_one_vs_rest,
     judge_entry,
@@ -508,14 +510,29 @@ class TestClaimAlignmentHeuristicFixes437:
         # A genuine bare-未 negation still conflicts.
         assert _negation_conflict("收入未增长", "收入增长")
 
-    def test_judge_shangwei_not_false_unsupported(self) -> None:
-        # Full judgment path: 尚未 must not turn a valid support into UNSUPPORTED.
+    def test_judge_shangwei_is_ambiguous(self) -> None:
+        # Full judgment path (review): 尚未 is an uncertainty marker with no
+        # comparable period, so the safe verdict is AMBIGUOUS — never a
+        # confident SUPPORTED and never a hard UNSUPPORTED.
         assert _judge_claim_text(
             "收入尚未增长但趋势向上",
             "收入增长强劲，趋势向上。",
             None,
             "",
-        ) != "UNSUPPORTED"
+        ) == "AMBIGUOUS"
+
+    def test_uncertain_markers_force_ambiguous(self) -> None:
+        assert _uncertain_aspect_present("收入尚未增长")
+        assert _uncertain_aspect_present("未必增长")
+        # 未来/未來 are time words, not uncertainty markers: a matching excerpt
+        # may still be SUPPORTED.
+        assert not _uncertain_aspect_present("未来市场增长")
+        assert _judge_claim_text(
+            "未来市场增长预期乐观",
+            "市场增长预期乐观，未来市场增长符合预期。",
+            None,
+            "",
+        ) == "SUPPORTED"
 
     # --- E3: FY and calendar years normalize to the same natural year ---
 
@@ -559,6 +576,32 @@ class TestClaimAlignmentHeuristicFixes437:
             None,
             "",
         ) == "AMBIGUOUS"
+
+    def test_quarter_first_format_is_parsed(self) -> None:
+        # Reviewer P2: "Q1 2024" (quarter before year) must not degrade to the
+        # bare year.
+        assert _extract_periods("Q1 2024") == [("2024", "1")]
+        assert _year_mismatch("Revenue grew 15% in Q1 2024", "Revenue grew 15% in Q2 2024")
+        assert _judge_claim_text(
+            "Revenue grew 15% in Q1 2024",
+            "Revenue grew 15% in Q2 2024.",
+            None,
+            "",
+        ) == "UNSUPPORTED"
+
+    def test_quarters_compared_with_their_year(self) -> None:
+        # Reviewer P2: quarter sets must not be compared across years. These two
+        # both have the quarter set {Q1, Q2} but pair different quarters with
+        # different years, so they conflict.
+        assert _year_mismatch(
+            "Revenue grew in 2023Q1 and 2024Q2",
+            "Revenue grew in 2023Q2 and 2024Q1",
+        )
+        # Same (year, quarter) pairs do not conflict.
+        assert not _year_mismatch(
+            "Revenue grew in 2023Q1 and 2024Q2",
+            "Revenue grew in 2023Q1 and 2024Q2",
+        )
 
     # --- End-to-end: the full judge must not emit false UNSUPPORTED ---
 

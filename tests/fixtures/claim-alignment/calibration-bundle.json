@@ -237,6 +237,51 @@
         "evidence_role": "primary"
       },
       "excerpt": "收入增长强劲。"
+    },
+    {
+      "claim_id": "C16",
+      "claim_text": "收入尚未增长但趋势向上",
+      "evidence_record": {
+        "claim_id": "C16",
+        "source_id": "S17",
+        "locator": {
+          "kind": "quote",
+          "value": "收入增长强劲，趋势向上。"
+        },
+        "retrieval_status": "fetched",
+        "evidence_role": "primary"
+      },
+      "excerpt": "收入增长强劲，趋势向上。"
+    },
+    {
+      "claim_id": "C17",
+      "claim_text": "Revenue grew 15% in Q1 2024",
+      "evidence_record": {
+        "claim_id": "C17",
+        "source_id": "S18",
+        "locator": {
+          "kind": "quote",
+          "value": "Revenue grew 15% in Q2 2024."
+        },
+        "retrieval_status": "fetched",
+        "evidence_role": "primary"
+      },
+      "excerpt": "Revenue grew 15% in Q2 2024."
+    },
+    {
+      "claim_id": "C18",
+      "claim_text": "Revenue grew 15% in 2024Q1",
+      "evidence_record": {
+        "claim_id": "C18",
+        "source_id": "S19",
+        "locator": {
+          "kind": "quote",
+          "value": "Revenue grew 15% in 2024."
+        },
+        "retrieval_status": "fetched",
+        "evidence_role": "primary"
+      },
+      "excerpt": "Revenue grew 15% in 2024."
     }
   ],
   "source_register": [
@@ -329,6 +374,24 @@
       "source_artifact_path": "tests/fixtures/claim-alignment/sources/s16-excerpt.txt",
       "title": "Source S16",
       "url": "https://example.com/s16"
+    },
+    {
+      "source_id": "S17",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s17-excerpt.txt",
+      "title": "Source S17",
+      "url": "https://example.com/s17"
+    },
+    {
+      "source_id": "S18",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s18-excerpt.txt",
+      "title": "Source S18",
+      "url": "https://example.com/s18"
+    },
+    {
+      "source_id": "S19",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s19-excerpt.txt",
+      "title": "Source S19",
+      "url": "https://example.com/s19"
     }
   ],
   "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",

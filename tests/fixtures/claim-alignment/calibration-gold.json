@@ -55,6 +55,15 @@
     },
     "C15": {
       "verdict": "UNSUPPORTED"
+    },
+    "C16": {
+      "verdict": "AMBIGUOUS"
+    },
+    "C17": {
+      "verdict": "UNSUPPORTED"
+    },
+    "C18": {
+      "verdict": "AMBIGUOUS"
     }
   }
 }

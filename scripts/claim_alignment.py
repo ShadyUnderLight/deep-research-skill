@@ -698,6 +698,17 @@ def _has_negation(text: str) -> bool:
     return any(pattern.search(text) for pattern in _NEGATION_PATTERNS_EN)
 
 
+# Issue #437 (E2b, review): 尚未 (not yet) and 未必 (not necessarily) are
+# uncertainty markers — not hard negations, but they also must not yield a
+# confident SUPPORTED. When either side carries one without a comparable time
+# range, the safe verdict is AMBIGUOUS.
+_UNCERTAIN_ASPECT_MARKERS_CJK = ("尚未", "未必")
+
+
+def _uncertain_aspect_present(text: str) -> bool:
+    return any(marker in text for marker in _UNCERTAIN_ASPECT_MARKERS_CJK)
+
+
 def _direction_polarity_present(text: str) -> bool:
     return (
         _contains_direction_word(text, _NEGATIVE_DIRECTION)
@@ -737,16 +748,36 @@ def _direction_conflict(claim: str, excerpt: str) -> bool:
 
 
 # Issue #437 (E3): strip the FY prefix so FY2024 and 2024 denote the same natural
-# year, and additionally capture an explicit quarter (2024Q1 / 2024 Q1 / FY2024Q1).
-_PERIOD_RE = re.compile(r"(?:FY)?(20\d{2})(?:[-\s]?Q([1-4]))?", re.IGNORECASE)
+# year, and capture an explicit quarter in either order
+# (2024Q1 / 2024 Q1 / FY2024Q1 / Q1 2024 / Q1FY2024).
+_PERIOD_RE = re.compile(
+    r"(?:FY)?(?P<y1>20\d{2})(?:[-\s]?Q(?P<q1>[1-4]))?"
+    r"|"
+    r"Q(?P<q2>[1-4])[-\s]?(?:FY)?(?P<y2>20\d{2})",
+    re.IGNORECASE,
+)
 
 
 def _extract_periods(text: str) -> list[tuple[str, str | None]]:
-    return [(m.group(1), m.group(2)) for m in _PERIOD_RE.finditer(text)]
+    periods: list[tuple[str, str | None]] = []
+    for match in _PERIOD_RE.finditer(text):
+        if match.group("y1"):
+            periods.append((match.group("y1"), match.group("q1")))
+        else:
+            periods.append((match.group("y2"), match.group("q2")))
+    return periods
 
 
 def _normalize_years(text: str) -> set[str]:
     return {year for year, _ in _extract_periods(text)}
+
+
+def _quarters_by_year(periods: list[tuple[str, str | None]]) -> dict[str, set[str]]:
+    by_year: dict[str, set[str]] = {}
+    for year, quarter in periods:
+        if quarter:
+            by_year.setdefault(year, set()).add(quarter)
+    return by_year
 
 
 def _year_mismatch(claim: str, excerpt: str) -> bool:
@@ -756,15 +787,13 @@ def _year_mismatch(claim: str, excerpt: str) -> bool:
     excerpt_years = {year for year, _ in excerpt_periods}
     if claim_years and excerpt_years and not (claim_years & excerpt_years):
         return True
-    # Both sides pin an explicit quarter for a shared year, but the quarters
-    # differ -> a definite period mismatch (2024Q1 vs 2024Q2).
-    claim_quarters = {(year, q) for year, q in claim_periods if q}
-    excerpt_quarters = {(year, q) for year, q in excerpt_periods if q}
-    shared_years = claim_years & excerpt_years
-    if claim_quarters and excerpt_quarters and shared_years:
-        claim_q = {q for year, q in claim_quarters if year in shared_years}
-        excerpt_q = {q for year, q in excerpt_quarters if year in shared_years}
-        if claim_q and excerpt_q and not (claim_q & excerpt_q):
+    # For every shared year both sides pin a quarter for, the quarters must
+    # agree; a conflicting (year, quarter) pair is a definite period mismatch
+    # (2024Q1 vs 2024Q2, or 2023Q1/2024Q2 vs 2023Q2/2024Q1).
+    claim_q = _quarters_by_year(claim_periods)
+    excerpt_q = _quarters_by_year(excerpt_periods)
+    for year in claim_q.keys() & excerpt_q.keys():
+        if not (claim_q[year] & excerpt_q[year]):
             return True
     return False
 
@@ -898,6 +927,8 @@ def _judge_claim_text(
     if _year_mismatch(claim_text, excerpt):
         return "UNSUPPORTED"
     if _period_ambiguous(claim_text, excerpt):
+        return "AMBIGUOUS"
+    if _uncertain_aspect_present(claim_text) or _uncertain_aspect_present(excerpt):
         return "AMBIGUOUS"
     overlap = _lexical_overlap(claim_text, excerpt)
     if overlap >= 0.45:
