@@ -172,14 +172,17 @@ SNAPSHOT_FIELD_RULES: tuple[
         SNAPSHOT_MARKET_CAP_RE,
         False,
     ),
-    (re.compile(r"PE\s*\(TTM\)", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
+    (re.compile(r"\bPE\s*\(TTM\)", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
     (
-        re.compile(r"PE\s*\(Forward\)|PE\s*\(Fwd\)|forward\s+PE", re.IGNORECASE),
+        re.compile(
+            r"\bPE\s*\(Forward\)|\bPE\s*\(Fwd\)|\bforward\s+PE",
+            re.IGNORECASE,
+        ),
         SNAPSHOT_RATIO_RE,
         False,
     ),
-    (re.compile(r"PB\b", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
-    (re.compile(r"PS\b", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
+    (re.compile(r"\bPB\b", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
+    (re.compile(r"\bPS\b", re.IGNORECASE), SNAPSHOT_RATIO_RE, False),
     (
         re.compile(r"(?:52周|52[-\s]week|52W)", re.IGNORECASE),
         SNAPSHOT_RANGE_RE,

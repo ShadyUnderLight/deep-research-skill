@@ -223,10 +223,16 @@ _MONITORING_PLACEHOLDER_WORD_RE = re.compile(
 )
 # A source must identify a locator or named source, not an unspecified phrase.
 _MONITORING_SOURCE_UNSPECIFIED_RE = re.compile(
-    r"^(?:report|data)$|"
+    r"^(?:(?:public|private|industry|market|government|official|generic|general|"
+    r"company|corporate)\s+)?(?:report|data|source|dataset|publication|api|"
+    r"database|feed|website|press|provider|statistics|news)"
+    r"(?:\s+(?:data|report|source|dataset|publication|api|database|feed|"
+    r"website|press|provider|statistics|news))*$|"
+    r"^data\s+reports?$|"
     r"^(?:(?:some|any|various|generic|unspecified)\s+)?"
     r"(?:data\s+)?sources?(?:\s+(?:name|report|details?))?$|"
-    r"^(?:some|any|various|generic|unspecified)\s+.*$",
+    r"^(?:some|any|various|generic|unspecified)\s+.*$|"
+    r"^(?:行业|市场|公开|公共|一般|通用|政府|公司)数据$",
     re.IGNORECASE,
 )
 _MONITORING_SOURCE_LOCATOR_RE = re.compile(r"\bS\d+\b|https?://\S+", re.IGNORECASE)
@@ -234,9 +240,10 @@ _MONITORING_SOURCE_NAME_RE = re.compile(
     r"^(?:"
     r"[A-Z]{2,}|"
     r"[A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Za-z0-9][A-Za-z0-9&.'-]*)*|"
-    r"[A-Za-z0-9\u4e00-\u9fff]{2,}(?:统计局|研究院|研究所|交易所|协会|央行|银行|"
-    r"能源局|气象局|证监会|财政部|商务部|工信部|海关总署|月报|季报|年报|日报|"
-    r"公告|报告|数据|数据库|通讯社|数据中心)"
+    r"新华社|人民日报|中新社|央视新闻|"
+    r"[\u4e00-\u9fff]{2,}(?:统计局|研究院|研究所|交易所|协会|央行|银行|能源局|"
+    r"气象局|证监会|财政部|商务部|工信部|海关总署|数据中心)"
+    r"(?:月报|季报|年报|日报|公告|报告)?"
     r")$"
 )
 # Require a concrete operation. This includes the action forms used in project

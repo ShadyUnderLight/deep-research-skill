@@ -832,6 +832,20 @@ def test_snapshot_values_marked_unverified_do_not_count(tmp_path: Path) -> None:
     assert errors and "only 0/8" in errors[0], errors
 
 
+def test_eps_row_does_not_fill_missing_ps_snapshot_metric(tmp_path: Path) -> None:
+    """EPS is not the price-to-sales ratio and cannot make the fifth field."""
+    snapshot = (
+        "## 市场快照\n\n| 指标 | 值 | 来源 |\n|------|-----|------|\n"
+        "| 当前股价 | $185.50 | [S01] |\n"
+        "| 市值 | $960B | [S01] |\n"
+        "| PE (TTM) | 28.5x | [S01] |\n"
+        "| PB | 7.2x | [S01] |\n"
+        "| EPS | 5.2 | [S01] |\n"
+    )
+    errors = vlc.check_market_snapshot(snapshot, tmp_path / "snapshot.md")
+    assert errors and "only 4/8" in errors[0], errors
+
+
 def test_period_and_source_ids_do_not_satisfy_threshold(tmp_path: Path) -> None:
     """Years, quarters and source ids are not numeric monitoring thresholds."""
     rows = [
@@ -864,14 +878,17 @@ def test_generic_report_and_data_are_not_monitoring_sources(tmp_path: Path) -> N
     """Generic capitalized nouns do not identify a monitoring data source."""
     rows = [
         "| Margin | below 30% | weekly | Report | cut production |",
-        "| Demand | below 5% | monthly | Data | reduce headcount |",
-        "| PE | above 40x | quarterly | Report | take profit |",
+        "| Demand | below 5% | monthly | Public Data | reduce headcount |",
+        "| PE | above 40x | quarterly | Industry data | take profit |",
     ]
     p = _write(tmp_path, _monitoring_report(rows))
     result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
     assert result.errors, "generic source labels must leave the rows partial"
     assert not audit_report._monitoring_field_actionable("source", "Report")
     assert not audit_report._monitoring_field_actionable("source", "Data")
+    assert not audit_report._monitoring_field_actionable("source", "Public Data")
+    assert not audit_report._monitoring_field_actionable("source", "Public Data Report")
+    assert not audit_report._monitoring_field_actionable("source", "行业数据")
 
 
 def test_chinese_monitoring_values_are_actionable(tmp_path: Path) -> None:
@@ -882,7 +899,7 @@ def test_chinese_monitoring_values_are_actionable(tmp_path: Path) -> None:
         "|------|------|------|------|----------|\n"
         "| 毛利率 | 低于30% | 每月 | 国家统计局月报 | 暂停扩产 |\n"
         "| 电价 | 不超过0.12 | 每季度 | 国家能源局公告 | 削减产能 |\n"
-        "| 估值 | 高于40倍 | 每周 | 中国人民银行报告 | 推迟投资 |\n"
+        "| 估值 | 高于40倍 | 每周 | 新华社 | 推迟投资 |\n"
     )
     p = _write(tmp_path, report)
     result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
