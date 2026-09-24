@@ -196,12 +196,21 @@ _MONITORING_PLACEHOLDERS = {
 # A threshold must carry a judgeable number — a bare comparison operator such
 # as "≥" / ">" with no value does not count (review P1).
 _MONITORING_THRESHOLD_NUMERIC_RE = re.compile(r"\d")
+# Periods and citation ids contain digits but are not measurable thresholds.
+_MONITORING_THRESHOLD_REFERENCE_RE = re.compile(
+    r"\b20\d{2}[-/]\d{1,2}[-/]\d{1,2}\b|"
+    r"\b(?:FY\s*20\d{2}|20\d{2}\s*FY|"
+    r"Q[1-4]\s*20\d{2}|20\d{2}\s*Q[1-4]|"
+    r"H[1-2]\s*20\d{2}|20\d{2}\s*H[1-2]|S\d+)\b",
+    re.IGNORECASE,
+)
 
 # Hard placeholders that disqualify ANY field — catches multi-word fillers such
 # as "TBD Q3" / "maybe EIA report" (review P1).  These are not domain words.
 _MONITORING_PLACEHOLDER_WORD_RE = re.compile(
-    r"\b(?:tbd|n/?a|none|unknown|maybe|perhaps|foo|bar|test|not provided|no source)\b|无来源|未提供"
-    r"|待补充|待填写|待定|待确认|暂无|看情况|视情况",
+    r"\b(?:tbd|n/?a|none|unknown|maybe|perhaps|foo|bar|test|not provided|"
+    r"no source|not available|unavailable)\b"
+    r"|无来源|未提供|待补充|待填写|待定|待确认|暂无|看情况|视情况",
     re.IGNORECASE,
 )
 # Vague *action* verbs that only apply to trigger-to-action — e.g. "weekly
@@ -264,7 +273,8 @@ def _monitoring_field_actionable(field: str, value: str) -> bool:
         if not _MONITORING_CONCRETE_ACTION_RE.search(value):
             return False
     if field == "threshold":
-        return bool(_MONITORING_THRESHOLD_NUMERIC_RE.search(value))
+        measurable_text = _MONITORING_THRESHOLD_REFERENCE_RE.sub("", value)
+        return bool(_MONITORING_THRESHOLD_NUMERIC_RE.search(measurable_text))
     return True
 
 

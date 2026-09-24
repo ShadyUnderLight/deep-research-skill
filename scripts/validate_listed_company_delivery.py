@@ -40,7 +40,7 @@ from validate_report_quality import (
 from validate_contract import sanitize_visible_markdown
 
 import registry_loader
-from registry_loader import UnknownRouteError
+from registry_loader import RegistryError, UnknownRouteError
 
 EXIT_PASS = 0
 EXIT_ISSUES = 2
@@ -566,6 +566,8 @@ def _resolve_route_id(path: Path) -> tuple[str | None, str | None]:
         canonical = registry_loader.load_route_registry().resolve_route(raw)
     except UnknownRouteError as exc:
         return None, f"declared primary route '{raw}' cannot be resolved — {exc}"
+    except RegistryError as exc:
+        return None, f"route registry is invalid — {exc}"
     return canonical, None
 
 
