@@ -68,9 +68,11 @@ ANCHOR_FY_RE = re.compile(
     + _SEGMENT + r"*?(?:FY\d{4}|\b\d{4}\b)",
     re.IGNORECASE,
 )
+# A quarter/interim value must carry a year (2026Q1 / Q1 2026 / 2026H1) — a bare
+# "Q1" cannot pin down the period (review P1).
 ANCHOR_QUARTER_RE = re.compile(
     r"(?:最新季度|最新半年报|latest\s+quarter|interim)"
-    + _SEGMENT + r"*?Q[1-4]",
+    + _SEGMENT + r"*?(?:20\d{2}\s*[Qq][1-4]|[Qq][1-4]\s*20\d{2}|20\d{2}\s*H[12])",
     re.IGNORECASE,
 )
 ANCHOR_SNAPSHOT_RE = re.compile(

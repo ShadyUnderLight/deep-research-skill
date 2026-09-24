@@ -622,3 +622,60 @@ def test_missing_source_phrases_not_counted(tmp_path: Path) -> None:
     p = _write(tmp_path, _monitoring_report(rows))
     result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
     assert result.errors, "missing-source phrases must not count"
+
+
+
+# ── Review round 7: quarter needs year, concrete-action without arbitrary digit ──
+
+
+def test_bare_q1_without_year_not_a_layer(tmp_path: Path) -> None:
+    """'最新季度：Q1' (no year) must not count as a quarter layer."""
+    anchor = "研究锚定：最新FY：待补充｜最新季度：Q1｜市场快照：2026-09-24\n"
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n\n" + anchor + "\n"
+        + _snapshot_table() + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert any("anchor" in e for e in errors), errors
+
+
+def test_yearly_interim_h1_counts(tmp_path: Path) -> None:
+    """'最新半年报：2026H1' with a year counts as the quarter/interim layer."""
+    anchor = (
+        "## 研究锚定块\n\n"
+        "- **最新完整财年**: FY2025\n"
+        "- **最新半年报**: 2026H1\n"
+        "- **快照日期**: 2026-09-24\n"
+    )
+    report = (
+        "# TSMC\n\n" + _route_block("listed-company") + "\n" + anchor
+        + "\n" + _snapshot_table() + "\n## 投资判断\n\nGrowth intact [S01].\n\n"
+        + _source_register()
+    )
+    errors, _ = vlc.validate_file(_write(tmp_path, report), route_id="listed-company")
+    assert not any("anchor" in e for e in errors), errors
+
+
+def test_review_with_source_id_still_fails(tmp_path: Path) -> None:
+    """'review [S01]' has no concrete measure and must fail."""
+    rows = [
+        "| Margin | below 30% | weekly | S01 | review [S01] |",
+        "| Demand | below 5% | monthly | S02 | observe [S02] |",
+        "| PE | above 40x | quarterly | S03 | 关注 |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "review [S01] must not count"
+
+
+def test_conditional_action_with_concrete_measure_passes(tmp_path: Path) -> None:
+    """'review if ... then cut production' is a concrete action."""
+    rows = [
+        "| Margin | below 30% | weekly | S01 | review if revenue falls below 30%, then cut production |",
+        "| Demand | below 5% | monthly | S02 | reduce headcount |",
+        "| PE | above 40x | quarterly | S03 | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert not result.errors, result.errors

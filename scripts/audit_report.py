@@ -200,7 +200,7 @@ _MONITORING_THRESHOLD_NUMERIC_RE = re.compile(r"\d")
 # Hard placeholders that disqualify ANY field — catches multi-word fillers such
 # as "TBD Q3" / "maybe EIA report" (review P1).  These are not domain words.
 _MONITORING_PLACEHOLDER_WORD_RE = re.compile(
-    r"\b(?:tbd|n/?a|na|none|unknown|maybe|perhaps|foo|bar|test|not provided|no source|n/a)\b|无来源|未提供"
+    r"\b(?:tbd|n/?a|none|unknown|maybe|perhaps|foo|bar|test|not provided|no source)\b|无来源|未提供"
     r"|待补充|待填写|待定|待确认|暂无|看情况|视情况",
     re.IGNORECASE,
 )
@@ -216,7 +216,7 @@ _MONITORING_ACTION_VAGUE_RE = re.compile(
 # "monitor".  Only a bare vague verb (a cell that is basically "review") is
 # rejected (review P2).
 _MONITORING_CONCRETE_ACTION_RE = re.compile(
-    r"\d|cut|reduce|take|notify|explore|hedge|sell|buy|trim|raise|lower|exit|enter|"
+    r"cut|reduce|take|notify|explore|hedge|sell|buy|trim|raise|lower|exit|enter|"
     r"削减|降低|卖出|买入|加仓|减仓|止盈|止损|对冲|持有|增持|减持|清仓",
     re.IGNORECASE,
 )
