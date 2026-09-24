@@ -236,10 +236,14 @@ def _monitoring_field_actionable(field: str, value: str) -> bool:
     # Cadence: an explicit frequency wins, so "weekly later this year" counts
     # even though it contains a vague phrase (review P2).
     if field == "cadence":
-        if _MONITORING_FREQUENCY_RE.search(value):
-            return True
+        # Hard placeholders (TBD / N/A / unknown) are rejected before the
+        # frequency override — "TBD weekly" must not pass just because it
+        # contains a frequency word.  The frequency override only covers
+        # time-vague phrases like "later this year" (review P1).
         if _MONITORING_VAGUE_WORD_RE.search(value):
             return False
+        if _MONITORING_FREQUENCY_RE.search(value):
+            return True
         return not _MONITORING_CADENCE_VAGUE_RE.search(value)
 
     if _MONITORING_VAGUE_WORD_RE.search(value):

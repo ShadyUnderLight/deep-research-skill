@@ -526,3 +526,16 @@ def test_cadence_with_frequency_and_vague_phrase_passes(tmp_path: Path) -> None:
     p = _write(tmp_path, _monitoring_report(rows))
     result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
     assert not result.errors, result.errors
+
+
+
+def test_cadence_hard_placeholder_with_frequency_not_counted(tmp_path: Path) -> None:
+    """'TBD weekly' must not pass just because it contains a frequency word."""
+    rows = [
+        "| Margin | below 30% | TBD weekly | S01 | cut production |",
+        "| Demand | below 5% | N/A monthly | S02 | reduce headcount |",
+        "| PE | above 40x | unknown quarterly | S03 | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "TBD weekly / N/A monthly must not count"
