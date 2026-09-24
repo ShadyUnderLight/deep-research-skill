@@ -154,7 +154,7 @@ SNAPSHOT_CURRENCY_MARKER_RE = re.compile(
 SNAPSHOT_PLACEHOLDER_RE = re.compile(
     r"\b(?:tbd|n/?a|none|unknown|pending|maybe|perhaps|not provided|"
     r"not available|unavailable)\b"
-    r"|待补充|待填写|待定|待确认|暂无|__",
+    r"|待补充|待填写|待定|待确认|待核实|待更新|暂无|__",
     re.IGNORECASE,
 )
 SNAPSHOT_RANGE_RE = re.compile(

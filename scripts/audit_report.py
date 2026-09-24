@@ -193,6 +193,10 @@ _MONITORING_THRESHOLD_RE = re.compile(
     r"(?:<=|>=|<|>|≤|≥|≈|~)\s*\$?\s*" + _MONITORING_THRESHOLD_NUMBER
     + r"|\b(?:below|above|under|over|at\s+least|at\s+most|less\s+than|"
     r"greater\s+than)\s*\$?\s*" + _MONITORING_THRESHOLD_NUMBER
+    + r"|(?:不低于|不少于|至少|不高于|不超过|至多|不多于|低于|低过|小于|少于|"
+    r"不足|未达|不及|高于|高过|大于|超过|超出|达到|跌破|升至)\s*"
+    + _MONITORING_THRESHOLD_NUMBER
+    + r"|" + _MONITORING_THRESHOLD_NUMBER + r"\s*(?:以上|以下|以内|及以上|及以下)"
     + r"|" + _MONITORING_THRESHOLD_NUMBER
     + r"\s*(?:-|–|—|to|至)\s*" + _MONITORING_THRESHOLD_NUMBER
     + r"\s*(?:%|x\b|bps?\b|months?\b|weeks?\b|days?\b|years?\b)?"
@@ -219,6 +223,7 @@ _MONITORING_PLACEHOLDER_WORD_RE = re.compile(
 )
 # A source must identify a locator or named source, not an unspecified phrase.
 _MONITORING_SOURCE_UNSPECIFIED_RE = re.compile(
+    r"^(?:report|data)$|"
     r"^(?:(?:some|any|various|generic|unspecified)\s+)?"
     r"(?:data\s+)?sources?(?:\s+(?:name|report|details?))?$|"
     r"^(?:some|any|various|generic|unspecified)\s+.*$",
@@ -226,21 +231,30 @@ _MONITORING_SOURCE_UNSPECIFIED_RE = re.compile(
 )
 _MONITORING_SOURCE_LOCATOR_RE = re.compile(r"\bS\d+\b|https?://\S+", re.IGNORECASE)
 _MONITORING_SOURCE_NAME_RE = re.compile(
-    r"^(?:[A-Z]{2,}|[A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Za-z][A-Za-z0-9&.'-]*)*)$"
+    r"^(?:"
+    r"[A-Z]{2,}|"
+    r"[A-Z][A-Za-z0-9&.'-]*(?:\s+[A-Za-z0-9][A-Za-z0-9&.'-]*)*|"
+    r"[A-Za-z0-9\u4e00-\u9fff]{2,}(?:统计局|研究院|研究所|交易所|协会|央行|银行|"
+    r"能源局|气象局|证监会|财政部|商务部|工信部|海关总署|月报|季报|年报|日报|"
+    r"公告|报告|数据|数据库|通讯社|数据中心)"
+    r")$"
 )
 # Require a concrete operation. This includes the action forms used in project
 # monitoring examples; a generic "revisit plan" remains partial.
 _MONITORING_CONCRETE_ACTION_RE = re.compile(
     r"\b(?:cut|reduce|notify|explore|hedge|sell|buy|trim|raise|lower|exit|enter|"
     r"reassess|rebalance|reallocate)\b|\btake\s+profit\b|\bstress[- ]test\b|"
-    r"削减|降低|卖出|买入|加仓|减仓|止盈|止损|对冲|持有|增持|减持|清仓",
+    r"削减(?:产能|产量|支出|预算)|降低(?:产能|持仓|杠杆)|减少(?:持仓|产能|支出)|"
+    r"暂停(?:扩产|采购|项目|建设|投资|招聘)|停止(?:扩产|生产|运营|项目)|"
+    r"延后(?:投资|建设|扩产)|推迟(?:投资|建设|扩产)|取消(?:项目|订单|建设|投资)|"
+    r"卖出|买入|加仓|减仓|止盈|止损|对冲|持有|增持|减持|清仓",
     re.IGNORECASE,
 )
 # Explicit frequency tokens — when present, "this year" / "later" style phrases
 # are not treated as vague (review P2).
 _MONITORING_FREQUENCY_RE = re.compile(
     r"daily|weekly|biweekly|monthly|quarterly|annual|yearly|hourly|intraday|"
-    r"每[日周季年]|每天",
+    r"每[日周月季年]|每天",
     re.IGNORECASE,
 )
 _MONITORING_CADENCE_VAGUE_RE = re.compile(
@@ -499,7 +513,7 @@ def _run_market_outlook_monitoring_actionability(
         "threshold": {"threshold", "阈值"},
         "cadence": {"cadence", "frequency", "频率"},
         "source": {"source", "来源"},
-        "trigger_to_action": {"trigger", "action", "应对"},
+        "trigger_to_action": {"trigger", "action", "应对", "触发", "动作"},
     }
 
     def _map_table_header(header_line: str) -> dict[str, int]:

@@ -818,6 +818,20 @@ def test_snapshot_metrics_reject_wrong_numeric_formats(tmp_path: Path) -> None:
     assert errors and "only 0/8" in errors[0], errors
 
 
+def test_snapshot_values_marked_unverified_do_not_count(tmp_path: Path) -> None:
+    """A numeric value remains incomplete when its note says it needs review."""
+    snapshot = (
+        "## 市场快照\n\n| 指标 | 值 | 来源 |\n|------|-----|------|\n"
+        "| 当前股价 | 185.5（待核实） | [S01] |\n"
+        "| 市值 | $960B（待更新） | [S01] |\n"
+        "| PE (TTM) | 28x（待核实） | [S01] |\n"
+        "| PE (Forward) | 20x（待更新） | [S01] |\n"
+        "| PB | 3x（待核实） | [S01] |\n"
+    )
+    errors = vlc.check_market_snapshot(snapshot, tmp_path / "snapshot.md")
+    assert errors and "only 0/8" in errors[0], errors
+
+
 def test_period_and_source_ids_do_not_satisfy_threshold(tmp_path: Path) -> None:
     """Years, quarters and source ids are not numeric monitoring thresholds."""
     rows = [
@@ -844,6 +858,35 @@ def test_unspecified_source_and_revisit_plan_are_partial(tmp_path: Path) -> None
     assert not audit_report._monitoring_field_actionable(
         "trigger_to_action", "take another look"
     )
+
+
+def test_generic_report_and_data_are_not_monitoring_sources(tmp_path: Path) -> None:
+    """Generic capitalized nouns do not identify a monitoring data source."""
+    rows = [
+        "| Margin | below 30% | weekly | Report | cut production |",
+        "| Demand | below 5% | monthly | Data | reduce headcount |",
+        "| PE | above 40x | quarterly | Report | take profit |",
+    ]
+    p = _write(tmp_path, _monitoring_report(rows))
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert result.errors, "generic source labels must leave the rows partial"
+    assert not audit_report._monitoring_field_actionable("source", "Report")
+    assert not audit_report._monitoring_field_actionable("source", "Data")
+
+
+def test_chinese_monitoring_values_are_actionable(tmp_path: Path) -> None:
+    """Chinese comparisons, named sources, cadences and actions remain valid."""
+    report = (
+        "# 市场展望\n\n## 监测信号\n\n"
+        "| 指标 | 阈值 | 频率 | 来源 | 触发动作 |\n"
+        "|------|------|------|------|----------|\n"
+        "| 毛利率 | 低于30% | 每月 | 国家统计局月报 | 暂停扩产 |\n"
+        "| 电价 | 不超过0.12 | 每季度 | 国家能源局公告 | 削减产能 |\n"
+        "| 估值 | 高于40倍 | 每周 | 中国人民银行报告 | 推迟投资 |\n"
+    )
+    p = _write(tmp_path, report)
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert not result.errors, result.errors
 
 
 def test_stress_test_is_not_a_placeholder_token(tmp_path: Path) -> None:
