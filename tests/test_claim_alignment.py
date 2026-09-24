@@ -21,6 +21,14 @@ if str(SCRIPTS) not in sys.path:
 
 from claim_alignment import (  # noqa: E402
     BindingContext,
+    _contains_direction_word,
+    _direction_conflict,
+    _has_negation,
+    _judge_claim_text,
+    _negation_conflict,
+    _NEGATIVE_DIRECTION,
+    _POSITIVE_DIRECTION,
+    _year_mismatch,
     compute_per_class_one_vs_rest,
     judge_entry,
     load_and_run_bundle,
@@ -445,3 +453,89 @@ class TestPerClassMetrics:
         assert per_class["SUPPORTED"]["fp"] == 1
         assert per_class["SUPPORTED"]["fpr"] == 1.0
         assert per_class["UNSUPPORTED"]["fn"] == 1
+
+
+class TestClaimAlignmentHeuristicFixes437:
+    """Issue #437: multi-language semantic heuristics must not create false
+    UNSUPPORTED verdicts, while genuine conflicts still do."""
+
+    # --- E1: English direction words are whole-token, not substring ---
+
+    def test_direction_words_match_whole_tokens_only(self) -> None:
+        # Substring false positives from issue #437.
+        assert not _contains_direction_word("downstream demand", _NEGATIVE_DIRECTION)
+        assert not _contains_direction_word("lossless encoding", _NEGATIVE_DIRECTION)
+        assert not _contains_direction_word("a clear fallacy", _NEGATIVE_DIRECTION)
+        # Genuine tokens still match.
+        assert _contains_direction_word("revenue declined", _NEGATIVE_DIRECTION)
+        assert _contains_direction_word("revenue grew", _POSITIVE_DIRECTION)
+        # CJK direction phrases still match as substrings.
+        assert _contains_direction_word("市场增长", _POSITIVE_DIRECTION)
+
+    def test_no_false_direction_conflict_from_subwords(self) -> None:
+        # "startup" (contains up) vs "downstream" (contains down) must not
+        # create a direction conflict.
+        assert not _direction_conflict("startup revenue grew", "downstream demand")
+
+    # --- E2: CJK negation excludes time/uncertain words ---
+
+    def test_future_market_not_flagged_as_negation(self) -> None:
+        assert not _has_negation("未来市场增长")
+        assert not _has_negation("市场增长")
+        assert not _negation_conflict("未来市场增长", "市场增长")
+
+    def test_genuine_cjk_negation_still_conflicts(self) -> None:
+        assert _has_negation("收入没有增长")
+        assert _negation_conflict("收入没有增长", "收入增长")
+
+    def test_uncertain_cjk_markers_are_not_hard_negation(self) -> None:
+        # 未来/未來 (future) and 未必 (not necessarily) are not hard negations;
+        # 未 + verb (e.g. 未增长) remains a genuine negation.
+        assert not _has_negation("未必增长")
+        assert _has_negation("未增长")
+
+    # --- E3: FY and calendar years normalize to the same natural year ---
+
+    def test_fy_and_calendar_year_do_not_mismatch(self) -> None:
+        assert not _year_mismatch("Revenue grew in FY2024", "Revenue grew in 2024")
+        assert not _year_mismatch("Revenue in 2024", "Revenue in 2024")
+
+    def test_different_years_still_mismatch(self) -> None:
+        assert _year_mismatch("Revenue grew in FY2024", "Revenue grew in FY2025")
+
+    # --- End-to-end: the full judge must not emit false UNSUPPORTED ---
+
+    def test_judge_no_false_unsupported_for_fixed_heuristics(self) -> None:
+        # locator_kind=None exercises conflict heuristics + overlap only.
+        assert _judge_claim_text(
+            "The downstream demand stayed lossless after the startup launched",
+            "The downstream demand stayed lossless after the startup launched its product.",
+            None,
+            "",
+        ) != "UNSUPPORTED"
+        assert _judge_claim_text(
+            "未来市场增长预期乐观",
+            "市场增长预期乐观，未来市场增长符合预期。",
+            None,
+            "",
+        ) != "UNSUPPORTED"
+        assert _judge_claim_text(
+            "Revenue rose in FY2024",
+            "Revenue rose in 2024, beating expectations.",
+            None,
+            "",
+        ) != "UNSUPPORTED"
+
+    def test_judge_genuine_conflicts_still_unsupported(self) -> None:
+        assert _judge_claim_text(
+            "Revenue declined in FY2024",
+            "Revenue grew in FY2025, a strong year.",
+            None,
+            "",
+        ) == "UNSUPPORTED"
+        assert _judge_claim_text(
+            "收入没有增长",
+            "收入增长强劲。",
+            None,
+            "",
+        ) == "UNSUPPORTED"

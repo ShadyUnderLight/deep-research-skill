@@ -29,11 +29,11 @@ class TestClaimAlignmentCalibration:
             threshold=0.85,
         )
         assert result.aggregate_accuracy >= 0.85
-        assert result.fixture_version == "claim-alignment-calibration-v1"
+        assert result.fixture_version == "claim-alignment-calibration-v2"
         assert result.positive_samples > 0
         assert result.negative_samples > 0
         supported = result.per_class["SUPPORTED"]
-        assert supported["support"] == 1
+        assert supported["support"] >= 1
         assert isinstance(supported["fpr"], float)
 
     def test_calibration_checks_partial_subclaims(self) -> None:

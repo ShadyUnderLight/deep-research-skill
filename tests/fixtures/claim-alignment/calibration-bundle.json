@@ -1,7 +1,7 @@
 {
   "schema_version": "2",
   "bundle_id": "claim-alignment-calibration-bundle",
-  "fixture_version": "claim-alignment-calibration-v1",
+  "fixture_version": "claim-alignment-calibration-v2",
   "audited_population": "load-bearing claims in calibration gold set",
   "sampling_rule": "all fixture entries",
   "entries": [
@@ -162,6 +162,81 @@
         "evidence_role": "unknown"
       },
       "excerpt": ""
+    },
+    {
+      "claim_id": "C11",
+      "claim_text": "The downstream demand stayed lossless after the startup launched",
+      "evidence_record": {
+        "claim_id": "C11",
+        "source_id": "S16",
+        "locator": {
+          "kind": "quote",
+          "value": "The downstream demand stayed lossless after the startup launched its product."
+        },
+        "retrieval_status": "fetched",
+        "evidence_role": "primary"
+      },
+      "excerpt": "The downstream demand stayed lossless after the startup launched its product."
+    },
+    {
+      "claim_id": "C12",
+      "claim_text": "未来市场增长预期乐观",
+      "evidence_record": {
+        "claim_id": "C12",
+        "source_id": "S12",
+        "locator": {
+          "kind": "quote",
+          "value": "市场增长预期乐观，未来市场增长符合预期。"
+        },
+        "retrieval_status": "fetched",
+        "evidence_role": "primary"
+      },
+      "excerpt": "市场增长预期乐观，未来市场增长符合预期。"
+    },
+    {
+      "claim_id": "C13",
+      "claim_text": "Revenue rose in FY2024",
+      "evidence_record": {
+        "claim_id": "C13",
+        "source_id": "S13",
+        "locator": {
+          "kind": "quote",
+          "value": "Revenue rose in 2024, beating expectations."
+        },
+        "retrieval_status": "fetched",
+        "evidence_role": "primary"
+      },
+      "excerpt": "Revenue rose in 2024, beating expectations."
+    },
+    {
+      "claim_id": "C14",
+      "claim_text": "Revenue declined in FY2024",
+      "evidence_record": {
+        "claim_id": "C14",
+        "source_id": "S14",
+        "locator": {
+          "kind": "quote",
+          "value": "Revenue grew in FY2025, a strong year."
+        },
+        "retrieval_status": "fetched",
+        "evidence_role": "primary"
+      },
+      "excerpt": "Revenue grew in FY2025, a strong year."
+    },
+    {
+      "claim_id": "C15",
+      "claim_text": "收入没有增长",
+      "evidence_record": {
+        "claim_id": "C15",
+        "source_id": "S15",
+        "locator": {
+          "kind": "quote",
+          "value": "收入增长强劲。"
+        },
+        "retrieval_status": "fetched",
+        "evidence_role": "primary"
+      },
+      "excerpt": "收入增长强劲。"
     }
   ],
   "source_register": [
@@ -224,6 +299,36 @@
       "source_artifact_path": "tests/fixtures/claim-alignment/sources/s99-excerpt.txt",
       "title": "Source S99",
       "url": "https://example.com/s99"
+    },
+    {
+      "source_id": "S12",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s12-excerpt.txt",
+      "title": "Source S12",
+      "url": "https://example.com/s12"
+    },
+    {
+      "source_id": "S13",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s13-excerpt.txt",
+      "title": "Source S13",
+      "url": "https://example.com/s13"
+    },
+    {
+      "source_id": "S14",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s14-excerpt.txt",
+      "title": "Source S14",
+      "url": "https://example.com/s14"
+    },
+    {
+      "source_id": "S15",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s15-excerpt.txt",
+      "title": "Source S15",
+      "url": "https://example.com/s15"
+    },
+    {
+      "source_id": "S16",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s16-excerpt.txt",
+      "title": "Source S16",
+      "url": "https://example.com/s16"
     }
   ],
   "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",

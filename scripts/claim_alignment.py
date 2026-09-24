@@ -649,9 +649,24 @@ _POSITIVE_DIRECTION = frozenset({
 })
 
 
+# Issue #437 (E1): English direction words must match whole tokens, not as
+# substrings — otherwise "up" in "startup", "down" in "downstream", "loss" in
+# "lossless", or "fall" in "fallacy" create false direction conflicts. CJK
+# direction phrases (e.g. 增长/下降) are kept as substring matches.
+_EN_WORD_TOKEN_RE = re.compile(r"[A-Za-z]+(?:['’-][A-Za-z]+)*")
+
+
 def _contains_direction_word(text: str, words: frozenset[str]) -> bool:
+    tokens = {tok.casefold() for tok in _EN_WORD_TOKEN_RE.findall(text)}
     text_cf = text.casefold()
-    return any(word.casefold() in text_cf for word in words)
+    for word in words:
+        w_cf = word.casefold()
+        if any("\u4e00" <= ch <= "\u9fff" for ch in w_cf):
+            if w_cf in text_cf:
+                return True
+        elif w_cf in tokens:
+            return True
+    return False
 
 
 _NEGATION_PATTERNS_EN = (
@@ -662,11 +677,18 @@ _NEGATION_PATTERNS_EN = (
     re.compile(r"\bdidn't\b", re.IGNORECASE),
     re.compile(r"\bdid not\b", re.IGNORECASE),
 )
-_NEGATION_MARKERS_CJK = ("没有", "未", "不再", "并非", "无")
+# Issue #437 (E2): a bare 未 is not a negation marker — it appears in time words
+# (未来/未來) and uncertain words (未必/尚未). Only treat 未 as negation when it is
+# followed by a CJK verb char that is not one of those boundary words. Explicit
+# negation phrases are matched directly.
+_NEGATION_MARKERS_CJK = ("没有", "未能", "未曾", "未有", "不再", "并非", "无")
+_NEGATION_CJK_UNCERTAIN_EXCLUDE = re.compile(r"未(?!来|來|必|尚)")
 
 
 def _has_negation(text: str) -> bool:
     if any(marker in text for marker in _NEGATION_MARKERS_CJK):
+        return True
+    if _NEGATION_CJK_UNCERTAIN_EXCLUDE.search(text):
         return True
     return any(pattern.search(text) for pattern in _NEGATION_PATTERNS_EN)
 
@@ -709,9 +731,15 @@ def _direction_conflict(claim: str, excerpt: str) -> bool:
     return (claim_neg and excerpt_pos) or (claim_pos and excerpt_neg)
 
 
+def _normalize_years(text: str) -> set[str]:
+    # Issue #437 (E3): strip the FY prefix so FY2024 and 2024 denote the same
+    # natural year; keep only the captured 4-digit year.
+    return set(re.findall(r"(?:FY)?(20\d{2})", text, flags=re.IGNORECASE))
+
+
 def _year_mismatch(claim: str, excerpt: str) -> bool:
-    claim_years = set(re.findall(r"(?:FY)?20\d{2}", claim, flags=re.IGNORECASE))
-    excerpt_years = set(re.findall(r"(?:FY)?20\d{2}", excerpt, flags=re.IGNORECASE))
+    claim_years = _normalize_years(claim)
+    excerpt_years = _normalize_years(excerpt)
     if claim_years and excerpt_years and not (claim_years & excerpt_years):
         return True
     return False
