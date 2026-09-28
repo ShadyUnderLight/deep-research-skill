@@ -176,20 +176,35 @@ def check_file(path: Path, desc: str, pattern: str, must_exist: bool) -> bool:
 
 
 # Sentinel exit code meaning "the validator could not be executed at all"
-# (fixture staging failure, launch failure, or timeout). Kept distinct from
-# any real validator exit code so a negative fixture cannot be satisfied by an
-# execution error that happens to look like a rejection (issue #438 review).
+# (fixture staging failure, launch failure, timeout, or termination by a
+# signal). Kept distinct from any real validator exit code so a negative
+# fixture cannot be satisfied by an execution error that happens to look like
+# a rejection (issue #438 review).
 EXEC_ERROR = -1
 
+# validate_research_pack.py's strict-mode rejection exit code (EXIT_STRICT).
+# The DISCOVERY negative fixture must fail with *exactly* this code — any other
+# non-zero code (an unrelated structure/artifact error, or a signal-negative
+# code) is not evidence that DISCOVERY was rejected (issue #438 review).
+PACK_EXIT_STRICT = 4
 
-def _validate_pack(text: str, strict: bool = False) -> int:
+# Diagnostic validate_research_pack.py prints when it rejects DISCOVERY as a
+# Source Register source type.
+DISCOVERY_DIAGNOSTIC = "DISCOVERY in Source register"
+
+
+def _validate_pack(text: str, strict: bool = False) -> tuple[int, str]:
     """Write text to a temp file and run validate_research_pack.py.
 
-    Returns the validator's exit code, or :data:`EXEC_ERROR` if the validator
-    could not run (staging failure, launch failure, or timeout). The temp file
-    is recorded *before* writing and cleaned up on every exit path, so a write
-    failure still removes it. The subprocess has a bounded timeout so a hung
-    validator cannot leak the temp file or stall the caller.
+    Returns ``(exit code, stdout)``. A negative exit code — the validator was
+    killed by a signal (e.g. SIGKILL/SIGSEGV, reported by POSIX subprocess as
+    ``-9``/``-11``) — is reported as :data:`EXEC_ERROR`, never as a rejection.
+    :data:`EXEC_ERROR` is likewise returned when the validator could not run at
+    all (staging failure, launch failure, or timeout).
+
+    The temp file is recorded *before* writing and cleaned up on every exit
+    path, so a write failure still removes it. The subprocess has a bounded
+    timeout so a hung validator cannot leak the temp file or stall the caller.
     """
     tmp = None
     try:
@@ -201,7 +216,7 @@ def _validate_pack(text: str, strict: bool = False) -> int:
                 f.write(text)
         except OSError as exc:
             print(f"  EXEC-ERROR: could not stage fixture: {exc}", file=sys.stderr)
-            return EXEC_ERROR
+            return EXEC_ERROR, ""
         cmd = [sys.executable, str(REPO / "scripts" / "validate_research_pack.py")]
         if strict:
             cmd.append("--strict")
@@ -210,8 +225,15 @@ def _validate_pack(text: str, strict: bool = False) -> int:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         except (OSError, subprocess.TimeoutExpired) as exc:
             print(f"  EXEC-ERROR: validator did not complete: {exc}", file=sys.stderr)
-            return EXEC_ERROR
-        return result.returncode
+            return EXEC_ERROR, ""
+        if result.returncode < 0:
+            print(
+                f"  EXEC-ERROR: validator terminated by signal "
+                f"{-result.returncode}",
+                file=sys.stderr,
+            )
+            return EXEC_ERROR, result.stdout or ""
+        return result.returncode, result.stdout or ""
     finally:
         if tmp:
             Path(tmp).unlink(missing_ok=True)
@@ -361,14 +383,14 @@ def run_behavior_checks() -> list[str]:
     failures: list[str] = []
 
     # 1. Valid baseline should pass
-    rc = _validate_pack(_VALID_PACK)
+    rc, _ = _validate_pack(_VALID_PACK)
     if rc != 0:
         failures.append(
             f"BEHAVIOR: valid baseline Research Pack should pass (exit 0), got {rc}"
         )
 
     # 2. Valid baseline should pass strict mode too
-    rc_strict = _validate_pack(_VALID_PACK, strict=True)
+    rc_strict, _ = _validate_pack(_VALID_PACK, strict=True)
     if rc_strict != 0:
         failures.append(
             f"BEHAVIOR: valid baseline should pass strict mode (exit 0), got {rc_strict}"
@@ -376,20 +398,24 @@ def run_behavior_checks() -> list[str]:
 
     # 3. Bad pack with DISCOVERY in Source Register must fail strict mode
     #    (validate_research_pack.py has a DISCOVERY-as-source-type rejection rule).
-    #    An execution error (EXEC_ERROR) is NOT a valid rejection: the validator
-    #    must actually run and reject the fixture (issue #438 review).
-    rc_disco = _validate_pack(_BAD_PACK_DISCOVERY_IN_REGISTER, strict=True)
-    if rc_disco == 0 or rc_disco == EXEC_ERROR:
+    #    Only the *expected* rejection counts: exit code EXIT_STRICT with the
+    #    DISCOVERY diagnostic on stdout. Exit 0, an execution error, a
+    #    signal-negative code, or any other non-zero code (e.g. an unrelated
+    #    structure/artifact error) is NOT evidence that DISCOVERY was rejected
+    #    (issue #438 review).
+    rc_disco, out_disco = _validate_pack(_BAD_PACK_DISCOVERY_IN_REGISTER, strict=True)
+    if rc_disco != PACK_EXIT_STRICT or DISCOVERY_DIAGNOSTIC not in out_disco:
         failures.append(
-            "BEHAVIOR: pack with [S01] DISCOVERY in Source Register must "
-            f"fail strict validation (validator must run and reject), got {rc_disco}"
+            "BEHAVIOR: pack with [S01] DISCOVERY in Source Register must fail "
+            f"strict validation with exit {PACK_EXIT_STRICT} and a "
+            f"{DISCOVERY_DIAGNOSTIC!r} diagnostic, got rc={rc_disco}"
         )
 
     # 4. Bad pack with snapshot missing fields — the channel availability
     #    snapshot is a conditional section so it doesn't fail heading checks.
     #    But the fields MUST be listed in the reference docs. This fixture
     #    validates that the validator at least parses the snapshot section.
-    rc_snap = _validate_pack(_BAD_PACK_SNAPSHOT_MISSING_FIELDS)
+    rc_snap, _ = _validate_pack(_BAD_PACK_SNAPSHOT_MISSING_FIELDS)
     if rc_snap != 0:
         # A missing-field snapshot should still pass structure checks because
         # the section exists with partial content. This confirms baseline
