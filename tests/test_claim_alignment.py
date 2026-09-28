@@ -28,6 +28,7 @@ from claim_alignment import (  # noqa: E402
     _judge_claim_text,
     _negation_conflict,
     _NEGATIVE_DIRECTION,
+    _numeric_percent_conflict,
     _period_ambiguous,
     _POSITIVE_DIRECTION,
     _uncertain_aspect_present,
@@ -533,6 +534,24 @@ class TestClaimAlignmentHeuristicFixes437:
         assert _judge_claim_text("收入增长", "收入下降。", None, "") == "UNSUPPORTED"
         assert _judge_claim_text("收入没有增长", "收入增长。", None, "") == "UNSUPPORTED"
 
+    def test_hedge_degrades_numeric_and_year_conflicts(self) -> None:
+        # Reviewer P2 (round 4): the hedge is detected on the whole text and its
+        # scope is never resolved, so a *numeric* or *year* conflict is not a
+        # certain contradiction either — 未必增长 15% vs 增长 3% must not be
+        # reported as UNSUPPORTED just because the figures differ.
+        assert _numeric_percent_conflict("收入未必增长15%", "收入增长3%。")
+        assert _judge_claim_text(
+            "收入未必增长15%", "收入增长3%。", None, ""
+        ) == "AMBIGUOUS"
+        assert _judge_claim_text(
+            "收入尚未增长 FY2024", "收入增长 FY2025。", None, ""
+        ) == "AMBIGUOUS"
+        # The same conflicts stay definite when no hedge is present.
+        assert _judge_claim_text("收入增长15%", "收入增长3%。", None, "") == "UNSUPPORTED"
+        assert _judge_claim_text(
+            "Revenue declined in FY2024", "Revenue grew in FY2025.", None, ""
+        ) == "UNSUPPORTED"
+
     def test_uncertain_markers_force_ambiguous(self) -> None:
         assert _uncertain_aspect_present("收入尚未增长")
         assert _uncertain_aspect_present("未必增长")
@@ -627,6 +646,41 @@ class TestClaimAlignmentHeuristicFixes437:
         # nothing ambiguous.
         assert not _period_ambiguous(claim, claim)
         assert not _period_ambiguous("Revenue grew in 2024", "Revenue grew in 2024")
+
+    def test_bare_quarter_inherits_preceding_year(self) -> None:
+        # Reviewer P2 (round 4): "2024Q1 and Q2" lists two quarters of 2024; the
+        # bare Q2 must not be dropped, otherwise the pair compares equal to
+        # "2024Q1 and Q3".
+        assert _extract_periods("Revenue grew in 2024Q1 and Q2") == [
+            ("2024", "1"),
+            ("2024", "2"),
+        ]
+        assert _extract_periods("Revenue grew in 2024 and Q2") == [
+            ("2024", None),
+            ("2024", "2"),
+        ]
+        # A bare quarter with no preceding year has nothing to bind to.
+        assert _extract_periods("Q1") == []
+
+    def test_partially_overlapping_quarters_are_ambiguous(self) -> None:
+        # Reviewer P2 (round 4): a shared quarter must not mask a claim quarter
+        # the evidence does not cover. Q1 is covered but Q2 is not, and the
+        # evidence does not deny Q2 — so AMBIGUOUS, never SUPPORTED.
+        claim = "Revenue grew in 2024Q1 and Q2"
+        excerpt = "Revenue grew in 2024Q1 and Q3"
+        assert not _year_mismatch(claim, excerpt)  # Q1 intersects
+        assert _period_ambiguous(claim, excerpt)
+        assert _judge_claim_text(claim, excerpt + ".", None, "") == "AMBIGUOUS"
+        # Every claim quarter covered by the evidence -> nothing ambiguous.
+        assert not _period_ambiguous(
+            "Revenue grew in 2024Q1", "Revenue grew in 2024Q1 and Q3"
+        )
+        assert (
+            _judge_claim_text(
+                "Revenue grew in 2024Q1", "Revenue grew in 2024Q1 and Q3.", None, ""
+            )
+            == "SUPPORTED"
+        )
 
     # --- End-to-end: the full judge must not emit false UNSUPPORTED ---
 

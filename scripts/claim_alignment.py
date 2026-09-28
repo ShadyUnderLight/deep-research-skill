@@ -753,18 +753,27 @@ def _direction_conflict(claim: str, excerpt: str) -> bool:
 _PERIOD_RE = re.compile(
     r"(?:FY)?(?P<y1>20\d{2})(?:[-\s]?Q(?P<q1>[1-4]))?"
     r"|"
-    r"Q(?P<q2>[1-4])[-\s]?(?:FY)?(?P<y2>20\d{2})",
+    r"Q(?P<q2>[1-4])[-\s]?(?:FY)?(?P<y2>20\d{2})"
+    r"|"
+    r"\bQ(?P<q3>[1-4])\b",
     re.IGNORECASE,
 )
 
 
 def _extract_periods(text: str) -> list[tuple[str, str | None]]:
     periods: list[tuple[str, str | None]] = []
+    last_year: str | None = None
     for match in _PERIOD_RE.finditer(text):
         if match.group("y1"):
-            periods.append((match.group("y1"), match.group("q1")))
-        else:
-            periods.append((match.group("y2"), match.group("q2")))
+            last_year = match.group("y1")
+            periods.append((last_year, match.group("q1")))
+        elif match.group("y2"):
+            last_year = match.group("y2")
+            periods.append((last_year, match.group("q2")))
+        elif last_year:
+            # A bare quarter ("2024Q1 and Q2", "2024 and Q2") inherits the year
+            # it follows; with no preceding year there is nothing to bind to.
+            periods.append((last_year, match.group("q3")))
     return periods
 
 
@@ -800,10 +809,14 @@ def _year_mismatch(claim: str, excerpt: str) -> bool:
 
 def _period_ambiguous(claim: str, excerpt: str) -> bool:
     # Years overlap (so not a definite year mismatch), but for some shared year
-    # only one side pins a quarter -> that period cannot be reliably compared.
-    # Checked per shared year, so "Q1 2024 and 2025" vs "2024 and Q2 2025" is
-    # ambiguous too: both sides carry a quarter globally, but for no shared year
-    # do *both* sides pin one.
+    # the periods still cannot be reliably compared:
+    #   * only one side pins a quarter ("2024Q1" vs "2024"), or
+    #   * the claim pins a quarter the evidence does not cover ("2024Q1 and Q2"
+    #     vs "2024Q1 and Q3"): a shared Q1 must not mask the uncovered Q2, which
+    #     would otherwise reach SUPPORTED on lexical overlap alone.
+    # Both checks run per shared year, so "Q1 2024 and 2025" vs "2024 and Q2
+    # 2025" stays ambiguous too: both sides carry a quarter globally, but for no
+    # shared year do *both* sides pin one.
     claim_periods = _extract_periods(claim)
     excerpt_periods = _extract_periods(excerpt)
     shared_years = {year for year, _ in claim_periods} & {
@@ -813,9 +826,14 @@ def _period_ambiguous(claim: str, excerpt: str) -> bool:
         return False
     claim_q = _quarters_by_year(claim_periods)
     excerpt_q = _quarters_by_year(excerpt_periods)
-    return any(
-        bool(claim_q.get(year)) != bool(excerpt_q.get(year)) for year in shared_years
-    )
+    for year in shared_years:
+        claim_year_q = claim_q.get(year)
+        excerpt_year_q = excerpt_q.get(year)
+        if bool(claim_year_q) != bool(excerpt_year_q):
+            return True
+        if claim_year_q and not claim_year_q <= excerpt_year_q:
+            return True
+    return False
 
 
 def _cjk_char_overlap(claim: str, excerpt: str) -> float:
@@ -924,22 +942,22 @@ def _judge_claim_text(
         quote = locator_value.strip()
         if quote and quote not in excerpt:
             return "UNSUPPORTED"
-    # A hedged claim/evidence (尚未 "not yet" / 未必 "not necessarily") must not be
-    # escalated into a definite contradiction by the coarse polarity heuristics:
-    # 未必增长 vs 没有增长 is not a certain conflict. Numeric/period evidence below
-    # stays definite regardless of the hedge.
-    uncertain = _uncertain_aspect_present(claim_text) or _uncertain_aspect_present(excerpt)
-    if not uncertain and (
-        _direction_conflict(claim_text, excerpt)
-        or _negation_conflict(claim_text, excerpt)
+    # A hedged claim/evidence (尚未 "not yet" / 未必 "not necessarily") is never a
+    # *certain* contradiction. The hedge is detected on the whole text and its
+    # scope is not resolved, so no conflict class may be escalated to UNSUPPORTED
+    # here: 未必增长 15% vs 增长 3% is not a certain conflict either, because 未必
+    # may scope over the figure just as it may scope over the direction word.
+    # Without scope resolution every hedged pair falls through to AMBIGUOUS.
+    if _uncertain_aspect_present(claim_text) or _uncertain_aspect_present(excerpt):
+        return "AMBIGUOUS"
+    if _direction_conflict(claim_text, excerpt) or _negation_conflict(
+        claim_text, excerpt
     ):
         return "UNSUPPORTED"
     if _numeric_percent_conflict(claim_text, excerpt):
         return "UNSUPPORTED"
     if _year_mismatch(claim_text, excerpt):
         return "UNSUPPORTED"
-    if uncertain:
-        return "AMBIGUOUS"
     if _period_ambiguous(claim_text, excerpt):
         return "AMBIGUOUS"
     overlap = _lexical_overlap(claim_text, excerpt)

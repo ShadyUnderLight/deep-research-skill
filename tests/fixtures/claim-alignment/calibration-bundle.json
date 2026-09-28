@@ -1,7 +1,7 @@
 {
   "schema_version": "2",
   "bundle_id": "claim-alignment-calibration-bundle",
-  "fixture_version": "claim-alignment-calibration-v3",
+  "fixture_version": "claim-alignment-calibration-v4",
   "audited_population": "load-bearing claims in calibration gold set",
   "sampling_rule": "all fixture entries",
   "entries": [
@@ -312,6 +312,36 @@
         "evidence_role": "primary"
       },
       "excerpt": "Revenue grew in 2024 and Q2 2025."
+    },
+    {
+      "claim_id": "C21",
+      "claim_text": "收入未必增长15%",
+      "evidence_record": {
+        "claim_id": "C21",
+        "source_id": "S22",
+        "locator": {
+          "kind": "quote",
+          "value": "收入增长3%。"
+        },
+        "retrieval_status": "fetched",
+        "evidence_role": "primary"
+      },
+      "excerpt": "收入增长3%。"
+    },
+    {
+      "claim_id": "C22",
+      "claim_text": "Revenue grew in 2024Q1 and Q2",
+      "evidence_record": {
+        "claim_id": "C22",
+        "source_id": "S23",
+        "locator": {
+          "kind": "quote",
+          "value": "Revenue grew in 2024Q1 and Q3."
+        },
+        "retrieval_status": "fetched",
+        "evidence_role": "primary"
+      },
+      "excerpt": "Revenue grew in 2024Q1 and Q3."
     }
   ],
   "source_register": [
@@ -434,6 +464,18 @@
       "source_artifact_path": "tests/fixtures/claim-alignment/sources/s21-excerpt.txt",
       "title": "Source S21",
       "url": "https://example.com/s21"
+    },
+    {
+      "source_id": "S22",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s22-excerpt.txt",
+      "title": "Source S22",
+      "url": "https://example.com/s22"
+    },
+    {
+      "source_id": "S23",
+      "source_artifact_path": "tests/fixtures/claim-alignment/sources/s23-excerpt.txt",
+      "title": "Source S23",
+      "url": "https://example.com/s23"
     }
   ],
   "source_artifact_path": "tests/fixtures/audit/market-outlook-pos.md",

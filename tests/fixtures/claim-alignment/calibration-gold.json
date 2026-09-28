@@ -1,5 +1,5 @@
 {
-  "fixture_version": "claim-alignment-calibration-v3",
+  "fixture_version": "claim-alignment-calibration-v4",
   "labels": {
     "C01": {
       "verdict": "SUPPORTED"
@@ -69,6 +69,12 @@
       "verdict": "AMBIGUOUS"
     },
     "C20": {
+      "verdict": "AMBIGUOUS"
+    },
+    "C21": {
+      "verdict": "AMBIGUOUS"
+    },
+    "C22": {
       "verdict": "AMBIGUOUS"
     }
   }
