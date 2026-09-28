@@ -259,9 +259,15 @@ def fetch_pr_files(pr_number: int) -> list[str]:
 def fetch_pr_tree_shas(pr_number: int) -> tuple[Optional[str], Optional[str]]:
     """Fetch merge tree SHA and parent tree SHA for a merged PR.
 
-    Returns (tree SHA of merge commit, tree SHA of first parent).
-    Returns (None, None) if PR not merged, git data unavailable, or
-    either tree cannot be resolved (e.g. shallow clone).
+    Returns (tree SHA of merge commit, tree SHA of first parent) when the PR
+    is merged. Returns (None, None) when the PR is **not merged** — a
+    legitimate "skip the no-op-merge check" result.
+
+    Raises FetchError when the merge state cannot be determined, or when the
+    PR is merged but its tree SHAs cannot be resolved (gh error, git error,
+    timeout, shallow clone). That is *unavailable data*, not a clean skip:
+    silently treating it as (None, None) would skip the NO_OP_MERGE check and
+    could report PASS (issue #438 review).
 
     Note: returns tree SHAs, NOT commit SHAs — two different commits
     can produce the same tree (= no-op merge). Comparing tree SHAs
@@ -273,21 +279,27 @@ def fetch_pr_tree_shas(pr_number: int) -> tuple[Optional[str], Optional[str]]:
             "--json", "mergeCommit",
             "--jq", ".mergeCommit.oid",
         ])
-        if not raw:
-            return None, None  # not merged
-        merge_sha = raw.strip()
-    except RuntimeError:
-        return None, None
+    except RuntimeError as e:
+        raise FetchError(
+            f"could not fetch PR #{pr_number} merge state: {e}"
+        ) from e
 
-    # Get trees via git plumbing; if any step fails, return (None, None)
-    # consistently to avoid asymmetric partial results.
+    merge_sha = raw.strip()
+    if not merge_sha or merge_sha == "null":
+        return None, None  # PR not merged
+
+    # Get trees via git plumbing. Any failure here means the PR is merged but
+    # the tree data is unavailable → FetchError (never a silent skip).
     try:
         tree_result = subprocess.run(
             ["git", "rev-parse", f"{merge_sha}^{{tree}}"],
             capture_output=True, text=True, timeout=10,
         )
         if tree_result.returncode != 0:
-            return None, None
+            raise FetchError(
+                f"could not resolve merge tree for PR #{pr_number} "
+                f"({merge_sha}): {tree_result.stderr.strip()}"
+            )
         merge_tree = tree_result.stdout.strip()
 
         parent_result = subprocess.run(
@@ -295,12 +307,17 @@ def fetch_pr_tree_shas(pr_number: int) -> tuple[Optional[str], Optional[str]]:
             capture_output=True, text=True, timeout=10,
         )
         if parent_result.returncode != 0:
-            return None, None
+            raise FetchError(
+                f"could not resolve parent tree for PR #{pr_number} "
+                f"({merge_sha}): {parent_result.stderr.strip()}"
+            )
         parent_tree = parent_result.stdout.strip()
 
         return merge_tree, parent_tree
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return None, None
+    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+        raise FetchError(
+            f"could not resolve trees for PR #{pr_number} ({merge_sha}): {exc}"
+        ) from exc
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -342,15 +359,15 @@ def main() -> int:
 
     # Fetch required data. A fetch FAILURE (vs. a legitimately empty result)
     # must not be silently treated as "validation passed": an unmerged PR with
-    # an empty issue body would otherwise produce no findings and exit 0.
+    # an empty issue body would otherwise produce no findings and exit 0, and
+    # an unresolvable merge tree would silently skip the NO_OP_MERGE check.
     try:
         issue_body = fetch_issue_body(args.issue_number)
         pr_files = fetch_pr_files(args.pr_number)
+        merge_tree, parent_tree = fetch_pr_tree_shas(args.pr_number)
     except FetchError as exc:
         print(f"warning: {exc}", file=sys.stderr)
         return EXIT_PASS if args.allow_unavailable else EXIT_UNAVAILABLE
-
-    merge_tree, parent_tree = fetch_pr_tree_shas(args.pr_number)
 
     # Run validation
     findings = core_validate(

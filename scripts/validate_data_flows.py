@@ -258,16 +258,39 @@ def check_signal_file_drift(
     return failures
 
 
+def _is_visible_heading_line(line: str) -> bool:
+    """True if *line* is a real top-level ATX heading line (issue #438 F6).
+
+    CommonMark allows an ATX heading to be indented by at most 3 spaces; 4+
+    spaces (or a leading tab) makes it an *indented code block*, so a
+    ``    ## X`` inside code must not count as a real section. Fenced code and
+    raw HTML are already removed by ``sanitize_visible_markdown``; indented
+    code is not, so we reject it here by indentation.
+    """
+    if line[:1] == "\t":
+        return False
+    indent = len(line) - len(line.lstrip(" "))
+    if indent > 3:
+        return False
+    return line.lstrip(" ").startswith("##")
+
+
+# Next top-level section boundary: an H2 ATX heading with 0-3 leading spaces,
+# but not an H3+ heading and not an H2 without the required space (`##x`).
+_H2_BOUNDARY_RE = re.compile(r"^ {0,3}##(?!#)(?:\s|$)")
+
+
 def extract_section(text: str, heading: str) -> str:
     # Operate on visible Markdown only: a heading inside a fenced code block
     # or HTML comment/block is documentation, not a real document section.
     # The heading must be a real heading *line* (issue #438 F6) — a same-named
-    # string buried in prose or a lower-level heading (### vs ##) is not it.
+    # string buried in prose, a lower-level heading (### vs ##), or an
+    # indented-code line is not it.
     visible = sanitize_visible_markdown(text)
     lines = visible.splitlines()
     start = None
     for i, line in enumerate(lines):
-        if line.strip() == heading:
+        if line.strip() == heading and _is_visible_heading_line(line):
             start = i
             break
     if start is None:
@@ -275,7 +298,7 @@ def extract_section(text: str, heading: str) -> str:
     body_lines: list[str] = []
     for line in lines[start + 1 :]:
         # Stop at the next top-level (H2) section; H3+ stay in the body.
-        if re.match(r"^## ", line) and not line.startswith("### "):
+        if _H2_BOUNDARY_RE.match(line):
             break
         body_lines.append(line)
     return "\n".join(body_lines)
@@ -401,13 +424,18 @@ def check_unassigned_network_signals(registry: dict) -> list[str]:
 
 def check_required_sections(text: str, sections: list[str], label: str) -> list[str]:
     # A required section must be a real visible *heading line*, not text that
-    # merely appears inside a fenced code block, HTML comment, prose mention,
-    # or a wrong-level heading (### vs ##) (issue #438 F6).
+    # merely appears inside a fenced code block, an indented code block, an
+    # HTML comment, a prose mention, or a wrong-level heading (### vs ##)
+    # (issue #438 F6).
     visible = sanitize_visible_markdown(text)
-    visible_lines = {line.strip() for line in visible.splitlines()}
+    visible_headings = {
+        line.strip()
+        for line in visible.splitlines()
+        if _is_visible_heading_line(line)
+    }
     failures: list[str] = []
     for section in sections:
-        if section not in visible_lines:
+        if section not in visible_headings:
             failures.append(f"{label} missing section: {section}")
     return failures
 

@@ -1517,12 +1517,17 @@ def check_pack_run_state(pack_path: Path | str, cleaned: str | None = None) -> l
 
 
 def load_declared_run_state(pack_path: Path | str) -> dict | None:
-    """读取 Pack 声明的 Run State 快照；缺节或无法解析时返回 None。"""
+    """读取 Pack 声明的 Run State 快照。
+
+    仅当 Pack 确实没有 Run State 声明（或 sidecar 无效）时返回 None。
+
+    读取失败（OSError/UnicodeError）不再吞成 None —— 否则「无法读取 Pack」
+    与「Pack 里没有 Run State」不可区分，调用方会沿用「无状态」分支而静默
+    跳过 delivery guard（issue #438 review）。读取错误由此函数抛出，交由
+    调用方记录为明确问题。
+    """
     pack_path = Path(pack_path)
-    try:
-        cleaned = pack_path.read_text(encoding="utf-8")
-    except (OSError, UnicodeError):
-        return None
+    cleaned = pack_path.read_text(encoding="utf-8")
     ref, errors = parse_pack_run_state_section(cleaned)
     if errors or ref is None:
         return None

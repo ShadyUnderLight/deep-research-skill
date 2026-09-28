@@ -2397,7 +2397,16 @@ def _apply_run_state_delivery_guard(
         return verdict
     from validate_research_run_state import load_declared_run_state
 
-    state = load_declared_run_state(research_pack)
+    try:
+        state = load_declared_run_state(research_pack)
+    except (OSError, UnicodeError) as exc:
+        # A read failure is NOT "no declared run state": the guard cannot run,
+        # so record it explicitly instead of silently keeping the verdict.
+        verdict.blocking.append(
+            f"cannot read Research Pack {research_pack} for the run-state "
+            f"delivery guard: {exc}"
+        )
+        return verdict
     if state is None:
         return verdict
     if state.get("phase") == "delivered" or state.get("status") == "completed":

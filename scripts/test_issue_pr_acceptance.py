@@ -544,10 +544,17 @@ def test_c8_allow_unavailable_returns_zero():
 def _run_cli_with_fake_gh(fail_request: str, allow_unavailable: bool) -> int:
     """Run the CLI with a fake `gh` that passes auth but can fail one data request.
 
-    fail_request selects which data request fails: "issue", "files", "both",
-    or "none". `gh auth status` always succeeds, so `_check_gh_available()`
-    passes and execution reaches the fetch stage — unlike C8, which fails at
-    the auth stage and never exercises the fetch functions.
+    fail_request selects the scenario:
+      "none"      — everything succeeds; the PR is treated as *not merged*
+      "issue"     — `gh issue view` fails
+      "files"     — `gh pr view --json files` fails
+      "merge"     — `gh pr view --json mergeCommit` fails
+      "revparse"  — mergeCommit returns an oid git cannot resolve
+      "unmerged"  — mergeCommit is empty (PR not merged, by design)
+
+    `gh auth status` always succeeds, so `_check_gh_available()` passes and
+    execution reaches the fetch stage — unlike C8, which fails at the auth
+    stage and never exercises the fetch functions.
     """
     import subprocess as _sp
     import tempfile as _tf
@@ -566,6 +573,18 @@ case "$1" in
     exit 0
     ;;
   pr)
+    case "$*" in
+      *mergeCommit*)
+        if [ "${FAIL_GH_REQUEST}" = "merge" ]; then
+          exit 1
+        fi
+        if [ "${FAIL_GH_REQUEST}" = "revparse" ]; then
+          echo '0000000000000000000000000000000000000000'
+          exit 0
+        fi
+        exit 0
+        ;;
+    esac
     if [ "${FAIL_GH_REQUEST}" = "files" ] || [ "${FAIL_GH_REQUEST}" = "both" ]; then
       exit 1
     fi
@@ -623,6 +642,30 @@ def test_c9_all_fetches_ok_passes():
     """C9 (P1): both fetches succeed and the path is present → exit 0."""
     rc = _run_cli_with_fake_gh("none", allow_unavailable=False)
     assert rc == 0, f"Expected PASS (0) when fetches succeed, got {rc}"
+
+
+def test_c9_merge_state_fetch_fails_returns_unavailable():
+    """C9 (P1): mergeCommit fetch fails (auth OK) MUST NOT report pass."""
+    rc = _run_cli_with_fake_gh("merge", allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}) when merge state "
+        f"cannot be fetched, got {rc}"
+    )
+
+
+def test_c9_merge_tree_revparse_fails_returns_unavailable():
+    """C9 (P1): merged PR whose tree SHAs cannot be resolved MUST be unavailable."""
+    rc = _run_cli_with_fake_gh("revparse", allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}) when merge tree "
+        f"cannot be resolved, got {rc}"
+    )
+
+
+def test_c9_unmerged_pr_skips_tree_check_and_passes():
+    """C9 (P1): an explicitly unmerged PR skips NO_OP_MERGE by design → pass."""
+    rc = _run_cli_with_fake_gh("unmerged", allow_unavailable=False)
+    assert rc == 0, f"Expected PASS (0) for an unmerged PR, got {rc}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

@@ -95,5 +95,39 @@ def test_body_includes_h3_subheadings_until_next_h2() -> None:
     assert "tail" not in body
 
 
+def test_indented_code_heading_is_not_a_real_section() -> None:
+    text = (
+        "# Title\n\n"
+        "## Real Section\n\n"
+        "    ## Hidden Section\n"
+        "    indented code, not a heading\n"
+    )
+    assert df.extract_section(text, "## Hidden Section") == ""
+    assert df.check_required_sections(text, ["## Hidden Section"], "X") != []
+    # The indented line is code, so it must not truncate a real section body.
+    body = df.extract_section(text, "## Real Section")
+    assert "indented code, not a heading" in body
+
+
+def test_tab_indented_heading_is_not_a_real_section() -> None:
+    text = "# Title\n\n## Real\n\n\t## Hidden\n\tcode\n"
+    assert df.check_required_sections(text, ["## Hidden"], "X") != []
+
+
+def test_up_to_three_space_indented_h2_is_a_real_section() -> None:
+    text = "# Title\n\n## First\nA\n\n   ## Second\nB\n"
+    # A 1-3 space indented H2 is a real heading (CommonMark) ...
+    assert df.check_required_sections(text, ["## Second"], "X") == []
+    # ... and acts as a section boundary for extraction.
+    assert df.extract_section(text, "## First").strip() == "A"
+
+
+def test_four_space_indented_h2_is_indented_code() -> None:
+    text = "# Title\n\n## First\nA\n\n    ## Second\nB\n"
+    assert df.check_required_sections(text, ["## Second"], "X") != []
+    # The 4-space line is code, so it stays inside First's body.
+    assert "## Second" in df.extract_section(text, "## First")
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))

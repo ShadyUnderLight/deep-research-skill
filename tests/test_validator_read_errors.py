@@ -16,7 +16,6 @@ from __future__ import annotations
 import subprocess
 import sys
 import tempfile
-import textwrap
 from pathlib import Path
 
 import pytest
@@ -295,6 +294,33 @@ def test_data_flows_run_checks_handles_doc_oserror():
     assert failures, "expected a recorded failure, got none"
     assert any("permission denied" in f for f in failures), (
         f"expected the OSError message to be captured, got {failures}"
+    )
+
+
+def test_data_flows_run_checks_handles_risk_register_oserror():
+    """P3: the RISK_REGISTER.md read has its own OSError handling branch.
+
+    Fail only that read (DATA_FLOWS.md still succeeds) so execution reaches
+    the second except clause instead of returning at the first read.
+    """
+    sys.path.insert(0, str(SCRIPTS))
+    import validate_data_flows as df  # noqa: E402
+
+    original = df.read_text
+
+    def _boom(rel_path: str) -> str:
+        if rel_path.endswith("RISK_REGISTER.md"):
+            raise PermissionError(f"permission denied: {rel_path}")
+        return original(rel_path)
+
+    df.read_text = _boom
+    try:
+        failures = df.run_checks()
+    finally:
+        df.read_text = original
+
+    assert any("permission denied" in f for f in failures), (
+        f"expected the RISK_REGISTER.md OSError to be recorded, got {failures}"
     )
 
 

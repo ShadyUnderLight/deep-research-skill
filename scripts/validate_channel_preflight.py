@@ -175,29 +175,42 @@ def check_file(path: Path, desc: str, pattern: str, must_exist: bool) -> bool:
 # ─── Behavior-level fixtures ─────────────────────────────────────────────
 
 
+# Sentinel exit code meaning "the validator could not be executed at all"
+# (fixture staging failure, launch failure, or timeout). Kept distinct from
+# any real validator exit code so a negative fixture cannot be satisfied by an
+# execution error that happens to look like a rejection (issue #438 review).
+EXEC_ERROR = -1
+
+
 def _validate_pack(text: str, strict: bool = False) -> int:
     """Write text to a temp file and run validate_research_pack.py.
 
-    The temp file is cleaned up on every exit path (success, failure,
-    exception, timeout) via try/finally. The subprocess has a bounded
-    timeout so a hung validator cannot leak the temp file or stall the
-    caller.
+    Returns the validator's exit code, or :data:`EXEC_ERROR` if the validator
+    could not run (staging failure, launch failure, or timeout). The temp file
+    is recorded *before* writing and cleaned up on every exit path, so a write
+    failure still removes it. The subprocess has a bounded timeout so a hung
+    validator cannot leak the temp file or stall the caller.
     """
     tmp = None
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".md", delete=False, encoding="utf-8"
-        ) as f:
-            f.write(text)
-            tmp = f.name
+        try:
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".md", delete=False, encoding="utf-8"
+            ) as f:
+                tmp = f.name  # record before write so a write failure still cleans up
+                f.write(text)
+        except OSError as exc:
+            print(f"  EXEC-ERROR: could not stage fixture: {exc}", file=sys.stderr)
+            return EXEC_ERROR
         cmd = [sys.executable, str(REPO / "scripts" / "validate_research_pack.py")]
         if strict:
             cmd.append("--strict")
         cmd.append(tmp)
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
-        except subprocess.TimeoutExpired:
-            return 2
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            print(f"  EXEC-ERROR: validator did not complete: {exc}", file=sys.stderr)
+            return EXEC_ERROR
         return result.returncode
     finally:
         if tmp:
@@ -362,12 +375,14 @@ def run_behavior_checks() -> list[str]:
         )
 
     # 3. Bad pack with DISCOVERY in Source Register must fail strict mode
-    #    (validate_research_pack.py has a DISCOVERY-as-source-type rejection rule)
+    #    (validate_research_pack.py has a DISCOVERY-as-source-type rejection rule).
+    #    An execution error (EXEC_ERROR) is NOT a valid rejection: the validator
+    #    must actually run and reject the fixture (issue #438 review).
     rc_disco = _validate_pack(_BAD_PACK_DISCOVERY_IN_REGISTER, strict=True)
-    if rc_disco == 0:
+    if rc_disco == 0 or rc_disco == EXEC_ERROR:
         failures.append(
             "BEHAVIOR: pack with [S01] DISCOVERY in Source Register must "
-            "fail strict validation (exit != 0), got 0"
+            f"fail strict validation (validator must run and reject), got {rc_disco}"
         )
 
     # 4. Bad pack with snapshot missing fields — the channel availability
