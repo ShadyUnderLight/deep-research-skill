@@ -1516,27 +1516,45 @@ def check_pack_run_state(pack_path: Path | str, cleaned: str | None = None) -> l
     return errors
 
 
+class RunStateDeclarationError(ValueError):
+    """Pack declares a Run State that is present but cannot be verified.
+
+    Distinct from "the Pack declares no Run State at all": callers must record
+    this as an explicit problem, never treat it as the absence of a declaration
+    (issue #438 review). Mirrors ``activation_snapshot.ActivationSnapshotError``.
+    """
+
+
 def load_declared_run_state(pack_path: Path | str) -> dict | None:
     """读取 Pack 声明的 Run State 快照。
 
-    仅当 Pack 确实没有 Run State 声明（或 sidecar 无效）时返回 None。
+    仅在 Pack **确实没有** ``## Run state`` 节时返回 None。
 
-    读取失败（OSError/UnicodeError）不再吞成 None —— 否则「无法读取 Pack」
-    与「Pack 里没有 Run State」不可区分，调用方会沿用「无状态」分支而静默
-    跳过 delivery guard（issue #438 review）。读取错误由此函数抛出，交由
-    调用方记录为明确问题。
+    任何「有声明但无法验证」的情形都抛 RunStateDeclarationError，而不是折叠
+    成 None —— 否则「声明损坏/无法读取」与「没有声明」不可区分，调用方会沿
+    用「无状态」分支而静默跳过 delivery guard（issue #438 review）。包括：
+      - Pack 本体读取失败（OSError/UnicodeError，直接向上抛）
+      - ``## Run state`` 节重复 / 为空 / 缺 run_id 或 path
+      - sidecar 缺失、不可读、非 JSON、schema 校验失败
     """
     pack_path = Path(pack_path)
     cleaned = pack_path.read_text(encoding="utf-8")
     ref, errors = parse_pack_run_state_section(cleaned)
-    if errors or ref is None:
-        return None
+    if errors:
+        raise RunStateDeclarationError(
+            f"{pack_path}: invalid Run State declaration: {'; '.join(errors)}"
+        )
+    if ref is None:
+        return None  # 确实没有 ## Run state 节
     sidecar = Path(ref["path"])
     if not sidecar.is_absolute():
         sidecar = pack_path.parent / sidecar
     state, load_errors = load_run_state_file(sidecar)
     if load_errors or state is None:
-        return None
+        detail = "; ".join(load_errors) or f"{sidecar}: unreadable run state"
+        raise RunStateDeclarationError(
+            f"{pack_path}: declared Run State cannot be verified: {detail}"
+        )
     return state
 
 

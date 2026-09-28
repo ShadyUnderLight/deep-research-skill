@@ -669,6 +669,127 @@ def test_c9_unmerged_pr_skips_tree_check_and_passes():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# C10: SUBPROCESS LAUNCH FAILURES MUST NOT LEAK A TRACEBACK (issue #438 P2)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _run_cli_with_gh_launch_denied(allow_unavailable: bool) -> tuple[int, str]:
+    """Run the CLI with a `gh` that exists but cannot be executed.
+
+    PATH is set to *only* a temp dir holding a non-executable `gh`, so launching
+    it raises ``PermissionError`` (an ``OSError``). With no fallback PATH entry,
+    execvp cannot find the real gh elsewhere — making the launch failure
+    deterministic (a non-executable file alone would fall through to PATH).
+    """
+    import subprocess as _sp
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as d:
+        fake_gh = Path(d) / "gh"
+        fake_gh.write_text("#!/bin/sh\nexit 0\n")
+        fake_gh.chmod(0o644)  # exists but is NOT executable
+        env = dict(os.environ)
+        env["PATH"] = d  # only the temp dir — no fallback gh
+        cmd = [
+            sys.executable,
+            str(_SCRIPT_DIR / "validate_issue_pr_acceptance.py"),
+            "1", "2",
+        ]
+        if allow_unavailable:
+            cmd.append("--allow-unavailable")
+        result = _sp.run(cmd, capture_output=True, text=True, env=env, timeout=30)
+        return result.returncode, result.stderr
+
+
+def test_c10_gh_launch_denied_returns_unavailable():
+    """C10 (P2): an OSError launching gh → EXIT_UNAVAILABLE, not a traceback."""
+    rc, err = _run_cli_with_gh_launch_denied(allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}) when gh cannot be "
+        f"launched, got {rc}; stderr={err}"
+    )
+    assert "Traceback" not in err, f"unexpected traceback:\n{err}"
+
+
+def test_c10_gh_launch_denied_allow_unavailable_zero():
+    """C10 (P2): --allow-unavailable downgrades a launch failure to exit 0."""
+    rc, err = _run_cli_with_gh_launch_denied(allow_unavailable=True)
+    assert rc == 0, f"Expected 0 with --allow-unavailable, got {rc}; stderr={err}"
+
+
+def test_c10_check_gh_available_false_on_launch_oserror():
+    """C10 (P2): _check_gh_available maps a launch OSError to False."""
+    from unittest import mock
+
+    import validate_issue_pr_acceptance as m
+
+    with mock.patch.object(
+        m.subprocess, "run", side_effect=PermissionError("denied")
+    ):
+        assert m._check_gh_available() is False
+
+
+def test_c10_gh_run_maps_launch_oserror_to_runtime_error():
+    """C10 (P2): _gh_run turns a launch OSError into RuntimeError."""
+    from unittest import mock
+
+    import validate_issue_pr_acceptance as m
+
+    with mock.patch.object(
+        m.subprocess, "run", side_effect=PermissionError("denied")
+    ):
+        try:
+            m._gh_run(["issue", "view", "1"])
+        except RuntimeError as e:
+            assert "gh" in str(e), e
+        else:
+            assert False, "expected RuntimeError from a launch failure"
+
+
+def test_c10_fetch_issue_body_maps_launch_oserror_to_fetch_error():
+    """C10 (P2): fetch_issue_body surfaces a launch OSError as FetchError."""
+    from unittest import mock
+
+    import validate_issue_pr_acceptance as m
+
+    with mock.patch.object(
+        m.subprocess, "run", side_effect=PermissionError("denied")
+    ):
+        try:
+            m.fetch_issue_body(1)
+        except m.FetchError:
+            pass
+        else:
+            assert False, "expected FetchError from a launch failure"
+
+
+def test_c10_fetch_pr_tree_shas_maps_launch_oserror_to_fetch_error():
+    """C10 (P2): a launch OSError while resolving git trees becomes FetchError."""
+    from unittest import mock
+
+    import validate_issue_pr_acceptance as m
+
+    calls = {"n": 0}
+
+    def _run(cmd, *a, **k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            # gh pr view --json mergeCommit → a merged PR oid (parseable).
+            class _R:
+                returncode = 0
+                stdout = "deadbeef\n"
+                stderr = ""
+            return _R()
+        raise PermissionError("denied")  # git rev-parse cannot be launched
+
+    with mock.patch.object(m.subprocess, "run", side_effect=_run):
+        try:
+            m.fetch_pr_tree_shas(444)
+        except m.FetchError:
+            pass
+        else:
+            assert False, "expected FetchError when git cannot be launched"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # MAIN
 # ═══════════════════════════════════════════════════════════════════════════
 

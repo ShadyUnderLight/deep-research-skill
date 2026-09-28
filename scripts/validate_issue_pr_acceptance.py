@@ -185,7 +185,9 @@ def _check_gh_available() -> bool:
             timeout=10,
         )
         return result.returncode == 0
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired):
+        # OSError covers FileNotFoundError and launch failures (PermissionError,
+        # ENOMEM, ...). Any of them means "gh is unavailable", not "pass".
         return False
 
 
@@ -202,6 +204,11 @@ def _gh_run(args: list[str], timeout: int = 30) -> str:
         raise RuntimeError("gh CLI not found. Install GitHub CLI: https://cli.github.com/")
     except subprocess.TimeoutExpired:
         raise RuntimeError(f"gh command timed out after {timeout}s: gh {' '.join(args)}")
+    except OSError as exc:
+        # A launch failure that is not "missing binary" (e.g. PermissionError)
+        # is still "gh unavailable" — surface it as a RuntimeError so callers
+        # map it to FetchError/UNAVAILABLE instead of leaking a traceback.
+        raise RuntimeError(f"failed to launch gh {' '.join(args)}: {exc}")
 
     if result.returncode != 0:
         raise RuntimeError(
@@ -314,7 +321,9 @@ def fetch_pr_tree_shas(pr_number: int) -> tuple[Optional[str], Optional[str]]:
         parent_tree = parent_result.stdout.strip()
 
         return merge_tree, parent_tree
-    except (FileNotFoundError, subprocess.TimeoutExpired) as exc:
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        # OSError covers FileNotFoundError (git missing) and launch failures
+        # (PermissionError, ...); all mean "tree data unavailable" → FetchError.
         raise FetchError(
             f"could not resolve trees for PR #{pr_number} ({merge_sha}): {exc}"
         ) from exc

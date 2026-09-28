@@ -2395,16 +2395,20 @@ def _apply_run_state_delivery_guard(
     """delivered/completed Run State cannot masquerade after a failing audit."""
     if research_pack is None:
         return verdict
-    from validate_research_run_state import load_declared_run_state
+    from validate_research_run_state import (
+        RunStateDeclarationError,
+        load_declared_run_state,
+    )
 
     try:
         state = load_declared_run_state(research_pack)
-    except (OSError, UnicodeError) as exc:
-        # A read failure is NOT "no declared run state": the guard cannot run,
-        # so record it explicitly instead of silently keeping the verdict.
+    except (OSError, UnicodeError, RunStateDeclarationError) as exc:
+        # Neither a read failure nor an unverifiable declaration is "no declared
+        # run state": the guard cannot run, so record it explicitly instead of
+        # silently keeping the verdict.
         verdict.blocking.append(
-            f"cannot read Research Pack {research_pack} for the run-state "
-            f"delivery guard: {exc}"
+            f"run-state delivery guard could not run for Research Pack "
+            f"{research_pack}: {exc}"
         )
         return verdict
     if state is None:
