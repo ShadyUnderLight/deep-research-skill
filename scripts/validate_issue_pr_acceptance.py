@@ -54,6 +54,15 @@ EXIT_WARNINGS = 1
 EXIT_BLOCKING = 2
 EXIT_UNAVAILABLE = 3
 
+
+class FetchError(RuntimeError):
+    """Raised when a required gh data request fails.
+
+    Distinct from a *successful but empty* result (empty issue body, or a
+    PR that changes no files). Callers must treat a FetchError as
+    "cannot validate", never as "validation passed".
+    """
+
 # Regex 1: checklist line `- [ ] ` / `- [x] ` / `* [ ] ` / `* [x] `
 # followed by a backtick-enclosed path.
 _CHECKLIST_PATH_RE = re.compile(
@@ -206,7 +215,10 @@ def fetch_issue_body(issue_number: int) -> str:
     """Fetch issue body via gh CLI.
 
     Returns:
-        Issue body markdown, or empty string on failure.
+        Issue body markdown. An issue that legitimately has no body returns
+        "" (success). Raises FetchError if the data cannot be fetched (e.g.
+        issue missing or gh error) so callers can distinguish a fetch
+        failure from an empty-but-successful result.
     """
     try:
         return _gh_run([
@@ -215,15 +227,19 @@ def fetch_issue_body(issue_number: int) -> str:
             "--jq", ".body",
         ])
     except RuntimeError as e:
-        print(f"warning: could not fetch issue #{issue_number}: {e}", file=sys.stderr)
-        return ""
+        raise FetchError(
+            f"could not fetch issue #{issue_number}: {e}"
+        ) from e
 
 
 def fetch_pr_files(pr_number: int) -> list[str]:
     """Fetch list of files changed in a PR via gh CLI.
 
     Returns:
-        List of file paths, or empty list on failure.
+        List of file paths. A PR that legitimately changes no files returns
+        [] (success). Raises FetchError if the data cannot be fetched so
+        callers can distinguish a fetch failure from an empty-but-successful
+        result.
     """
     try:
         raw = _gh_run([
@@ -235,8 +251,9 @@ def fetch_pr_files(pr_number: int) -> list[str]:
             return []
         return sorted(line.strip() for line in raw.splitlines() if line.strip())
     except RuntimeError as e:
-        print(f"warning: could not fetch PR #{pr_number} files: {e}", file=sys.stderr)
-        return []
+        raise FetchError(
+            f"could not fetch PR #{pr_number} files: {e}"
+        ) from e
 
 
 def fetch_pr_tree_shas(pr_number: int) -> tuple[Optional[str], Optional[str]]:
@@ -323,19 +340,17 @@ def main() -> int:
         )
         return EXIT_PASS if args.allow_unavailable else EXIT_UNAVAILABLE
 
-    # Fetch data
-    issue_body = fetch_issue_body(args.issue_number)
-    pr_files = fetch_pr_files(args.pr_number)
-    merge_tree, parent_tree = fetch_pr_tree_shas(args.pr_number)
-
-    if not issue_body and not pr_files:
-        print(
-            "note: could not fetch issue body or PR files — "
-            "skipping validation (this is expected if the issue/PR "
-            "does not exist or gh is not configured).",
-            file=sys.stderr,
-        )
+    # Fetch required data. A fetch FAILURE (vs. a legitimately empty result)
+    # must not be silently treated as "validation passed": an unmerged PR with
+    # an empty issue body would otherwise produce no findings and exit 0.
+    try:
+        issue_body = fetch_issue_body(args.issue_number)
+        pr_files = fetch_pr_files(args.pr_number)
+    except FetchError as exc:
+        print(f"warning: {exc}", file=sys.stderr)
         return EXIT_PASS if args.allow_unavailable else EXIT_UNAVAILABLE
+
+    merge_tree, parent_tree = fetch_pr_tree_shas(args.pr_number)
 
     # Run validation
     findings = core_validate(

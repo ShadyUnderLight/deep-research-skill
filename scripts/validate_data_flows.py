@@ -124,9 +124,9 @@ def load_registry() -> dict:
         raise FileNotFoundError(f"Registry not found: {REGISTRY_PATH}")
     try:
         return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
-    except (UnicodeError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise ValueError(
-            f"Registry {REGISTRY_PATH} is not valid UTF-8 / JSON: {exc}"
+            f"Registry {REGISTRY_PATH} is not readable / valid UTF-8 / JSON: {exc}"
         ) from exc
 
 
@@ -535,12 +535,12 @@ def run_checks() -> list[str]:
 
     try:
         data_flows = read_text("docs/DATA_FLOWS.md")
-    except (FileNotFoundError, UnicodeError) as exc:
+    except (OSError, UnicodeError) as exc:
         return [str(exc)]
 
     try:
         risk_register = read_text("docs/RISK_REGISTER.md")
-    except (FileNotFoundError, UnicodeError) as exc:
+    except (OSError, UnicodeError) as exc:
         failures.append(str(exc))
         risk_register = ""
 

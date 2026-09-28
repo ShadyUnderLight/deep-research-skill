@@ -1520,7 +1520,7 @@ def load_declared_run_state(pack_path: Path | str) -> dict | None:
     """读取 Pack 声明的 Run State 快照；缺节或无法解析时返回 None。"""
     pack_path = Path(pack_path)
     try:
-            cleaned = pack_path.read_text(encoding="utf-8")
+        cleaned = pack_path.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         return None
     ref, errors = parse_pack_run_state_section(cleaned)

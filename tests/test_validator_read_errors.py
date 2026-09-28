@@ -196,5 +196,107 @@ def test_route_manifest_load_manifest_bad_utf8():
     )
 
 
+# ── Loader-level: unreadable input (OSError, not covered by bad_json/bad_utf8) ──
+
+
+def _run_loader_unreadable(
+    mod: str,
+    func: str,
+    expected: str,
+    *,
+    arg_mode: str = "path",
+    global_name: str | None = None,
+) -> None:
+    """Invoke `<mod>.<func>` on an existing *directory*.
+
+    ``read_text`` on a directory raises ``IsADirectoryError`` (an ``OSError``
+    subclass), exercising the P2 gap: permission / I-O errors must be captured
+    and wrapped at the read boundary instead of leaking as a raw ``OSError``.
+    """
+    inner = (
+        "import sys, os, tempfile\n"
+        "from pathlib import Path\n"
+        "sys.path.insert(0, {scripts!r})\n"
+        "import {mod} as m\n"
+        "path = tempfile.mkdtemp(dir='/tmp')\n"
+        "try:\n"
+        "    if {arg_mode!r} == 'global':\n"
+        "        setattr(m, {global_name!r}, Path(path))\n"
+        "        m.{func}()\n"
+        "    else:\n"
+        "        m.{func}(Path(path))\n"
+        "    sys.stdout.write('NO_RAISE')\n"
+        "except BaseException as e:\n"
+        "    sys.stdout.write('RAISED:' + type(e).__name__)\n"
+        "finally:\n"
+        "    try:\n"
+        "        import shutil\n"
+        "        shutil.rmtree(path)\n"
+        "    except OSError:\n"
+        "        pass\n"
+    ).format(
+        scripts=str(SCRIPTS),
+        mod=mod,
+        func=func,
+        arg_mode=arg_mode,
+        global_name=global_name,
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", inner],
+        capture_output=True,
+        text=True,
+        timeout=60,
+    )
+    assert proc.returncode == 0, (
+        f"{mod}.{func} loader subprocess failed: {proc.stderr}"
+    )
+    assert proc.stdout.startswith("RAISED:"), (
+        f"{mod}.{func} did not raise on unreadable input (got {proc.stdout!r})"
+    )
+    name = proc.stdout.split(":", 1)[1]
+    assert name == expected, f"{mod}.{func} raised {name}, expected {expected}"
+
+
+def test_data_flows_load_registry_unreadable():
+    """P2: unreadable registry (a directory) → ValueError, no raw OSError."""
+    _run_loader_unreadable(
+        "validate_data_flows",
+        "load_registry",
+        "ValueError",
+        arg_mode="global",
+        global_name="REGISTRY_PATH",
+    )
+
+
+def test_eval_registry_load_registry_unreadable():
+    """P2: unreadable eval registry (a directory) → EvalRegistryError."""
+    _run_loader_unreadable(
+        "eval_registry", "load_registry", "EvalRegistryError"
+    )
+
+
+def test_data_flows_run_checks_handles_doc_oserror():
+    """P2: an OSError reading a required doc is captured, not raised."""
+    sys.path.insert(0, str(SCRIPTS))
+    import validate_data_flows as df  # noqa: E402
+
+    original = df.read_text
+
+    def _boom(rel_path: str) -> str:
+        raise PermissionError(f"permission denied: {rel_path}")
+
+    df.read_text = _boom
+    try:
+        failures = df.run_checks()
+    finally:
+        df.read_text = original
+
+    assert isinstance(failures, list), f"expected list, got {type(failures)}"
+    assert failures, "expected a recorded failure, got none"
+    assert any("permission denied" in f for f in failures), (
+        f"expected the OSError message to be captured, got {failures}"
+    )
+
+
 if __name__ == "__main__":
     raise SystemExit(pytest.main([__file__, "-q"]))

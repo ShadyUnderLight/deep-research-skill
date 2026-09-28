@@ -681,9 +681,9 @@ def load_registry(path: Path | None = None, *, root: Path = ROOT) -> dict[str, A
         data = json.loads(registry_path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
         raise EvalRegistryError(f"registry not found: {registry_path}") from exc
-    except (UnicodeError, json.JSONDecodeError) as exc:
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         raise EvalRegistryError(
-            f"registry is not valid UTF-8 / JSON: {registry_path}: {exc}"
+            f"registry is not readable / valid UTF-8 / JSON: {registry_path}: {exc}"
         ) from exc
     errors = validate_registry(data, root=root)
     if errors:

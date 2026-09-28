@@ -538,6 +538,94 @@ def test_c8_allow_unavailable_returns_zero():
 
 
 # ═══════════════════════════════════════════════════════════════════════════
+# C9: PARTIAL FETCH FAILURE MUST NOT REPORT PASS (issue #438 P1)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _run_cli_with_fake_gh(fail_request: str, allow_unavailable: bool) -> int:
+    """Run the CLI with a fake `gh` that passes auth but can fail one data request.
+
+    fail_request selects which data request fails: "issue", "files", "both",
+    or "none". `gh auth status` always succeeds, so `_check_gh_available()`
+    passes and execution reaches the fetch stage — unlike C8, which fails at
+    the auth stage and never exercises the fetch functions.
+    """
+    import subprocess as _sp
+    import tempfile as _tf
+    import stat as _st
+    script = """#!/bin/sh
+case "$1" in
+  auth)
+    exit 0
+    ;;
+  issue)
+    if [ "${FAIL_GH_REQUEST}" = "issue" ] || [ "${FAIL_GH_REQUEST}" = "both" ]; then
+      exit 1
+    fi
+    echo '## Acceptance'
+    echo '- [ ] `scripts/validate_issue_pr_acceptance.py`'
+    exit 0
+    ;;
+  pr)
+    if [ "${FAIL_GH_REQUEST}" = "files" ] || [ "${FAIL_GH_REQUEST}" = "both" ]; then
+      exit 1
+    fi
+    echo 'scripts/validate_issue_pr_acceptance.py'
+    exit 0
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+"""
+    with _tf.TemporaryDirectory() as d:
+        fake_gh = Path(d) / "gh"
+        fake_gh.write_text(script)
+        fake_gh.chmod(fake_gh.stat().st_mode | _st.S_IEXEC)
+        env = dict(os.environ)
+        env["PATH"] = f"{d}:{env.get('PATH', '')}"
+        env["FAIL_GH_REQUEST"] = fail_request
+        cmd = [
+            sys.executable,
+            str(_SCRIPT_DIR / "validate_issue_pr_acceptance.py"),
+            "1", "2",
+        ]
+        if allow_unavailable:
+            cmd.append("--allow-unavailable")
+        result = _sp.run(cmd, capture_output=True, text=True, env=env, timeout=30)
+        return result.returncode
+
+
+def test_c9_issue_fetch_fails_returns_unavailable():
+    """C9 (P1): issue fetch fails (auth OK) MUST NOT be reported as pass."""
+    rc = _run_cli_with_fake_gh("issue", allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}) when issue fetch "
+        f"fails, got {rc}"
+    )
+
+
+def test_c9_files_fetch_fails_returns_unavailable():
+    """C9 (P1): PR files fetch fails (auth OK) MUST NOT be reported as pass."""
+    rc = _run_cli_with_fake_gh("files", allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}) when PR files fetch "
+        f"fails, got {rc}"
+    )
+
+
+def test_c9_issue_fetch_fails_allow_unavailable_zero():
+    """C9 (P1): --allow-unavailable downgrades a fetch failure to exit 0."""
+    rc = _run_cli_with_fake_gh("issue", allow_unavailable=True)
+    assert rc == 0, f"Expected 0 with --allow-unavailable, got {rc}"
+
+
+def test_c9_all_fetches_ok_passes():
+    """C9 (P1): both fetches succeed and the path is present → exit 0."""
+    rc = _run_cli_with_fake_gh("none", allow_unavailable=False)
+    assert rc == 0, f"Expected PASS (0) when fetches succeed, got {rc}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
 # MAIN
 # ═══════════════════════════════════════════════════════════════════════════
 
