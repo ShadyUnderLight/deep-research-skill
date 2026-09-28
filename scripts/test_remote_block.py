@@ -4,7 +4,6 @@ import asyncio
 import sys
 import threading
 import http.server
-import pathlib
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.resolve()))
@@ -34,11 +33,11 @@ def main():
 
     async def run():
         hits.clear()
-        pdf_block = await html_to_pdf(str(html_path), str(temp / 'blocked.pdf'), block_remote=True)
+        await html_to_pdf(str(html_path), str(temp / 'blocked.pdf'), block_remote=True)
         blocked = len(hits)
 
         hits.clear()
-        pdf_allow = await html_to_pdf(str(html_path), str(temp / 'allowed.pdf'), block_remote=False)
+        await html_to_pdf(str(html_path), str(temp / 'allowed.pdf'), block_remote=False)
         allowed = len(hits)
 
         print(f'Blocked hits: {blocked}')

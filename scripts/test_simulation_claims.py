@@ -56,7 +56,7 @@ def expect_warnings(name: str, text: str, min_warnings: int = 1) -> str:
         f"{name}: expected warnings (exit 2), got {result.returncode}\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
-    warning_count = len([l for l in result.stdout.splitlines() if l.startswith("- ")])
+    warning_count = len([line for line in result.stdout.splitlines() if line.startswith("- ")])
     assert warning_count >= min_warnings, (
         f"{name}: expected >= {min_warnings} warning(s), got {warning_count}\n"
         f"stdout: {result.stdout}"
@@ -185,7 +185,7 @@ def test_multiple_keywords_single_sentence() -> None:
 我们的 Monte Carlo 模拟显示两组间存在显著差异（p<0.01）。
 """, min_warnings=2)
     # Each keyword is an independent claim needing disclosure
-    warning_lines = [l for l in stdout.splitlines() if l.startswith("- ")]
+    warning_lines = [line for line in stdout.splitlines() if line.startswith("- ")]
     assert len(warning_lines) == 2, (
         f"Expected 2 warnings (Monte Carlo + p<0.01), got {len(warning_lines)}:\n{stdout}"
     )

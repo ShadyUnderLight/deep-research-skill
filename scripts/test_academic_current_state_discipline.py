@@ -81,7 +81,6 @@ def test_recent_paper_verification_item_present() -> None:
     # Must mention recent papers and some form of verification
     recent_keywords = ["3 个月", "peer-review", "verification", "近期来源"]
     has_recent = any(kw in section_text for kw in recent_keywords)
-    has_tier1 = "Tier-1" in section_text or "Tier-1" in section_text
     expect(
         has_recent,
         "Current-state discipline section missing recent-paper verification item. "

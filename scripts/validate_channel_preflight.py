@@ -172,39 +172,36 @@ def check_file(path: Path, desc: str, pattern: str, must_exist: bool) -> bool:
     return True
 
 
-def main() -> int:
-    all_pass = True
-    for rel_path, desc, pattern, must_exist in CHECKS:
-        path = REPO / rel_path
-        ok = check_file(path, desc, pattern, must_exist)
-        if not ok:
-            all_pass = False
-
-    if all_pass:
-        print("All channel preflight checks pass.")
-        return 0
-    else:
-        print("\nOne or more checks failed. See above.")
-        return 1
-
-
 # ─── Behavior-level fixtures ─────────────────────────────────────────────
 
 
 def _validate_pack(text: str, strict: bool = False) -> int:
-    """Write text to a temp file and run validate_research_pack.py."""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".md", delete=False, encoding="utf-8"
-    ) as f:
-        f.write(text)
-        tmp = f.name
-    cmd = [sys.executable, str(REPO / "scripts" / "validate_research_pack.py")]
-    if strict:
-        cmd.append("--strict")
-    cmd.append(tmp)
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    Path(tmp).unlink(missing_ok=True)
-    return result.returncode
+    """Write text to a temp file and run validate_research_pack.py.
+
+    The temp file is cleaned up on every exit path (success, failure,
+    exception, timeout) via try/finally. The subprocess has a bounded
+    timeout so a hung validator cannot leak the temp file or stall the
+    caller.
+    """
+    tmp = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".md", delete=False, encoding="utf-8"
+        ) as f:
+            f.write(text)
+            tmp = f.name
+        cmd = [sys.executable, str(REPO / "scripts" / "validate_research_pack.py")]
+        if strict:
+            cmd.append("--strict")
+        cmd.append(tmp)
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+        except subprocess.TimeoutExpired:
+            return 2
+        return result.returncode
+    finally:
+        if tmp:
+            Path(tmp).unlink(missing_ok=True)
 
 
 # Baseline valid pack (all 12 required headings + all 8 snapshot fields)

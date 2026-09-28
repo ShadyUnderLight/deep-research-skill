@@ -22,6 +22,7 @@ on:
       - 'requirements.lock'
       - 'pyproject.toml'
       - '.github/workflows/ci.yml'
+      - 'report/**'
   push:
     # `[$default-branch]` was a literal YAML string, never a GitHub expression —
     # pushes to the default branch never triggered CI. Use the explicit branch
@@ -47,6 +48,7 @@ on:
       - 'requirements.lock'
       - 'pyproject.toml'
       - '.github/workflows/ci.yml'
+      - 'report/**'
   workflow_dispatch:
   schedule:
     - cron: '0 3 * * 1'
@@ -84,6 +86,13 @@ jobs:
           python-version: "3.12"
       - run: pip install -r requirements.lock
       - run: python3 -m py_compile scripts/*.py
+      # Issue #438 F4: Ruff is a CI gate on production + script-test code.
+      # Production code may not introduce new warnings; test code is tightened
+      # in stages but the whole `scripts/` tree must stay clean.
+      - name: Ruff lint
+        run: |
+          pip install ruff==0.15.15
+          ruff check scripts
       - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md
       - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md --strict
       - run: python3 scripts/test_validator_regression.py

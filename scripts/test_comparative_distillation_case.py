@@ -13,15 +13,13 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from validate_comparative_distillation_case import (
+from validate_comparative_distillation_case import (  # noqa: E402
     ContractValidator,
     VALID_DIMENSIONS,
-    REQUIRED_SECTIONS,
     VALID_ACTION_TYPES,
     extract_section_blocks,
     extract_action_type,
     find_all_cases,
-    ValidationResult,
 )
 
 

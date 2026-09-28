@@ -2473,7 +2473,6 @@ class TestSecondaryRouteCheck:
             f"Expected secondary-route-check in output, got:\n{result.stdout}"
         )
         # Should NOT be blocking (secondary route unsupported = warning, not error)
-        blocking = _count_blocking(result.stdout)
         secondary_blocking = [
             line for line in result.stdout.splitlines()
             if "[secondary-route-check]" in line and line.strip().startswith("- ")

@@ -439,7 +439,7 @@ def test_conflict_pairs_exist():
 def test_shared_workflow_not_misused():
     """The decision tree must not recommend shared-workflow as an escape hatch
     for tasks that have a clear action burden and weight-bearing object."""
-    section = _decision_tree_section()
+    _decision_tree_section()
     mapping = _step2_object_routes()
 
     # Every weight-bearing object must map to at least one specialized route
@@ -790,10 +790,6 @@ def test_route_fixtures_classify_and_verify():
     with conflict pairs, (d) verify primary and secondary routes match."""
     phrasings = _parse_step1_phrasings()
     step2_keywords = _parse_step2_keywords()
-    import json
-    manifest_path = REPO_ROOT / "schemas" / "route-manifest.json"
-    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    valid_ids = {r["id"] for r in manifest["routes"]}
 
     for desc, exp_action_sub, exp_route, exp_secondary in ROUTE_FIXTURES:
         # (a) Classify action
@@ -857,7 +853,6 @@ def test_no_select_rank_fixture_routes_market_outlook():
 
 def test_market_outlook_fixtures_single_candidate():
     """Tasks classified as market outlook must resolve to market-outlook only."""
-    phrasings = _parse_step1_phrasings()
     step2_keywords = _parse_step2_keywords()
 
     for desc, _, exp_route, _ in ROUTE_FIXTURES:

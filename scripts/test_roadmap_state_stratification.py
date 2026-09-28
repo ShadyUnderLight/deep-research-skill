@@ -199,11 +199,11 @@ def test_p3_forward_looking_technical_section() -> None:
 
     if "technical-analysis-discipline.md" not in section_body and "stratification" not in section_body:
         fail(
-            f"P3 FAIL: Technical roadmap section body does not reference "
-            f"the stratification table in technical-analysis-discipline.md"
+            "P3 FAIL: Technical roadmap section body does not reference "
+            "the stratification table in technical-analysis-discipline.md"
         )
 
-    print(f"  PASS  P3: forward-looking discipline has technical roadmap section with table reference")
+    print("  PASS  P3: forward-looking discipline has technical roadmap section with table reference")
 
 
 def test_p4_final_audit_recall() -> None:
@@ -300,7 +300,7 @@ def test_p5_hard_fail_preserved() -> None:
             f"treating announced features as shipped not found in {STRATIFICATION_FILE}"
         )
 
-    print(f"  PASS  P5: hard-fail condition for announced-vs-shipped preserved")
+    print("  PASS  P5: hard-fail condition for announced-vs-shipped preserved")
 
 
 def test_p6_commitment_checklist_item() -> None:
@@ -316,7 +316,7 @@ def test_p6_commitment_checklist_item() -> None:
             f"P6 FAIL: No checklist item mentioning 'commitment' or '承诺' "
             f"found in {AUDIT_FILE}"
         )
-    print(f"  PASS  P6: commitment/disclaimer checklist item present")
+    print("  PASS  P6: commitment/disclaimer checklist item present")
 
 
 def test_p2_no_orphan_checklist_items() -> None:

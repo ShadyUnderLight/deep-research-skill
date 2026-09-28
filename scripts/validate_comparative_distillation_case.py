@@ -16,7 +16,7 @@ import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator, Literal
+from typing import Literal
 
 # ── Type contracts ──────────────────────────────────────────────────────────
 

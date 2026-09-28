@@ -187,7 +187,7 @@ def test_p1_risk_matrix_columns() -> None:
             f"{required_columns} found in {DISCIPLINE_FILE}"
         )
 
-    print(f"  PASS  P1: risk priority matrix template with required columns found")
+    print("  PASS  P1: risk priority matrix template with required columns found")
 
 
 def test_p2_routing_mentions_security_sensitive() -> None:
@@ -244,7 +244,7 @@ def test_p2_routing_mentions_security_sensitive() -> None:
             f"security-sensitive architecture analysis in {ROUTING_FILE}"
         )
 
-    print(f"  PASS  P2: ROUTING-MATRIX mentions security-sensitive architecture analysis")
+    print("  PASS  P2: ROUTING-MATRIX mentions security-sensitive architecture analysis")
 
 
 def test_p3_checklist_has_security_section() -> None:
@@ -289,7 +289,6 @@ def test_p4_checklist_covers_essential_checks() -> None:
       - risk-type differentiation (协议设计/实现漏洞/部署误配置/供应链)
     """
     text = read(AUDIT_FILE)
-    items_text = text.lower()
 
     # Collect all checklist items in the security section
     heading_idx = find_section_heading(text, "security")
@@ -314,7 +313,7 @@ def test_p4_checklist_covers_essential_checks() -> None:
             f"P4 FAIL: Security checklist missing coverage for: {missing}"
         )
 
-    print(f"  PASS  P4: all 5 essential security coverage areas present in checklist")
+    print("  PASS  P4: all 5 essential security coverage areas present in checklist")
 
 
 def test_p5_template_mentions_threat_modeling() -> None:
@@ -365,7 +364,7 @@ def test_p5_template_mentions_threat_modeling() -> None:
             f"section of {TEMPLATE_FILE}"
         )
 
-    print(f"  PASS  P5: report-template references threat modeling in technical analysis section")
+    print("  PASS  P5: report-template references threat modeling in technical analysis section")
 
 
 def test_p6_eval_case_exists() -> None:
@@ -382,7 +381,6 @@ def test_p6_eval_case_exists() -> None:
 
     text = read(EVAL_CASE_FILE)
 
-    required_sections = ["## Goal", "## Prompt", "## Pass criteria"]
     # Allow alternative section names
     section_aliases = {
         "## Goal": ["## Goal", "## 目标", "## Purpose"],
@@ -406,9 +404,9 @@ def test_p6_eval_case_exists() -> None:
         kw in text for kw in ["## Failure signs", "## Failure", "## 失败信号", "## Fail"]
     )
     if not has_failure_signs:
-        print(f"  WARN  P6: eval case does not have explicit Failure signs section (soft)")
+        print("  WARN  P6: eval case does not have explicit Failure signs section (soft)")
 
-    print(f"  PASS  P6: eval case file exists with all required sections")
+    print("  PASS  P6: eval case file exists with all required sections")
 
 
 # ─── main ────────────────────────────────────────────────────────────────────

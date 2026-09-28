@@ -20,8 +20,12 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from pathlib import Path
+
+# Reuse the shared visible-Markdown parser from issue #433/#435 so that
+# headings buried inside fenced code blocks or HTML comments/blocks are NOT
+# mistaken for real document sections (issue #438 F6).
+from validate_contract import sanitize_visible_markdown
 
 REPO = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = REPO / "schemas" / "data-flow-registry.json"
@@ -118,7 +122,12 @@ SKIP_SCAN_FILES = {
 def load_registry() -> dict:
     if not REGISTRY_PATH.exists():
         raise FileNotFoundError(f"Registry not found: {REGISTRY_PATH}")
-    return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    try:
+        return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    except (UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            f"Registry {REGISTRY_PATH} is not valid UTF-8 / JSON: {exc}"
+        ) from exc
 
 
 def read_text(rel_path: str) -> str:
@@ -250,14 +259,26 @@ def check_signal_file_drift(
 
 
 def extract_section(text: str, heading: str) -> str:
-    start = text.find(heading)
-    if start == -1:
+    # Operate on visible Markdown only: a heading inside a fenced code block
+    # or HTML comment/block is documentation, not a real document section.
+    # The heading must be a real heading *line* (issue #438 F6) — a same-named
+    # string buried in prose or a lower-level heading (### vs ##) is not it.
+    visible = sanitize_visible_markdown(text)
+    lines = visible.splitlines()
+    start = None
+    for i, line in enumerate(lines):
+        if line.strip() == heading:
+            start = i
+            break
+    if start is None:
         return ""
-    rest = text[start + len(heading) :]
-    next_heading = re.search(r"\n## ", rest)
-    if next_heading:
-        return rest[: next_heading.start()]
-    return rest
+    body_lines: list[str] = []
+    for line in lines[start + 1 :]:
+        # Stop at the next top-level (H2) section; H3+ stay in the body.
+        if re.match(r"^## ", line) and not line.startswith("### "):
+            break
+        body_lines.append(line)
+    return "\n".join(body_lines)
 
 
 def parse_component_table_ids(section_text: str) -> set[str]:
@@ -379,9 +400,14 @@ def check_unassigned_network_signals(registry: dict) -> list[str]:
 
 
 def check_required_sections(text: str, sections: list[str], label: str) -> list[str]:
+    # A required section must be a real visible *heading line*, not text that
+    # merely appears inside a fenced code block, HTML comment, prose mention,
+    # or a wrong-level heading (### vs ##) (issue #438 F6).
+    visible = sanitize_visible_markdown(text)
+    visible_lines = {line.strip() for line in visible.splitlines()}
     failures: list[str] = []
     for section in sections:
-        if section not in text:
+        if section not in visible_lines:
             failures.append(f"{label} missing section: {section}")
     return failures
 
@@ -502,16 +528,19 @@ def check_verification_status_tokens(data_flows_text: str) -> list[str]:
 
 def run_checks() -> list[str]:
     failures: list[str] = []
-    registry = load_registry()
+    try:
+        registry = load_registry()
+    except (FileNotFoundError, ValueError) as exc:
+        return [str(exc)]
 
     try:
         data_flows = read_text("docs/DATA_FLOWS.md")
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, UnicodeError) as exc:
         return [str(exc)]
 
     try:
         risk_register = read_text("docs/RISK_REGISTER.md")
-    except FileNotFoundError as exc:
+    except (FileNotFoundError, UnicodeError) as exc:
         failures.append(str(exc))
         risk_register = ""
 
@@ -539,7 +568,11 @@ def run_checks() -> list[str]:
         if not path.exists():
             failures.append(f"{desc} — file not found: {rel_path}")
             continue
-        text = path.read_text(encoding="utf-8")
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            failures.append(f"{desc} — cannot read {rel_path}: {exc}")
+            continue
         if needle not in text:
             failures.append(f"{desc} — expected reference to {needle}")
 

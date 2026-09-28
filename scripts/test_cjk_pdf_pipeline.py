@@ -14,7 +14,7 @@ from pathlib import Path
 
 SCRIPTS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(SCRIPTS_DIR))
-from markdown_to_html import normalize_text_for_pdf, process_markdown
+from markdown_to_html import normalize_text_for_pdf, process_markdown  # noqa: E402
 
 
 CJK_PUNCT = set('（）【】《》，。！？；：、…—·～「」『』『』《》〔〕〖〗')

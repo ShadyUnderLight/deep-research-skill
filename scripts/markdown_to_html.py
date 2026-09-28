@@ -16,7 +16,6 @@ Usage:
     python3 markdown_to_html.py <input.md> [output.html] [--title "Report Title"]
 """
 import argparse
-import sys
 from pathlib import Path
 
 # ── Compatibility facade ────────────────────────────────────────────────────
@@ -29,14 +28,10 @@ from delivery.theme import BASE_CSS, REPORT_THEME_CSS  # noqa: E402
 from delivery.html_renderer import (  # noqa: E402
     build_html as _render_build_html,
     process_markdown,
-    style_generated_html,
 )
 from delivery.metadata import extract_cover_meta  # noqa: E402
 from delivery.normalization import normalize_text_for_pdf  # noqa: E402
 from delivery.paths import atomic_write_text, paths_collide  # noqa: E402
-from delivery.sanitizer import sanitize_html  # noqa: E402
-from delivery.table_repair import repair_markdown_tables  # noqa: E402
-from delivery.tables import maybe_wrap_wide_tables_in_html  # noqa: E402
 
 
 def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta="", meta_lines=None):

@@ -69,7 +69,6 @@ from validate_scoring_replicability import validate_file as vsr_validate_file
 from validate_contract import (
     extract_contract_blocks,
     extract_contract_from_markdown,
-    extract_report_primary_route,
     has_contract_block,
     validate_contract,
 )

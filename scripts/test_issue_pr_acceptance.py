@@ -17,7 +17,6 @@ Expected: ALL PASS
 
 from __future__ import annotations
 
-import re
 import sys
 import os
 from pathlib import Path
@@ -35,6 +34,7 @@ try:
         core_validate,
         extract_issue_paths,
         ValidationFinding,
+        EXIT_UNAVAILABLE,
     )
 except ImportError:
     # In RED phase before implementation exists, define stubs so tests
@@ -495,6 +495,46 @@ def test_c7_asymmetric_none_does_not_crash():
         assert isinstance(findings, list)
     except Exception as e:
         assert False, f"Asymmetric None crashed: {e}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# C8: REMOTE UNAVAILABLE SEMANTICS (issue #438 F3)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _run_cli_with_fake_gh_unavailable(allow_unavailable: bool) -> int:
+    """Run the CLI with a fake `gh` that always exits 1 (unavailable)."""
+    import subprocess as _sp
+    import tempfile as _tf
+    import stat as _st
+    with _tf.TemporaryDirectory() as d:
+        fake_gh = Path(d) / "gh"
+        fake_gh.write_text("#!/bin/sh\nexit 1\n")
+        fake_gh.chmod(fake_gh.stat().st_mode | _st.S_IEXEC)
+        env = dict(os.environ)
+        env["PATH"] = f"{d}:{env.get('PATH', '')}"
+        cmd = [
+            sys.executable,
+            str(_SCRIPT_DIR / "validate_issue_pr_acceptance.py"),
+            "1", "2",
+        ]
+        if allow_unavailable:
+            cmd.append("--allow-unavailable")
+        result = _sp.run(cmd, capture_output=True, text=True, env=env, timeout=30)
+        return result.returncode
+
+
+def test_c8_unavailable_returns_unavailable():
+    """C8: gh unavailable MUST return EXIT_UNAVAILABLE (non-zero)."""
+    rc = _run_cli_with_fake_gh_unavailable(allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}), got {rc}"
+    )
+
+
+def test_c8_allow_unavailable_returns_zero():
+    """C8: --allow-unavailable downgrades unavailable to exit 0."""
+    rc = _run_cli_with_fake_gh_unavailable(allow_unavailable=True)
+    assert rc == 0, f"Expected 0 with --allow-unavailable, got {rc}"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

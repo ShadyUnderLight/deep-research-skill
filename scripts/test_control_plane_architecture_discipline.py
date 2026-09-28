@@ -168,7 +168,7 @@ def test_p1_dimension_table_columns() -> None:
         if any(all(col in headers for col in col_set) for col_set in required_col_sets):
             found = True
             # Check there are at least 6 dimension rows (header + 6 data rows minimum)
-            table_lines = [l for l in section_text.split("\n") if l.strip().startswith("|")]
+            table_lines = [line for line in section_text.split("\n") if line.strip().startswith("|")]
             # Count non-header, non-separator lines
             data_rows = 0
             for tl in table_lines:
@@ -185,11 +185,11 @@ def test_p1_dimension_table_columns() -> None:
 
     if not found:
         fail(
-            f"P1 FAIL: No control-plane dimension table with required columns "
-            f"found in control-plane section"
+            "P1 FAIL: No control-plane dimension table with required columns "
+            "found in control-plane section"
         )
 
-    print(f"  PASS  P1: control-plane dimension table found with required columns")
+    print("  PASS  P1: control-plane dimension table found with required columns")
 
 
 def test_p2_routing_mentions_agentic_workflow() -> None:
@@ -252,7 +252,7 @@ def test_p2_routing_mentions_agentic_workflow() -> None:
             f"agentic/workflow architecture comparison in {ROUTING_FILE}"
         )
 
-    print(f"  PASS  P2: ROUTING-MATRIX mentions agentic/workflow architecture comparison")
+    print("  PASS  P2: ROUTING-MATRIX mentions agentic/workflow architecture comparison")
 
 
 def test_p3_checklist_has_control_plane_section() -> None:
@@ -314,7 +314,7 @@ def test_p4_checklist_covers_essential_checks() -> None:
             f"P4 FAIL: Control-plane checklist missing coverage for: {missing}"
         )
 
-    print(f"  PASS  P4: all 3 essential control-plane coverage areas present in checklist")
+    print("  PASS  P4: all 3 essential control-plane coverage areas present in checklist")
 
 
 def test_p5_eval_case_exists_with_required_sections() -> None:
@@ -330,7 +330,6 @@ def test_p5_eval_case_exists_with_required_sections() -> None:
 
     text = read(EVAL_CASE_FILE)
 
-    required_sections = ["## Goal", "## Prompt", "## Pass criteria"]
     section_aliases = {
         "## Goal": ["## Goal", "## 目标", "## Purpose"],
         "## Prompt": ["## Prompt", "## 提示"],
@@ -350,14 +349,14 @@ def test_p5_eval_case_exists_with_required_sections() -> None:
 
     # Soft checks
     if "control-plane" not in text.lower() and "control plane" not in text.lower():
-        print(f"  WARN  P5: eval case exists but does not mention control-plane in body")
+        print("  WARN  P5: eval case exists but does not mention control-plane in body")
     has_reviewer_checklist = any(
         kw in text for kw in ["## Reviewer checklist", "## 审阅清单"]
     )
     if not has_reviewer_checklist:
-        print(f"  WARN  P5: eval case does not have explicit Reviewer checklist section (soft)")
+        print("  WARN  P5: eval case does not have explicit Reviewer checklist section (soft)")
 
-    print(f"  PASS  P5: eval case file exists with all required sections")
+    print("  PASS  P5: eval case file exists with all required sections")
 
 
 # ─── main ────────────────────────────────────────────────────────────────────

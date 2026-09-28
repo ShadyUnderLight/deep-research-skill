@@ -14,9 +14,11 @@ Requires:
   - git (for tree SHA comparison)
 
 Exit codes:
-    0 = all checks pass (or gh unavailable — advisory only)
+    0 = all checks pass
     1 = warnings only
     2 = one or more blocking errors
+    3 = remote dependency (gh) unavailable or data could not be fetched
+        (unless --allow-unavailable is passed, which downgrades this to 0)
 """
 
 from __future__ import annotations
@@ -25,8 +27,7 @@ import argparse
 import re
 import subprocess
 import sys
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -51,6 +52,7 @@ class ValidationFinding:
 EXIT_PASS = 0
 EXIT_WARNINGS = 1
 EXIT_BLOCKING = 2
+EXIT_UNAVAILABLE = 3
 
 # Regex 1: checklist line `- [ ] ` / `- [x] ` / `* [ ] ` / `* [x] `
 # followed by a backtick-enclosed path.
@@ -300,6 +302,12 @@ def build_parser() -> argparse.ArgumentParser:
         "pr_number", type=int,
         help="GitHub PR number",
     )
+    parser.add_argument(
+        "--allow-unavailable",
+        action="store_true",
+        help="When gh is unavailable or data cannot be fetched, exit 0 "
+             "(advisory) instead of the default non-zero UNAVAILABLE code.",
+    )
     return parser
 
 
@@ -313,7 +321,7 @@ def main() -> int:
             "Skipping validation. Install gh: https://cli.github.com/",
             file=sys.stderr,
         )
-        return EXIT_PASS
+        return EXIT_PASS if args.allow_unavailable else EXIT_UNAVAILABLE
 
     # Fetch data
     issue_body = fetch_issue_body(args.issue_number)
@@ -327,7 +335,7 @@ def main() -> int:
             "does not exist or gh is not configured).",
             file=sys.stderr,
         )
-        return EXIT_PASS
+        return EXIT_PASS if args.allow_unavailable else EXIT_UNAVAILABLE
 
     # Run validation
     findings = core_validate(

@@ -892,7 +892,7 @@ def _audit_provenance_details(
         legacy_record = _legacy_hash_fields_present(record)
         if legacy_record:
             return False, [
-                f"provenance carries removed v1 hash field(s): "
+                "provenance carries removed v1 hash field(s): "
                 + ", ".join(legacy_record)
             ]
     for record in verified_records:
