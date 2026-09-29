@@ -532,6 +532,48 @@ class TestClaimAlignmentHeuristicFixes437:
             _judge_claim_text("营收增长", "营收无增长风险", None, "")
             == "AMBIGUOUS"
         )
+        assert (
+            _judge_claim_text("市场萎缩", "市场无萎缩风险", None, "")
+            == "AMBIGUOUS"
+        )
+
+    @pytest.mark.parametrize(
+        "direction",
+        [
+            "增长",
+            "增加",
+            "上涨",
+            "提高",
+            "上升",
+            "回升",
+            "下降",
+            "减少",
+            "下跌",
+            "降低",
+            "萎缩",
+            "回落",
+            "下滑",
+        ],
+    )
+    def test_all_cjk_no_direction_phrases_are_unsupported_end_to_end(
+        self, direction: str
+    ) -> None:
+        # Every supported Chinese direction word must treat 无 + direction as
+        # a contradiction, not as lexical support for the same trend.
+        excerpt = f"市场无{direction}"
+        entry = {
+            "claim_id": "CJK-NO-DIRECTION",
+            "claim_text": f"市场{direction}",
+            "evidence_record": {
+                "claim_id": "CJK-NO-DIRECTION",
+                "source_id": "S01",
+                "locator": {"kind": "quote", "value": excerpt},
+                "retrieval_status": "fetched",
+                "evidence_role": "primary",
+            },
+            "excerpt": excerpt,
+        }
+        assert judge_entry(entry).verdict == "UNSUPPORTED"
 
     @pytest.mark.parametrize(
         ("claim_text", "excerpt"),
