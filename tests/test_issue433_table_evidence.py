@@ -140,6 +140,17 @@ def test_valid_table_without_outer_pipes_passes() -> None:
     assert not result.errors, result
 
 
+def test_code_span_pipe_does_not_split_a_valid_table_cell() -> None:
+    text = (
+        "## T\n\n"
+        "Metric | Example\n"
+        "-------|---------\n"
+        "Syntax | `x | y`\n"
+    )
+    result = _check(text)
+    assert not result.errors, result
+
+
 def test_valid_table_with_alignment_passes() -> None:
     result = _check(VALID_TABLE_ALIGNMENT)
     assert not result.errors, result

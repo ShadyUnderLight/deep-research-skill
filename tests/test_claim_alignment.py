@@ -8,7 +8,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -491,6 +490,22 @@ class TestClaimAlignmentHeuristicFixes437:
     def test_genuine_cjk_negation_still_conflicts(self) -> None:
         assert _has_negation("收入没有增长")
         assert _negation_conflict("收入没有增长", "收入增长")
+
+    def test_later_bare_negation_is_not_hidden_by_future_phrase(self) -> None:
+        # The future-time phrase must not short-circuit a real negation later
+        # in the same claim.
+        assert _has_negation("未来收入未增长")
+        assert (
+            _judge_claim_text("未来收入未增长", "收入增长", None, "")
+            == "UNSUPPORTED"
+        )
+
+    def test_positive_cjk_words_are_not_broad_no_negations(self) -> None:
+        # 无 is productive in positive phrases such as 无限增长 and 无风险增长;
+        # only explicit no-X constructions are hard negations.
+        assert not _has_negation("无限增长")
+        assert not _has_negation("无风险增长")
+        assert _judge_claim_text("无限增长", "增长", None, "") == "SUPPORTED"
 
     def test_uncertain_cjk_markers_are_not_hard_negation(self) -> None:
         # 未来/未來 (future), 未必 (not necessarily) and 尚未 (not yet) are

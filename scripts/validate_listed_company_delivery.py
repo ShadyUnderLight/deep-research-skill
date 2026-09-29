@@ -653,7 +653,7 @@ def validate_file(
     - warnings — non-blocking; quality signals
     """
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return [f"{path}: cannot read file — {exc}"], []
 
@@ -705,7 +705,7 @@ def _resolve_route_id(path: Path) -> tuple[str | None, str | None]:
       case ``validate_file`` skips the listed-company checks).
     """
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return None, f"cannot read file — {exc}"
     cleaned = sanitize_visible_markdown(text)

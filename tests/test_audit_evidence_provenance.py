@@ -601,7 +601,7 @@ def _validate_auto_record(record: dict, *, base_dir: Path) -> object:
 def test_automated_audit_record_with_binding_and_source_passes(tmp_path: Path) -> None:
     """Positive: an automated audit-record that declares the registry binding
     and automated_validator source is accepted."""
-    record_path = _write_record(tmp_path, _automated_record())
+    _write_record(tmp_path, _automated_record())
     result = _validate_auto_record(_automated_record(), base_dir=tmp_path)
     assert result.is_valid, result.errors
     assert result.provenance and result.provenance["verified"] is True

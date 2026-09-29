@@ -28,6 +28,8 @@ from datetime import datetime, timezone
 import re
 from pathlib import Path
 
+from delivery.markdown_rows import is_separator_row, split_markdown_row
+
 
 EXECUTION_SOURCES = frozenset(
     {
@@ -195,21 +197,7 @@ def _validate_artifact_heading(
     )
 
 
-_DELIMITER_CELL_RE = re.compile(r"^\s*:?-{3,}:?\s*$")
-
-
-def _split_markdown_row(line: str) -> list[str]:
-    """Split one Markdown table row into trimmed cells.
-
-    A single leading/trailing outer pipe is not a cell boundary, and an
-    escaped pipe (``\\|``) stays inside its cell.
-    """
-    stripped = line.strip()
-    if stripped.startswith("|"):
-        stripped = stripped[1:]
-    if stripped.endswith("|"):
-        stripped = stripped[:-1]
-    return [cell.strip() for cell in re.split(r"(?<!\\)\|", stripped)]
+_split_markdown_row = split_markdown_row
 
 
 def _section_has_markdown_table(section: list[str]) -> bool:
@@ -237,9 +225,7 @@ def _section_has_markdown_table(section: list[str]) -> bool:
         delimiter_cells = _split_markdown_row(section[index + 1])
         if len(header_cells) < 2 or len(delimiter_cells) != len(header_cells):
             continue
-        if not all(
-            _DELIMITER_CELL_RE.match(cell) for cell in delimiter_cells
-        ):
+        if not is_separator_row(section[index + 1]):
             continue
         candidate_valid = True
         for row in section[index + 2:]:
@@ -339,7 +325,7 @@ def _validate_checklist_item(
             errors=(f"checklist file does not exist: {path_value}",)
         )
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except OSError as exc:
         return EvidenceValidation(
             errors=(f"cannot read checklist file {path_value}: {exc}",)
@@ -441,7 +427,7 @@ def _validate_audit_record(
         )
 
     try:
-        payload = json.loads(path.read_text(encoding="utf-8", errors="replace"))
+        payload = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeError, json.JSONDecodeError) as exc:
         return EvidenceValidation(
             errors=(

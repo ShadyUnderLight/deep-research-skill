@@ -224,7 +224,7 @@ def test_c3_new_benchmark_recall_exists():
         section,
         re.MULTILINE
     )
-    bench_lines = [l for l in academic_lines if 'benchmark' in l.lower() or 'comparability' in l.lower()]
+    bench_lines = [line for line in academic_lines if 'benchmark' in line.lower() or 'comparability' in line.lower()]
     assert len(bench_lines) >= 1, \
         "No academic-review benchmark comparability recall item found"
 
@@ -239,7 +239,7 @@ def test_c3_new_item_references_schema():
         section,
         re.MULTILINE
     )
-    bench_lines = [l for l in academic_lines if 'benchmark' in l.lower()]
+    bench_lines = [line for line in academic_lines if 'benchmark' in line.lower()]
     if bench_lines:
         # Use the LAST match (bench_lines[-1]) assuming it's the newest item appended
         # at the end of the academic-review recall group. This assumption holds as long as
@@ -260,7 +260,7 @@ def test_c3_new_item_mentions_disclosure_fields():
         section,
         re.MULTILINE
     )
-    bench_lines = [l for l in academic_lines if 'benchmark' in l.lower()]
+    bench_lines = [line for line in academic_lines if 'benchmark' in line.lower()]
     if bench_lines:
         # Same assumption as test_c3_new_item_references_schema: last match = newest item
         item = bench_lines[-1]
@@ -349,9 +349,9 @@ def test_c4_no_existing_test_regression():
             # Check if the ONLY failure is from a scope-creep test
             lines = result.stdout.split("\n")
             has_non_scope_failure = any(
-                "❌" in l and "scope creep" not in l and "Scope" not in l
-                and "only intended" not in l
-                for l in lines
+                "❌" in line and "scope creep" not in line and "Scope" not in line
+                and "only intended" not in line
+                for line in lines
             )
             if has_non_scope_failure:
                 assert False, (

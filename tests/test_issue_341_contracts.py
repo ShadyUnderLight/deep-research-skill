@@ -19,7 +19,6 @@ Expected AFTER implementation:  ALL GREEN
 from __future__ import annotations
 
 import os
-import re
 import sys
 import textwrap
 
@@ -498,7 +497,7 @@ class TestPropertyInvariants:
 
         # Empty string — wiki and claims return tuple, reli returns list
         result = check_reli("")
-        assert isinstance(result, list), f"check_reli('') did not return list"
+        assert isinstance(result, list), "check_reli('') did not return list"
 
         errors, warnings = check_wiki("")
         assert isinstance(errors, list) and isinstance(warnings, list)

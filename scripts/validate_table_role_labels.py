@@ -165,7 +165,7 @@ def find_tables(lines: list[str]) -> list[tuple[int, int]]:
 
 def validate_file(path: Path) -> list[str]:
     """Validate all tables in *path* for role labels. Returns error message list."""
-    raw = path.read_text(encoding="utf-8", errors="replace")
+    raw = path.read_text(encoding="utf-8")
     cleaned = strip_fenced_code_blocks(raw)
     lines = cleaned.splitlines()
 
@@ -232,7 +232,10 @@ def main(argv: list[str] | None = None) -> int:
         if not path.exists():
             errors.append(f"{path}: file not found")
             continue
-        errors.extend(validate_file(path))
+        try:
+            errors.extend(validate_file(path))
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{path}: cannot read file — {exc}")
 
     if errors:
         print("Table role label lint failed:")

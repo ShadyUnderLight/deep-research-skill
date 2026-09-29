@@ -92,7 +92,7 @@ def convert(input_path, output_path=None, title=None, *, warnings=None):
     if paths_collide(md_path, out_path):
         raise ValueError(f"Refusing to overwrite input Markdown: {out_path}")
 
-    with md_path.open("r", encoding="utf-8", errors="replace", newline="") as stream:
+    with md_path.open("r", encoding="utf-8", newline="") as stream:
         raw_text = stream.read()
     md_text = normalize_text_for_pdf(raw_text)
     cover_title, cover_subtitle, meta_lines, body_text = extract_cover_meta(md_text)

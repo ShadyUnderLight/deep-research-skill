@@ -274,7 +274,9 @@ def _valid_constrained_choice_report() -> str:
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：Executive summary with citation [S01].
+
+- Key takeaway [S01].
 
 ## Findings
 
@@ -320,6 +322,10 @@ def _cc_scoring_table_no_rules() -> str:
 | option-selection-final-audit | ✅ Passed | §2-§6 可追溯 |
 | final-audit | ✅ Passed | §5 含数字角色列 |
 
+## 执行摘要
+
+**核心判断**：the ranking output is intentionally missing a replicable scoring method [S01].
+
 ## 排名
 
 | 排名 | 语言 | 市场需求 | 生态成熟度 | 学习回报 | 前景 | 广度 | **总分** | 数字角色 |
@@ -351,6 +357,10 @@ def _cc_probability_no_method() -> str:
 | source-traceability | ✅ Passed | §3 使用 [S01] [S02] 引用 |
 | option-selection-final-audit | ✅ Passed | §2 可追溯 |
 | final-audit | ✅ Passed | §5 含数字角色列 |
+
+## 执行摘要
+
+**核心判断**：the probability output is intentionally missing a replicable method [S01].
 
 ## 胜率预测
 
@@ -387,7 +397,9 @@ def _cc_scoring_table_with_rules() -> str:
 
 ## 执行摘要
 
-This report evaluates programming language learning value based on market demand [S01].
+**核心判断**：This report evaluates programming language learning value based on market demand [S01].
+
+- Key takeaway [S01].
 
 ## Findings
 
@@ -406,9 +418,9 @@ Python and Rust show strong demand in 2026 [S01]. Learning curves vary significa
 
 ## 排名
 
-| 排名 | 语言 | 市场需求 | 生态成熟度 | 学习回报 | **总分** | 数字角色 |
-|------|------|----------|------------|----------|----------|---------|
-| 🥇 | Python | A+ (5.0) | A+ (5.0) | A+ (5.0) | 5.0/5 | model-output |
+| 排名 | 语言 | 市场需求 | 学习回报 | **总分** | 数字角色 |
+|------|------|----------|----------|----------|---------|
+| 🥇 | Python | A+ (5.0) | A+ (5.0) | 5.0/5 | model-output |
 
 ## Source Register
 
@@ -441,7 +453,9 @@ def _valid_chinese_constrained_choice_report() -> str:
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：Executive summary with citation [S01].
+
+- Key takeaway [S01].
 
 ## Findings
 
@@ -489,7 +503,9 @@ def _valid_market_outlook_report() -> str:
 
 ## 执行摘要
 
-Power constraints are tightening across global data center markets [S01].
+**核心判断**：Power constraints are tightening across global data center markets [S01].
+
+- Key takeaway [S01].
 
 ## 市场现状
 
@@ -544,7 +560,9 @@ def _market_outlook_no_monitoring_actionability() -> str:
 
 ## 执行摘要
 
-Power constraints are tightening across global data center markets [S01].
+**核心判断**：Power constraints are tightening across global data center markets [S01].
+
+- Key takeaway [S01].
 
 ## 市场现状
 
@@ -595,7 +613,9 @@ def _market_outlook_no_monitoring_section() -> str:
 
 ## 执行摘要
 
-Power constraints are tightening across global data center markets [S01].
+**核心判断**：Power constraints are tightening across global data center markets [S01].
+
+- Key takeaway [S01].
 
 ## 市场现状
 
@@ -771,7 +791,11 @@ def _valid_provider_selection_report() -> str:
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：Executive summary with citation [S01].
+
+- Key takeaway [S01].
+
+- Key takeaway [S01].
 
 ## Findings
 
@@ -818,7 +842,9 @@ def _valid_market_entry_report() -> str:
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：Executive summary with citation [S01].
+
+- Key takeaway [S01].
 
 ## Findings
 
@@ -860,7 +886,9 @@ def _valid_regulatory_analysis_report() -> str:
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：Executive summary with citation [S01].
+
+- Key takeaway [S01].
 
 ## Findings
 
@@ -903,7 +931,9 @@ def _valid_equipment_selection_report() -> str:
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：Executive summary with citation [S01].
+
+- Key takeaway [S01].
 
 ## Findings
 
@@ -945,7 +975,9 @@ def _valid_startup_evaluation_report() -> str:
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：Executive summary with citation [S01].
+
+- Key takeaway [S01].
 
 ## Findings
 
@@ -987,7 +1019,9 @@ def _valid_competitive_positioning_report() -> str:
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：Executive summary with citation [S01].
+
+- Key takeaway [S01].
 
 ## Findings
 
@@ -1031,7 +1065,9 @@ def _report_with_secondary_routes() -> str:
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：Executive summary with citation [S01].
+
+- Key takeaway [S01].
 
 ## Findings
 
@@ -1075,7 +1111,9 @@ def _report_with_supported_secondary_routes() -> str:
 
 ## 执行摘要
 
-Executive summary with citation [S01].
+**核心判断**：Executive summary with citation [S01].
+
+- Key takeaway [S01].
 
 ## Findings
 
@@ -1119,6 +1157,12 @@ def _report_shared_workflow() -> str:
 | workflow-spine-audit | ✅ Passed | §2-§6 各工作流关卡可追溯 |
 | final-audit | ✅ Passed | §2-§6 各核心关卡有对应检查标记 |
 
+## 执行摘要
+
+**核心判断**：shared-workflow covers the requested process [S01].
+
+- Key takeaway [S01].
+
 ## Body
 
 Body text with citation [S01] and [S02].
@@ -1148,6 +1192,12 @@ def _report_with_declared_route(name: str) -> str:
 |-------|--------|------|
 | final-audit | ✅ Passed | §2 |
 | technical-analysis-audit | ✅ Passed | §3 可追溯 |
+
+## 执行摘要
+
+**核心判断**：the declared route controls the validator dispatch [S01].
+
+- Key takeaway [S01].
 
 ## Body
 
@@ -1665,6 +1715,12 @@ class TestProperties:
 | technical-analysis-audit | ✅ Passed | §3 可追溯 |
 
 ## Body
+
+## 执行摘要
+
+**核心判断**：route normalization should preserve the canonical route [S01].
+
+- Key takeaway [S01].
 
 Body with [S01].
 

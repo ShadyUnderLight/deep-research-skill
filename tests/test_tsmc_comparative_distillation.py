@@ -10,7 +10,6 @@ Run: pytest tests/test_tsmc_comparative_distillation.py -v
 import re
 from pathlib import Path
 
-import pytest
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
@@ -149,7 +148,7 @@ def test_checklist_syntax_consistent():
         stripped = line.strip()
         if stripped.startswith("- [") and not stripped.startswith("- [ ]") and not stripped.startswith("- [x]"):
             bad_lines.append(f"  Line {i}: {stripped[:60]}")
-    assert not bad_lines, f"Non-standard checklist syntax:\n" + "\n".join(bad_lines)
+    assert not bad_lines, "Non-standard checklist syntax:\n" + "\n".join(bad_lines)
 
 
 # ── Property 7: Each dimension has required internal structure ────────────

@@ -1538,7 +1538,14 @@ def load_declared_run_state(pack_path: Path | str) -> dict | None:
       - sidecar 缺失、不可读、非 JSON、schema 校验失败
     """
     pack_path = Path(pack_path)
-    cleaned = pack_path.read_text(encoding="utf-8")
+    raw = pack_path.read_text(encoding="utf-8")
+    # A Run State declaration is a visible Pack declaration.  Keep the
+    # producer and delivery guard on the same CommonMark surface so headings
+    # inside fenced code or HTML blocks cannot create a phantom sidecar
+    # dependency.
+    from validate_contract import sanitize_visible_markdown
+
+    cleaned = sanitize_visible_markdown(raw)
     ref, errors = parse_pack_run_state_section(cleaned)
     if errors:
         raise RunStateDeclarationError(

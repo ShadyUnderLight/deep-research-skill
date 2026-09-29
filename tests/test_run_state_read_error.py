@@ -45,6 +45,7 @@ def test_delivery_guard_blocks_on_unreadable_pack():
         verdict = AuditVerdict(route=None, overall="pass")
         out = _apply_run_state_delivery_guard(verdict, Path(tmp_dir))
         assert out.blocking, "unreadable Pack must record a blocking issue"
+        assert out.overall == "fail"
         assert out.exit_code == EXIT_BLOCKING
     finally:
         shutil.rmtree(tmp_dir, ignore_errors=True)
@@ -79,6 +80,7 @@ def test_delivery_guard_blocks_on_bad_utf8_pack():
         verdict = AuditVerdict(route=None, overall="pass")
         out = _apply_run_state_delivery_guard(verdict, pack)
         assert out.blocking, "bad-UTF-8 Pack must record a blocking issue"
+        assert out.overall == "fail"
         assert out.exit_code == EXIT_BLOCKING
     finally:
         pack.unlink(missing_ok=True)
@@ -126,6 +128,16 @@ def test_load_declared_run_state_raises_on_missing_sidecar():
         shutil.rmtree(d, ignore_errors=True)
 
 
+def test_hidden_run_state_section_is_not_loaded():
+    d, pack = _pack_in_tmpdir(
+        "```markdown\n## Run state\nrun_id: r1\npath: nope.json\n```\n"
+    )
+    try:
+        assert load_declared_run_state(pack) is None
+    finally:
+        shutil.rmtree(d, ignore_errors=True)
+
+
 def test_load_declared_run_state_raises_on_invalid_sidecar_json():
     from validate_research_run_state import RunStateDeclarationError  # noqa: E402
 
@@ -150,6 +162,7 @@ def test_delivery_guard_blocks_on_unverifiable_declaration():
         verdict = AuditVerdict(route=None, overall="pass")
         out = _apply_run_state_delivery_guard(verdict, pack)
         assert out.blocking, "unverifiable declaration must record a blocking issue"
+        assert out.overall == "fail"
         assert out.exit_code == EXIT_BLOCKING
     finally:
         shutil.rmtree(d, ignore_errors=True)

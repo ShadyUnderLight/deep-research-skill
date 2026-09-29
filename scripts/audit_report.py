@@ -18,8 +18,8 @@ Exit codes:
     1 = warnings only (conditional pass)
     2 = one or more blocking errors
 
-Non-strict mode keeps legacy compatibility for route fallback, a missing
-contract, and delivery-scope advisory failures.  It does not, however, turn
+Non-strict mode keeps legacy compatibility for route fallback and a missing
+contract.  Delivery-scope failures remain blocking in every mode.  It does not, however, turn
 an unexecuted required manual/process audit into a clean Pass: ``not_run`` /
 ``skipped`` / ``partial`` manual audits are recorded on the verdict as
 warnings (conditional-pass, exit 1) without ``--strict`` and stay blocking
@@ -97,6 +97,11 @@ from delivery.models import (
     DELIVERY_RESULT_SCHEMA_VERSION,
     KNOWN_DELIVERY_FIELDS,
     LEGACY_DELIVERY_HASH_FIELDS,
+)
+from delivery.markdown_rows import (
+    count_structural_pipes,
+    is_separator_row,
+    split_markdown_row,
 )
 from activation_snapshot import (
     ActivationSnapshotError,
@@ -335,7 +340,7 @@ def _run_report_quality(path: Path, **kwargs: bool) -> CheckResult:
     a crash in one does not silently discard the results of others.
     """
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return CheckResult(
             name="report-quality",
@@ -469,7 +474,7 @@ def _run_market_outlook_monitoring_actionability(
     signals.
     """
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return CheckResult(
             name="market-outlook-monitoring-actionability",
@@ -523,16 +528,14 @@ def _run_market_outlook_monitoring_actionability(
         "trigger_to_action": {"trigger", "action", "应对", "触发", "动作"},
     }
 
-    def _map_table_header(header_line: str) -> dict[str, int]:
+    def _map_table_header(header_cells: list[str]) -> dict[str, int]:
         """Match markdown table header columns to actionability fields.
 
         Returns a dict {field_name: column_index}.  Columns are matched
         in priority order (threshold → cadence → source → trigger_to_action);
         each column can match at most one field.
         """
-        # Split and drop leading/trailing artifacts from | markers
-        raw = header_line.split("|")
-        cols = [c.strip().lower() for c in raw[1:-1]]
+        cols = [cell.strip().lower() for cell in header_cells]
         mapping: dict[str, int] = {}
         used: set[int] = set()
 
@@ -555,28 +558,29 @@ def _run_market_outlook_monitoring_actionability(
         i = 0
         while i < len(body_lines):
             line = body_lines[i].strip()
-            if line.startswith("|") and not line.startswith("|--"):
+            if count_structural_pipes(line) >= 1 and not is_separator_row(line):
                 header_line = line
                 i += 1
-                # Skip separator row (|--|--|...|)
-                if i < len(body_lines) and body_lines[i].strip().startswith("|") and "---" in body_lines[i]:
+                # Skip the separator row. Markdown permits optional outer pipes.
+                if i < len(body_lines) and is_separator_row(body_lines[i].strip()):
                     i += 1
                 else:
                     continue
 
-                col_map = _map_table_header(header_line)
+                col_map = _map_table_header(split_markdown_row(header_line))
                 if len(col_map) < 4:
                     # Table does not have all 4 actionability columns; skip
-                    while i < len(body_lines) and body_lines[i].strip().startswith("|"):
+                    while i < len(body_lines) and count_structural_pipes(body_lines[i].strip()) >= 1:
                         i += 1
                     continue
 
                 # Parse data rows
-                while i < len(body_lines) and body_lines[i].strip().startswith("|"):
+                while i < len(body_lines) and count_structural_pipes(body_lines[i].strip()) >= 1:
                     row = body_lines[i].strip()
-                    # Keep empty cells to preserve column index alignment
-                    raw_cells = row.split("|")
-                    cells = [c.strip() for c in raw_cells[1:-1]]
+                    if is_separator_row(row):
+                        break
+                    # Keep empty cells to preserve column index alignment.
+                    cells = split_markdown_row(row)
                     all_filled = True
                     missing_fields: list[str] = []
                     for field, col_idx in col_map.items():
@@ -639,7 +643,7 @@ def _run_secondary_route_check(path: Path, **kwargs: bool) -> CheckResult:
     declared or all are supported.
     """
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return CheckResult(
             name="secondary-route-check",
@@ -727,7 +731,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
     require_contract = kwargs.get("require_contract", False)
     strict = kwargs.get("strict", False)
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return CheckResult(
             name="contract-check",
@@ -770,7 +774,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
     if research_pack is not None:
         try:
             pack_text = Path(research_pack).read_text(
-                encoding="utf-8", errors="replace"
+                encoding="utf-8"
             )
         except (OSError, UnicodeError) as exc:
             return CheckResult(
@@ -913,7 +917,7 @@ def _run_contract_check(path: Path, **kwargs: bool) -> CheckResult:
 def _run_markdown_delivery(path: Path, **kwargs: bool) -> CheckResult:
     """Run validate_markdown_delivery structural checks on the report."""
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return CheckResult(
             name="markdown-delivery",
@@ -946,12 +950,11 @@ def _run_external_citation_hygiene(path: Path, **kwargs: bool) -> CheckResult:
 
     Operates on visible Markdown only (fences stripped), so internal refs that
     appear inside fenced code examples do not pollute the gate while real
-    visible text still blocks.  Findings are returned as errors so the
-    delivery-scope loop blocks them in strict mode and records them advisory
-    outside strict.
+    visible text still blocks.  Findings are returned as errors, and the
+    unified delivery audit blocks them in every mode.
     """
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return CheckResult(
             name="external-citation-hygiene",
@@ -1011,7 +1014,7 @@ def _run_research_pack(pack_path: Path | None, **kwargs: bool) -> CheckResult:
     if pack_path is None:
         return CheckResult(name="research-pack", errors=[], warnings=[])
     try:
-        text = pack_path.read_text(encoding="utf-8", errors="replace")
+        text = pack_path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return CheckResult(
             name="research-pack",
@@ -1026,7 +1029,7 @@ def _run_research_pack(pack_path: Path | None, **kwargs: bool) -> CheckResult:
         report_text: str | None = None
         if isinstance(report_path, Path) and report_path.is_file():
             report_text = vc_strip_fences(
-                report_path.read_text(encoding="utf-8", errors="replace")
+                report_path.read_text(encoding="utf-8")
             )
         errors.extend(
             vrp_run_strict_checks(
@@ -1127,7 +1130,7 @@ def _auto_detect_route(path: Path) -> str | None:
     audit_report() instead of raising here.
     """
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         return None
     cleaned = vc_strip_fences(text)
@@ -1342,7 +1345,7 @@ def _parse_audit_block_statuses(path: Path) -> tuple[dict[str, dict[str, str]], 
     of parsing only the first occurrence.
     """
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         return {}, []
     # Shared declaration sanitizer: strips fences (state machine) and HTML
@@ -1376,14 +1379,14 @@ def _parse_audit_block_statuses(path: Path) -> tuple[dict[str, dict[str, str]], 
     for line in lines[block_start + 1:]:
         if re.match(r"^#{2,3}\s", line):
             break
-        if line.strip().startswith("|") and "---" not in line:
+        if count_structural_pipes(line.strip()) >= 1 and not is_separator_row(line.strip()):
             table_lines.append(line.strip())
     if len(table_lines) < 2:
         return {}, []
 
     statuses: dict[str, dict[str, str]] = {}
     for row in table_lines[1:]:  # skip header row
-        cells = [c.strip() for c in row.strip("|").split("|")]
+        cells = split_markdown_row(row)
         if len(cells) < 2 or not cells[0]:
             continue
         audit_id = cells[0].lower()
@@ -1498,6 +1501,7 @@ def _execute_required_audits(
     - automated audit without a validator binding → blocking;
     - manual/process audit with no declaration in the report → ``not_run``,
       which is blocking in strict mode and a warning otherwise;
+    - delivery-scope validator errors → blocking in every mode;
     - research-pack without --research-pack → explicit ``skipped`` outside
       strict mode, ``not_run`` + blocking under ``--strict``.
     """
@@ -1507,7 +1511,7 @@ def _execute_required_audits(
     block_statuses, block_malformed = _parse_audit_block_statuses(path)
     try:
         visible_text = vc_strip_fences(
-            path.read_text(encoding="utf-8", errors="replace")
+            path.read_text(encoding="utf-8")
         )
     except (OSError, UnicodeError):
         visible_text = None
@@ -1518,7 +1522,7 @@ def _execute_required_audits(
     contract_data_for_binding: dict | None = None
     try:
         contract_data_for_binding = extract_contract_from_markdown(
-            path.read_text(encoding="utf-8", errors="replace")
+            path.read_text(encoding="utf-8")
         )
     except (OSError, UnicodeError):
         contract_data_for_binding = None
@@ -1696,12 +1700,6 @@ def _execute_required_audits(
             else "conditional-pass" if check.warnings
             else "pass"
         )
-        # Legacy compatibility: outside strict mode, failures of the
-        # delivery-scope global audits (markdown-delivery / research-pack)
-        # are recorded in the audit result but do not change the exit code,
-        # so pre-contract reports keep their previous behavior.  In strict
-        # mode they block.
-        advisory = audit.scope == "delivery" and not strict and check.errors
         if check.errors:
             evidence = [str(e)[:200] for e in check.errors[:5]]
         else:
@@ -1727,11 +1725,10 @@ def _execute_required_audits(
             validator_binding=binding,
             evidence=evidence,
             evidence_provenance=evidence_provenance,
-            reason="advisory outside strict mode" if advisory else None,
+            reason=None,
         ))
-        if not advisory:
-            blocking.extend(f"[{audit_id}] {e}" for e in check.errors)
-            warnings.extend(f"[{audit_id}] {w} (audit)" for w in check.warnings)
+        blocking.extend(f"[{audit_id}] {e}" for e in check.errors)
+        warnings.extend(f"[{audit_id}] {w} (audit)" for w in check.warnings)
 
     # Secondary-route hard-fail verification must have its own audit result
     # (issue #378 acceptance 6) — primary-route coverage is not enough.  The
@@ -1740,7 +1737,7 @@ def _execute_required_audits(
     contract_data: dict | None = None
     try:
         contract_data = extract_contract_from_markdown(
-            path.read_text(encoding="utf-8", errors="replace")
+            path.read_text(encoding="utf-8")
         )
     except (OSError, UnicodeError):
         pass
@@ -2410,15 +2407,24 @@ def _apply_run_state_delivery_guard(
             f"run-state delivery guard could not run for Research Pack "
             f"{research_pack}: {exc}"
         )
-        return verdict
-    if state is None:
-        return verdict
-    if state.get("phase") == "delivered" or state.get("status") == "completed":
-        if verdict.overall == "fail":
-            verdict.blocking.append(
-                "run state claims delivered/completed but audit overall is fail; "
-                "content-audit failure cannot masquerade as delivered"
-            )
+    else:
+        if state is not None and (
+            state.get("phase") == "delivered" or state.get("status") == "completed"
+        ):
+            if verdict.overall == "fail":
+                verdict.blocking.append(
+                    "run state claims delivered/completed but audit overall is fail; "
+                    "content-audit failure cannot masquerade as delivered"
+                )
+    # The guard runs after the normal aggregation, so refresh the derived
+    # verdict field whenever it adds a blocking condition.  JSON consumers
+    # must never observe overall=pass alongside a non-empty blocking list.
+    if verdict.blocking:
+        verdict.overall = "fail"
+    elif verdict.warnings:
+        verdict.overall = "conditional-pass"
+    else:
+        verdict.overall = "pass"
     return verdict
 
 

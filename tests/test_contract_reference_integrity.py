@@ -21,7 +21,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from validate_contract import (
+from validate_contract import (  # noqa: E402
     validate_contract,
     extract_contract_blocks,
     extract_contract_from_markdown,
@@ -518,7 +518,7 @@ def _audit_report_report(contract_text: str) -> Path:
 
 ## Executive summary
 
-Executive summary with citation [S01].
+**Core thesis**: Executive summary with citation [S01].
 
 ## 执行摘要
 

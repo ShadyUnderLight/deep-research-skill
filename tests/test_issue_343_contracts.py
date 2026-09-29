@@ -427,7 +427,7 @@ def test_d5_eval_has_reviewer_checklist():
 def test_p1_addon_cross_references_valid():
     """P1: Cross-references between files must be consistent."""
     try:
-        addon = read(ADDON_FILE)
+        read(ADDON_FILE)
     except FileNotFoundError:
         raise AssertionError("D1 file not yet created")
 

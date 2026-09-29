@@ -358,8 +358,8 @@ def build_resolved_source_register(
         if path is None:
             continue
         try:
-            text = path.read_text(encoding="utf-8", errors="replace")
-        except OSError as exc:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
             errors.append(f"{prefix}: cannot read source artifact: {exc}")
             continue
         resolved[source_id] = ResolvedSource(
@@ -679,21 +679,37 @@ _NEGATION_PATTERNS_EN = (
 )
 # Issue #437 (E2): a bare 未 is not a negation marker on its own — it appears in
 # time words (未来/未來) and aspectual/uncertain words (未必/尚未). Those complete
-# phrases are excluded from hard negation *before* the bare-未 rule runs, because
-# 尚未 = 尚 + 未 (the 未 is *preceded* by 尚, so a lookahead on the following char
-# cannot exclude it). Explicit hard-negation phrases are matched directly.
-_NEGATION_MARKERS_CJK = ("没有", "未能", "未曾", "未有", "不再", "并非", "无")
+# phrases are removed before the bare-未 rule runs, because 尚未 = 尚 + 未 (the 未
+# is preceded by 尚, so a lookahead on the following char cannot exclude it).
+# Keep 无 out of the global marker list: it is productive in positive phrases
+# such as 无限增长 and 无风险增长. Only explicit no-X constructions below are
+# treated as hard negation.
+_NEGATION_MARKERS_CJK = ("没有", "未能", "未曾", "未有", "不再", "并非")
 _NEGATION_CJK_NON_NEGATION = ("未来", "未來", "未必", "尚未")
+_NEGATION_NO_PHRASES_CJK = (
+    "无增长",
+    "无上升",
+    "无下降",
+    "无变化",
+    "无改善",
+    "无证据",
+    "无支持",
+)
 
 
 def _has_negation(text: str) -> bool:
-    if any(marker in text for marker in _NEGATION_MARKERS_CJK):
+    # Remove complete non-negation phrases first, but keep all other text so a
+    # genuine marker later in the same sentence (e.g. 未来收入未增长) still
+    # participates in the polarity decision.
+    remaining = text
+    for phrase in _NEGATION_CJK_NON_NEGATION:
+        remaining = remaining.replace(phrase, "")
+    if any(marker in remaining for marker in _NEGATION_MARKERS_CJK):
         return True
-    # Explicit non-negation 未-phrases take priority over the bare-未 rule below.
-    if any(non in text for non in _NEGATION_CJK_NON_NEGATION):
-        return False
+    if any(phrase in remaining for phrase in _NEGATION_NO_PHRASES_CJK):
+        return True
     # A bare/productive 未 (e.g. 未增长, 未实现) is a genuine negation.
-    if "未" in text:
+    if "未" in remaining:
         return True
     return any(pattern.search(text) for pattern in _NEGATION_PATTERNS_EN)
 

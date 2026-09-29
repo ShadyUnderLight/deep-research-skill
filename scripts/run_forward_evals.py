@@ -67,6 +67,7 @@ _AUDIT_REGISTRY = registry_loader.load_audit_registry()
 ROOT = Path(__file__).resolve().parents[1]
 AUDIT_SCRIPT = ROOT / "scripts" / "audit_report.py"
 DEFAULT_BASELINE_PATH = ROOT / "evals" / "forward-metrics-baseline.json"
+AUDIT_SUBPROCESS_TIMEOUT_SECONDS = 60
 
 # The audit JSON verdict schema this runner understands.  A schema_version it
 # does not know must fail closed instead of being treated as a Pass
@@ -139,7 +140,19 @@ def _ratio(numerator: int, denominator: int) -> float:
 
 
 def _pack_observation(path: Path) -> dict[str, Any]:
-    text = path.read_text(encoding="utf-8", errors="replace")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, UnicodeError) as exc:
+        return {
+            "fields": [],
+            "missing_required_fields": [],
+            "statuses": {},
+            "decision_tree_version": None,
+            "activation_snapshot": None,
+            "activation_snapshot_errors": [
+                f"cannot read Research Pack {path}: {exc}"
+            ],
+        }
     cleaned = strip_fenced_code_blocks(text)
     headings = {
         line.removeprefix("## ").strip()
@@ -189,7 +202,23 @@ def _run_audit(
             "--claim-alignment-bundle",
             str(claim_alignment_bundle),
         ])
-    completed = subprocess.run(command, capture_output=True, text=True, cwd=ROOT)
+    try:
+        completed = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+            cwd=ROOT,
+            timeout=AUDIT_SUBPROCESS_TIMEOUT_SECONDS,
+        )
+    except subprocess.TimeoutExpired:
+        return (
+            None,
+            f"audit_report.py timed out after "
+            f"{AUDIT_SUBPROCESS_TIMEOUT_SECONDS}s",
+            124,
+        )
+    except OSError as exc:
+        return None, f"could not launch audit_report.py: {exc}", 125
     try:
         data = json.loads(completed.stdout)
     except json.JSONDecodeError:
@@ -1280,14 +1309,14 @@ def _evaluate_case(
     # contribute heading/table evidence). Issue #426: no file re-hashing;
     # binding is by path/ID/route/validator.
     try:
-        raw_report_text = report.read_text(encoding="utf-8", errors="replace")
+        raw_report_text = report.read_text(encoding="utf-8")
         report_text_for_provenance = sanitize_visible_markdown(raw_report_text)
-    except OSError:
+    except (OSError, UnicodeError):
         report_text_for_provenance = None
     try:
-        raw_pack_text = research_pack.read_text(encoding="utf-8", errors="replace")
+        raw_pack_text = research_pack.read_text(encoding="utf-8")
         pack_text_for_provenance = sanitize_visible_markdown(raw_pack_text)
-    except OSError:
+    except (OSError, UnicodeError):
         pack_text_for_provenance = None
 
     activation_error: str | None = None
@@ -1341,9 +1370,12 @@ def _evaluate_case(
 
     contract: dict[str, Any] = {}
     if report.is_file():
-        contract = extract_contract_from_markdown(
-            report.read_text(encoding="utf-8", errors="replace")
-        ) or {}
+        try:
+            contract = extract_contract_from_markdown(
+                report.read_text(encoding="utf-8")
+            ) or {}
+        except (OSError, UnicodeError):
+            contract = {}
 
     report_route = audit_data.get("route") if audit_data else None
     actual_statuses = {

@@ -292,10 +292,10 @@ def test_c6a_index_entry_exists():
 def test_c6b_index_table_parseable():
     """C6b: INDEX.md table MUST be parseable (same number of pipes per row)."""
     content = read(INDEX)
-    table_lines = [l for l in content.split('\n') if l.strip().startswith('|')]
+    table_lines = [line for line in content.split('\n') if line.strip().startswith('|')]
     if not table_lines:
         return
-    pipe_counts = [l.count('|') for l in table_lines]
+    pipe_counts = [line.count('|') for line in table_lines]
     header_count = max(pipe_counts[:3])
     for i, count in enumerate(pipe_counts):
         assert count == header_count or count == 0 or table_lines[i].strip() in ('', '| --- '), (

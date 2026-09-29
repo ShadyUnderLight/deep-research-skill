@@ -126,7 +126,7 @@ def validate_file(path: Path) -> int:
     Returns exit code (0 = pass, 2 = structural error).
     """
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         print(f"{path}: cannot read file — {exc}")
         return EXIT_STRUCTURE

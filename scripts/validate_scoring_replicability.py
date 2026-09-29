@@ -153,9 +153,11 @@ def validate_file(path: Path) -> list[str]:
     errors: list[str] = []
 
     try:
-        raw = path.read_text(encoding="utf-8", errors="replace")
+        raw = path.read_text(encoding="utf-8")
     except FileNotFoundError:
         return [f"{path}: file not found"]
+    except UnicodeError as exc:
+        return [f"{path}: invalid UTF-8 — {exc}"]
     except OSError as exc:
         return [f"{path}: cannot read file — {exc}"]
 

@@ -7,7 +7,8 @@ Verifies that:
    audits without a binding fail closed.
 2. Required automated audits actually run and appear in structured results.
 3. Manual/process audits not run in the report are recorded as ``not_run``
-   and cannot aggregate to Pass (blocking in strict mode, warning otherwise).
+   and cannot aggregate to Pass (blocking in strict mode, warning otherwise);
+   delivery-scope validator errors are blocking in every mode.
 4. Strict mode fails when route / contract / pack declarations are missing —
    no silent fallback to technical-deep-dive.
 5. ``--json`` emits a machine-readable verdict with audit id, status,
@@ -902,7 +903,6 @@ class TestAutomatedAuditBinding:
 
     def test_missing_binding_fails_closed(self, monkeypatch) -> None:
         import audit_report
-        import registry_loader
 
         # Simulate an audit registry where forward-looking-claims lost its
         # validator binding (registry/code drift).
@@ -983,6 +983,15 @@ class TestJsonOutput:
         )
         assert fl["status"] == "fail"
         assert fl["errors"]
+
+    def test_bad_utf8_report_is_blocking_and_json(self, tmp_path: Path) -> None:
+        report = tmp_path / "bad-utf8.md"
+        report.write_bytes(b"# Report\n\xff")
+        result = _run_audit(report, extra_args=["--json"])
+        assert result.returncode == 2, result.stderr
+        data = json.loads(result.stdout)
+        assert data["overall"] == "fail", data
+        assert any("cannot read file" in message for message in data["blocking"]), data
 
     def test_automated_success_has_evidence_location(self) -> None:
         """Successful automated audits carry an evidence location, not []."""
@@ -1108,6 +1117,30 @@ class TestSingleCommandCoverage:
         assert result.returncode == 2, result.stdout
         assert "research-pack" in result.stdout.lower()
 
+    def test_invalid_pack_is_blocking_without_strict(self) -> None:
+        """Delivery-scope failures must not become advisory in legacy mode."""
+        report = _write(_report(contract=_contract()))
+        bad_pack = _write("# Not a Research Pack\n")
+        result = _run_audit(report, research_pack=bad_pack, extra_args=["--json"])
+        assert result.returncode == 2, result.stdout
+        data = json.loads(result.stdout)
+        assert data["overall"] == "fail", data
+        assert any(
+            "[research-pack]" in message for message in data["blocking"]
+        ), data
+
+
+def test_status_parser_accepts_unbordered_markdown_table(tmp_path: Path) -> None:
+    report = _write(
+        "## Route and audit status\n\n"
+        "Audit | Status | Evidence\n"
+        "----- | ------ | --------\n"
+        "market-outlook-audit | ✅ Passed | report-section:Findings\n"
+    )
+    statuses, malformed = audit_report._parse_audit_block_statuses(report)
+    assert malformed == []
+    assert statuses["market-outlook-audit"]["status"] == "pass"
+
 
 class TestSelfAssessmentCannotOverride:
     """A report claiming Passed must not override validator failures."""
@@ -1137,7 +1170,7 @@ class TestDuplicateDeclarations:
         report = _report(contract=_contract())
         report += '\n```contract\n{"this is": broken\n```\n'
         path = _write(report)
-        data = self._run_with_pack(
+        self._run_with_pack(
             path, Path("tests/fixtures/audit/research-pack-pos.md").resolve()
             if False else None
         )

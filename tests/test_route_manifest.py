@@ -669,9 +669,11 @@ class TestValidatorReturnsCorrectExitCodes:
         tmp = Path(f.name)
         try:
             result = _run_validator(tmp)
-            assert result.returncode != 0, (
-                f"Should fail on invalid JSON, got exit {result.returncode}"
+            assert result.returncode == 2, (
+                f"Invalid JSON is blocking and must exit 2, got exit {result.returncode}"
             )
+            assert "Invalid JSON" in result.stderr
+            assert "Traceback" not in result.stderr
         finally:
             tmp.unlink(missing_ok=True)
 

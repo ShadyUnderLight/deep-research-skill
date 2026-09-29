@@ -93,12 +93,6 @@ def test_c1_has_reader_fields():
     scope_section = section_after(content, "默认决策口径 — Default decision scope")
     assert scope_section is not None, "Missing section"
     # Check for required field concepts
-    fields = [
-        '目标读者', 'Target reader', 'target reader',
-        '默认市场', 'Default market', 'default market',
-        '决策目标', 'Decision goal', 'decision goal',
-        '时间窗口', 'Time window', 'time window',
-    ]
     # Use a lenient check: at least 3 unique field concepts present
     # Check for both Chinese and English keywords directly in the section
     scope_lower = scope_section.lower()
@@ -409,7 +403,7 @@ def test_c4_index_has_entry():
 def test_c4_index_table_format():
     """C4: INDEX.md entry MUST maintain proper table format (10+ columns)."""
     content = read("evals/INDEX.md")
-    table_lines = [l for l in content.split('\n') if EVAL_FILENAME in l]
+    table_lines = [line for line in content.split('\n') if EVAL_FILENAME in line]
     assert len(table_lines) >= 1, f"No table line found for {EVAL_FILENAME}"
     for line in table_lines:
         cols = line.split('|')
@@ -463,9 +457,9 @@ def test_c5_no_existing_regression():
         if result.returncode != 0:
             lines = result.stdout.split("\n")
             has_non_scope_failure = any(
-                "❌" in l and "scope creep" not in l and "Scope" not in l
-                and "only intended" not in l
-                for l in lines
+                "❌" in line and "scope creep" not in line and "Scope" not in line
+                and "only intended" not in line
+                for line in lines
             )
             if has_non_scope_failure:
                 assert False, (
@@ -489,7 +483,7 @@ def test_c5_index_not_broken():
         elif in_table and not line.startswith('|'):
             in_table = False
     if table_lines:
-        counts = [len(l.split('|')) for l in table_lines]
+        counts = [len(line.split('|')) for line in table_lines]
         assert max(counts) == min(counts), f"Inconsistent INDEX.md table columns: {counts}"
 
 
