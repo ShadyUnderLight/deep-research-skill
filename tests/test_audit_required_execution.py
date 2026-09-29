@@ -1142,6 +1142,44 @@ def test_status_parser_accepts_unbordered_markdown_table(tmp_path: Path) -> None
     assert statuses["market-outlook-audit"]["status"] == "pass"
 
 
+def test_status_parser_rejects_missing_separator_row(tmp_path: Path) -> None:
+    report = _write(
+        "## Route and audit status\n\n"
+        "Audit | Status | Evidence\n"
+        "academic-analysis-audit | ✅ Passed | report-section:Findings\n"
+    )
+    statuses, malformed = audit_report._parse_audit_block_statuses(report)
+    assert statuses == {}
+    assert any("separator" in error.lower() for error in malformed), malformed
+
+
+def test_missing_status_separator_cannot_yield_pass(tmp_path: Path) -> None:
+    route_block = (
+        "## Route and audit status\n\n"
+        "**Primary route**: Market Outlook\n\n"
+        "Audit | Status | 证据\n"
+        "market-outlook-audit | ✅ Passed | report-section:Monitoring signals\n"
+    )
+    report = _write(_report(route_block=route_block, contract=_contract()))
+    result = _run_audit(report, extra_args=["--json"])
+    data = json.loads(result.stdout)
+    assert result.returncode == 2, data
+    assert data["overall"] == "fail", data
+    assert any("separator" in error.lower() for error in data["blocking"]), data
+
+
+def test_status_parser_rejects_mismatched_data_row_width(tmp_path: Path) -> None:
+    report = _write(
+        "## Route and audit status\n\n"
+        "Audit | Status | Evidence\n"
+        "----- | ------ | --------\n"
+        "academic-analysis-audit | ✅ Passed\n"
+    )
+    statuses, malformed = audit_report._parse_audit_block_statuses(report)
+    assert statuses == {}
+    assert any("column count" in error.lower() for error in malformed), malformed
+
+
 class TestSelfAssessmentCannotOverride:
     """A report claiming Passed must not override validator failures."""
 

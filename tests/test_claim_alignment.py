@@ -507,6 +507,26 @@ class TestClaimAlignmentHeuristicFixes437:
         assert not _has_negation("无风险增长")
         assert _judge_claim_text("无限增长", "增长", None, "") == "SUPPORTED"
 
+    def test_qualified_cjk_no_phrase_is_a_negation(self) -> None:
+        # Review follow-up: the modifier between 无 and the target must not
+        # hide a definite negative such as 无显著增长.
+        assert _has_negation("营收无显著增长")
+        assert _has_negation("营收无明显的增长")
+        assert _negation_conflict("营收增长", "营收无显著增长")
+        assert (
+            _judge_claim_text("营收增长", "营收无显著增长", None, "")
+            == "UNSUPPORTED"
+        )
+
+    def test_unknown_cjk_no_modifier_is_ambiguous(self) -> None:
+        # Unknown 无 + modifier + target constructions must not reach lexical
+        # SUPPORTED when their polarity cannot be established safely.
+        assert not _has_negation("营收无法解释增长")
+        assert (
+            _judge_claim_text("营收增长", "营收无法解释增长", None, "")
+            == "AMBIGUOUS"
+        )
+
     def test_uncertain_cjk_markers_are_not_hard_negation(self) -> None:
         # 未来/未來 (future), 未必 (not necessarily) and 尚未 (not yet) are
         # complete non-negation phrases; a bare/productive 未 + verb (e.g.

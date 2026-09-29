@@ -1375,19 +1375,67 @@ def _parse_audit_block_statuses(path: Path) -> tuple[dict[str, dict[str, str]], 
         ]
     block_start = block_starts[0]
 
-    table_lines: list[str] = []
-    for line in lines[block_start + 1:]:
+    body_lines = lines[block_start + 1:]
+    table_start: int | None = None
+    for index, line in enumerate(body_lines):
         if re.match(r"^#{2,3}\s", line):
             break
-        if count_structural_pipes(line.strip()) >= 1 and not is_separator_row(line.strip()):
-            table_lines.append(line.strip())
-    if len(table_lines) < 2:
-        return {}, []
+        if count_structural_pipes(line.strip()) >= 1:
+            table_start = index
+            break
+    if table_start is None:
+        return {}, [
+            "Route and audit status block has no Markdown table header"
+        ]
+
+    header_line = body_lines[table_start].strip()
+    separator_index = table_start + 1
+    if (
+        separator_index >= len(body_lines)
+        or re.match(r"^#{2,3}\s", body_lines[separator_index])
+        or not is_separator_row(body_lines[separator_index].strip())
+    ):
+        return {}, [
+            "Route and audit status table header must be followed immediately "
+            "by a valid Markdown separator row"
+        ]
+
+    header_cells = split_markdown_row(header_line)
+    separator_cells = split_markdown_row(body_lines[separator_index].strip())
+    if len(header_cells) < 2:
+        return {}, [
+            "Route and audit status table must contain at least two columns"
+        ]
+    if len(separator_cells) != len(header_cells):
+        return {}, [
+            "Route and audit status table separator column count does not "
+            "match the header"
+        ]
+
+    table_rows: list[str] = []
+    for line in body_lines[separator_index + 1:]:
+        stripped = line.strip()
+        if not stripped or re.match(r"^#{2,3}\s", line):
+            break
+        if count_structural_pipes(stripped) < 1:
+            break
+        cells = split_markdown_row(stripped)
+        if len(cells) != len(header_cells):
+            return {}, [
+                "Route and audit status table data row column count does not "
+                f"match the header ({len(cells)} != {len(header_cells)})"
+            ]
+        if is_separator_row(stripped):
+            return {}, [
+                "Route and audit status table contains an unexpected "
+                "separator row"
+            ]
+        table_rows.append(stripped)
 
     statuses: dict[str, dict[str, str]] = {}
-    for row in table_lines[1:]:  # skip header row
+    for row in table_rows:
         cells = split_markdown_row(row)
-        if len(cells) < 2 or not cells[0]:
+        if not cells[0]:
             continue
         audit_id = cells[0].lower()
         status_cell = cells[1].lower()

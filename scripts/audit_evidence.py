@@ -326,7 +326,7 @@ def _validate_checklist_item(
         )
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         return EvidenceValidation(
             errors=(f"cannot read checklist file {path_value}: {exc}",)
         )

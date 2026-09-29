@@ -682,19 +682,74 @@ _NEGATION_PATTERNS_EN = (
 # phrases are removed before the bare-未 rule runs, because 尚未 = 尚 + 未 (the 未
 # is preceded by 尚, so a lookahead on the following char cannot exclude it).
 # Keep 无 out of the global marker list: it is productive in positive phrases
-# such as 无限增长 and 无风险增长. Only explicit no-X constructions below are
-# treated as hard negation.
+# such as 无限增长 and 无风险增长. A qualified no-X construction is treated as
+# hard negation only when its modifier is a known polarity-neutral qualifier;
+# an unknown modifier remains ambiguous instead of reaching lexical support.
 _NEGATION_MARKERS_CJK = ("没有", "未能", "未曾", "未有", "不再", "并非")
 _NEGATION_CJK_NON_NEGATION = ("未来", "未來", "未必", "尚未")
-_NEGATION_NO_PHRASES_CJK = (
-    "无增长",
-    "无上升",
-    "无下降",
-    "无变化",
-    "无改善",
-    "无证据",
-    "无支持",
+_NEGATION_NO_TARGETS_CJK = (
+    "增长",
+    "上升",
+    "下降",
+    "变化",
+    "改善",
+    "证据",
+    "支持",
 )
+_NEGATION_NO_QUALIFIERS_CJK = frozenset(
+    {
+        "显著",
+        "明显",
+        "持续",
+        "大幅",
+        "实质",
+        "实质性",
+        "重大",
+        "任何",
+        "充分",
+        "可靠",
+        "确切",
+        "明确",
+        "统计学意义",
+        "统计意义",
+    }
+)
+_NEGATION_NO_POSITIVE_PREFIXES_CJK = (
+    "无限",
+    "无风险",
+    "无增长风险",
+    "无上升风险",
+    "无下降风险",
+    "无变化风险",
+    "无改善风险",
+)
+_NEGATION_NO_TARGET_RE = re.compile(
+    r"无(?P<modifier>[\u4e00-\u9fff]{0,8}?)(?P<target>"
+    + "|".join(re.escape(target) for target in _NEGATION_NO_TARGETS_CJK)
+    + r")"
+)
+
+
+def _cjk_no_target_polarity(text: str) -> str:
+    """Classify Chinese ``无 + modifier + target`` phrases.
+
+    Returns ``negated`` for an explicit no-target construction, ``ambiguous``
+    for an unfamiliar modifier, and ``none`` when no such construction exists.
+    Positive compounds such as ``无限增长`` and ``无风险增长`` are excluded.
+    """
+    ambiguous = False
+    for match in _NEGATION_NO_TARGET_RE.finditer(text):
+        start = match.start()
+        if any(
+            text.startswith(prefix, start)
+            for prefix in _NEGATION_NO_POSITIVE_PREFIXES_CJK
+        ):
+            continue
+        modifier = match.group("modifier").removesuffix("的")
+        if not modifier or modifier in _NEGATION_NO_QUALIFIERS_CJK:
+            return "negated"
+        ambiguous = True
+    return "ambiguous" if ambiguous else "none"
 
 
 def _has_negation(text: str) -> bool:
@@ -706,7 +761,7 @@ def _has_negation(text: str) -> bool:
         remaining = remaining.replace(phrase, "")
     if any(marker in remaining for marker in _NEGATION_MARKERS_CJK):
         return True
-    if any(phrase in remaining for phrase in _NEGATION_NO_PHRASES_CJK):
+    if _cjk_no_target_polarity(remaining) == "negated":
         return True
     # A bare/productive 未 (e.g. 未增长, 未实现) is a genuine negation.
     if "未" in remaining:
@@ -965,6 +1020,11 @@ def _judge_claim_text(
     # may scope over the figure just as it may scope over the direction word.
     # Without scope resolution every hedged pair falls through to AMBIGUOUS.
     if _uncertain_aspect_present(claim_text) or _uncertain_aspect_present(excerpt):
+        return "AMBIGUOUS"
+    if (
+        _cjk_no_target_polarity(claim_text) == "ambiguous"
+        or _cjk_no_target_polarity(excerpt) == "ambiguous"
+    ):
         return "AMBIGUOUS"
     if _direction_conflict(claim_text, excerpt) or _negation_conflict(
         claim_text, excerpt
