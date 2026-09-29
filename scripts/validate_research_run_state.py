@@ -1485,9 +1485,15 @@ def check_pack_run_state(pack_path: Path | str, cleaned: str | None = None) -> l
     pack_path = Path(pack_path)
     if cleaned is None:
         try:
-            cleaned = pack_path.read_text(encoding="utf-8")
+            raw = pack_path.read_text(encoding="utf-8")
         except (OSError, UnicodeError) as exc:
             return [f"cannot read Research Pack {pack_path}: {exc}"]
+        # Keep the default caller path aligned with load_declared_run_state:
+        # declarations inside fenced code or raw HTML are not visible Pack
+        # structure and must not create a phantom sidecar dependency.
+        from validate_contract import sanitize_visible_markdown
+
+        cleaned = sanitize_visible_markdown(raw)
     ref, sidecar, errors = resolve_declared_run_state_path(pack_path, cleaned)
     if errors:
         return errors

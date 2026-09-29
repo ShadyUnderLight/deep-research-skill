@@ -487,6 +487,58 @@ def test_pack_contract_route_match_passes(monkeypatch):
     pack.unlink(missing_ok=True)
 
 
+def test_validate_contract_research_pack_ignores_hidden_run_state(tmp_path):
+    """The CLI must not validate a Run State declaration inside a fence."""
+    from validate_contract import main as vc_main
+
+    report = tmp_path / "report.md"
+    report.write_text(
+        "# Test report\n\n"
+        "```contract\n"
+        f"{json.dumps(_constrained_choice_contract(artifact_id='pack-A'))}\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    pack = tmp_path / "pack.md"
+    pack.write_text(
+        "# Test Pack\n\n"
+        "## Primary route\nConstrained choice / shortlist\n\n"
+        "## Artifact id\npack-A\n\n"
+        "## Secondary disciplines\nnone\n\n"
+        "```markdown\n"
+        "## Run state\nrun_id: hidden\npath: missing.json\n"
+        "```\n",
+        encoding="utf-8",
+    )
+
+    assert vc_main([str(report), "--research-pack", str(pack), "--require-contract"]) == 0
+
+
+def test_validate_contract_research_pack_checks_visible_run_state(tmp_path):
+    """A visible Run State declaration must still fail when its sidecar is missing."""
+    from validate_contract import main as vc_main
+
+    report = tmp_path / "report.md"
+    report.write_text(
+        "# Test report\n\n"
+        "```contract\n"
+        f"{json.dumps(_constrained_choice_contract(artifact_id='pack-A'))}\n"
+        "```\n",
+        encoding="utf-8",
+    )
+    pack = tmp_path / "pack.md"
+    pack.write_text(
+        "# Test Pack\n\n"
+        "## Primary route\nConstrained choice / shortlist\n\n"
+        "## Artifact id\npack-A\n\n"
+        "## Secondary disciplines\nnone\n\n"
+        "## Run state\nrun_id: visible\npath: missing.json\n",
+        encoding="utf-8",
+    )
+
+    assert vc_main([str(report), "--research-pack", str(pack), "--require-contract"]) == 2
+
+
 def test_contract_embedded_in_report_extracted_ok():
     contract = build_contract()
     report = make_report(json.dumps(contract))
