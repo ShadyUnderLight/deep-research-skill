@@ -715,8 +715,10 @@ _NEGATION_NO_QUALIFIERS_CJK = frozenset(
     }
 )
 _NEGATION_NO_POSITIVE_PREFIXES_CJK = ("无限", "无风险")
-_NEGATION_NO_TARGET_RISK_PREFIXES_CJK = tuple(
-    f"无{target}风险" for target in _NEGATION_NO_TARGETS_CJK
+_NEGATION_NO_TARGET_RISK_RE = re.compile(
+    r"无(?P<modifier>[\u4e00-\u9fff]{0,8}?)(?P<target>"
+    + "|".join(re.escape(target) for target in _NEGATION_NO_TARGETS_CJK)
+    + r")(?:的)?风险"
 )
 _NEGATION_NO_TARGET_RE = re.compile(
     r"无(?P<modifier>[\u4e00-\u9fff]{0,8}?)(?P<target>"
@@ -732,15 +734,14 @@ def _cjk_no_target_polarity(text: str) -> str:
     for an unfamiliar modifier, and ``none`` when no such construction exists.
     Positive compounds such as ``无限增长`` and ``无风险增长`` are excluded,
     while ``无目标风险`` remains ambiguous because it does not support either
-    the target or its opposite direction.
+    the target or its opposite direction. Risk phrases support modifiers and
+    an optional ``的`` (for example, ``无显著增长风险`` and ``无下降的风险``).
     """
     ambiguous = False
+    risk_spans = [match.span() for match in _NEGATION_NO_TARGET_RISK_RE.finditer(text)]
     for match in _NEGATION_NO_TARGET_RE.finditer(text):
-        start = match.start()
-        if any(
-            text.startswith(prefix, start)
-            for prefix in _NEGATION_NO_TARGET_RISK_PREFIXES_CJK
-        ):
+        start, end = match.span()
+        if any(risk_start <= start and end <= risk_end for risk_start, risk_end in risk_spans):
             ambiguous = True
             continue
         if any(

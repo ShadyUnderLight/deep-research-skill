@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
@@ -530,6 +532,33 @@ class TestClaimAlignmentHeuristicFixes437:
             _judge_claim_text("营收增长", "营收无增长风险", None, "")
             == "AMBIGUOUS"
         )
+
+    @pytest.mark.parametrize(
+        ("claim_text", "excerpt"),
+        [
+            ("营收增长", "营收无显著增长风险"),
+            ("营收下降", "营收无下降的风险"),
+            ("营收下降", "营收无任何下降风险"),
+        ],
+    )
+    def test_qualified_target_risk_phrases_are_ambiguous_end_to_end(
+        self, claim_text: str, excerpt: str
+    ) -> None:
+        # The full entry path must treat qualified risk language as unknown;
+        # it is not evidence for either the target direction or its negation.
+        entry = {
+            "claim_id": "RISK",
+            "claim_text": claim_text,
+            "evidence_record": {
+                "claim_id": "RISK",
+                "source_id": "S01",
+                "locator": {"kind": "quote", "value": excerpt},
+                "retrieval_status": "fetched",
+                "evidence_role": "primary",
+            },
+            "excerpt": excerpt,
+        }
+        assert judge_entry(entry).verdict == "AMBIGUOUS"
 
     def test_unknown_cjk_no_modifier_is_ambiguous(self) -> None:
         # Unknown 无 + modifier + target constructions must not reach lexical
