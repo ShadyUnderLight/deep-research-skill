@@ -1149,7 +1149,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         print(f"Error: cannot read {path}: {exc}", file=sys.stderr)
         return 2
@@ -1196,7 +1196,7 @@ def main(argv: list[str] | None = None) -> int:
         pack_artifact_id = _extract_pack_artifact_id(args.research_pack)
         try:
             pack_text = Path(args.research_pack).read_text(
-                encoding="utf-8", errors="replace"
+                encoding="utf-8"
             )
             pack_activation_snapshot, activation_errors = (
                 extract_activation_snapshot_reference(
@@ -1327,7 +1327,7 @@ def _pack_h2_section_body(cleaned: str, heading: str) -> str | None:
 def validate_pack_sections(pack_path: str) -> list[str]:
     """Path wrapper for :func:`validate_pack_sections_text` (producer API)."""
     try:
-        text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
+        text = Path(pack_path).read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         return [f"cannot read pack {pack_path}: {exc}"]
     return [
@@ -1431,7 +1431,7 @@ def _resolve_pack_primary_route(pack_path: str) -> str | None:
         return None
 
     try:
-        text = pack.read_text(encoding="utf-8", errors="replace")
+        text = pack.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         print(f"Error: cannot read --research-pack {pack_path}: {exc}", file=sys.stderr)
         return None
@@ -2005,7 +2005,7 @@ def _extract_pack_artifact_id(pack_path: str) -> str | None:
     Returns None when the section is absent (single-side tracing → warning).
     Fenced declarations do not count (issue #378)."""
     try:
-        text = Path(pack_path).read_text(encoding="utf-8", errors="replace")
+        text = Path(pack_path).read_text(encoding="utf-8")
     except (OSError, UnicodeError):
         return None
     return extract_pack_artifact_id_text(_strip_fences(text))

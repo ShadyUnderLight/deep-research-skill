@@ -277,6 +277,21 @@ def test_forged_checklist_item_is_rejected() -> None:
     assert any("not found" in error for error in result.errors)
 
 
+def test_corrupt_checklist_utf8_returns_structured_error(tmp_path: Path) -> None:
+    sys.path.insert(0, str(ROOT / "scripts"))
+    from audit_evidence import validate_evidence_reference
+
+    checklist = tmp_path / "corrupt-checklist.md"
+    checklist.write_bytes(b"\xff")
+
+    result = validate_evidence_reference(
+        "checklist-item:corrupt-checklist.md#FA-001",
+        base_dir=tmp_path,
+    )
+    assert not result.is_valid
+    assert any("cannot read checklist file" in error for error in result.errors)
+
+
 def test_real_checklist_item_is_verified() -> None:
     sys.path.insert(0, str(ROOT / "scripts"))
     from audit_evidence import validate_evidence_reference
@@ -601,7 +616,7 @@ def _validate_auto_record(record: dict, *, base_dir: Path) -> object:
 def test_automated_audit_record_with_binding_and_source_passes(tmp_path: Path) -> None:
     """Positive: an automated audit-record that declares the registry binding
     and automated_validator source is accepted."""
-    record_path = _write_record(tmp_path, _automated_record())
+    _write_record(tmp_path, _automated_record())
     result = _validate_auto_record(_automated_record(), base_dir=tmp_path)
     assert result.is_valid, result.errors
     assert result.provenance and result.provenance["verified"] is True

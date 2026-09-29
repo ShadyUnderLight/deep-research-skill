@@ -25,7 +25,7 @@ DISCIPLINE_REGISTRY_PATH = ROOT / "schemas" / "discipline-registry.json"
 # Add scripts/ to path for validate_contract import
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from validate_contract import validate_contract, extract_contract_from_markdown
+from validate_contract import validate_contract  # noqa: E402
 
 
 def load_contract_schema():

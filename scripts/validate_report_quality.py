@@ -1429,7 +1429,7 @@ def check_source_register_reliability_crowdsourced(cleaned: str) -> list[str]:
 
 def validate_file(path: Path, strict: bool = False) -> int:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         print(f"{path}: cannot read file — {exc}")
         return EXIT_STRUCTURE

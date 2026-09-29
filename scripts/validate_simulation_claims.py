@@ -331,7 +331,7 @@ def format_info(claims: list[Claim], path: str) -> list[str]:
 
 def validate_file(path: Path) -> tuple[list[str], list[str]]:
     """Validate a single file. Returns (warnings, info)."""
-    text = path.read_text(encoding="utf-8", errors="replace")
+    text = path.read_text(encoding="utf-8")
     claims = scan_text(text)
     return format_warnings(claims, str(path)), format_info(claims, str(path))
 
@@ -358,7 +358,11 @@ def main(argv: list[str] | None = None) -> int:
         if not path.exists():
             errors.append(f"{path}: file not found")
             continue
-        w, i = validate_file(path)
+        try:
+            w, i = validate_file(path)
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{path}: cannot read file — {exc}")
+            continue
         all_warnings.extend(w)
         all_info.extend(i)
 

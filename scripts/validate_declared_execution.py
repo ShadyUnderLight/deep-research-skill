@@ -388,7 +388,7 @@ def check_academic_framework_execution(text: str, path: Path) -> list[str]:
 
 
 def validate_file(path: Path) -> tuple[list[str], list[str]]:
-    text = path.read_text(encoding="utf-8", errors="replace")
+    text = path.read_text(encoding="utf-8")
     cleaned = strip_fenced_code_blocks(text)
     errors: list[str] = []
     warnings: list[str] = []
@@ -414,7 +414,11 @@ def main(argv: list[str] | None = None) -> int:
         if not path.exists():
             errors.append(f"{path}: file not found")
             continue
-        e, w = validate_file(path)
+        try:
+            e, w = validate_file(path)
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{path}: cannot read file — {exc}")
+            continue
         errors.extend(e)
         warnings.extend(w)
 

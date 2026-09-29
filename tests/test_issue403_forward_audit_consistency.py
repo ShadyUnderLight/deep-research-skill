@@ -9,18 +9,18 @@ inconsistent — not silently aggregate a truncated/forged record to Pass.
 from __future__ import annotations
 
 import copy
+import subprocess
 import sys
 from pathlib import Path
 
-import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 if str(SCRIPTS) not in sys.path:
     sys.path.insert(0, str(SCRIPTS))
 
-import run_forward_evals
-from run_forward_evals import (
+import run_forward_evals  # noqa: E402
+from run_forward_evals import (  # noqa: E402
     _audits_ok,
     _evaluate_case,
     _expected_audit_set,
@@ -44,6 +44,21 @@ def _expected_for(case) -> list[str]:
     return _expected_audit_set(
         case["expected"]["primary_route"], case["expected"]["secondary_routes"]
     )
+
+
+def test_run_audit_timeout_returns_structured_execution_error(monkeypatch, tmp_path) -> None:
+    def _timeout(*args, **kwargs):
+        raise subprocess.TimeoutExpired(
+            cmd=args[0], timeout=run_forward_evals.AUDIT_SUBPROCESS_TIMEOUT_SECONDS
+        )
+
+    monkeypatch.setattr(run_forward_evals.subprocess, "run", _timeout)
+    data, error, returncode = run_forward_evals._run_audit(
+        tmp_path / "report.md", tmp_path / "pack.md"
+    )
+    assert data is None
+    assert returncode == 124
+    assert error and "timed out" in error
 
 
 # ── _expected_audit_set ──────────────────────────────────────────────────────

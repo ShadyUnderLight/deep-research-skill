@@ -228,6 +228,24 @@ def test_monitoring_valid_rows_pass(tmp_path: Path) -> None:
     assert not result.errors, result.errors
 
 
+def test_monitoring_unbordered_table_passes(tmp_path: Path) -> None:
+    """CommonMark tables may omit outer pipes; the actionability parser must
+    use structural separators rather than requiring a leading ``|``."""
+    table = (
+        "Signal | Threshold | Cadence | Source | Trigger-to-action\n"
+        "------ | --------- | ------- | ------ | -----------------\n"
+        "Margin | below 30% | weekly | S01 | cut production\n"
+        "Demand growth | below 5% | monthly | S02 | reduce headcount\n"
+        "PE ratio | above 40x | quarterly | S03 | take profit\n"
+    )
+    p = _write(
+        tmp_path,
+        "# Outlook\n\n## Monitoring\n\n" + table + _source_register(),
+    )
+    result = audit_report._run_market_outlook_monitoring_actionability(p, strict=True)
+    assert not result.errors, result.errors
+
+
 # ── D4: external citation hygiene as a delivery audit ────────────────────────
 
 

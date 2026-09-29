@@ -240,7 +240,7 @@ def test_d5_index_table_format():
     """D5: INDEX.md entry MUST maintain proper table format (10+ columns)."""
     content = read("evals/INDEX.md")
     filename = os.path.basename(EVAL_FILE)
-    table_lines = [l for l in content.split('\n') if filename in l]
+    table_lines = [line for line in content.split('\n') if filename in line]
     assert len(table_lines) >= 1, f"No table line found for {filename}"
     for line in table_lines:
         cols = line.split('|')
@@ -302,7 +302,7 @@ def test_p3_index_not_broken():
         elif in_table and not line.startswith('|'):
             in_table = False
     if table_lines:
-        counts = [len(l.split('|')) for l in table_lines]
+        counts = [len(line.split('|')) for line in table_lines]
         assert max(counts) == min(counts), f"Inconsistent INDEX.md table columns: {counts}"
 
 

@@ -179,7 +179,7 @@ def collect_signal_files(
         rel = path.relative_to(REPO).as_posix()
         if tests_only and not rel.startswith("scripts/test_"):
             continue
-        content = path.read_text(encoding="utf-8", errors="replace")
+        content = path.read_text(encoding="utf-8")
         if pattern.search(content):
             matches.add(rel)
     return matches
@@ -249,7 +249,7 @@ def check_signal_file_drift(
         if not full.exists():
             failures.append(f"{label} lists missing registered file: {path}")
             continue
-        content = full.read_text(encoding="utf-8", errors="replace")
+        content = full.read_text(encoding="utf-8")
         if not patterns[signal].search(content):
             failures.append(
                 f"Registered signal `{signal}` pattern missing from {path} ({label})"
@@ -492,7 +492,7 @@ def check_local_store_write_drift(registry: dict) -> list[str]:
 
         for path_signal in store.get("path_signals", []):
             for path in store.get("source_files", []):
-                content = (REPO / path).read_text(encoding="utf-8", errors="replace")
+                content = (REPO / path).read_text(encoding="utf-8")
                 if path_signal not in content:
                     failures.append(
                         f"Registry local store `{store_id}` path_signal `{path_signal}` "
@@ -588,8 +588,14 @@ def run_checks() -> list[str]:
 
     failures.extend(check_data_flow_component_tables(data_flows, registry))
 
-    failures.extend(check_network_signal_drift(registry))
-    failures.extend(check_local_store_write_drift(registry))
+    try:
+        failures.extend(check_network_signal_drift(registry))
+    except (OSError, UnicodeError) as exc:
+        failures.append(f"network signal scan cannot read a source file: {exc}")
+    try:
+        failures.extend(check_local_store_write_drift(registry))
+    except (OSError, UnicodeError) as exc:
+        failures.append(f"local-store write scan cannot read a source file: {exc}")
 
     for rel_path, desc, needle in CROSS_LINK_CHECKS:
         path = REPO / rel_path

@@ -596,7 +596,7 @@ def test_report_template_does_not_advertise_direct_checklist_item_as_strict_vali
     # It must NOT list checklist-item as a direct allowed Passed evidence without qualification
     # Extract the line that lists the allowed refs (starts with ✅ or contains report-section)
     lines = snippet.split("\n")
-    allowed_line = next((l for l in lines if "report-section" in l and "audit-record" in l), "")
+    allowed_line = next((line for line in lines if "report-section" in line and "audit-record" in line), "")
     assert allowed_line, "could not find allowed evidence line"
     assert "checklist-item" not in allowed_line, "direct checklist-item must not be listed as standalone Passed evidence"
     # Must contain the clarifying note that checklist-item is definition-only and must be via audit-record

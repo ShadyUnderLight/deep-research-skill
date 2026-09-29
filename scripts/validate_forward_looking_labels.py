@@ -92,7 +92,7 @@ def find_confirmed_forward_looking_numbers(text: str) -> list[tuple[int, str]]:
 
 
 def validate_file(path: Path) -> list[str]:
-    text = path.read_text(encoding="utf-8", errors="replace")
+    text = path.read_text(encoding="utf-8")
     hits = find_confirmed_forward_looking_numbers(text)
     return [
         f"{path}:{line_no}: forward-looking numeric claim uses confirmed label: {sentence}"
@@ -113,7 +113,10 @@ def main(argv: list[str] | None = None) -> int:
         if not path.exists():
             errors.append(f"{path}: file not found")
             continue
-        errors.extend(validate_file(path))
+        try:
+            errors.extend(validate_file(path))
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{path}: cannot read file — {exc}")
 
     if errors:
         print("Forward-looking label lint failed:")

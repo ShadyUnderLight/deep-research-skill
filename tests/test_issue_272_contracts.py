@@ -10,14 +10,13 @@ Expected BEFORE implementation: ALL FAIL
 Expected AFTER implementation:  ALL PASS
 """
 
-import re
 import sys
 import os
 
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, os.path.join(REPO_ROOT, 'scripts'))
 
-from validate_source_label_consistency import (
+from validate_source_label_consistency import (  # noqa: E402
     _normalize_source_type,
     _FREETEXT_TYPE_MAP,
     _FREETEXT_TYPE_MAP_CI,
@@ -185,7 +184,7 @@ def test_d6_mapping_table_has_min_rows():
     section_start = content.index("## Technical Chinese source type mapping")
     section = content[section_start:]
     # Count rows with Chinese source types (lines starting with | that contain non-ASCII)
-    rows = [l for l in section.split('\n') if l.startswith('|') and any(ord(c) > 127 for c in l)]
+    rows = [line for line in section.split('\n') if line.startswith('|') and any(ord(c) > 127 for c in line)]
     assert len(rows) >= 5, f"Mapping table has {len(rows)} Chinese rows, expected >=5"
 
 
@@ -267,7 +266,7 @@ def test_d7_index_table_format():
     """D7: INDEX.md entry MUST maintain proper table format (10+ columns)."""
     content = read("evals/INDEX.md")
     filename = os.path.basename(EVAL_FILE)
-    table_lines = [l for l in content.split('\n') if filename in l]
+    table_lines = [line for line in content.split('\n') if filename in line]
     assert len(table_lines) >= 1, f"No table line found for {filename}"
     for line in table_lines:
         cols = line.split('|')
@@ -275,13 +274,6 @@ def test_d7_index_table_format():
 
 
 # ── Property-based tests (hypothesis) ──────────────────────────────
-
-try:
-    from hypothesis import given, strategies as st
-    HAS_HYPOTHESIS = True
-except ImportError:
-    HAS_HYPOTHESIS = False
-
 
 def test_property_normalization_idempotent():
     """Property: Normalizing a freetext type twice gives same result."""
@@ -389,8 +381,8 @@ Referencing src-001 without caveat.
 
 # ── D8: Edge case tests ────────────────────────────────────────────
 
-import io
-import contextlib
+import io  # noqa: E402
+import contextlib  # noqa: E402
 
 
 def test_d8_exempt_chinese_types_clean():
@@ -481,7 +473,7 @@ Some text referencing src-001.
 def test_d8_normalize_accounting_for_whitespace():
     """D8: Chinese types with extra whitespace should still be normalized."""
     result = _normalize_source_type("  学术综述  ")
-    assert result == "SECONDARY_MEDIA", f"Whitespace-padded '学术综述' should map to SECONDARY_MEDIA"
+    assert result == "SECONDARY_MEDIA", "Whitespace-padded '学术综述' should map to SECONDARY_MEDIA"
 
 
 # ── Cross-file invariants ─────────────────────────────────────────
@@ -518,7 +510,7 @@ def test_p2_index_not_broken():
         elif in_table and not line.startswith('|'):
             in_table = False
     if table_lines:
-        counts = [len(l.split('|')) for l in table_lines]
+        counts = [len(line.split('|')) for line in table_lines]
         assert max(counts) == min(counts), f"Inconsistent INDEX.md table columns: {counts}"
 
 

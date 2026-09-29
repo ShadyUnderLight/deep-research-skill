@@ -482,7 +482,7 @@ def validate_figure_references(text: str) -> tuple[list[str], list[str]]:
 
 def validate_file(path: Path) -> int:
     try:
-        text = path.read_text(encoding="utf-8", errors="replace")
+        text = path.read_text(encoding="utf-8")
     except (OSError, UnicodeError) as exc:
         print(f"{path}: cannot read file — {exc}")
         return 2

@@ -578,7 +578,7 @@ def check_source_consistency(text: str, strict: bool = False) -> list[str]:
 
 def validate_file(path: Path, strict: bool = False) -> list[str]:
     """Validate all source label consistency rules in *path*."""
-    raw = path.read_text(encoding="utf-8", errors="replace")
+    raw = path.read_text(encoding="utf-8")
     return check_source_consistency(raw, strict=strict)
 
 
@@ -599,7 +599,10 @@ def main(argv: list[str] | None = None) -> int:
         if not path.exists():
             errors.append(f"{path}: file not found")
             continue
-        errors.extend(validate_file(path, strict=args.strict))
+        try:
+            errors.extend(validate_file(path, strict=args.strict))
+        except (OSError, UnicodeError) as exc:
+            errors.append(f"{path}: cannot read file — {exc}")
 
     if errors:
         print("Source label consistency lint failed:")

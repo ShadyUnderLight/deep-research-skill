@@ -379,7 +379,6 @@ def test_cli_malformed_registry_returns_structured_fixture_drift(tmp_path: Path)
 def test_forward_runner_records_audit_json_provenance() -> None:
     """The forward runner must consume schema_version and validators[] so CI
     reads structured fields instead of exit code / stdout only (#393)."""
-    import run_forward_evals
 
     case = load_registry()["cases"][0]
     result = _evaluate_case(case, 1)

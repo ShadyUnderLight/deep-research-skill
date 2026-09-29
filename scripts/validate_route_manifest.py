@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
 from pathlib import Path
 
 import registry_loader
@@ -676,7 +677,15 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     manifest_path = Path(args.manifest) if args.manifest else DEFAULT_MANIFEST
-    return validate(manifest_path)
+    try:
+        return validate(manifest_path)
+    except SystemExit as exc:
+        # Malformed or unreadable input is blocking drift, not a warning.
+        # Keep the loader's detailed diagnostic while honoring the documented
+        # CLI exit contract (0=ok, 1=warning, 2=blocking).
+        message = exc.code if isinstance(exc.code, str) else str(exc.code)
+        print(message, file=sys.stderr)
+        return EXIT_FAIL
 
 
 if __name__ == "__main__":

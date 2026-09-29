@@ -10,6 +10,7 @@ from pathlib import Path
 
 import pytest
 
+
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPTS = ROOT / "scripts"
 FIXTURES = ROOT / "tests" / "fixtures" / "claim-alignment"
@@ -491,6 +492,124 @@ class TestClaimAlignmentHeuristicFixes437:
     def test_genuine_cjk_negation_still_conflicts(self) -> None:
         assert _has_negation("收入没有增长")
         assert _negation_conflict("收入没有增长", "收入增长")
+
+    def test_later_bare_negation_is_not_hidden_by_future_phrase(self) -> None:
+        # The future-time phrase must not short-circuit a real negation later
+        # in the same claim.
+        assert _has_negation("未来收入未增长")
+        assert (
+            _judge_claim_text("未来收入未增长", "收入增长", None, "")
+            == "UNSUPPORTED"
+        )
+
+    def test_positive_cjk_words_are_not_broad_no_negations(self) -> None:
+        # 无 is productive in positive phrases such as 无限增长 and 无风险增长;
+        # only explicit no-X constructions are hard negations.
+        assert not _has_negation("无限增长")
+        assert not _has_negation("无风险增长")
+        assert _judge_claim_text("无限增长", "增长", None, "") == "SUPPORTED"
+
+    def test_qualified_cjk_no_phrase_is_a_negation(self) -> None:
+        # Review follow-up: the modifier between 无 and the target must not
+        # hide a definite negative such as 无显著增长.
+        assert _has_negation("营收无显著增长")
+        assert _has_negation("营收无明显的增长")
+        assert _negation_conflict("营收增长", "营收无显著增长")
+        assert (
+            _judge_claim_text("营收增长", "营收无显著增长", None, "")
+            == "UNSUPPORTED"
+        )
+
+    def test_target_risk_phrase_is_ambiguous_not_support(self) -> None:
+        # Review follow-up: 无下降风险 is about the risk of a decline, not
+        # evidence that revenue declined. It must not pass on word overlap.
+        assert not _has_negation("营收无下降风险")
+        assert (
+            _judge_claim_text("营收下降", "营收无下降风险", None, "")
+            == "AMBIGUOUS"
+        )
+        assert (
+            _judge_claim_text("营收增长", "营收无增长风险", None, "")
+            == "AMBIGUOUS"
+        )
+        assert (
+            _judge_claim_text("市场萎缩", "市场无萎缩风险", None, "")
+            == "AMBIGUOUS"
+        )
+
+    @pytest.mark.parametrize(
+        "direction",
+        [
+            "增长",
+            "增加",
+            "上涨",
+            "提高",
+            "上升",
+            "回升",
+            "下降",
+            "减少",
+            "下跌",
+            "降低",
+            "萎缩",
+            "回落",
+            "下滑",
+        ],
+    )
+    def test_all_cjk_no_direction_phrases_are_unsupported_end_to_end(
+        self, direction: str
+    ) -> None:
+        # Every supported Chinese direction word must treat 无 + direction as
+        # a contradiction, not as lexical support for the same trend.
+        excerpt = f"市场无{direction}"
+        entry = {
+            "claim_id": "CJK-NO-DIRECTION",
+            "claim_text": f"市场{direction}",
+            "evidence_record": {
+                "claim_id": "CJK-NO-DIRECTION",
+                "source_id": "S01",
+                "locator": {"kind": "quote", "value": excerpt},
+                "retrieval_status": "fetched",
+                "evidence_role": "primary",
+            },
+            "excerpt": excerpt,
+        }
+        assert judge_entry(entry).verdict == "UNSUPPORTED"
+
+    @pytest.mark.parametrize(
+        ("claim_text", "excerpt"),
+        [
+            ("营收增长", "营收无显著增长风险"),
+            ("营收下降", "营收无下降的风险"),
+            ("营收下降", "营收无任何下降风险"),
+        ],
+    )
+    def test_qualified_target_risk_phrases_are_ambiguous_end_to_end(
+        self, claim_text: str, excerpt: str
+    ) -> None:
+        # The full entry path must treat qualified risk language as unknown;
+        # it is not evidence for either the target direction or its negation.
+        entry = {
+            "claim_id": "RISK",
+            "claim_text": claim_text,
+            "evidence_record": {
+                "claim_id": "RISK",
+                "source_id": "S01",
+                "locator": {"kind": "quote", "value": excerpt},
+                "retrieval_status": "fetched",
+                "evidence_role": "primary",
+            },
+            "excerpt": excerpt,
+        }
+        assert judge_entry(entry).verdict == "AMBIGUOUS"
+
+    def test_unknown_cjk_no_modifier_is_ambiguous(self) -> None:
+        # Unknown 无 + modifier + target constructions must not reach lexical
+        # SUPPORTED when their polarity cannot be established safely.
+        assert not _has_negation("营收无法解释增长")
+        assert (
+            _judge_claim_text("营收增长", "营收无法解释增长", None, "")
+            == "AMBIGUOUS"
+        )
 
     def test_uncertain_cjk_markers_are_not_hard_negation(self) -> None:
         # 未来/未來 (future), 未必 (not necessarily) and 尚未 (not yet) are

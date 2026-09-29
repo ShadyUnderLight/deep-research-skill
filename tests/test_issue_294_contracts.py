@@ -157,7 +157,7 @@ def test_c2_new_entries_have_expected_metadata():
     content = read("evals/INDEX.md")
     for fn in [os.path.basename(f) for f in NEW_CASE_FILES]:
         # Find the row
-        lines = [l for l in content.split("\n") if fn in l]
+        lines = [line for line in content.split("\n") if fn in line]
         assert len(lines) >= 1, f"No INDEX.md row found containing {fn}"
         for line in lines:
             # Check primary route

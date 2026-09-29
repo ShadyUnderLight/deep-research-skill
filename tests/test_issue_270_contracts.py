@@ -86,8 +86,8 @@ def test_d2_has_benchmark_checks():
     # Count benchmark-related checkboxes (benchmark, latency, cost, performance table)
     bench_terms = ['benchmark', 'latency', 'cost', 'performance table']
     bench_checks = [
-        l for l in evid_section.split('\n')
-        if '- [' in l and any(t in l.lower() for t in bench_terms)
+        line for line in evid_section.split('\n')
+        if '- [' in line and any(t in line.lower() for t in bench_terms)
     ]
     assert len(bench_checks) >= 4, f"Evidence quality has {len(bench_checks)} benchmark-related checks, expected >=4"
 
@@ -99,7 +99,7 @@ def test_d2_checkboxes_actionable():
     remaining = content[evid_start:]
     next_section = re.search(r'^##\s+', remaining, re.MULTILINE)
     evid_section = remaining[:next_section.start()] if next_section else remaining
-    bench_checks = [l for l in evid_section.split('\n') if 'benchmark' in l.lower() and '- [' in l]
+    bench_checks = [line for line in evid_section.split('\n') if 'benchmark' in line.lower() and '- [' in line]
     # Each should mention at least: workload OR metric OR dataset OR scope OR cross-source OR comparability
     keywords = ['workload', 'metric', 'dataset', 'scope', 'cross-source', 'comparability',
                 'end-to-end', 'latency', 'cost', 'role', 'methodology', 'environment']
@@ -159,7 +159,7 @@ def test_d3_mentions_disclosure_fields():
 def test_d3_equipment_rules_untouched():
     """D3: Equipment-selection rules remain intact."""
     content = read("checklists/final-audit.md")
-    equip_items = [l for l in content.split('\n') if 'equipment-selection' in l.lower() and '- [' in l]
+    equip_items = [line for line in content.split('\n') if 'equipment-selection' in line.lower() and '- [' in line]
     # Count them - should not decrease
     assert len(equip_items) >= 1, "All equipment-selection rules appear to be removed!"
 
@@ -211,7 +211,7 @@ def test_d4_index_table_format():
     content = read("evals/INDEX.md")
     # Find lines with the new case
     filename = os.path.basename(EVAL_FILE)
-    table_lines = [l for l in content.split('\n') if filename in l]
+    table_lines = [line for line in content.split('\n') if filename in line]
     assert len(table_lines) >= 1, f"No table line found for {filename}"
     for line in table_lines:
         cols = line.split('|')
@@ -274,7 +274,7 @@ def test_p2_index_not_broken():
             in_table = False
     # All table lines should have consistent column count
     if table_lines:
-        counts = [len(l.split('|')) for l in table_lines]
+        counts = [len(line.split('|')) for line in table_lines]
         assert max(counts) == min(counts), f"Inconsistent INDEX.md table columns: {counts}"
 
 

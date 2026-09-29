@@ -240,13 +240,13 @@ def test_c4_recall_check_mentions_decision_scope():
     content = read(FINAL_AUDIT)
     recall_section = section_after(content, "Recall discipline")
     assert recall_section is not None, "Recall discipline section not found"
-    lines = [l for l in recall_section.split('\n') if 'constraine' in l or 'constrained' in l]
+    lines = [line for line in recall_section.split('\n') if 'constraine' in line or 'constrained' in line]
     assert len(lines) >= 1, "No constrained-choice line found in recall"
     any_mentions_scope = any(
-        re.search(r'[Dd]ecision [Ss]cope', l) for l in lines
+        re.search(r'[Dd]ecision [Ss]cope', line) for line in lines
     )
     assert any_mentions_scope, \
-        f"No constrained-choice recall line mentions decision scope or scope"
+        "No constrained-choice recall line mentions decision scope or scope"
 
 
 def test_c4_existing_sections_preserved():
@@ -347,12 +347,6 @@ def test_c6_all_tests_importable():
 
 
 # ── Property-based tests (hypothesis) ──────────────────────────────
-
-try:
-    from hypothesis import given, strategies as st
-    HAS_HYPOTHESIS = True
-except ImportError:
-    HAS_HYPOTHESIS = False
 
 def test_property_decision_scope_fields_in_template():
     """Property: Every required decision scope field appears as a bullet in the template."""

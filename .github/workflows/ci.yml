@@ -85,14 +85,13 @@ jobs:
         with:
           python-version: "3.12"
       - run: pip install -r requirements.lock
-      - run: python3 -m py_compile scripts/*.py
-      # Issue #438 F4: Ruff is a CI gate on production + script-test code.
-      # Production code may not introduce new warnings; test code is tightened
-      # in stages but the whole `scripts/` tree must stay clean.
+      - run: python3 -m py_compile scripts/*.py tests/*.py
+      # Issue #438 F4: Ruff covers production and test code so test-only
+      # quality debt cannot silently accumulate outside the primary gate.
       - name: Ruff lint
         run: |
           pip install ruff==0.15.15
-          ruff check scripts
+          ruff check scripts tests
       - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md
       - run: python3 scripts/validate_research_pack.py examples/research-pack-example.md --strict
       - run: python3 scripts/test_validator_regression.py
