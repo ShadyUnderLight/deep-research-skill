@@ -518,6 +518,19 @@ class TestClaimAlignmentHeuristicFixes437:
             == "UNSUPPORTED"
         )
 
+    def test_target_risk_phrase_is_ambiguous_not_support(self) -> None:
+        # Review follow-up: 无下降风险 is about the risk of a decline, not
+        # evidence that revenue declined. It must not pass on word overlap.
+        assert not _has_negation("营收无下降风险")
+        assert (
+            _judge_claim_text("营收下降", "营收无下降风险", None, "")
+            == "AMBIGUOUS"
+        )
+        assert (
+            _judge_claim_text("营收增长", "营收无增长风险", None, "")
+            == "AMBIGUOUS"
+        )
+
     def test_unknown_cjk_no_modifier_is_ambiguous(self) -> None:
         # Unknown 无 + modifier + target constructions must not reach lexical
         # SUPPORTED when their polarity cannot be established safely.

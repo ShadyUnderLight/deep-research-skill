@@ -1142,6 +1142,18 @@ def test_status_parser_accepts_unbordered_markdown_table(tmp_path: Path) -> None
     assert statuses["market-outlook-audit"]["status"] == "pass"
 
 
+def test_status_parser_accepts_chinese_header_labels(tmp_path: Path) -> None:
+    report = _write(
+        "## Route and audit status\n\n"
+        "审计 | 状态 | 证据\n"
+        "---- | ---- | ----\n"
+        "market-outlook-audit | ✅ Passed | report-section:Findings\n"
+    )
+    statuses, malformed = audit_report._parse_audit_block_statuses(report)
+    assert malformed == []
+    assert statuses["market-outlook-audit"]["status"] == "pass"
+
+
 def test_status_parser_rejects_missing_separator_row(tmp_path: Path) -> None:
     report = _write(
         "## Route and audit status\n\n"
@@ -1178,6 +1190,34 @@ def test_status_parser_rejects_mismatched_data_row_width(tmp_path: Path) -> None
     statuses, malformed = audit_report._parse_audit_block_statuses(report)
     assert statuses == {}
     assert any("column count" in error.lower() for error in malformed), malformed
+
+
+def test_status_parser_rejects_noncanonical_header_labels(tmp_path: Path) -> None:
+    report = _write(
+        "## Route and audit status\n\n"
+        "指标 | 结果 | 说明\n"
+        "---- | ---- | ----\n"
+        "academic-analysis-audit | ✅ Passed | report-section:Findings\n"
+    )
+    statuses, malformed = audit_report._parse_audit_block_statuses(report)
+    assert statuses == {}
+    assert any("invalid column" in error.lower() for error in malformed), malformed
+
+
+def test_noncanonical_status_header_cannot_yield_pass(tmp_path: Path) -> None:
+    route_block = (
+        "## Route and audit status\n\n"
+        "**Primary route**: Market Outlook\n\n"
+        "指标 | 结果 | 说明\n"
+        "---- | ---- | ----\n"
+        "market-outlook-audit | ✅ Passed | report-section:Monitoring signals\n"
+    )
+    report = _write(_report(route_block=route_block, contract=_contract()))
+    result = _run_audit(report, extra_args=["--json"])
+    data = json.loads(result.stdout)
+    assert result.returncode == 2, data
+    assert data["overall"] == "fail", data
+    assert any("invalid column" in error.lower() for error in data["blocking"]), data
 
 
 class TestSelfAssessmentCannotOverride:

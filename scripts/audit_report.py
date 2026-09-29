@@ -1330,6 +1330,40 @@ def _load_delivery_result(
     return (payload, []) if not errors else (None, errors)
 
 
+_AUDIT_STATUS_HEADER_LABELS = frozenset(
+    {"audit", "audit id", "审计", "审计项", "审计项目"}
+)
+_STATUS_HEADER_LABELS = frozenset({"status", "状态", "审计状态"})
+_EVIDENCE_HEADER_LABELS = frozenset({"evidence", "证据", "依据"})
+
+
+def _normalize_status_header_cell(cell: str) -> str:
+    return re.sub(r"[\s_]+", " ", cell.strip().casefold())
+
+
+def _validate_audit_status_header(header_cells: list[str]) -> str | None:
+    """Validate the semantic labels of the status table's first columns."""
+    if len(header_cells) < 3:
+        return (
+            "Route and audit status table must contain Audit, Status and "
+            "Evidence columns"
+        )
+    normalized = [_normalize_status_header_cell(cell) for cell in header_cells[:3]]
+    expected = (
+        _AUDIT_STATUS_HEADER_LABELS,
+        _STATUS_HEADER_LABELS,
+        _EVIDENCE_HEADER_LABELS,
+    )
+    for index, (value, accepted) in enumerate(zip(normalized, expected, strict=True), 1):
+        if value not in accepted:
+            return (
+                "Route and audit status table has invalid column "
+                f"{index} label {header_cells[index - 1]!r}; expected "
+                "Audit, Status, Evidence labels"
+            )
+    return None
+
+
 def _parse_audit_block_statuses(path: Path) -> tuple[dict[str, dict[str, str]], list[str]]:
     """Parse the report's Route and audit status tables.
 
@@ -1402,10 +1436,9 @@ def _parse_audit_block_statuses(path: Path) -> tuple[dict[str, dict[str, str]], 
 
     header_cells = split_markdown_row(header_line)
     separator_cells = split_markdown_row(body_lines[separator_index].strip())
-    if len(header_cells) < 2:
-        return {}, [
-            "Route and audit status table must contain at least two columns"
-        ]
+    header_error = _validate_audit_status_header(header_cells)
+    if header_error:
+        return {}, [header_error]
     if len(separator_cells) != len(header_cells):
         return {}, [
             "Route and audit status table separator column count does not "

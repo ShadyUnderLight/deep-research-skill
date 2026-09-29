@@ -714,14 +714,9 @@ _NEGATION_NO_QUALIFIERS_CJK = frozenset(
         "统计意义",
     }
 )
-_NEGATION_NO_POSITIVE_PREFIXES_CJK = (
-    "无限",
-    "无风险",
-    "无增长风险",
-    "无上升风险",
-    "无下降风险",
-    "无变化风险",
-    "无改善风险",
+_NEGATION_NO_POSITIVE_PREFIXES_CJK = ("无限", "无风险")
+_NEGATION_NO_TARGET_RISK_PREFIXES_CJK = tuple(
+    f"无{target}风险" for target in _NEGATION_NO_TARGETS_CJK
 )
 _NEGATION_NO_TARGET_RE = re.compile(
     r"无(?P<modifier>[\u4e00-\u9fff]{0,8}?)(?P<target>"
@@ -735,11 +730,19 @@ def _cjk_no_target_polarity(text: str) -> str:
 
     Returns ``negated`` for an explicit no-target construction, ``ambiguous``
     for an unfamiliar modifier, and ``none`` when no such construction exists.
-    Positive compounds such as ``无限增长`` and ``无风险增长`` are excluded.
+    Positive compounds such as ``无限增长`` and ``无风险增长`` are excluded,
+    while ``无目标风险`` remains ambiguous because it does not support either
+    the target or its opposite direction.
     """
     ambiguous = False
     for match in _NEGATION_NO_TARGET_RE.finditer(text):
         start = match.start()
+        if any(
+            text.startswith(prefix, start)
+            for prefix in _NEGATION_NO_TARGET_RISK_PREFIXES_CJK
+        ):
+            ambiguous = True
+            continue
         if any(
             text.startswith(prefix, start)
             for prefix in _NEGATION_NO_POSITIVE_PREFIXES_CJK
