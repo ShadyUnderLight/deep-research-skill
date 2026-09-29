@@ -243,7 +243,7 @@ def find_empty_sections(cleaned: str) -> list[str]:
             else len(lines)
         )
         body = lines[line_num + 1 : next_line]
-        body_no_heading = [l for l in body if not re.match(r"^#{1,6}\s", l)]
+        body_no_heading = [line for line in body if not re.match(r"^#{1,6}\s", line)]
         body_text = "\n".join(body_no_heading).strip()
         if not body_text:
             empty.append(heading_text)
@@ -1048,7 +1048,11 @@ def main() -> int:
     args = parser.parse_args()
 
     path = Path(args.path)
-    text = path.read_text(encoding="utf-8")
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (FileNotFoundError, OSError, UnicodeError) as exc:
+        print(f"error: cannot read research pack '{path}': {exc}")
+        return EXIT_USAGE
     cleaned = strip_fenced_code_blocks(text)
 
     missing = find_missing_headings(cleaned)

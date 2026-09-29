@@ -34,7 +34,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from datetime import date, datetime
 from pathlib import Path
 
@@ -1468,7 +1467,7 @@ def resolve_declared_run_state_path(
     if cleaned is None:
         try:
             cleaned = pack_path.read_text(encoding="utf-8")
-        except OSError as exc:
+        except (OSError, UnicodeError) as exc:
             return None, None, [f"cannot read Research Pack {pack_path}: {exc}"]
     ref, errors = parse_pack_run_state_section(cleaned)
     if errors:
@@ -1517,22 +1516,45 @@ def check_pack_run_state(pack_path: Path | str, cleaned: str | None = None) -> l
     return errors
 
 
+class RunStateDeclarationError(ValueError):
+    """Pack declares a Run State that is present but cannot be verified.
+
+    Distinct from "the Pack declares no Run State at all": callers must record
+    this as an explicit problem, never treat it as the absence of a declaration
+    (issue #438 review). Mirrors ``activation_snapshot.ActivationSnapshotError``.
+    """
+
+
 def load_declared_run_state(pack_path: Path | str) -> dict | None:
-    """读取 Pack 声明的 Run State 快照；缺节或无法解析时返回 None。"""
+    """读取 Pack 声明的 Run State 快照。
+
+    仅在 Pack **确实没有** ``## Run state`` 节时返回 None。
+
+    任何「有声明但无法验证」的情形都抛 RunStateDeclarationError，而不是折叠
+    成 None —— 否则「声明损坏/无法读取」与「没有声明」不可区分，调用方会沿
+    用「无状态」分支而静默跳过 delivery guard（issue #438 review）。包括：
+      - Pack 本体读取失败（OSError/UnicodeError，直接向上抛）
+      - ``## Run state`` 节重复 / 为空 / 缺 run_id 或 path
+      - sidecar 缺失、不可读、非 JSON、schema 校验失败
+    """
     pack_path = Path(pack_path)
-    try:
-        cleaned = pack_path.read_text(encoding="utf-8")
-    except OSError:
-        return None
+    cleaned = pack_path.read_text(encoding="utf-8")
     ref, errors = parse_pack_run_state_section(cleaned)
-    if errors or ref is None:
-        return None
+    if errors:
+        raise RunStateDeclarationError(
+            f"{pack_path}: invalid Run State declaration: {'; '.join(errors)}"
+        )
+    if ref is None:
+        return None  # 确实没有 ## Run state 节
     sidecar = Path(ref["path"])
     if not sidecar.is_absolute():
         sidecar = pack_path.parent / sidecar
     state, load_errors = load_run_state_file(sidecar)
     if load_errors or state is None:
-        return None
+        detail = "; ".join(load_errors) or f"{sidecar}: unreadable run state"
+        raise RunStateDeclarationError(
+            f"{pack_path}: declared Run State cannot be verified: {detail}"
+        )
     return state
 
 

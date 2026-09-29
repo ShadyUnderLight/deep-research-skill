@@ -17,7 +17,6 @@ Expected: ALL PASS
 
 from __future__ import annotations
 
-import re
 import sys
 import os
 from pathlib import Path
@@ -35,6 +34,7 @@ try:
         core_validate,
         extract_issue_paths,
         ValidationFinding,
+        EXIT_UNAVAILABLE,
     )
 except ImportError:
     # In RED phase before implementation exists, define stubs so tests
@@ -495,6 +495,298 @@ def test_c7_asymmetric_none_does_not_crash():
         assert isinstance(findings, list)
     except Exception as e:
         assert False, f"Asymmetric None crashed: {e}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# C8: REMOTE UNAVAILABLE SEMANTICS (issue #438 F3)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _run_cli_with_fake_gh_unavailable(allow_unavailable: bool) -> int:
+    """Run the CLI with a fake `gh` that always exits 1 (unavailable)."""
+    import subprocess as _sp
+    import tempfile as _tf
+    import stat as _st
+    with _tf.TemporaryDirectory() as d:
+        fake_gh = Path(d) / "gh"
+        fake_gh.write_text("#!/bin/sh\nexit 1\n")
+        fake_gh.chmod(fake_gh.stat().st_mode | _st.S_IEXEC)
+        env = dict(os.environ)
+        env["PATH"] = f"{d}:{env.get('PATH', '')}"
+        cmd = [
+            sys.executable,
+            str(_SCRIPT_DIR / "validate_issue_pr_acceptance.py"),
+            "1", "2",
+        ]
+        if allow_unavailable:
+            cmd.append("--allow-unavailable")
+        result = _sp.run(cmd, capture_output=True, text=True, env=env, timeout=30)
+        return result.returncode
+
+
+def test_c8_unavailable_returns_unavailable():
+    """C8: gh unavailable MUST return EXIT_UNAVAILABLE (non-zero)."""
+    rc = _run_cli_with_fake_gh_unavailable(allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}), got {rc}"
+    )
+
+
+def test_c8_allow_unavailable_returns_zero():
+    """C8: --allow-unavailable downgrades unavailable to exit 0."""
+    rc = _run_cli_with_fake_gh_unavailable(allow_unavailable=True)
+    assert rc == 0, f"Expected 0 with --allow-unavailable, got {rc}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# C9: PARTIAL FETCH FAILURE MUST NOT REPORT PASS (issue #438 P1)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _run_cli_with_fake_gh(fail_request: str, allow_unavailable: bool) -> int:
+    """Run the CLI with a fake `gh` that passes auth but can fail one data request.
+
+    fail_request selects the scenario:
+      "none"      — everything succeeds; the PR is treated as *not merged*
+      "issue"     — `gh issue view` fails
+      "files"     — `gh pr view --json files` fails
+      "merge"     — `gh pr view --json mergeCommit` fails
+      "revparse"  — mergeCommit returns an oid git cannot resolve
+      "unmerged"  — mergeCommit is empty (PR not merged, by design)
+
+    `gh auth status` always succeeds, so `_check_gh_available()` passes and
+    execution reaches the fetch stage — unlike C8, which fails at the auth
+    stage and never exercises the fetch functions.
+    """
+    import subprocess as _sp
+    import tempfile as _tf
+    import stat as _st
+    script = """#!/bin/sh
+case "$1" in
+  auth)
+    exit 0
+    ;;
+  issue)
+    if [ "${FAIL_GH_REQUEST}" = "issue" ] || [ "${FAIL_GH_REQUEST}" = "both" ]; then
+      exit 1
+    fi
+    echo '## Acceptance'
+    echo '- [ ] `scripts/validate_issue_pr_acceptance.py`'
+    exit 0
+    ;;
+  pr)
+    case "$*" in
+      *mergeCommit*)
+        if [ "${FAIL_GH_REQUEST}" = "merge" ]; then
+          exit 1
+        fi
+        if [ "${FAIL_GH_REQUEST}" = "revparse" ]; then
+          echo '0000000000000000000000000000000000000000'
+          exit 0
+        fi
+        exit 0
+        ;;
+    esac
+    if [ "${FAIL_GH_REQUEST}" = "files" ] || [ "${FAIL_GH_REQUEST}" = "both" ]; then
+      exit 1
+    fi
+    echo 'scripts/validate_issue_pr_acceptance.py'
+    exit 0
+    ;;
+  *)
+    exit 1
+    ;;
+esac
+"""
+    with _tf.TemporaryDirectory() as d:
+        fake_gh = Path(d) / "gh"
+        fake_gh.write_text(script)
+        fake_gh.chmod(fake_gh.stat().st_mode | _st.S_IEXEC)
+        env = dict(os.environ)
+        env["PATH"] = f"{d}:{env.get('PATH', '')}"
+        env["FAIL_GH_REQUEST"] = fail_request
+        cmd = [
+            sys.executable,
+            str(_SCRIPT_DIR / "validate_issue_pr_acceptance.py"),
+            "1", "2",
+        ]
+        if allow_unavailable:
+            cmd.append("--allow-unavailable")
+        result = _sp.run(cmd, capture_output=True, text=True, env=env, timeout=30)
+        return result.returncode
+
+
+def test_c9_issue_fetch_fails_returns_unavailable():
+    """C9 (P1): issue fetch fails (auth OK) MUST NOT be reported as pass."""
+    rc = _run_cli_with_fake_gh("issue", allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}) when issue fetch "
+        f"fails, got {rc}"
+    )
+
+
+def test_c9_files_fetch_fails_returns_unavailable():
+    """C9 (P1): PR files fetch fails (auth OK) MUST NOT be reported as pass."""
+    rc = _run_cli_with_fake_gh("files", allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}) when PR files fetch "
+        f"fails, got {rc}"
+    )
+
+
+def test_c9_issue_fetch_fails_allow_unavailable_zero():
+    """C9 (P1): --allow-unavailable downgrades a fetch failure to exit 0."""
+    rc = _run_cli_with_fake_gh("issue", allow_unavailable=True)
+    assert rc == 0, f"Expected 0 with --allow-unavailable, got {rc}"
+
+
+def test_c9_all_fetches_ok_passes():
+    """C9 (P1): both fetches succeed and the path is present → exit 0."""
+    rc = _run_cli_with_fake_gh("none", allow_unavailable=False)
+    assert rc == 0, f"Expected PASS (0) when fetches succeed, got {rc}"
+
+
+def test_c9_merge_state_fetch_fails_returns_unavailable():
+    """C9 (P1): mergeCommit fetch fails (auth OK) MUST NOT report pass."""
+    rc = _run_cli_with_fake_gh("merge", allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}) when merge state "
+        f"cannot be fetched, got {rc}"
+    )
+
+
+def test_c9_merge_tree_revparse_fails_returns_unavailable():
+    """C9 (P1): merged PR whose tree SHAs cannot be resolved MUST be unavailable."""
+    rc = _run_cli_with_fake_gh("revparse", allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}) when merge tree "
+        f"cannot be resolved, got {rc}"
+    )
+
+
+def test_c9_unmerged_pr_skips_tree_check_and_passes():
+    """C9 (P1): an explicitly unmerged PR skips NO_OP_MERGE by design → pass."""
+    rc = _run_cli_with_fake_gh("unmerged", allow_unavailable=False)
+    assert rc == 0, f"Expected PASS (0) for an unmerged PR, got {rc}"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# C10: SUBPROCESS LAUNCH FAILURES MUST NOT LEAK A TRACEBACK (issue #438 P2)
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _run_cli_with_gh_launch_denied(allow_unavailable: bool) -> tuple[int, str]:
+    """Run the CLI with a `gh` that exists but cannot be executed.
+
+    PATH is set to *only* a temp dir holding a non-executable `gh`, so launching
+    it raises ``PermissionError`` (an ``OSError``). With no fallback PATH entry,
+    execvp cannot find the real gh elsewhere — making the launch failure
+    deterministic (a non-executable file alone would fall through to PATH).
+    """
+    import subprocess as _sp
+    import tempfile as _tf
+    with _tf.TemporaryDirectory() as d:
+        fake_gh = Path(d) / "gh"
+        fake_gh.write_text("#!/bin/sh\nexit 0\n")
+        fake_gh.chmod(0o644)  # exists but is NOT executable
+        env = dict(os.environ)
+        env["PATH"] = d  # only the temp dir — no fallback gh
+        cmd = [
+            sys.executable,
+            str(_SCRIPT_DIR / "validate_issue_pr_acceptance.py"),
+            "1", "2",
+        ]
+        if allow_unavailable:
+            cmd.append("--allow-unavailable")
+        result = _sp.run(cmd, capture_output=True, text=True, env=env, timeout=30)
+        return result.returncode, result.stderr
+
+
+def test_c10_gh_launch_denied_returns_unavailable():
+    """C10 (P2): an OSError launching gh → EXIT_UNAVAILABLE, not a traceback."""
+    rc, err = _run_cli_with_gh_launch_denied(allow_unavailable=False)
+    assert rc == EXIT_UNAVAILABLE, (
+        f"Expected EXIT_UNAVAILABLE ({EXIT_UNAVAILABLE}) when gh cannot be "
+        f"launched, got {rc}; stderr={err}"
+    )
+    assert "Traceback" not in err, f"unexpected traceback:\n{err}"
+
+
+def test_c10_gh_launch_denied_allow_unavailable_zero():
+    """C10 (P2): --allow-unavailable downgrades a launch failure to exit 0."""
+    rc, err = _run_cli_with_gh_launch_denied(allow_unavailable=True)
+    assert rc == 0, f"Expected 0 with --allow-unavailable, got {rc}; stderr={err}"
+
+
+def test_c10_check_gh_available_false_on_launch_oserror():
+    """C10 (P2): _check_gh_available maps a launch OSError to False."""
+    from unittest import mock
+
+    import validate_issue_pr_acceptance as m
+
+    with mock.patch.object(
+        m.subprocess, "run", side_effect=PermissionError("denied")
+    ):
+        assert m._check_gh_available() is False
+
+
+def test_c10_gh_run_maps_launch_oserror_to_runtime_error():
+    """C10 (P2): _gh_run turns a launch OSError into RuntimeError."""
+    from unittest import mock
+
+    import validate_issue_pr_acceptance as m
+
+    with mock.patch.object(
+        m.subprocess, "run", side_effect=PermissionError("denied")
+    ):
+        try:
+            m._gh_run(["issue", "view", "1"])
+        except RuntimeError as e:
+            assert "gh" in str(e), e
+        else:
+            assert False, "expected RuntimeError from a launch failure"
+
+
+def test_c10_fetch_issue_body_maps_launch_oserror_to_fetch_error():
+    """C10 (P2): fetch_issue_body surfaces a launch OSError as FetchError."""
+    from unittest import mock
+
+    import validate_issue_pr_acceptance as m
+
+    with mock.patch.object(
+        m.subprocess, "run", side_effect=PermissionError("denied")
+    ):
+        try:
+            m.fetch_issue_body(1)
+        except m.FetchError:
+            pass
+        else:
+            assert False, "expected FetchError from a launch failure"
+
+
+def test_c10_fetch_pr_tree_shas_maps_launch_oserror_to_fetch_error():
+    """C10 (P2): a launch OSError while resolving git trees becomes FetchError."""
+    from unittest import mock
+
+    import validate_issue_pr_acceptance as m
+
+    calls = {"n": 0}
+
+    def _run(cmd, *a, **k):
+        calls["n"] += 1
+        if calls["n"] == 1:
+            # gh pr view --json mergeCommit → a merged PR oid (parseable).
+            class _R:
+                returncode = 0
+                stdout = "deadbeef\n"
+                stderr = ""
+            return _R()
+        raise PermissionError("denied")  # git rev-parse cannot be launched
+
+    with mock.patch.object(m.subprocess, "run", side_effect=_run):
+        try:
+            m.fetch_pr_tree_shas(444)
+        except m.FetchError:
+            pass
+        else:
+            assert False, "expected FetchError when git cannot be launched"
 
 
 # ═══════════════════════════════════════════════════════════════════════════

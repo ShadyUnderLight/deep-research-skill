@@ -7,7 +7,6 @@ import re
 
 import markdown
 
-from .normalization import normalize_text_for_pdf
 from .sanitizer import sanitize_html
 from .table_repair import repair_markdown_tables
 from .tables import maybe_wrap_wide_tables_in_html

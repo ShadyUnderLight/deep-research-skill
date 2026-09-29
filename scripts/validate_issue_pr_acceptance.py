@@ -14,9 +14,11 @@ Requires:
   - git (for tree SHA comparison)
 
 Exit codes:
-    0 = all checks pass (or gh unavailable — advisory only)
+    0 = all checks pass
     1 = warnings only
     2 = one or more blocking errors
+    3 = remote dependency (gh) unavailable or data could not be fetched
+        (unless --allow-unavailable is passed, which downgrades this to 0)
 """
 
 from __future__ import annotations
@@ -25,8 +27,7 @@ import argparse
 import re
 import subprocess
 import sys
-from dataclasses import dataclass, field
-from pathlib import Path
+from dataclasses import dataclass
 from typing import Optional
 
 
@@ -51,6 +52,16 @@ class ValidationFinding:
 EXIT_PASS = 0
 EXIT_WARNINGS = 1
 EXIT_BLOCKING = 2
+EXIT_UNAVAILABLE = 3
+
+
+class FetchError(RuntimeError):
+    """Raised when a required gh data request fails.
+
+    Distinct from a *successful but empty* result (empty issue body, or a
+    PR that changes no files). Callers must treat a FetchError as
+    "cannot validate", never as "validation passed".
+    """
 
 # Regex 1: checklist line `- [ ] ` / `- [x] ` / `* [ ] ` / `* [x] `
 # followed by a backtick-enclosed path.
@@ -174,7 +185,9 @@ def _check_gh_available() -> bool:
             timeout=10,
         )
         return result.returncode == 0
-    except (FileNotFoundError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired):
+        # OSError covers FileNotFoundError and launch failures (PermissionError,
+        # ENOMEM, ...). Any of them means "gh is unavailable", not "pass".
         return False
 
 
@@ -191,6 +204,11 @@ def _gh_run(args: list[str], timeout: int = 30) -> str:
         raise RuntimeError("gh CLI not found. Install GitHub CLI: https://cli.github.com/")
     except subprocess.TimeoutExpired:
         raise RuntimeError(f"gh command timed out after {timeout}s: gh {' '.join(args)}")
+    except OSError as exc:
+        # A launch failure that is not "missing binary" (e.g. PermissionError)
+        # is still "gh unavailable" — surface it as a RuntimeError so callers
+        # map it to FetchError/UNAVAILABLE instead of leaking a traceback.
+        raise RuntimeError(f"failed to launch gh {' '.join(args)}: {exc}")
 
     if result.returncode != 0:
         raise RuntimeError(
@@ -204,7 +222,10 @@ def fetch_issue_body(issue_number: int) -> str:
     """Fetch issue body via gh CLI.
 
     Returns:
-        Issue body markdown, or empty string on failure.
+        Issue body markdown. An issue that legitimately has no body returns
+        "" (success). Raises FetchError if the data cannot be fetched (e.g.
+        issue missing or gh error) so callers can distinguish a fetch
+        failure from an empty-but-successful result.
     """
     try:
         return _gh_run([
@@ -213,15 +234,19 @@ def fetch_issue_body(issue_number: int) -> str:
             "--jq", ".body",
         ])
     except RuntimeError as e:
-        print(f"warning: could not fetch issue #{issue_number}: {e}", file=sys.stderr)
-        return ""
+        raise FetchError(
+            f"could not fetch issue #{issue_number}: {e}"
+        ) from e
 
 
 def fetch_pr_files(pr_number: int) -> list[str]:
     """Fetch list of files changed in a PR via gh CLI.
 
     Returns:
-        List of file paths, or empty list on failure.
+        List of file paths. A PR that legitimately changes no files returns
+        [] (success). Raises FetchError if the data cannot be fetched so
+        callers can distinguish a fetch failure from an empty-but-successful
+        result.
     """
     try:
         raw = _gh_run([
@@ -233,16 +258,23 @@ def fetch_pr_files(pr_number: int) -> list[str]:
             return []
         return sorted(line.strip() for line in raw.splitlines() if line.strip())
     except RuntimeError as e:
-        print(f"warning: could not fetch PR #{pr_number} files: {e}", file=sys.stderr)
-        return []
+        raise FetchError(
+            f"could not fetch PR #{pr_number} files: {e}"
+        ) from e
 
 
 def fetch_pr_tree_shas(pr_number: int) -> tuple[Optional[str], Optional[str]]:
     """Fetch merge tree SHA and parent tree SHA for a merged PR.
 
-    Returns (tree SHA of merge commit, tree SHA of first parent).
-    Returns (None, None) if PR not merged, git data unavailable, or
-    either tree cannot be resolved (e.g. shallow clone).
+    Returns (tree SHA of merge commit, tree SHA of first parent) when the PR
+    is merged. Returns (None, None) when the PR is **not merged** — a
+    legitimate "skip the no-op-merge check" result.
+
+    Raises FetchError when the merge state cannot be determined, or when the
+    PR is merged but its tree SHAs cannot be resolved (gh error, git error,
+    timeout, shallow clone). That is *unavailable data*, not a clean skip:
+    silently treating it as (None, None) would skip the NO_OP_MERGE check and
+    could report PASS (issue #438 review).
 
     Note: returns tree SHAs, NOT commit SHAs — two different commits
     can produce the same tree (= no-op merge). Comparing tree SHAs
@@ -254,21 +286,27 @@ def fetch_pr_tree_shas(pr_number: int) -> tuple[Optional[str], Optional[str]]:
             "--json", "mergeCommit",
             "--jq", ".mergeCommit.oid",
         ])
-        if not raw:
-            return None, None  # not merged
-        merge_sha = raw.strip()
-    except RuntimeError:
-        return None, None
+    except RuntimeError as e:
+        raise FetchError(
+            f"could not fetch PR #{pr_number} merge state: {e}"
+        ) from e
 
-    # Get trees via git plumbing; if any step fails, return (None, None)
-    # consistently to avoid asymmetric partial results.
+    merge_sha = raw.strip()
+    if not merge_sha or merge_sha == "null":
+        return None, None  # PR not merged
+
+    # Get trees via git plumbing. Any failure here means the PR is merged but
+    # the tree data is unavailable → FetchError (never a silent skip).
     try:
         tree_result = subprocess.run(
             ["git", "rev-parse", f"{merge_sha}^{{tree}}"],
             capture_output=True, text=True, timeout=10,
         )
         if tree_result.returncode != 0:
-            return None, None
+            raise FetchError(
+                f"could not resolve merge tree for PR #{pr_number} "
+                f"({merge_sha}): {tree_result.stderr.strip()}"
+            )
         merge_tree = tree_result.stdout.strip()
 
         parent_result = subprocess.run(
@@ -276,12 +314,19 @@ def fetch_pr_tree_shas(pr_number: int) -> tuple[Optional[str], Optional[str]]:
             capture_output=True, text=True, timeout=10,
         )
         if parent_result.returncode != 0:
-            return None, None
+            raise FetchError(
+                f"could not resolve parent tree for PR #{pr_number} "
+                f"({merge_sha}): {parent_result.stderr.strip()}"
+            )
         parent_tree = parent_result.stdout.strip()
 
         return merge_tree, parent_tree
-    except (FileNotFoundError, subprocess.TimeoutExpired):
-        return None, None
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        # OSError covers FileNotFoundError (git missing) and launch failures
+        # (PermissionError, ...); all mean "tree data unavailable" → FetchError.
+        raise FetchError(
+            f"could not resolve trees for PR #{pr_number} ({merge_sha}): {exc}"
+        ) from exc
 
 
 # ═══════════════════════════════════════════════════════════════════════════
@@ -300,6 +345,12 @@ def build_parser() -> argparse.ArgumentParser:
         "pr_number", type=int,
         help="GitHub PR number",
     )
+    parser.add_argument(
+        "--allow-unavailable",
+        action="store_true",
+        help="When gh is unavailable or data cannot be fetched, exit 0 "
+             "(advisory) instead of the default non-zero UNAVAILABLE code.",
+    )
     return parser
 
 
@@ -313,21 +364,19 @@ def main() -> int:
             "Skipping validation. Install gh: https://cli.github.com/",
             file=sys.stderr,
         )
-        return EXIT_PASS
+        return EXIT_PASS if args.allow_unavailable else EXIT_UNAVAILABLE
 
-    # Fetch data
-    issue_body = fetch_issue_body(args.issue_number)
-    pr_files = fetch_pr_files(args.pr_number)
-    merge_tree, parent_tree = fetch_pr_tree_shas(args.pr_number)
-
-    if not issue_body and not pr_files:
-        print(
-            "note: could not fetch issue body or PR files — "
-            "skipping validation (this is expected if the issue/PR "
-            "does not exist or gh is not configured).",
-            file=sys.stderr,
-        )
-        return EXIT_PASS
+    # Fetch required data. A fetch FAILURE (vs. a legitimately empty result)
+    # must not be silently treated as "validation passed": an unmerged PR with
+    # an empty issue body would otherwise produce no findings and exit 0, and
+    # an unresolvable merge tree would silently skip the NO_OP_MERGE check.
+    try:
+        issue_body = fetch_issue_body(args.issue_number)
+        pr_files = fetch_pr_files(args.pr_number)
+        merge_tree, parent_tree = fetch_pr_tree_shas(args.pr_number)
+    except FetchError as exc:
+        print(f"warning: {exc}", file=sys.stderr)
+        return EXIT_PASS if args.allow_unavailable else EXIT_UNAVAILABLE
 
     # Run validation
     findings = core_validate(

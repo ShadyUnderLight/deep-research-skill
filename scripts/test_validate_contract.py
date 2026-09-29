@@ -17,12 +17,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 SCRIPT = str(Path(__file__).resolve().parent / "validate_contract.py")
 
-import pytest
-from validate_contract import (
+from validate_contract import (  # noqa: E402
     validate_contract,
     extract_contract_from_markdown,
     ContractValidationResult,
-    ContractError,
 )
 
 
@@ -670,7 +668,6 @@ def test_audit_evidence_non_string():
 
 def test_cli_require_contract_missing():
     """--require-contract should exit 2 when no contract block found."""
-    import subprocess
     with tempfile.NamedTemporaryFile(mode="w", suffix=".md", delete=False) as f:
         f.write("# No contract\n\nJust text.")
         f.flush()

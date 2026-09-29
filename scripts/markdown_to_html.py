@@ -16,7 +16,6 @@ Usage:
     python3 markdown_to_html.py <input.md> [output.html] [--title "Report Title"]
 """
 import argparse
-import sys
 from pathlib import Path
 
 # ── Compatibility facade ────────────────────────────────────────────────────
@@ -37,6 +36,27 @@ from delivery.paths import atomic_write_text, paths_collide  # noqa: E402
 from delivery.sanitizer import sanitize_html  # noqa: E402
 from delivery.table_repair import repair_markdown_tables  # noqa: E402
 from delivery.tables import maybe_wrap_wide_tables_in_html  # noqa: E402
+
+# Explicit public surface. These re-exports are part of the facade contract
+# (see the comment above): the historical helper names stay importable for
+# existing callers even though the implementation moved into `delivery.*`.
+# Declaring `__all__` keeps Ruff's F401 from stripping them as "unused"
+# (issue #438 review).
+__all__ = [
+    "build_html",
+    "convert",
+    "process_markdown",
+    "style_generated_html",
+    "sanitize_html",
+    "repair_markdown_tables",
+    "maybe_wrap_wide_tables_in_html",
+    "extract_cover_meta",
+    "normalize_text_for_pdf",
+    "atomic_write_text",
+    "paths_collide",
+    "BASE_CSS",
+    "REPORT_THEME_CSS",
+]
 
 
 def build_html(title, body_html, cover_title="", cover_subtitle="", cover_meta="", meta_lines=None):

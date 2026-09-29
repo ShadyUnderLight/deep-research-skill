@@ -20,8 +20,12 @@ from __future__ import annotations
 
 import json
 import re
-import sys
 from pathlib import Path
+
+# Reuse the shared visible-Markdown parser from issue #433/#435 so that
+# headings buried inside fenced code blocks or HTML comments/blocks are NOT
+# mistaken for real document sections (issue #438 F6).
+from validate_contract import sanitize_visible_markdown
 
 REPO = Path(__file__).resolve().parent.parent
 REGISTRY_PATH = REPO / "schemas" / "data-flow-registry.json"
@@ -118,7 +122,12 @@ SKIP_SCAN_FILES = {
 def load_registry() -> dict:
     if not REGISTRY_PATH.exists():
         raise FileNotFoundError(f"Registry not found: {REGISTRY_PATH}")
-    return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    try:
+        return json.loads(REGISTRY_PATH.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+        raise ValueError(
+            f"Registry {REGISTRY_PATH} is not readable / valid UTF-8 / JSON: {exc}"
+        ) from exc
 
 
 def read_text(rel_path: str) -> str:
@@ -249,15 +258,50 @@ def check_signal_file_drift(
     return failures
 
 
+def _is_visible_heading_line(line: str) -> bool:
+    """True if *line* is a real top-level ATX heading line (issue #438 F6).
+
+    CommonMark allows an ATX heading to be indented by at most 3 spaces; 4+
+    spaces (or a leading tab) makes it an *indented code block*, so a
+    ``    ## X`` inside code must not count as a real section. Fenced code and
+    raw HTML are already removed by ``sanitize_visible_markdown``; indented
+    code is not, so we reject it here by indentation.
+    """
+    if line[:1] == "\t":
+        return False
+    indent = len(line) - len(line.lstrip(" "))
+    if indent > 3:
+        return False
+    return line.lstrip(" ").startswith("##")
+
+
+# Next top-level section boundary: an H2 ATX heading with 0-3 leading spaces,
+# but not an H3+ heading and not an H2 without the required space (`##x`).
+_H2_BOUNDARY_RE = re.compile(r"^ {0,3}##(?!#)(?:\s|$)")
+
+
 def extract_section(text: str, heading: str) -> str:
-    start = text.find(heading)
-    if start == -1:
+    # Operate on visible Markdown only: a heading inside a fenced code block
+    # or HTML comment/block is documentation, not a real document section.
+    # The heading must be a real heading *line* (issue #438 F6) — a same-named
+    # string buried in prose, a lower-level heading (### vs ##), or an
+    # indented-code line is not it.
+    visible = sanitize_visible_markdown(text)
+    lines = visible.splitlines()
+    start = None
+    for i, line in enumerate(lines):
+        if line.strip() == heading and _is_visible_heading_line(line):
+            start = i
+            break
+    if start is None:
         return ""
-    rest = text[start + len(heading) :]
-    next_heading = re.search(r"\n## ", rest)
-    if next_heading:
-        return rest[: next_heading.start()]
-    return rest
+    body_lines: list[str] = []
+    for line in lines[start + 1 :]:
+        # Stop at the next top-level (H2) section; H3+ stay in the body.
+        if _H2_BOUNDARY_RE.match(line):
+            break
+        body_lines.append(line)
+    return "\n".join(body_lines)
 
 
 def parse_component_table_ids(section_text: str) -> set[str]:
@@ -379,9 +423,19 @@ def check_unassigned_network_signals(registry: dict) -> list[str]:
 
 
 def check_required_sections(text: str, sections: list[str], label: str) -> list[str]:
+    # A required section must be a real visible *heading line*, not text that
+    # merely appears inside a fenced code block, an indented code block, an
+    # HTML comment, a prose mention, or a wrong-level heading (### vs ##)
+    # (issue #438 F6).
+    visible = sanitize_visible_markdown(text)
+    visible_headings = {
+        line.strip()
+        for line in visible.splitlines()
+        if _is_visible_heading_line(line)
+    }
     failures: list[str] = []
     for section in sections:
-        if section not in text:
+        if section not in visible_headings:
             failures.append(f"{label} missing section: {section}")
     return failures
 
@@ -502,16 +556,19 @@ def check_verification_status_tokens(data_flows_text: str) -> list[str]:
 
 def run_checks() -> list[str]:
     failures: list[str] = []
-    registry = load_registry()
+    try:
+        registry = load_registry()
+    except (FileNotFoundError, ValueError) as exc:
+        return [str(exc)]
 
     try:
         data_flows = read_text("docs/DATA_FLOWS.md")
-    except FileNotFoundError as exc:
+    except (OSError, UnicodeError) as exc:
         return [str(exc)]
 
     try:
         risk_register = read_text("docs/RISK_REGISTER.md")
-    except FileNotFoundError as exc:
+    except (OSError, UnicodeError) as exc:
         failures.append(str(exc))
         risk_register = ""
 
@@ -539,7 +596,11 @@ def run_checks() -> list[str]:
         if not path.exists():
             failures.append(f"{desc} — file not found: {rel_path}")
             continue
-        text = path.read_text(encoding="utf-8")
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            failures.append(f"{desc} — cannot read {rel_path}: {exc}")
+            continue
         if needle not in text:
             failures.append(f"{desc} — expected reference to {needle}")
 

@@ -14,9 +14,7 @@ from __future__ import annotations
 import re
 import subprocess
 import sys
-from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Iterator
 
 ROOT = Path(__file__).resolve().parents[1]
 CASE_DIR = ROOT / "evals" / "cases"
@@ -76,10 +74,6 @@ def test_c1_action_types_are_valid() -> None:
         if not fpath.exists():
             continue
         text = fpath.read_text(encoding="utf-8")
-        # Find all action type backtick values in proper context
-        action_types = set(re.findall(
-            r"`(NEW_RULE|CHECKLIST_HARDENING|TEMPLATE_CHANGE|NO_ACTION)`", text
-        ))
         # But also find any invalid ones that look like action types
         all_backtick_actions = set(re.findall(
             r"`([A-Z_]+)`", text
@@ -185,7 +179,6 @@ def test_c2_new_eval_cases_have_required_sections() -> None:
 
 def test_c2_eval_cases_have_valid_verdict() -> None:
     """C2c: Current rule verdict must reference valid status values."""
-    VALID_VERDICTS = {"pass", "conditional-pass", "fail", "warn", "manual-review"}
     all_cases = [
         "world-cup-rule-regulatory-route-mismatch-case.md",
         "world-cup-info-advantage-technical-deep-dive-source-strength-case.md",
@@ -231,7 +224,6 @@ def test_c3_indexed_cases_match_git_tracked_files() -> None:
         f"evals/cases/{m}"
         for m in re.findall(r"`evals/cases/([^`]+)`", index_text)
     ]
-    indexed_tracked = [p for p in tracked if p.split("evals/cases/", 1)[0] == ""]
     missing = [p for p in tracked if p not in indexed]
     assert not missing, f"Git-tracked eval cases not in INDEX.md: {missing}"
 
@@ -458,12 +450,10 @@ def test_c5_eval_to_index_related_issues_consistent() -> None:
         issue_refs = set(re.findall(r"#(\d{3})", case_text))
         # Check INDEX.md has corresponding references
         index_text = INDEX_PATH.read_text(encoding="utf-8")
-        case_stem = fname.replace("-case.md", "")
         # Find the index row for this case
         pattern = rf"\|\s*`evals/cases/{re.escape(fname)}`\s*\|"
         match = re.search(pattern, index_text)
         if match:
-            row_start = match.start()
             row_end = index_text.find("\n", match.end())
             if row_end == -1:
                 row_end = len(index_text)

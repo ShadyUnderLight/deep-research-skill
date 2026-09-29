@@ -32,7 +32,6 @@ Exit codes:
 from __future__ import annotations
 
 import argparse
-import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -155,7 +154,7 @@ def render_card(route: dict, known_route_ids: set[str]) -> str:
         f"- **Category**: `{category}`",
         f"- **Aliases**: {', '.join(f'`{a}`' for a in aliases) if aliases else '—'}",
         f"- **Full contract**: {_full_contract_display(route)}",
-        f"- **Compact index**: [`references/route-index.md`](../../references/route-index.md)",
+        "- **Compact index**: [`references/route-index.md`](../../references/route-index.md)",
         "",
     ]
 

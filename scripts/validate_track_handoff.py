@@ -536,7 +536,7 @@ def load_handoff_for_merge(
     problems: list[str] = []
     try:
         text = path.read_text(encoding="utf-8")
-    except OSError as exc:
+    except (OSError, UnicodeError) as exc:
         raise HandoffIncomplete(
             f"{HANDOFF_INCOMPLETE}: cannot read handoff file {path}: {exc}"
         ) from exc
@@ -647,7 +647,7 @@ def main(argv: list[str] | None = None) -> int:
             expected_scope = json.loads(
                 Path(args.expected_scope_file).read_text(encoding="utf-8")
             )
-        except (OSError, json.JSONDecodeError) as exc:
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
             print(
                 f"{HANDOFF_INCOMPLETE}: cannot read expected-scope file "
                 f"{args.expected_scope_file}: {exc}"

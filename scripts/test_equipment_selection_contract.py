@@ -113,7 +113,7 @@ def test_property_table_column_consistency() -> None:
                     f"  Table #{ti}, row #{ri}: {len(row)} cols, expected {ncols}"
                 )
     assert not violations, (
-        f"Column count inconsistency in equipment-selection zone:\n"
+        "Column count inconsistency in equipment-selection zone:\n"
         + "\n".join(violations)
     )
 

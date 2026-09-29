@@ -16,12 +16,10 @@ from __future__ import annotations
 
 import argparse
 import re
-import sys
 from pathlib import Path
 
 # For free-text source type normalization (Wikipedia/wiki → CROWDSOURCED)
 from validate_source_label_consistency import (
-    _FREETEXT_TYPE_MAP,
     _FREETEXT_TYPE_MAP_CI,
 )
 
@@ -535,7 +533,7 @@ def check_source_register_missing_ids(cleaned: str) -> list[str]:
             missing.append(i)
 
     if missing:
-        line_nums = ", ".join(str(l) for l in missing[:5])
+        line_nums = ", ".join(str(num) for num in missing[:5])
         if len(missing) > 5:
             line_nums += ", ..."
         return [

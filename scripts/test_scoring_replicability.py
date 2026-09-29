@@ -9,7 +9,6 @@ self-contained test runner, no external dependencies.
 
 from __future__ import annotations
 
-import sys
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
@@ -20,7 +19,7 @@ SCRIPT = str(Path(__file__).resolve().parent / "validate_scoring_replicability.p
 
 # We import validate_file directly for unit-level tests.
 # Subprocess calls test the CLI entry point.
-from validate_scoring_replicability import validate_file
+from validate_scoring_replicability import validate_file  # noqa: E402
 
 # ── Fixture builders ──────────────────────────────────────────────────────
 
@@ -176,8 +175,8 @@ class TestScoringTableNoRules:
     def test_returns_errors(self) -> None:
         errors = _run_validator(_scoring_table_no_rules())
         assert len(errors) > 0, (
-            f"Expected blocking errors for scoring table without rules, "
-            f"got empty list"
+            "Expected blocking errors for scoring table without rules, "
+            "got empty list"
         )
 
     def test_error_mentions_replicability(self) -> None:
@@ -202,9 +201,9 @@ class TestScoringTableRoleLabelsNoRules:
     def test_returns_errors(self) -> None:
         errors = _run_validator(_scoring_table_role_labels_no_rules())
         assert len(errors) > 0, (
-            f"CRITICAL: Expected blocking errors for scoring table with "
-            f"role labels but no rules — role labels should NOT count "
-            f"as evidence for replicability. Got empty list."
+            "CRITICAL: Expected blocking errors for scoring table with "
+            "role labels but no rules — role labels should NOT count "
+            "as evidence for replicability. Got empty list."
         )
 
     def test_error_not_fooled_by_role_labels(self) -> None:
@@ -225,8 +224,8 @@ class TestProbabilityNoMethod:
     def test_returns_errors(self) -> None:
         errors = _run_validator(_probability_no_method())
         assert len(errors) > 0, (
-            f"Expected blocking errors for probability without method, "
-            f"got empty list"
+            "Expected blocking errors for probability without method, "
+            "got empty list"
         )
 
     def test_error_mentions_probability(self) -> None:

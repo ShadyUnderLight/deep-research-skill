@@ -30,7 +30,6 @@ from __future__ import annotations
 import argparse
 import json
 import re
-import sys
 from pathlib import Path
 
 import registry_loader
@@ -137,8 +136,8 @@ def _load_manifest(path: Path) -> dict:
     """Load and validate top-level manifest structure."""
     try:
         text = path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        raise SystemExit(f"ERROR: Manifest file not found: {path}")
+    except (OSError, UnicodeError) as exc:
+        raise SystemExit(f"ERROR: Cannot read manifest {path}: {exc}")
     try:
         manifest = json.loads(text)
     except json.JSONDecodeError as e:
@@ -354,7 +353,10 @@ def _check_route_cards(
         card = cards_dir / f"{rid}.md"
         if not card.is_file():
             continue
-        text = card.read_text(encoding="utf-8")
+        try:
+            text = card.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise SystemExit(f"ERROR: Cannot read route card {card}: {exc}")
         for field, heading in section_for.items():
             value = route.get(field, "")
             if isinstance(value, str):
@@ -389,7 +391,7 @@ def validate(path: Path | None = None) -> int:
     # registry makes every downstream check meaningless, so report the
     # structural error and stop instead of continuing into KeyError land.
     try:
-        registry = registry_loader.load_route_registry(manifest_path)
+        registry_loader.load_route_registry(manifest_path)
     except RegistryError as e:
         print(f"BLOCKING DRIFT DETECTED (1 issue(s)):\n  ✗ {e}")
         return EXIT_FAIL
@@ -467,7 +469,10 @@ def validate(path: Path | None = None) -> int:
             f"cannot verify manifest consistency"
         )
     else:
-        matrix_text = ROUTING_MATRIX.read_text(encoding="utf-8")
+        try:
+            matrix_text = ROUTING_MATRIX.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise SystemExit(f"ERROR: Cannot read {ROUTING_MATRIX}: {exc}")
         matrix_headings = _parse_routing_matrix_headings(matrix_text)
         specialized_in_manifest = sum(
             1 for r in manifest["routes"] if r.get("category") == "specialized"
@@ -596,14 +601,20 @@ def validate(path: Path | None = None) -> int:
     # strip("|") + split("|"), cells[1] is the Primary route column and
     # cells[2] the Secondary route column.
     if EVALS_INDEX.is_file():
-        index_text = EVALS_INDEX.read_text(encoding="utf-8")
+        try:
+            index_text = EVALS_INDEX.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise SystemExit(f"ERROR: Cannot read {EVALS_INDEX}: {exc}")
         known_ids = manifest_ids | known_disciplines | _EVAL_TAG_WHITELIST
         for line in index_text.splitlines():
             errors.extend(_check_evals_index_line(line, known_ids))
 
     # ═══ Check 9: references/route-index.md trigger table ════════════════════
     if ROUTE_INDEX.is_file():
-        index_text = ROUTE_INDEX.read_text(encoding="utf-8")
+        try:
+            index_text = ROUTE_INDEX.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise SystemExit(f"ERROR: Cannot read {ROUTE_INDEX}: {exc}")
         route_audits = {
             rid: set(route.get("required_audits", []))
             for rid, route in manifest_routes.items()

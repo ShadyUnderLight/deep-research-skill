@@ -69,7 +69,6 @@ from validate_scoring_replicability import validate_file as vsr_validate_file
 from validate_contract import (
     extract_contract_blocks,
     extract_contract_from_markdown,
-    extract_report_primary_route,
     has_contract_block,
     validate_contract,
 )
@@ -2396,9 +2395,22 @@ def _apply_run_state_delivery_guard(
     """delivered/completed Run State cannot masquerade after a failing audit."""
     if research_pack is None:
         return verdict
-    from validate_research_run_state import load_declared_run_state
+    from validate_research_run_state import (
+        RunStateDeclarationError,
+        load_declared_run_state,
+    )
 
-    state = load_declared_run_state(research_pack)
+    try:
+        state = load_declared_run_state(research_pack)
+    except (OSError, UnicodeError, RunStateDeclarationError) as exc:
+        # Neither a read failure nor an unverifiable declaration is "no declared
+        # run state": the guard cannot run, so record it explicitly instead of
+        # silently keeping the verdict.
+        verdict.blocking.append(
+            f"run-state delivery guard could not run for Research Pack "
+            f"{research_pack}: {exc}"
+        )
+        return verdict
     if state is None:
         return verdict
     if state.get("phase") == "delivered" or state.get("status") == "completed":
